@@ -22,6 +22,7 @@
     ]
   },
   "dependencies": {
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@fontsource/atkinson-hyperlegible": "^5.3.0",
     "@google/genai": "^3.0.0",
     "@mediapipe/tasks-vision": "^1.2.2",

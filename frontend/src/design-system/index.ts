@@ -59,6 +59,7 @@ export {
   ThemeToggle,
   useTheme,
   applyTheme,
+  readTheme,
   type ThemePreference,
 } from './Theme';
 export { contrast, luminance } from './contrast';

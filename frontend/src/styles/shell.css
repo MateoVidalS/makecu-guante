@@ -1,7 +1,7 @@
 /*
  * App shell: the three densities from docs/plan/11-ux-design.md §4.
- *   .shell--setup-data  top bar with brand, nav, status chips, Doctor view, theme
- *   .shell--focus       Exercise live / Evaluate running: nav hidden, End session · progress · chips
+ *   .shell--setup-data  slim white top bar: brand, nav, status (dot + word), Doctor view, profile, theme
+ *   .shell--focus       Exercise live / Evaluate running: nav hidden, End session · progress · status
  *   .shell--doctor      slate "Doctor view · read-only" bar with Exit
  */
 .shell {
@@ -10,16 +10,23 @@
   flex-direction: column;
 }
 
+/* Patient focus screens step the type scale up (spec: instruction ≥ 48 px, phase label ≥ 28 px, finger % ≥ 24 px). */
+.shell--focus {
+  --h2: 1.75rem;
+  --h3: 1.375rem;
+}
+
 .skip-link {
   position: absolute;
   inset-block-start: var(--space-8);
   inset-inline-start: var(--space-8);
   z-index: calc(var(--z-header) + 1);
-  padding: var(--space-12) var(--space-16);
+  padding: var(--space-8) var(--space-12);
+  border: var(--control-border) solid var(--border);
   border-radius: var(--radius-input);
   background: var(--surface);
   box-shadow: var(--elevation-overlay);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-semibold);
   transform: translateY(-200%);
 }
 .skip-link:focus {
@@ -30,77 +37,134 @@
 .app-header {
   display: flex;
   align-items: center;
-  gap: var(--space-12) var(--space-24);
+  gap: var(--space-8) var(--space-24);
   min-height: var(--header-height);
-  padding: var(--space-12) var(--space-32);
+  padding: var(--space-8) var(--space-24);
   border-block-end: var(--control-border) solid var(--border);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: saturate(1.4) blur(10px);
+  background: var(--surface);
+  font-size: var(--small);
 }
 .app-brand {
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
   flex: none;
-  padding: var(--space-4) var(--space-8) var(--space-4) 0;
-  border-radius: var(--radius-input);
+  padding-block: var(--space-4);
+  border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: var(--h3);
-  font-weight: var(--weight-bold);
+  font-size: var(--body);
+  font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   text-decoration: none;
 }
 .app-brand .ds-icon {
   color: var(--accent);
 }
+
+/* Nav: quiet text links; the current page gets text color + a 2 px underline on the header's bottom edge. */
 .app-header .app-nav {
   display: flex;
   flex-wrap: nowrap;
+  align-self: stretch;
   gap: var(--space-4);
   min-width: 0;
 }
 .app-nav a {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  min-height: 44px;
-  padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-input);
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-sm);
   color: var(--muted);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-regular);
   text-decoration: none;
   white-space: nowrap;
-  transition:
-    background-color var(--dur-fast) var(--ease),
-    color var(--dur-fast) var(--ease);
+  transition: color var(--dur-fast) var(--ease);
 }
 .app-nav a:hover {
-  background: var(--surface-2);
   color: var(--text);
 }
 .app-nav a[aria-current='page'] {
-  background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--text);
+  font-weight: var(--weight-semibold);
 }
+.app-nav a[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-12);
+  inset-block-end: calc(-1 * var(--space-8) - var(--control-border));
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+.app-nav a:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Status: small dot + words, no outlines, no icons. Values in text color, labels muted. */
 .app-header .statuses {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-16);
   flex: none;
   margin-inline-start: auto;
+  color: var(--muted);
+  font-size: var(--small);
 }
+.statuses .ds-status-chip {
+  min-height: 0;
+  padding: 0;
+  gap: var(--space-4);
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.statuses .ds-status-chip .ds-dot {
+  margin-inline-end: var(--space-4);
+}
+.statuses .ds-status-chip__icon {
+  display: none;
+}
+.statuses .ds-status-chip__value {
+  color: var(--text);
+  font-weight: var(--weight-regular);
+}
+/* Safety stop stays visible in the bar: red word on a soft red hint. */
+.statuses .ds-status-chip--danger {
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+}
+.statuses .ds-status-chip--danger .ds-status-chip__value {
+  color: var(--danger-text);
+  font-weight: var(--weight-semibold);
+}
+.statuses .runtime-fallback summary {
+  color: var(--muted);
+  font-weight: var(--weight-regular);
+}
+.statuses .runtime-fallback summary:hover {
+  color: var(--text);
+}
+
 .app-tools {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-4);
 }
 .app-tools .ds-button--quiet {
+  color: var(--muted);
+}
+.app-tools .ds-button--quiet:hover,
+.app-tools .ds-button--quiet[aria-current='page'] {
   color: var(--text);
 }
 .app-divider {
   width: 1px;
-  height: var(--space-24);
+  height: var(--space-16);
+  margin-inline: var(--space-8);
   background: var(--border);
 }
 
@@ -113,8 +177,9 @@
   justify-self: end;
 }
 .app-progress {
-  font-size: var(--h3);
-  font-weight: var(--weight-bold);
+  color: var(--text);
+  font-size: var(--body);
+  font-weight: var(--weight-semibold);
   text-align: center;
   white-space: nowrap;
 }
@@ -128,7 +193,6 @@
   border-block-end-color: transparent;
   background: var(--chrome);
   color: var(--on-chrome);
-  backdrop-filter: none;
 }
 .shell--doctor .app-brand,
 .shell--doctor .app-brand .ds-icon {
@@ -138,11 +202,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-8);
-  padding: var(--space-4) var(--space-12);
-  border: 1px solid color-mix(in srgb, var(--on-chrome) 35%, transparent);
-  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-8);
+  border: 1px solid color-mix(in srgb, var(--on-chrome) 30%, transparent);
+  border-radius: var(--radius-sm);
   font-size: var(--small);
-  font-weight: var(--weight-bold);
+  color: color-mix(in srgb, var(--on-chrome) 85%, transparent);
 }
 .shell--doctor .app-tools {
   margin-inline-start: auto;
@@ -150,8 +214,8 @@
 .shell--doctor .app-header .ds-button {
   --btn-bg: transparent;
   --btn-fg: var(--on-chrome);
-  --btn-border: color-mix(in srgb, var(--on-chrome) 55%, transparent);
-  --btn-bg-hover: color-mix(in srgb, var(--on-chrome) 12%, transparent);
+  --btn-border: color-mix(in srgb, var(--on-chrome) 40%, transparent);
+  --btn-bg-hover: color-mix(in srgb, var(--on-chrome) 10%, transparent);
 }
 .shell--doctor .app-header :focus-visible {
   outline-color: var(--on-chrome);
@@ -160,9 +224,12 @@
   display: none;
 }
 
-/* Legacy chip markup inside the header ("● Glove: Ready"): calm, consistent pills. */
+/* Legacy chip markup inside the header ("● Glove: Ready"): plain text, no pill. */
 .statuses .chip {
-  background: var(--surface);
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
 }
 
 /* ---------- Sticky top: header + safety banner slot travel together ---------- */
@@ -179,7 +246,7 @@ main {
   width: 100%;
   max-width: var(--content-max);
   margin-inline: auto;
-  padding: var(--space-32);
+  padding: var(--space-48) var(--space-32) var(--space-64);
 }
 .shell--focus main {
   max-width: calc(var(--content-max) + 2 * var(--space-64));
@@ -198,52 +265,10 @@ main {
   max-width: 100%;
 }
 
-/* ---------- Narrow laptop (1280 px and below) ---------- */
-@media (max-width: 1600px) {
-  .app-nav .ds-icon {
-    display: none;
-  }
-  .app-header {
-    gap: var(--space-12) var(--space-16);
-    padding-inline: var(--space-24);
-  }
-}
-@media (max-width: 1180px) {
-  .app-header {
-    flex-wrap: wrap;
-  }
-  .app-header .statuses {
-    order: 3;
-    margin-inline-start: 0;
-  }
-  .app-tools {
-    margin-inline-start: auto;
-  }
-  .doctor-link__label {
-    display: none;
-  }
-}
-@media (max-width: 720px) {
-  main {
-    padding: var(--space-16);
-  }
-  .app-header {
-    padding-inline: var(--space-16);
-  }
-  .app-header .app-nav {
-    order: 4;
-    width: 100%;
-    overflow-x: auto;
-  }
-}
-
-/* Keep navigation and recovery tools separate on the demo laptop widths. */
-@media (max-width: 1440px) {
+/* ---------- Narrower laptops: status moves to a second, right-aligned row ---------- */
+@media (max-width: 1280px) {
   .shell--setup-data .app-header {
     flex-wrap: wrap;
-  }
-  .shell--setup-data .app-nav {
-    flex-shrink: 0;
   }
   .shell--setup-data .app-tools {
     margin-inline-start: auto;
@@ -252,5 +277,31 @@ main {
     order: 3;
     flex-basis: 100%;
     justify-content: flex-end;
+    padding-block: var(--space-4);
+  }
+  .shell--setup-data .app-nav {
+    align-self: center;
+    min-height: var(--control-md);
+  }
+  .shell--setup-data .app-nav a[aria-current='page']::after {
+    inset-block-end: 0;
+  }
+}
+@media (max-width: 1180px) {
+  .doctor-link__label {
+    display: none;
+  }
+}
+@media (max-width: 720px) {
+  main {
+    padding: var(--space-24) var(--space-16) var(--space-48);
+  }
+  .app-header {
+    padding-inline: var(--space-16);
+  }
+  .app-header .app-nav {
+    order: 4;
+    width: 100%;
+    overflow-x: auto;
   }
 }

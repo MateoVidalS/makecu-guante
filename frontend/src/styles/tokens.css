@@ -1,87 +1,94 @@
 /*
  * Rehab Hub design tokens. Source of truth for colors, type, space, shape, depth and motion.
- * Keep in sync with tokens.ts (canvas / three.js) — foundation.test.ts checks contrast on the TS copy.
+ * Keep in sync with tokens.ts (canvas / three.js) — tokens.test.ts checks sync and contrast on the TS copy.
+ *
+ * Direction (see docs/design/DESIGN_SYSTEM.md): calm, clinical, light. Near-white page, white surfaces,
+ * hairline borders, one muted deep-blue accent, softened state colors, no card shadows, no gradients.
  *
  * Rules
  * - State colors carry ONE meaning everywhere (see docs/design/DESIGN_SYSTEM.md):
  *   --active = moving on your own, --assist = the glove helping, --reached = reached,
  *   --danger = safety only, --demo = demo data, --caution = a non-safety heads-up.
  * - The plain state colors are for fills, dots, bars and the hand. For TEXT and icons on a surface use the
- *   `-text` variant (≥ 4.5:1). For tinted backgrounds use the `-soft` variant.
+ *   `-text` variant (≥ 4.5:1). For tinted backgrounds use the `-soft` variant (small status hints only).
  * - Every name that existed in WP0 still exists; new names are additive.
  */
 :root {
   /* ---- Color: neutrals ---- */
-  --bg: #f7f6f3;
+  --bg: #fafaf9;
   --surface: #ffffff;
-  --surface-2: #efede8;
-  --surface-3: #e5e2db;
-  --text: #1d1f22;
-  --muted: #5c6168;
-  --border: #dad7d0;
-  --border-strong: #80868e; /* control outlines: ≥ 3:1 on every surface */
-  --scrim: rgb(21 23 26 / 0.48);
+  --surface-2: #f4f4f2;
+  --surface-3: #e8e8e5;
+  --text: #1a1d21;
+  --muted: #5e636b;
+  --border: #e5e5e1; /* hairlines: cards, dividers, the top bar */
+  --border-control: #d6d7d3; /* button and pill outlines (the label identifies the control) */
+  --border-strong: #878c94; /* control outlines: ≥ 3:1 on every surface */
+  --scrim: rgb(16 24 40 / 0.32);
 
-  /* ---- Color: accent (actions, links, focus) ---- */
-  --accent: #2a5bd7;
-  --accent-hover: #2149b3;
-  --accent-soft: #e6ecfb;
+  /* ---- Color: accent (actions, links, focus) — one calm deep blue ---- */
+  --accent: #2f5b9a;
+  --accent-hover: #264b80;
+  --accent-soft: #eef2f8;
   --on-accent: #ffffff;
-  --focus-ring: #2a5bd7;
+  --focus-ring: #2f5b9a;
 
   /* ---- Color: states (fill) ---- */
-  --target: #8a9099;
-  --active: #2f6feb;
-  --assist: #e8890c;
-  --reached: #1f9d55;
-  --danger: #c62828;
-  --demo: #7b61ff;
-  --caution: #c99400;
+  --target: #9a9fa6;
+  --active: #3f72c6;
+  --assist: #d58a3c;
+  --reached: #3e9468;
+  --danger: #b9382f;
+  --demo: #7a6cc0;
+  --caution: #be972f;
 
   /* ---- Color: states (text/icon on surfaces, ≥ 4.5:1) ---- */
-  --active-text: #1f57c9;
-  --assist-text: #9a5200;
-  --reached-text: #16733f;
-  --danger-text: #b3261e;
-  --demo-text: #5b3fd9;
-  --caution-text: #7a5900;
+  --active-text: #2f5da8;
+  --assist-text: #8f5418;
+  --reached-text: #2b6b4a;
+  --danger-text: #a8322a;
+  --demo-text: #5d4fa6;
+  --caution-text: #735812;
 
   /* ---- Color: states (soft tint backgrounds) ---- */
-  --active-soft: #e6eefd;
-  --assist-soft: #fdf0df;
-  --reached-soft: #e3f4ea;
-  --danger-soft: #fbe9e9;
-  --demo-soft: #efebff;
-  --caution-soft: #fbf3d9;
+  --active-soft: #eff3fa;
+  --assist-soft: #fbf4ec;
+  --reached-soft: #eef6f1;
+  --danger-soft: #fbefee;
+  --demo-soft: #f3f1fa;
+  --caution-soft: #faf5e7;
   --on-danger: #ffffff;
 
   /* ---- Color: per-finger series (charts only) ---- */
-  --finger-thumb: #7b61ff;
-  --finger-index: #00a3bf;
-  --finger-middle: #c2185b;
+  --finger-thumb: #7a6cc0;
+  --finger-index: #2c93a8;
+  --finger-middle: #b4497a;
   --hand: #d9cfc4;
 
-  /* ---- Color: chrome (doctor shell banner) ---- */
-  --chrome: #2e3946;
+  /* ---- Color: chrome (doctor shell bar) ---- */
+  --chrome: #2f3a47;
   --on-chrome: #ffffff;
 
   /* ---- Type ---- */
-  --root: 18px;
-  --font: 'Atkinson Hyperlegible', system-ui, sans-serif;
+  --root: 17px;
+  --font:
+    'Atkinson Hyperlegible Next Variable', 'Atkinson Hyperlegible', system-ui,
+    sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  --display: 3.5rem;
-  --h1: 2.25rem;
-  --h2: 1.6rem;
-  --h3: 1.25rem;
+  --display: 3rem; /* patient instruction only (≥ 48 px) */
+  --h1: 2rem;
+  --h2: 1.375rem;
+  --h3: 1.125rem;
   --body: 1rem;
-  --small: 0.85rem;
+  --small: 0.875rem;
   --caption: 0.75rem;
   --weight-regular: 400;
-  --weight-bold: 700;
-  --line-height: 1.5;
-  --leading-tight: 1.15;
-  --leading-snug: 1.3;
-  --tracking-tight: -0.01em;
+  --weight-semibold: 600;
+  --weight-bold: 600; /* kept for compatibility: the system uses two weights, regular + semibold */
+  --line-height: 1.55;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --tracking-tight: -0.015em;
 
   /* ---- Space (4 px grid) ---- */
   --space-2: 2px;
@@ -94,36 +101,37 @@
   --space-48: 48px;
   --space-64: 64px;
 
-  /* ---- Shape ---- */
-  --radius-sm: 6px;
-  --radius-input: 8px;
+  /* ---- Shape (6–10 px; the pill radius is only for dots, switches and progress tracks) ---- */
+  --radius-sm: 4px;
+  --radius-input: 6px;
   --radius-md: var(--radius-input);
-  --radius-card: 16px;
+  --radius-card: 10px;
   --radius-lg: var(--radius-card);
   --radius-pill: 999px;
   --control-border: 1px;
 
-  /* ---- Depth (dark mode uses borders instead) ---- */
-  --elevation-card: 0 1px 2px #1d1f220f, 0 2px 8px #1d1f220a;
-  --elevation-overlay: 0 12px 40px #1d1f2229, 0 2px 6px #1d1f2214;
+  /* ---- Depth: hairlines, not shadows. One subtle level for overlays (dialogs, toasts, menus). ---- */
+  --elevation-card: none;
+  --elevation-overlay:
+    0 8px 24px rgb(16 24 40 / 0.08), 0 1px 3px rgb(16 24 40 / 0.06);
   --z-header: 20;
   --z-toast: 40;
   --z-dialog: 50;
 
-  /* ---- Motion ---- */
+  /* ---- Motion: short, linear-feeling, no bounce ---- */
   --dur-fast: 120ms;
-  --dur: 240ms;
-  --dur-slow: 480ms;
+  --dur: 200ms;
+  --dur-slow: 400ms;
   --dur-reach: 400ms;
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
 
   /* ---- Focus ---- */
-  --focus-width: 3px;
-  --focus-offset: 4px;
+  --focus-width: 2px;
+  --focus-offset: 2px;
 
   /* ---- Controls ---- */
-  --control-sm: 36px; /* doctor / dense data views only */
-  --control-md: 48px; /* helper + data views */
+  --control-sm: 32px; /* doctor / dense data views, header tools */
+  --control-md: 44px; /* helper + data views */
   --control-lg: 64px; /* patient views (spec §8) */
   --button-min-height: var(--control-lg);
   --button-label: 20px;
@@ -132,7 +140,7 @@
   --content-max: 1200px;
   --instruction-max: 60ch;
   --text-max: 68ch;
-  --header-height: 72px;
+  --header-height: 56px;
   --focus-content: 60%;
   --placeholder-height: 240px;
 
@@ -140,96 +148,102 @@
 }
 
 :root[data-theme='dark'] {
-  --bg: #15171a;
-  --surface: #1e2125;
-  --surface-2: #262a2f;
-  --surface-3: #30353b;
-  --text: #f1f2f4;
-  --muted: #a3a9b1;
-  --border: #363b42;
-  --border-strong: #767e88;
+  --bg: #141619;
+  --surface: #1c1f23;
+  --surface-2: #23272c;
+  --surface-3: #2d3237;
+  --text: #eceef0;
+  --muted: #a1a7af;
+  --border: #2e3238;
+  --border-control: #3b4047;
+  --border-strong: #737b85;
   --scrim: rgb(0 0 0 / 0.6);
-  --accent: #7ea2ff;
-  --accent-hover: #a3beff;
-  --accent-soft: #1f2a44;
-  --on-accent: #0f1a33;
-  --focus-ring: #7ea2ff;
-  --target: #c5cad1;
-  --active: #6e9bff;
-  --assist: #ffb257;
-  --reached: #4ccb86;
-  --danger: #ff6b6b;
-  --demo: #a996ff;
-  --caution: #e3b341;
-  --active-text: #8fb2ff;
-  --assist-text: #ffb257;
-  --reached-text: #4ccb86;
-  --danger-text: #ff8a85;
-  --demo-text: #b9a9ff;
-  --caution-text: #e3b341;
-  --active-soft: #1d2a45;
-  --assist-soft: #3a2a14;
-  --reached-soft: #173426;
-  --danger-soft: #3d1e1f;
-  --demo-soft: #2a2545;
-  --caution-soft: #362e14;
-  --on-danger: #15171a;
-  --finger-thumb: #a996ff;
-  --finger-index: #60d5e9;
-  --finger-middle: #f785b2;
+  --accent: #8da9dc;
+  --accent-hover: #a9c0e8;
+  --accent-soft: #1e2838;
+  --on-accent: #0f1a2e;
+  --focus-ring: #8da9dc;
+  --target: #c2c7ce;
+  --active: #7ca2e6;
+  --assist: #e3a867;
+  --reached: #65bd8e;
+  --danger: #ef7b72;
+  --demo: #a99de0;
+  --caution: #d8b65e;
+  --active-text: #93b3ec;
+  --assist-text: #e6ae70;
+  --reached-text: #6cc294;
+  --danger-text: #f28b83;
+  --demo-text: #b5aae6;
+  --caution-text: #ddbc66;
+  --active-soft: #1d2738;
+  --assist-soft: #33281a;
+  --reached-soft: #1a2e24;
+  --danger-soft: #35201f;
+  --demo-soft: #262338;
+  --caution-soft: #312a17;
+  --on-danger: #141619;
+  --finger-thumb: #a99de0;
+  --finger-index: #6cc6d6;
+  --finger-middle: #e58cb1;
   --hand: #bfb3a6;
-  --chrome: #2a3442;
-  --on-chrome: #f1f2f4;
+  --chrome: #262f3a;
+  --on-chrome: #eceef0;
   --elevation-card: none;
-  --elevation-overlay: 0 16px 48px #00000080;
+  --elevation-overlay: 0 12px 32px rgb(0 0 0 / 0.45);
   color-scheme: dark;
 }
 
-/* Same dark values when the OS asks for dark and the user has not forced light. Keep in sync with the block above. */
+/*
+ * Light is the default regardless of the OS (Theme.tsx sets data-theme="light" unless the user picks otherwise).
+ * When the user explicitly picks "Match system", data-theme is removed and this block follows the OS.
+ * Keep in sync with the block above.
+ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #15171a;
-    --surface: #1e2125;
-    --surface-2: #262a2f;
-    --surface-3: #30353b;
-    --text: #f1f2f4;
-    --muted: #a3a9b1;
-    --border: #363b42;
-    --border-strong: #767e88;
+    --bg: #141619;
+    --surface: #1c1f23;
+    --surface-2: #23272c;
+    --surface-3: #2d3237;
+    --text: #eceef0;
+    --muted: #a1a7af;
+    --border: #2e3238;
+    --border-control: #3b4047;
+    --border-strong: #737b85;
     --scrim: rgb(0 0 0 / 0.6);
-    --accent: #7ea2ff;
-    --accent-hover: #a3beff;
-    --accent-soft: #1f2a44;
-    --on-accent: #0f1a33;
-    --focus-ring: #7ea2ff;
-    --target: #c5cad1;
-    --active: #6e9bff;
-    --assist: #ffb257;
-    --reached: #4ccb86;
-    --danger: #ff6b6b;
-    --demo: #a996ff;
-    --caution: #e3b341;
-    --active-text: #8fb2ff;
-    --assist-text: #ffb257;
-    --reached-text: #4ccb86;
-    --danger-text: #ff8a85;
-    --demo-text: #b9a9ff;
-    --caution-text: #e3b341;
-    --active-soft: #1d2a45;
-    --assist-soft: #3a2a14;
-    --reached-soft: #173426;
-    --danger-soft: #3d1e1f;
-    --demo-soft: #2a2545;
-    --caution-soft: #362e14;
-    --on-danger: #15171a;
-    --finger-thumb: #a996ff;
-    --finger-index: #60d5e9;
-    --finger-middle: #f785b2;
+    --accent: #8da9dc;
+    --accent-hover: #a9c0e8;
+    --accent-soft: #1e2838;
+    --on-accent: #0f1a2e;
+    --focus-ring: #8da9dc;
+    --target: #c2c7ce;
+    --active: #7ca2e6;
+    --assist: #e3a867;
+    --reached: #65bd8e;
+    --danger: #ef7b72;
+    --demo: #a99de0;
+    --caution: #d8b65e;
+    --active-text: #93b3ec;
+    --assist-text: #e6ae70;
+    --reached-text: #6cc294;
+    --danger-text: #f28b83;
+    --demo-text: #b5aae6;
+    --caution-text: #ddbc66;
+    --active-soft: #1d2738;
+    --assist-soft: #33281a;
+    --reached-soft: #1a2e24;
+    --danger-soft: #35201f;
+    --demo-soft: #262338;
+    --caution-soft: #312a17;
+    --on-danger: #141619;
+    --finger-thumb: #a99de0;
+    --finger-index: #6cc6d6;
+    --finger-middle: #e58cb1;
     --hand: #bfb3a6;
-    --chrome: #2a3442;
-    --on-chrome: #f1f2f4;
+    --chrome: #262f3a;
+    --on-chrome: #eceef0;
     --elevation-card: none;
-    --elevation-overlay: 0 16px 48px #00000080;
+    --elevation-overlay: 0 12px 32px rgb(0 0 0 / 0.45);
     color-scheme: dark;
   }
 }
