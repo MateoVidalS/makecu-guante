@@ -107,7 +107,7 @@ function HandScene({
       <directionalLight
         position={[-3, 5, 6]}
         intensity={2.2}
-        color={palette.surface}
+        color={tokens.light.surface}
       />
       <directionalLight
         position={[4, 1, -2]}

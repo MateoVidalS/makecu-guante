@@ -98,7 +98,8 @@ export function createHandRig(handedness: Handedness = 'right'): HandRig {
 
 /** Reuses scratch quaternions. alpha=0.5 smooths a live sample without React renders. */
 export function applyJoints(rig: HandRig, joints: JointMap, alpha = 1): void {
-  for (const finger of FINGERS) {
+  for (let f = 0; f < FINGERS.length; f++) {
+    const finger = FINGERS[f];
     const chain = rig.fingers[finger];
     for (let i = 0; i < 3; i++) {
       // Thumb: metacarpal opposition, MCP, IP (the latter lives in pip).
