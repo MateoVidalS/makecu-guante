@@ -65,7 +65,7 @@ switches to camera/serial reject explicitly until their implementations arrive.
 The Gemini settings retain the published contract defaults. Google's current
 [model catalog](https://ai.google.dev/gemini-api/docs/models) and
 [Live model availability](https://firebase.google.com/docs/ai-logic/models)
-indicate the old `gemini-live-2.5-flash-preview` identifier is retired. WP8 must
+indicate the old `gemini-3.8-live` identifier is retired. WP8 must
 select an available Gemini Developer API Live model when implementing token
 creation, and request the corresponding contract update. Puck remains a named
 voice option in the [Live API guide](https://firebase.google.com/docs/ai-logic/live-api/configuration).
