@@ -176,11 +176,18 @@ export class TherapyController implements TherapyApi {
       : null;
   }
   brake(reason: string, source: Source): CoachDecision {
+    return this.applyBrake(reason, source, { reason });
+  }
+  private applyBrake(
+    reason: string,
+    source: Source,
+    requested: Record<string, unknown>,
+  ): CoachDecision {
     // Release precedes audit listeners or network work, even outside a running session.
     this.context.brake();
     return this.decision(
       'brake',
-      { reason },
+      requested,
       { phase: 'PAUSED', safety_source: 'coach_brake' },
       'applied',
       reason,
@@ -209,7 +216,11 @@ export class TherapyController implements TherapyApi {
     const reject = (why: string) =>
       this.decision(tool, args, null, 'rejected', why, source);
     if (tool === 'brake')
-      return this.brake(reason || 'The assistant requested a brake.', source);
+      return this.applyBrake(
+        reason || 'The assistant requested a brake.',
+        source,
+        args,
+      );
     if (tool === 'get_live_state')
       return this.decision(
         tool,

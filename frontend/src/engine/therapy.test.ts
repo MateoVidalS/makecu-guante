@@ -217,7 +217,8 @@ describe('therapy engine policy and boundaries', () => {
       }
     });
     const before = h.commands().length;
-    h.therapy.brake('Stop now.', 'local_rule');
+    const brake = h.call('brake', { reason: 'Stop now.', force: 999 });
+    expect(brake.requested).toEqual({ reason: 'Stop now.', force: 999 });
     expect(observed).toBe(true);
     expect(h.commands().slice(before)).toEqual([{ t: 'release' }]);
     expect(h.therapy.undo()).toBeNull();
@@ -404,6 +405,12 @@ it('property: arbitrary tool sequences cannot bypass position, speed, calibrated
       });
       if (tool === 'brake')
         expect(h.commands().slice(before)).toEqual([{ t: 'release' }]);
+      for (const speed of Object.values(
+        h.therapy.state()!.adjustments.assist_speed,
+      )) {
+        expect(speed).toBeGreaterThanOrEqual(Math.min(initialCap, 0.1));
+        expect(speed).toBeLessThanOrEqual(Math.min(initialCap, 0.3));
+      }
       if (h.engine.state().phase === 'PAUSED' && random() < 0.2)
         h.world.apply(h.engine.resume(h.world.now).commands);
       h.tick(100);
