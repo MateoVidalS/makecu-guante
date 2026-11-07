@@ -94,12 +94,20 @@ export default function Setup() {
       <Grid columns={2}>
         <Card className="live-stack">
           <h2>
-            {connection === 'connected' ? 'Glove ready' : 'Glove not connected'}
+            {connection === 'connected'
+              ? tel?.st === 'fault'
+                ? 'Glove stopped'
+                : 'Glove ready'
+              : connection === 'connecting'
+                ? 'Connecting glove…'
+                : 'Glove not connected'}
           </h2>
           <GloveChip />
           <p>
             {connection === 'connected'
-              ? 'Your glove is connected and ready for setup.'
+              ? tel?.st === 'fault'
+                ? 'Release the glove and check it before continuing.'
+                : 'Your glove is connected and ready for setup.'
               : connection === 'connecting'
                 ? 'Connecting to your glove…'
                 : 'Click Connect and pick the USB device.'}

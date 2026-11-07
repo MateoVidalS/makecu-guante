@@ -19,6 +19,7 @@ import type {
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import type { PoseDef } from '../../contracts/poses';
 import {
+  useToast,
   Heading,
   Button,
   Card,
@@ -56,16 +57,31 @@ export function StatusChip({ children }: { children: ReactNode }) {
   return <span className="chip">{children}</span>;
 }
 export function GloveChip() {
+  const runtime = useRuntime();
+  const [safetyStopped, setSafetyStopped] = useState(false);
+  useEffect(() => {
+    const events = runtime.exercise.onEvent((event) => {
+      if (event.kind === 'safety') setSafetyStopped(true);
+    });
+    const phases = runtime.exercise.subscribe((view) => {
+      if (view.phase === 'REST' || view.phase === 'DONE')
+        setSafetyStopped(false);
+    });
+    return () => {
+      events();
+      phases();
+    };
+  }, [runtime]);
   const { store, client } = useGlove();
   const connection = useStore(store, (s) => s.connection);
   const state = useGloveTelemetry((t) => t?.st);
   const mode = useGloveTelemetry((t) => t?.md);
   const phase = useExerciseView((v) => v.phase);
   const label =
-    connection !== 'connected'
-      ? 'Not connected'
-      : state === 'fault'
-        ? 'Stopped'
+    safetyStopped || state === 'fault'
+      ? 'Stopped'
+      : connection !== 'connected'
+        ? 'Not connected'
         : phase === 'PAUSED'
           ? 'Paused'
           : mode === 'target' || phase === 'ASSIST'
@@ -354,34 +370,24 @@ export function showToast(message: string, error = false) {
   );
 }
 export function Toasts() {
-  const [toast, setToast] = useState<{
-    message: string;
-    error: boolean;
-  } | null>(null);
+  const { toast } = useToast();
   useEffect(() => {
-    const listener = (event: Event) =>
-      setToast(
-        (event as CustomEvent<{ message: string; error: boolean }>).detail,
-      );
+    const listener = (event: Event) => {
+      const { message, error } = (
+        event as CustomEvent<{ message: string; error: boolean }>
+      ).detail;
+      toast({ title: message, tone: error ? 'caution' : 'neutral' });
+    };
     window.addEventListener('rehab-toast', listener);
     return () => window.removeEventListener('rehab-toast', listener);
-  }, []);
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 4000);
-    return () => clearTimeout(timer);
   }, [toast]);
   return (
-    <div id="toast-region" role="status" aria-live="polite" aria-atomic="true">
-      {toast && (
-        <div
-          className={`system-toast ${toast.error ? 'system-error' : 'system-info'}`}
-          role={toast.error ? 'alert' : undefined}
-        >
-          {toast.message}
-        </div>
-      )}
-    </div>
+    <div
+      id="toast-region"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    />
   );
 }
 export function ConfirmDialog({

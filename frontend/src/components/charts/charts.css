@@ -177,3 +177,10 @@
 .data-page .actions {
   align-items: center;
 }
+.data-page :is(.ds-card, .data-section) > .ds-badge {
+  align-self: start;
+  justify-self: start;
+}
+.therapist-summary > .ds-button {
+  align-self: start;
+}

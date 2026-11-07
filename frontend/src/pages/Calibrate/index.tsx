@@ -527,7 +527,7 @@ export default function Calibrate() {
       {draft.step === 3 && (
         <Card className="live-stack">
           <h2>Review your range</h2>
-          <table>
+          <table className="data-table">
             <caption>Glove angles</caption>
             <thead>
               <tr>
@@ -549,7 +549,7 @@ export default function Calibrate() {
           <BigButton onClick={() => update({ step: 0 })}>
             Redo glove ranges
           </BigButton>
-          <table>
+          <table className="data-table">
             <caption>Camera range · {draft.hand} hand</caption>
             <thead>
               <tr>

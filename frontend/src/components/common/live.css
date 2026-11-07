@@ -239,3 +239,14 @@
     font-size: var(--small);
   }
 }
+@media (max-width: 1280px) {
+  .live-details .finger-bars {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-12);
+  }
+  .live-details .finger-bars .ds-meter__head {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+}

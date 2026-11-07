@@ -54,7 +54,7 @@ test('history exposes fixture improvement and chart data with demo labels', asyn
 }) => {
   await page.goto('/history');
   await expect(page.getByText('37% → 65%')).toBeVisible();
-  await page.getByRole('button', { name: 'Active range', exact: true }).click();
+  await page.getByRole('tab', { name: 'Active range', exact: true }).click();
   await page.getByLabel('Pose').selectOption('full_fist');
   await page.getByText('Show as table', { exact: true }).nth(1).click();
   const table = page.getByRole('table');

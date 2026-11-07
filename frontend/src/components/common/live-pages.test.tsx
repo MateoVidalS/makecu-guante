@@ -378,7 +378,13 @@ describe('Safety and accessible common controls', () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
   it('shows a green Ready chip and a neutral Paused chip', async () => {
-    const { runtime } = mount(<GloveChip />);
+    const runtime = new ScriptedRuntime({ persist: false });
+    let emit: (event: EngineEvent) => void = () => {};
+    vi.spyOn(runtime.exercise, 'onEvent').mockImplementation((cb) => {
+      emit = cb;
+      return () => {};
+    });
+    mount(<GloveChip />, runtime);
     expect(screen.getByText('Ready').closest('.ds-status-chip')).toHaveClass(
       'ds-status-chip--reached',
     );
@@ -389,6 +395,12 @@ describe('Safety and accessible common controls', () => {
       'ds-status-chip--neutral',
     );
     expect(screen.queryByText('Stopped')).not.toBeInTheDocument();
+    act(() => emit({ kind: 'safety', source: 'camera_lost' }));
+    expect(screen.getByText('Stopped').closest('.ds-status-chip')).toHaveClass(
+      'ds-status-chip--danger',
+    );
+    act(() => runtime.exerciseStore.setState({ phase: 'REST', paused: false }));
+    expect(screen.getByText('Ready')).toBeVisible();
   });
   it('announces waiting for a visible hand', () => {
     mount(<PhaseRing phase="PRESENT" elapsed={0} duration={3} waiting />);

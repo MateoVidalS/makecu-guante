@@ -123,12 +123,15 @@ export default function Home() {
             ))}
           </Stack>
         </Card>
-        <Card title="Last session">
+        <Card
+          title="Last session"
+          actions={
+            sessions.data?.some((s) => s.is_demo) ? <DemoBadge /> : undefined
+          }
+        >
           {last ? (
             <>
-              <p>
-                {formatDate(last.started_at)} {last.is_demo && <DemoBadge />}
-              </p>
+              <p>{formatDate(last.started_at)}</p>
               <KpiTile
                 label="On your own"
                 value={percent(last.summary?.active_ratio_mean)}

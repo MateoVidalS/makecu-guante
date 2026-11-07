@@ -48,8 +48,18 @@ for (const viewport of [
         ).toBeLessThanOrEqual(1);
         await page.screenshot({
           path: `${qaDir}/${name}-${theme}-${viewport.width}.png`,
-          fullPage,
         });
+        if (
+          fullPage &&
+          (await page.evaluate(
+            () => document.documentElement.scrollHeight > innerHeight,
+          ))
+        ) {
+          await page.screenshot({
+            path: `${qaDir}/${name}-${theme}-${viewport.width}-full.png`,
+            fullPage: true,
+          });
+        }
       };
       await page.goto('/_dev/design');
       await expect(
@@ -144,6 +154,16 @@ for (const viewport of [
       ).toBeVisible();
       await expect(page.getByLabel('Voice mode')).toBeVisible();
       await page.getByText('Coach controls', { exact: true }).click();
+      await page.getByRole('button', { name: 'Resume', exact: true }).click();
+      await expect(page.locator('.attempt-toast')).toBeVisible({
+        timeout: 30_000,
+      });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollHeight <= innerHeight,
+        ),
+      ).toBe(true);
+      await capture('exercise-feedback', false);
       await page
         .getByRole('button', { name: 'End session', exact: true })
         .click();
@@ -180,4 +200,41 @@ test('helper calibration captures values and uses one release action', async ({
   await expect(
     page.getByRole('heading', { name: 'Your range is saved' }),
   ).toBeVisible();
+});
+
+test('safety stays red while a normal pause stays neutral', async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await calibrate(page);
+  await page
+    .getByRole('button', { name: 'Short session', exact: true })
+    .click();
+  for (const name of ['Open hand', 'Hook', 'Tabletop', 'Straight fist'])
+    await page.getByRole('checkbox', { name, exact: true }).uncheck();
+  await page
+    .getByRole('button', { name: 'Start practice', exact: true })
+    .click();
+  await page.getByText('Simulator controls', { exact: true }).click();
+  await page
+    .getByRole('checkbox', { name: 'Rigid index', exact: true })
+    .check();
+  const safety = page.locator('#safety-banner-slot').getByRole('alert');
+  await expect(safety).toBeVisible({ timeout: 40_000 });
+  await expect(page.locator('.statuses .ds-status-chip--danger')).toContainText(
+    'Stopped',
+  );
+  await expect(
+    safety.getByRole('button', { name: 'Resume', exact: true }),
+  ).toBeFocused();
+  await page
+    .getByRole('checkbox', { name: 'Rigid index', exact: true })
+    .uncheck();
+  await safety.getByRole('button', { name: 'Resume', exact: true }).click();
+  await expect(safety).toHaveCount(0);
+  await expect(page.locator('.statuses .ds-status-chip--danger')).toHaveCount(
+    0,
+  );
+  await page.getByRole('button', { name: 'End session', exact: true }).click();
 });
