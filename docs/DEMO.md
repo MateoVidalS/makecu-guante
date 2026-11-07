@@ -46,6 +46,9 @@ For a built simulator demo, run `VITE_SIM=1 make demo` after seeding and open
 starts with physical sources; select both simulators in Setup for a hardware-free
 run. Neither command seeds automatically.
 
+For a physical-glove/camera presentation, start with `VITE_DEMO=1 make dev`
+to keep the header recovery controls available. Complete the hardware gate first.
+
 ## Pre-demo checklist (15 minutes before)
 
 - [ ] Chrome/Edge, laptop plugged in, sleep disabled for the presentation.

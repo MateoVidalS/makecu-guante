@@ -55,6 +55,7 @@ files are optional. Keep backend keys out of `VITE_*` variables.
 | `REHAB_DB_PATH` | SQLite file; Make defaults to `backend/data/rehab.db` |
 | `REHAB_PORT` / `REHAB_FRONTEND_PORT` | Backend / Vite port (defaults 8000 / 5173); the dev launcher configures the proxy |
 | `VITE_SIM=1` | Start with simulated sources |
+| `VITE_DEMO=1` | Keep header recovery controls available with physical sources |
 | `VITE_VISION=camera` | Override vision only, useful for real gloved-hand detection |
 | `VITE_SIM_SPEED` | Simulation clock multiplier; normal use 1, browser tests 3 |
 | `VITE_MOCK_API=1` | Enable browser MSW; unset for real backend integration |
