@@ -4,8 +4,9 @@ import {
   PageHeader,
   Checkbox,
   StatusDot,
+  Banner,
 } from '../../design-system';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from 'zustand';
 import { useRuntime, useEvaluationView } from '../../runtime';
@@ -24,6 +25,7 @@ import {
   SweepTracker,
   stifferAtSpeed,
 } from '../../components/metrics';
+import { hasCompleteFriction, hasRecentFriction } from './friction';
 import './evaluate.css';
 interface Point {
   pos: number;
@@ -163,13 +165,19 @@ function SweepChart() {
     </>
   );
 }
-function SafetyLine({ text }: { text: string }) {
+function SafetyLine({ text, release }: { text: string; release: () => void }) {
   return (
-    <div className="hp-safety-line" role="note">
-      <p>
-        <strong>{text}</strong>
-      </p>
-    </div>
+    <Banner
+      tone="warning"
+      title={text}
+      action={
+        <Button size="sm" onClick={release}>
+          Release glove now
+        </Button>
+      }
+    >
+      Keep the hand relaxed. Press STOP anytime. Stop if it hurts.
+    </Banner>
   );
 }
 const mA = (value: number | null) =>
@@ -184,17 +192,74 @@ const mA = (value: number | null) =>
 export default function Evaluate() {
   const runtime = useRuntime(),
     view = useEvaluationView(),
-    { store } = useGlove();
+    { store, client } = useGlove();
   const connected = useStore(store, (s) => s.connection === 'connected');
   const [relaxed, setRelaxed] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [again, setAgain] = useState(false),
+    [emptyGlove, setEmptyGlove] = useState(false),
+    [measuringFriction, setMeasuringFriction] = useState(false),
+    [ignoredResult, setIgnoredResult] = useState<typeof view.result>(null),
     [selected, setSelected] = useState<GloveFinger[]>([...GLOVE_FINGERS]);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const selectedFingers = GLOVE_FINGERS.filter((f) => selected.includes(f));
   useSessionLeaveGuard('evaluation');
   const running = ['prepare', 'sweep', 'cooldown'].includes(view.stage);
+  const frictionReady = hasRecentFriction(runtime.calibration.current);
+  function release() {
+    client.release();
+    void runtime.evaluation.stop();
+  }
+  async function measureFriction() {
+    const calibration = runtime.calibration.current;
+    if (!calibration || !emptyGlove || !connected || busy) return;
+    setError('');
+    setBusy(true);
+    setMeasuringFriction(true);
+    setRelaxed(false);
+    try {
+      const friction = await runtime.evaluation.runFriction([...GLOVE_FINGERS]);
+      if (!mounted.current) return;
+      setIgnoredResult(runtime.evaluation.view().result);
+      if (
+        runtime.evaluation.view().stage === 'aborted' ||
+        !hasCompleteFriction(friction)
+      )
+        throw new Error(
+          'Friction measurement stopped. Measure again before evaluating.',
+        );
+      await runtime.calibration.save({
+        servo: calibration.servo,
+        camera: calibration.camera,
+        current_limit_ma: calibration.current_limit_ma,
+        friction,
+      });
+      if (mounted.current) setEmptyGlove(false);
+    } catch (e) {
+      if (mounted.current) setError((e as Error).message);
+    } finally {
+      if (mounted.current) {
+        setBusy(false);
+        setMeasuringFriction(false);
+      }
+    }
+  }
   async function start() {
+    if (
+      !hasRecentFriction(runtime.calibration.current) ||
+      !relaxed ||
+      !connected ||
+      !selectedFingers.length ||
+      busy
+    )
+      return;
     setError('');
     setBusy(true);
     try {
@@ -217,7 +282,11 @@ export default function Evaluate() {
     return (
       <div className="hp-page hp-live">
         <PageHeader
-          title={`Measuring ${view.finger ?? ''}`}
+          title={
+            measuringFriction
+              ? `Measuring empty-glove friction · ${title(view.finger ?? 'thumb')}`
+              : `Measuring ${view.finger ?? ''}`
+          }
           lead={
             <span aria-live="polite">
               {view.stage === 'prepare'
@@ -228,6 +297,14 @@ export default function Evaluate() {
               · Sweep {sweep} of {selectedFingers.length * 2}
             </span>
           }
+        />
+        <SafetyLine
+          text={
+            measuringFriction
+              ? 'Keep the glove empty and hanging freely.'
+              : 'Keep your hand relaxed.'
+          }
+          release={release}
         />
         <progress
           className="hp-progress eval-progress"
@@ -242,15 +319,16 @@ export default function Evaluate() {
           progress={view.stage === 'sweep' ? view.progress : 0}
         />
         <SweepChart />
-        <div className="hp-actions">
-          <Button onClick={() => void runtime.evaluation.stop()}>
-            Stop evaluation
-          </Button>
-        </div>
       </div>
     );
   }
-  if (view.result && !again) {
+  if (
+    view.stage === 'done' &&
+    view.result &&
+    view.result !== ignoredResult &&
+    !again &&
+    !measuringFriction
+  ) {
     const result = view.result;
     const stiffCount = result.fingers.filter((f) =>
       stifferAtSpeed(f.resistance_slow_ma, f.resistance_fast_ma),
@@ -372,7 +450,11 @@ export default function Evaluate() {
   }
   const calibrated = !!runtime.calibration.current;
   const blocked =
-    !relaxed || !connected || !calibrated || !selectedFingers.length;
+    !relaxed ||
+    !connected ||
+    !calibrated ||
+    !frictionReady ||
+    !selectedFingers.length;
   return (
     <div className="hp-page">
       <PageHeader
@@ -380,7 +462,7 @@ export default function Evaluate() {
         lead="The glove moves each finger gently, slowly and then quickly, and estimates resistance."
       />
       <div className="hp-wizard">
-        <SafetyLine text="Press STOP anytime. Stop if it hurts." />
+        <SafetyLine text="Keep your hand relaxed." release={release} />
         {view.stage === 'aborted' && (
           <p role="status">Evaluation stopped. Rest before trying again.</p>
         )}
@@ -402,7 +484,38 @@ export default function Evaluate() {
               },
             ]}
           />
-          <fieldset className="eval-fingers">
+          {!frictionReady ? (
+            <div className="eval-friction">
+              <h3>Measure empty-glove friction first</h3>
+              <p>Take the glove off. Let it hang freely.</p>
+              <p className="hp-note">
+                Required before evaluation. Allow about 2 minutes for all five
+                fingers.
+              </p>
+              <Checkbox
+                label="The glove is empty and hanging freely"
+                checked={emptyGlove}
+                disabled={busy}
+                onChange={(e) => setEmptyGlove(e.target.checked)}
+              />
+              <Button
+                variant="primary"
+                disabled={!emptyGlove || !connected || !calibrated || busy}
+                loading={busy}
+                onClick={() => void measureFriction()}
+              >
+                {busy ? 'Measuring friction…' : 'Measure glove friction'}
+              </Button>
+              <p className="hp-note">
+                Put the glove back on after measurement finishes.
+              </p>
+            </div>
+          ) : (
+            <p role="status">
+              Recent glove friction saved. Put the glove on, then relax.
+            </p>
+          )}
+          <fieldset className="eval-fingers" disabled={busy}>
             <legend>Fingers to measure</legend>
             <div className="hp-actions">
               {GLOVE_FINGERS.map((finger) => (
@@ -430,6 +543,7 @@ export default function Evaluate() {
           </p>
           <Checkbox
             label="Hand relaxed in the glove"
+            disabled={!frictionReady || busy}
             checked={relaxed}
             onChange={(e) => setRelaxed(e.target.checked)}
           />
@@ -441,7 +555,7 @@ export default function Evaluate() {
         )}
         <div className="hp-actions">
           <Button
-            variant="primary"
+            variant={frictionReady ? 'primary' : 'secondary'}
             size="lg"
             disabled={busy || blocked}
             aria-describedby={blocked ? 'evaluation-start-hint' : undefined}
@@ -455,9 +569,11 @@ export default function Evaluate() {
                 ? 'Connect your glove in Setup first.'
                 : !calibrated
                   ? 'Calibrate your comfortable range first.'
-                  : !selectedFingers.length
-                    ? 'Choose at least one finger to measure.'
-                    : 'Confirm your hand is relaxed to start.'}
+                  : !frictionReady
+                    ? 'Measure empty-glove friction before evaluating.'
+                    : !selectedFingers.length
+                      ? 'Choose at least one finger to measure.'
+                      : 'Confirm your hand is relaxed to start.'}
             </p>
           )}
         </div>

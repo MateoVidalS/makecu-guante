@@ -25,3 +25,15 @@
   margin-block-end: var(--space-12);
   font-weight: var(--weight-semibold);
 }
+
+.eval-friction {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-12);
+  padding-block: var(--space-24);
+  border-block: var(--control-border) solid var(--border);
+}
+.eval-friction p,
+.eval-friction h3 {
+  margin: 0;
+}
