@@ -24,7 +24,9 @@ export function createGloveController(
     serial?: GloveClient;
   } = {},
 ) {
-  const world = options.world ?? new SimWorld();
+  const world =
+    options.world ??
+    new SimWorld({ timeScale: Number(import.meta.env.VITE_SIM_SPEED ?? 1) });
   const serial = options.serial ?? new WebSerialGlove();
   const kind =
     options.kind ?? (import.meta.env.VITE_SIM === '1' ? 'sim' : 'serial');

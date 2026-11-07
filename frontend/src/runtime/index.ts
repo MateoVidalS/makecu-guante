@@ -5,3 +5,13 @@ export {
   useEvaluationView,
 } from './RuntimeProvider';
 export { ScriptedRuntime } from './ScriptedRuntime';
+export { RehabRuntime } from './runtime';
+export {
+  RuntimeStatus,
+  RuntimeDiagnostics,
+  useSavingStatus,
+} from './RuntimeStatus';
+export {
+  RuntimeSimulatorControls,
+  RuntimeSimulatorCalibration,
+} from './SimulatorControls';

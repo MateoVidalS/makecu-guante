@@ -13,7 +13,8 @@ import {
   Icon,
   ProgressRing,
 } from '../../design-system';
-import { useRuntime } from '../../runtime';
+import { useRuntime, RuntimeSimulatorCalibration } from '../../runtime';
+
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
@@ -248,6 +249,8 @@ export default function Calibrate() {
         title="Find your comfortable range"
         lead="Your progress stays here if you leave."
       />
+
+      <RuntimeSimulatorCalibration />
       <Stepper
         labels={['Glove range', 'Camera range', 'Glove friction', 'Review']}
         step={draft.step}

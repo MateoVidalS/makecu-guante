@@ -15,6 +15,7 @@ import {
   useExerciseView,
   useEvaluationView,
   useRuntime,
+  RuntimeStatus,
 } from './runtime';
 import { VoiceProvider } from './voice';
 import {
@@ -133,6 +134,7 @@ function Shell() {
               </>
             )}
             <div className="statuses">
+              <RuntimeStatus />
               <GloveChip />
               <CameraChip />
             </div>
@@ -159,11 +161,7 @@ function Shell() {
               </div>
             )}
           </header>
-          <div
-            id="safety-banner-slot"
-            aria-live="assertive"
-            aria-atomic="true"
-          >
+          <div id="safety-banner-slot" aria-live="assertive" aria-atomic="true">
             <SafetyBanner />
           </div>
         </div>
