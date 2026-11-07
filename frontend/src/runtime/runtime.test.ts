@@ -293,7 +293,7 @@ it('measures empty-glove friction before any patient calibration and without cam
   expect(curves.index).toHaveLength(2);
   expect(curves.index?.every((c) => c.points.length > 10)).toBe(true);
   expect(posts.createEvaluation).not.toHaveBeenCalled();
-  expect(world.firmware.info().limit).toBe(900);
+  expect(world.firmware.info().limit).toBe(1500);
 });
 
 it('ignores a late calibration reload while a session is running', async () => {
@@ -392,4 +392,60 @@ it('waits for fresh telemetry after Resume instead of reusing a pre-release faul
   expect(world.firmware.mode).toBe('none');
   world.advance(1000);
   expect(runtime.exercise.view().phase).toBe('REST');
+});
+
+it.each([
+  'stop',
+  'STOP',
+  'unplug',
+  'source',
+  'dispose',
+  'overcurrent',
+] as const)(
+  'settles empty-glove friction with no curves on %s and preserves aborted stage',
+  async (action) => {
+    const { runtime, world } = await harness();
+    const result = runtime.evaluation.runFriction(['index', 'ring']);
+    until(world, () => runtime.evaluation.view().stage === 'sweep');
+    if (action === 'stop') await runtime.evaluation.stop();
+    else if (action === 'STOP') world.controls.pressStop();
+    else if (action === 'unplug') world.controls.unplug();
+    else if (action === 'source') await runtime.sources.setVision('sim');
+    else if (action === 'dispose') runtime.dispose();
+    else {
+      world.controls.setRigid('index', true);
+      until(world, () => runtime.evaluation.view().stage === 'aborted');
+    }
+    expect(await result).toEqual({});
+    expect(runtime.evaluation.view().stage).toBe('aborted');
+    // An unplugged transport cannot deliver release; the firmware watchdog does.
+    if (action === 'unplug') world.advance(1100);
+    expect(world.firmware.mode).toBe('none');
+    world.controls.releaseStop();
+  },
+);
+
+it('does not acquire the runtime after invalid friction input and ignores missing camera during empty-glove friction', async () => {
+  const { runtime, world } = await harness();
+  await expect(
+    runtime.evaluation.runFriction(['invalid' as never]),
+  ).rejects.toThrow('five-finger glove');
+  world.controls.handOutOfFrame(100_000);
+  const result = runtime.evaluation.runFriction(['ring']);
+  until(world, () => runtime.evaluation.view().stage === 'done');
+  expect((await result).ring).toHaveLength(2);
+});
+
+it('rejects mismatched simulator camera ranges before persisting or starting motion', async () => {
+  const { runtime, world, calibration } = await harness();
+  const create = vi.spyOn(api, 'createCalibration');
+  const invalid = { ...calibration, camera: fixture.camera };
+  await expect(runtime.calibration.save(invalid)).rejects.toThrow('over 100%');
+  expect(create).not.toHaveBeenCalled();
+  runtime.calibration.current = invalid;
+  const target = vi.spyOn(world.glove, 'target');
+  await expect(
+    runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS),
+  ).rejects.toThrow('over 100%');
+  expect(target).not.toHaveBeenCalled();
 });
