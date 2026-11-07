@@ -11,6 +11,8 @@ import {
 import { useStore } from 'zustand';
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision, useVisionFrame } from '../../vision';
+import { GLOVE_FINGERS } from '../../contracts/glove';
+import { CameraPlacement, GloveDetectionCheck } from './CameraPlacement';
 import { CameraOverlay } from '../../vision/CameraOverlay';
 import { useRuntime, RuntimeDiagnostics } from '../../runtime';
 import {
@@ -27,7 +29,8 @@ export default function Setup() {
     vision = useVision(),
     runtime = useRuntime();
   const connection = useStore(glove.store, (s) => s.connection),
-    events = useStore(glove.store, (s) => s.events);
+    events = useStore(glove.store, (s) => s.events),
+    connectionError = useStore(glove.store, (s) => s.connectionError);
   const tel = useGloveTelemetry((t) => t);
   const cameraRunning = useVisionFrame((f) => f !== null);
   const confidence = useVisionFrame((f) =>
@@ -54,6 +57,7 @@ export default function Setup() {
   }, [glove.client]);
   async function action(fn: () => Promise<unknown>) {
     setError('');
+    setInfo(null);
     setBusy(true);
     try {
       await fn();
@@ -97,7 +101,7 @@ export default function Setup() {
       ? 'reached'
       : 'caution';
   const limit =
-    info?.limit ?? runtime.calibration.current?.current_limit_ma ?? 900;
+    info?.limit ?? runtime.calibration.current?.current_limit_ma ?? 1500;
   const simulated = glove.client.kind === 'sim';
   return (
     <div className="hp-page">
@@ -106,9 +110,9 @@ export default function Setup() {
         lead="Both need to be ready before calibration and practice."
       />
       <BrowserSupportBanner />
-      {error && (
+      {(error || connectionError) && (
         <p role="alert" className="hp-alert">
-          {error}
+          {error || connectionError}
         </p>
       )}
       <div className="hp-columns">
@@ -191,7 +195,7 @@ export default function Setup() {
                   </dd>
                 </>
               )}
-              {['thumb', 'index', 'middle', 'ring', 'pinky'].map((f, i) => (
+              {GLOVE_FINGERS.map((f, i) => (
                 <Fragment key={f}>
                   <dt>{title(f)}</dt>
                   <dd>
@@ -212,13 +216,16 @@ export default function Setup() {
               aria-label="Current over the last ten seconds"
             >
               <path
-                d={`M0 ${100 - limit / 14}H500`}
+                d={`M0 ${100 - (limit / 2500) * 100}H500`}
                 stroke="var(--target)"
                 strokeDasharray="4 4"
               />
               <polyline
                 points={samples
-                  .map((s, i) => `${i * 5},${100 - s / 14}`)
+                  .map(
+                    (s, i) =>
+                      `${i * 5},${100 - (Math.min(s, 2500) / 2500) * 100}`,
+                  )
                   .join(' ')}
                 fill="none"
                 stroke="var(--text)"
@@ -276,6 +283,7 @@ export default function Setup() {
               },
             ]}
           />
+          <CameraPlacement />
           <Select
             label="Camera device"
             value={deviceId}
@@ -291,6 +299,7 @@ export default function Setup() {
               ))}
           </Select>
           <CameraOverlay mirrored={mirror} />
+          <GloveDetectionCheck />
           <div className="hp-actions hp-actions--between">
             {cameraRunning ? (
               <Button variant="quiet" onClick={() => vision.stop()}>
@@ -326,7 +335,11 @@ export default function Setup() {
                   runtime.calibration.current?.camera ?? null,
                 );
                 setInfo(await glove.client.connect());
-                await vision.start({ affectedHand: 'right' });
+                await vision.start({
+                  affectedHand:
+                    runtime.calibration.current?.camera.affected_hand ??
+                    'right',
+                });
               })
             }
           >
