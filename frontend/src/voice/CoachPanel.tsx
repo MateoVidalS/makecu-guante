@@ -33,7 +33,7 @@ export function CoachPanel() {
             tone={voice.status === 'listening' ? 'active' : 'neutral'}
           />
           <Switch
-            label="Mic on"
+            label="Microphone"
             checked={voice.mode === 'live' && !voice.muted}
             disabled={voice.mode !== 'live'}
             onCheckedChange={(on) => voice.setMuted(!on)}

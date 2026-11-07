@@ -60,6 +60,9 @@ test('focus-shell recovery readies each simulator and simple voice within five s
   timings.voice = Date.now() - started;
   expect(timings.voice).toBeLessThan(5000);
   await expect(page.locator('.focus')).toBeVisible();
+  await expect(
+    page.locator('.coach-compact').getByRole('switch', { name: 'Microphone' }),
+  ).toHaveAttribute('aria-checked', 'false');
   await testInfo.attach('recovery-wall-time-ms.json', {
     body: JSON.stringify(timings),
     contentType: 'application/json',
@@ -76,7 +79,7 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
   await page
     .getByRole('button', { name: 'Start practice', exact: true })
     .click();
-  const safety = page.getByRole('alert', { name: 'Safety stop' });
+  const safety = page.locator('#safety-banner-slot [role=alert]');
   await page.getByText('Simulator controls', { exact: true }).click();
   await page
     .getByRole('button', { name: 'Press simulated STOP', exact: true })
@@ -118,7 +121,11 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
   await page
     .getByRole('button', { name: 'Start practice', exact: true })
     .click();
-  await expect(page.locator('.phase-assist')).toBeVisible({ timeout: 20_000 });
+  await expect(
+    page
+      .locator('.phase-ring')
+      .getByText('The glove is helping', { exact: true }),
+  ).toBeVisible({ timeout: 20_000 });
   await page.getByText('Simulator controls', { exact: true }).click();
   await page
     .getByRole('button', {

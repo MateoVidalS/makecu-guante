@@ -29,6 +29,20 @@ async function inspect(page: Page, name: string, testInfo: TestInfo) {
     ),
     `${name} horizontal overflow`,
   ).toBe(true);
+  for (const link of await page.locator('.app-nav a').all()) {
+    expect(
+      await link.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return element.contains(
+          document.elementFromPoint(
+            rect.x + rect.width / 2,
+            rect.y + rect.height / 2,
+          ),
+        );
+      }),
+      'Header navigation must not be covered by status or recovery tools',
+    ).toBe(true);
+  }
   const directory =
     process.env.REHAB_QA_SCREENSHOTS === '1'
       ? resolve('../docs/design/screenshots/after-wp11')
@@ -84,6 +98,10 @@ for (const size of [
         ['/exercise', 'exercise-plan'],
         ['/evaluate', 'evaluate-preflight'],
         ['/history', 'history'],
+        ['/history?tab=active%20range', 'history-range'],
+        ['/history?tab=assistance', 'history-assistance'],
+        ['/history?tab=resistance', 'history-resistance'],
+        ['/history?tab=sessions', 'history-sessions'],
         [`/history/sessions/${session.id}`, 'session-replay'],
         [`/history/evaluations/${evaluation.id}`, 'evaluation-detail'],
         ['/doctor', 'doctor'],
@@ -138,6 +156,19 @@ for (const size of [
         page.getByRole('heading', { name: 'Session complete', exact: true }),
       ).toBeVisible();
       await inspect(page, 'exercise-summary', testInfo);
+      await page.goto('/evaluate');
+      await page
+        .getByRole('checkbox', { name: 'Hand relaxed in the glove' })
+        .check();
+      await page
+        .getByRole('button', { name: 'Start evaluation', exact: true })
+        .click();
+      await expect(page.locator('.focus')).toBeVisible();
+      await inspect(page, 'evaluation-live', testInfo);
+      await expect(
+        page.getByRole('heading', { name: 'Your evaluation', exact: true }),
+      ).toBeVisible({ timeout: 45_000 });
+      await inspect(page, 'evaluation-results', testInfo);
       await page.goto('/doctor');
       await page.emulateMedia({ media: 'print' });
       await expect(

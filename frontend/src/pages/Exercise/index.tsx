@@ -122,7 +122,7 @@ const CoachArea = memo(function CoachArea() {
         </p>
         <div className="actions coach-quick-controls">
           <Switch
-            label="Mic on"
+            label="Microphone"
             checked={voice.mode === 'live' && !voice.muted}
             disabled={voice.mode !== 'live'}
             onCheckedChange={(on) => voice.setMuted(!on)}
