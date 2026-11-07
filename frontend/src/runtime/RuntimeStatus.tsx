@@ -1,5 +1,9 @@
+import { createPortal } from 'react-dom';
 import { useStore } from 'zustand';
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useGlove } from '../glove';
+import { Banner } from '../design-system';
+import { boardRestartMessage } from './boardRestart';
 import { useVision } from '../vision';
 import { CameraVision } from '../vision/cameraVision';
 import { useRuntime } from './RuntimeProvider';
@@ -25,7 +29,10 @@ export function useSavingStatus() {
 export function RuntimeStatus() {
   const runtime = useRuntime();
   return runtime instanceof RehabRuntime ? (
-    <SavingStatus runtime={runtime} />
+    <>
+      <SavingStatus runtime={runtime} />
+      <RuntimeBrownoutNotice inline />
+    </>
   ) : null;
 }
 function SavingStatus({ runtime }: { runtime: RehabRuntime }) {
@@ -79,4 +86,24 @@ function Diagnostics({ runtime }: { runtime: RehabRuntime }) {
       </p>
     </section>
   );
+}
+
+/** The latest boot belongs to the currently selected glove; source switches clear its events. */
+export function RuntimeBrownoutNotice({
+  inline = false,
+}: {
+  inline?: boolean;
+}) {
+  const glove = useGlove();
+  const message = boardRestartMessage(glove.events);
+  if (!message) return null;
+  if (!inline) return <Banner tone="warning" title={message} />;
+  const notice = (
+    <div role="alert" aria-label="Glove board status">
+      <Banner tone="warning" title={message} />
+    </div>
+  );
+  // Keep full power guidance out of the compact header's flex row.
+  const slot = document.getElementById('safety-banner-slot');
+  return slot ? createPortal(notice, slot) : notice;
 }
