@@ -7,6 +7,8 @@ const baseURL = `http://127.0.0.1:${frontendPort}`;
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Leave CPU headroom for concurrent 3D scenes and wall-time recovery checks.
+  workers: 3,
   use: { baseURL, trace: 'retain-on-failure', actionTimeout: 10_000 },
   projects: [
     {
