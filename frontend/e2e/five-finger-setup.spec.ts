@@ -24,11 +24,11 @@ test('all five manual servo ranges must be set and acknowledged', async ({
     if (finger !== 'Pinky') await expect(send).toBeDisabled();
   }
   await expect(send).toBeEnabled();
+  await expect(fingers.getByRole('button', { name: / · Set$/ })).toHaveCount(5);
   await send.click();
   await expect(
-    page.getByRole('button', { name: 'Continue to camera range', exact: true }),
+    page.getByRole('heading', { name: 'Step 2 · Camera range', exact: true }),
   ).toBeVisible();
-  await expect(fingers.getByRole('button', { name: / · Set$/ })).toHaveCount(5);
 });
 
 test('Setup clearly rejects a serial board reporting three fingers', async ({

@@ -5,12 +5,13 @@ import { RehabRuntime } from '../src/runtime/runtime';
 import { DEFAULT_EXERCISE_SETTINGS } from '../src/contracts/poses';
 import { GLOVE_FINGERS, type GloveFinger } from '../src/contracts/glove';
 import type { EngineEvent } from '../src/contracts/engine';
+import { sessions } from '../src/contracts/fixtures.check';
 import type { RuntimeApi } from '../src/runtime/persistence';
 
 // Browser integration entry only: production providers/transport/engine, seeded clock.
 // REST writes use an isolated sink; the page-flow specs exercise real persistence.
 export async function probeRigidFinger(
-  finger: GloveFinger,
+  finger: GloveFinger | null,
   preset: 'mild' | 'moderate',
 ) {
   const world = new SimWorld({ autoStart: false, seed: 42, preset });
@@ -21,22 +22,46 @@ export async function probeRigidFinger(
   });
   const events: EngineEvent[] = [];
   const targets: { at: number; f: number[] }[] = [];
+  const starts: { at: number; finger: GloveFinger }[] = [];
+  let peakMoving = 0;
+  let peakMa = 0;
   const target = world.glove.target.bind(world.glove);
   world.glove.target = (f, v) => {
     targets.push({ at: world.now, f: [...f] });
+    f.forEach((value, i) => {
+      if (
+        value !== world.firmware.goal[i] &&
+        Math.abs(value - world.firmware.position[i]) > 0.05
+      )
+        starts.push({ at: world.now, finger: GLOVE_FINGERS[i] });
+    });
     target(f, v);
   };
   const sink = {
-    createSession: async () => ({ id: 1 }),
-    addAttempt: async () => ({}),
-    endSession: async () => ({}),
-    createEvaluation: async () => ({}),
-  } as RuntimeApi;
+    createSession: async (value) => ({ ...sessions[0], ...value, id: 1 }),
+    addAttempt: async ({ result }) => ({ ...result, id: 1, session_id: 1 }),
+    endSession: async ({ summary }) => ({ ...sessions[0], summary, id: 1 }),
+    createEvaluation: async (value) => ({
+      ...value,
+      id: 1,
+      is_demo: value.is_demo ?? true,
+    }),
+  } satisfies RuntimeApi;
   const runtime = new RehabRuntime({
     glove,
     vision,
     api: sink,
     now: world.timestamp,
+  });
+  world.ticks.subscribe(() => {
+    if (runtime.exercise.view().phase !== 'ASSIST') return;
+    peakMoving = Math.max(
+      peakMoving,
+      world.firmware.position.filter(
+        (v, i) => Math.abs(v - world.firmware.goal[i]) > 1e-6,
+      ).length,
+    );
+    peakMa = Math.max(peakMa, world.power.demandMa);
   });
   glove.mount();
   await vision.start();
@@ -48,7 +73,7 @@ export async function probeRigidFinger(
   runtime.exercise.onEvent((event) => events.push(event));
   try {
     await runtime.exercise.start(
-      [{ pose: 'full_fist', reps: 3 }],
+      [{ pose: 'full_fist', reps: finger ? 3 : 1 }],
       DEFAULT_EXERCISE_SETTINGS,
     );
     let rigid = false;
@@ -59,7 +84,7 @@ export async function probeRigidFinger(
       !runtime.exercise.view().paused;
       elapsed += 20
     ) {
-      if (!rigid && runtime.exercise.view().phase === 'ASSIST') {
+      if (finger && !rigid && runtime.exercise.view().phase === 'ASSIST') {
         world.controls.setRigid(finger, true);
         rigid = true;
       }
@@ -80,6 +105,9 @@ export async function probeRigidFinger(
           scored: e.result.fingers.filter((f) => f.scored).map((f) => f.finger),
         })),
       targets,
+      starts,
+      peakMoving,
+      peakMa,
       phase: runtime.exercise.view().phase,
       calibration: world.firmware.info().calib,
       released: world.firmware.mode === 'none',
