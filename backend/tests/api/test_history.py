@@ -209,12 +209,17 @@ def test_history_endpoints_under_100ms_for_200_sessions(
     event.listen(db.bind, "before_cursor_execute", record)
     try:
         for path in ("overview", "rom", "assist", "resistance"):
-            start = perf_counter()
-            response = client.get(f"/api/history/{path}")
-            elapsed = (perf_counter() - start) * 1000
-            assert response.status_code == 200, response.text
-            print(f"history/{path}: {elapsed:.1f} ms")
-            assert elapsed < 100, f"{path} took {elapsed:.1f} ms"
+            # Median of 5 runs: a single timing flakes when the machine is busy
+            # (parallel test suites), while a real regression moves the median.
+            timings = []
+            for _ in range(5):
+                start = perf_counter()
+                response = client.get(f"/api/history/{path}")
+                timings.append((perf_counter() - start) * 1000)
+                assert response.status_code == 200, response.text
+            elapsed = sorted(timings)[len(timings) // 2]
+            print(f"history/{path}: median {elapsed:.1f} ms")
+            assert elapsed < 100, f"{path} median took {elapsed:.1f} ms"
         assert not any("attempt_trace" in sql or "sweeps_blob" in sql for sql in statements)
     finally:
         event.remove(db.bind, "before_cursor_execute", record)
