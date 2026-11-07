@@ -42,7 +42,7 @@ WP11 QA). `08-frontend.md` says *what* is on each page; this doc says *how it sh
 | `--reached` | `#1F9D55` | `#4CCB86` | position reached / success |
 | `--danger` | `#C62828` | `#FF6B6B` | **safety only** (overcurrent, STOP, disconnect) |
 | `--demo` | `#7B61FF` | `#A996FF` | demo-data badge/hatching |
-| `--finger-thumb / -index / -middle` | `#7B61FF` / `#00A3BF` / `#C2185B` | lighter variants | per-finger series in charts only |
+| `--finger-thumb / -index / -middle / -ring / -pinky` | `#7A6CC0` / `#2C93A8` / `#B4497A` / `#86701F` / `#586B99` | lighter variants | per-finger series in charts only |
 
 Glove ring alignment (`04-firmware.md §5`): follow = **blue** (`--active`), target/assist = **orange** (`--assist`), calib = amber, idle = dim white, fault = **red** blinking.
 
@@ -90,7 +90,7 @@ FOCUS SHELL (Exercise live, Evaluate running) — nav hidden, nothing on the edg
 - **BigButton:** min 64 px tall, 20 px label, icon left; primary (accent fill), secondary (outline), quiet (text). Only one primary per view.
 - **StatusChip:** dot + label, with a tooltip/popover for details.
 - **PhaseRing:** a circular ring around a phase icon showing elapsed/total; a calm continuous fill (no ticking numbers in patient views).
-- **FingerBars:** three vertical bars (thumb, index, middle), each with: a target line (grey notch), the live closure (blue fill), the active-max tick (thin blue line
+- **FingerBars:** five bars (thumb, index, middle, ring, pinky), each with: a target line (grey notch), the live closure (blue fill), the active-max tick (thin blue line
   that stays), and an assist segment (orange) stacked above the active max when the glove helps. A label below each, a % above in `h3`.
 - **SafetyBanner:** full width, `--danger` background, white text: icon + one sentence + the **Resume** button (primary on red, white) + "What happened?" disclosure.
 - **AttemptToast:** bottom-center, 4 s, never covers the hand: "Index 55% on your own · glove helped 10%".
@@ -105,7 +105,8 @@ FOCUS SHELL (Exercise live, Evaluate running) — nav hidden, nothing on the edg
   blue (moving alone) → orange (glove helping) → green (reached). Ring/pinky stay neutral.
 - When not visible: the actual hand fades to 30% + a centered label "I can't see your hand — move it into view" + a camera icon.
 - **Reached:** a green rim light pulse (400 ms) + the `reached` chime. The ghost briefly brightens, then fades out during HOLD (so the patient sees their own hand).
-- Camera: a fixed 3/4 palm-up view chosen per pose family (a slightly side-on view for pinch). Background: a subtle radial gradient on `--surface-2`, no grid or floor.
+- Camera: a fixed palm-down view from in front, above, on the thumb side (matching the real webcam placement, mirrored for the
+  left hand; a slightly wider angle for pinch). Background: a subtle radial gradient on `--surface-2`, no grid or floor.
 - Mirroring follows the affected hand (left hand shows as a left hand).
 
 ### 5.2 Exercise — live (the most important screen)
