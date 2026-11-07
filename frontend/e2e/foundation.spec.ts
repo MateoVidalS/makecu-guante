@@ -90,6 +90,7 @@ test('theme tokens and page layout at patient viewport sizes', async ({
       ).toBe(true);
       expect(
         await page
+          .locator('main')
           .locator('button, .button')
           .first()
           .evaluate((el) => el.getBoundingClientRect().height),

@@ -1,10 +1,3 @@
-.doctor > header {
-  display: none;
-}
-.doctor .doctor-banner {
-  color: var(--text);
-  border-bottom: var(--control-border) solid var(--border);
-}
 .doctor-report .profile-details {
   display: grid;
   grid-template-columns: max-content 1fr;

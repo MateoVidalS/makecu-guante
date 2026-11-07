@@ -269,3 +269,17 @@ The banner has a "What happened?" disclosure with the technical detail (mA, whic
 - [ ] Reduced motion on: no animation except state changes.
 - [ ] A first-time helper can complete calibration without reading the docs (hallway test with a teammate; notes in the PR).
 - [ ] Demo data is labeled everywhere it appears (history, doctor view, print, export).
+
+## 10. Amendments from the design lead's audit (adopted)
+1. A new `--caution` amber role for non-safety heads-ups; orange keeps the single meaning "the glove is helping".
+2. Every state color has `-text` (readable on light) and `-soft` (tint background) variants; plain `--assist`/`--reached` are never used for text.
+3. Three control sizes: 64 px patient, 48 px helper/data, 36 px doctor (replaces "64 px everywhere").
+4. The live exercise screen fits 1280×720 without scrolling (added to the §8 checks).
+5. The focus shell owns "End session" and the progress label; pages must not duplicate them.
+6. Status vocabulary: "Paused" is neutral; "Stopped" is for safety only.
+7. Red is also allowed on the confirm button of destructive actions (e.g. Delete session), the only exception besides safety.
+8. Dark mode: cards use borders; dialogs and toasts keep a shadow.
+9. Microcopy: dates as "Nov 5, 2026"; mA as integers, % as integers, seconds to 1 decimal.
+10. Profile is an icon in the header tools, next to a theme toggle.
+
+The implementation reference is `docs/design/DESIGN_SYSTEM.md` and the `/_dev/design` gallery.
