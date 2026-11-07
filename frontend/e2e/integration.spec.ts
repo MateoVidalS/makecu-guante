@@ -28,6 +28,18 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
       },
     });
   });
+  // This scenario verifies the independent hard-current fault, including its
+  // latched banner, release and recovery. Keep its lower limit explicit now
+  // that normal five-servo simulator calibration defaults to 1500 mA.
+  await page.route('**/api/calibrations', (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    return route.continue({
+      postData: JSON.stringify({
+        ...route.request().postDataJSON(),
+        current_limit_ma: 900,
+      }),
+    });
+  });
   await calibrateSimulator(page);
   const created = page.waitForResponse(
     (response) =>

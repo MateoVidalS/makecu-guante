@@ -14,7 +14,11 @@ import { useVision, useVisionFrame } from '../../vision';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import { CameraPlacement, GloveDetectionCheck } from './CameraPlacement';
 import { CameraOverlay } from '../../vision/CameraOverlay';
-import { useRuntime, RuntimeDiagnostics } from '../../runtime';
+import {
+  useRuntime,
+  RuntimeDiagnostics,
+  RuntimeBrownoutNotice,
+} from '../../runtime';
 import {
   BrowserSupportBanner,
   Readouts,
@@ -139,6 +143,7 @@ export default function Setup() {
         title="Connect glove and camera"
         lead="Both need to be ready before calibration and practice."
       />
+      <RuntimeBrownoutNotice />
       <BrowserSupportBanner />
       {(error || connectionError) && (
         <p role="alert" className="hp-alert">

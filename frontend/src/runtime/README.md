@@ -11,8 +11,9 @@ GloveProvider and VisionProvider controllers and mounts/disposes subscriptions.
 - Commands go through GloveClient, which owns follow coalescing, release priority,
   stale-motion cancellation and keepalives. Runtime adds no movement queue.
 - Phase events set simulated patient intent. The same events feed the voice
-  controller and UI, including the always-armed local safety net in Voice Off.
-- A reconnect or firmware boot sends release, three saved servo ranges, and the
+  controller and UI, including the always-armed local safety net in Voice Off. All glove arrays use
+  thumb/index/middle/ring/pinky order.
+- A reconnect or firmware boot sends release, five saved servo ranges, and the
   appropriate current limit. Calibration and switches to physical sources are locked during an
   exercise, paused session, evaluation, or friction sweep. Switching to a simulator
   first ends and saves the run and releases the glove; no movement resumes.
@@ -42,8 +43,8 @@ contract extension for idempotency is requested in the WP10 PR.
 ## Simulator and diagnostics
 
 The calibration page offers known model ranges only when both sources are
-simulated. It never substitutes those values for a real glove or camera. Live
-exercise includes a simulator-only rigid-index toggle for the resistance demo.
+simulated. It never substitutes those values for a real glove or camera. The header’s Demo recovery menu includes simulator-only rigid-finger selection
+and toggles for the resistance demo.
 `VITE_SIM_SPEED` defaults to 1; Playwright sets it to 3.
 
 Setup displays rolling p95 vision-to-command and command-to-telemetry-echo values
@@ -98,3 +99,12 @@ The header’s **Demo recovery** menu is available during focus mode. Glove/came
 fallback ends the run before replacing a source, preserving demo provenance. It
 can also reconnect an unplugged simulator or restart simulated vision. Simple
 voice switches immediately without ending practice. See `docs/DEMO.md`.
+
+F9 verification, rigid-finger baseline regression, calibration-range validation,
+friction abort behavior and the repeated 20-minute soak runner are documented in
+[`docs/DEV.md`](../../../docs/DEV.md). The F9 runner writes its own evidence to
+`docs/qa/f9-soak.json`; the older WP10 soak evidence is retained unchanged.
+
+Boot `reset_reason: 9` is preserved by the serial codec and displayed in Setup
+and runtime status with capacitor/supply guidance. The optional field is additive;
+legacy boot messages remain valid, and a later normal boot clears the warning.

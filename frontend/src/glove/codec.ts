@@ -93,7 +93,16 @@ export function decode(
       events.includes(v.e) &&
       (v.ma === undefined || finite(v.ma))
     ) {
-      return { t: now, e: v.e, ...(v.ma === undefined ? {} : { ma: v.ma }) };
+      return {
+        t: now,
+        e: v.e,
+        ...(v.ma === undefined ? {} : { ma: v.ma }),
+        ...(v.e === 'boot' &&
+        Number.isInteger(v.reset_reason) &&
+        v.reset_reason >= 0
+          ? { reset_reason: v.reset_reason }
+          : {}),
+      };
     }
     if (
       v.t === 'info' &&

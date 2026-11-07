@@ -645,7 +645,17 @@ class Exercise implements ExerciseEngine {
       : 0;
     // Stagger changes total current as each motor starts. Require real pulling
     // lag, rather than classifying a settled finger's camera noise as a stall.
-    if (tel.ma <= baseline + threshold || !finger || gap <= 0.05) {
+    // The first assist samples may already contain a stalled finger (for
+    // example rigidity enabled after follow). Never learn that load as safe.
+    // Total current cannot identify a servo: require a substantial command/vision
+    // gap and stalled vision as well as stall-level aggregate current.
+    const loadedStall =
+      profile !== null && tel.ma >= profile.stall_ma && gap > 0.1;
+    if (
+      (!loadedStall && tel.ma <= baseline + threshold) ||
+      !finger ||
+      gap <= 0.05
+    ) {
       this.high = null;
       return false;
     }

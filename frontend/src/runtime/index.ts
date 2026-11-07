@@ -8,6 +8,7 @@ export { ScriptedRuntime } from './ScriptedRuntime';
 export { RehabRuntime } from './runtime';
 export {
   RuntimeStatus,
+  RuntimeBrownoutNotice,
   RuntimeDiagnostics,
   useSavingStatus,
 } from './RuntimeStatus';

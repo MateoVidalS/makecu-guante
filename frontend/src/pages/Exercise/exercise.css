@@ -442,3 +442,11 @@
     transition: none;
   }
 }
+
+/* The safety banner carries the coach message while paused. Keep the five
+   motor states and Resume visible instead of repeating coach tools below. */
+.shell--focus:has(#safety-banner-slot [role='alert'])
+  .exercise-live.practice-paused
+  .live-tools {
+  display: none;
+}
