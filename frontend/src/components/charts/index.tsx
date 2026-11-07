@@ -109,6 +109,7 @@ export function KpiTile({
   );
 }
 interface Series {
+  data?: ChartRow[];
   key: string;
   label: string;
   unit: string;
@@ -224,6 +225,26 @@ function Chart({
                     value: yLabel,
                     angle: -90,
                     position: 'insideLeft',
+                    content: ({ viewBox }) => {
+                      if (!viewBox || !('x' in viewBox)) return <g />;
+                      const x = (viewBox.x ?? 0) + parseInt(tokens.space4);
+                      const y =
+                        (viewBox.y ?? 0) +
+                        (viewBox.height ?? 0) / 2 +
+                        parseInt(tokens.space16);
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          transform={`rotate(-90 ${x} ${y})`}
+                          textAnchor="middle"
+                          fill="var(--muted)"
+                          fontSize={tokens.caption}
+                        >
+                          {yLabel}
+                        </text>
+                      );
+                    },
                     fill: 'var(--muted)',
                   }}
                 />
@@ -237,6 +258,7 @@ function Chart({
                       value: 'Total current (mA)',
                       angle: 90,
                       position: 'insideRight',
+                      style: { textAnchor: 'middle' },
                       fill: 'var(--muted)',
                     }}
                   />
@@ -273,6 +295,7 @@ function Chart({
                     yAxisId={s.right ? 'current' : 'primary'}
                     type="linear"
                     dataKey={s.key}
+                    data={s.data}
                     name={s.label}
                     stroke={s.color}
                     strokeWidth={2}
@@ -406,11 +429,23 @@ export function FingerTrend({
   compact,
   opening = false,
 }: TrendProps & { points: RomPoint[]; opening?: boolean }) {
+  const rows = toFingerSeries(points, finger, timeline);
+  const measured = rows.flatMap((r) =>
+    typeof r.active === 'number' ? [r.active] : [],
+  );
+  const improving =
+    measured.length > 1 &&
+    (opening ? measured.at(-1)! < measured[0] : measured.at(-1)! > measured[0]);
+  const takeaway = improving
+    ? opening
+      ? 'opening further on your own'
+      : 'closing further on your own'
+    : 'your movement over time';
   return (
     <Chart
-      title={`${fingerName(finger)}: ${opening ? 'opening on your own' : 'how far you closed'}`}
+      title={`${fingerName(finger)}: ${takeaway}`}
       hint={`${opening ? '↓ Lower is better for opening' : '↑ Higher is better for closing'}. Estimated from the camera.`}
-      rows={toFingerSeries(points, finger, timeline)}
+      rows={rows}
       series={[
         {
           key: 'active',
@@ -695,12 +730,14 @@ export function SweepCurves({
         series={[
           {
             key: 'slow',
+            data: rows.filter((r) => typeof r.slow === 'number'),
             label: 'Slow current',
             unit: ' mA',
             color: color(finger),
           },
           {
             key: 'fast',
+            data: rows.filter((r) => typeof r.fast === 'number'),
             label: 'Fast current',
             unit: ' mA',
             color: color(finger),
@@ -708,12 +745,14 @@ export function SweepCurves({
           },
           {
             key: 'slowFriction',
+            data: rows.filter((r) => typeof r.slowFriction === 'number'),
             label: 'Slow friction',
             unit: ' mA',
             color: 'var(--muted)',
           },
           {
             key: 'fastFriction',
+            data: rows.filter((r) => typeof r.fastFriction === 'number'),
             label: 'Fast friction',
             unit: ' mA',
             color: 'var(--muted)',

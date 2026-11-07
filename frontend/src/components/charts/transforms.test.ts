@@ -48,6 +48,11 @@ describe('history transforms', () => {
     const before = structuredClone(points);
     const rows = toFingerSeries(points, 'index', timeline);
     expect(rows.map((r) => r.active)).toEqual([0, null, 80]);
+    expect(toFingerSeries(points, 'index').map((r) => r.active)).toEqual([
+      0,
+      null,
+      80,
+    ]);
     expect(rows.map((r) => r.demo)).toEqual([true, false, false]);
     expect(rows[2].x - rows[1].x).toBe(8 * (rows[1].x - rows[0].x));
     expect(points).toEqual(before);

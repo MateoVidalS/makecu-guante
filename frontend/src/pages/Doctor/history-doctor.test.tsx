@@ -41,17 +41,6 @@ beforeAll(() => {
       init,
     ),
   );
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
-    width: 640,
-    height: 240,
-    top: 0,
-    left: 0,
-    right: 640,
-    bottom: 240,
-    x: 0,
-    y: 0,
-    toJSON: () => ({}),
-  });
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -195,6 +184,42 @@ describe('record review pages', () => {
       ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
+  });
+  it('draws complete sweep curves when speeds have different position samples', async () => {
+    render(
+      <SweepCurves
+        finger="index"
+        sweeps={[
+          {
+            finger: 'index',
+            speed: 'slow',
+            v: 0.2,
+            aborted_at: null,
+            points: [
+              { pos: 0, ma: 100, excess_ma: 20 },
+              { pos: 0.5, ma: 200, excess_ma: 100 },
+              { pos: 1, ma: 300, excess_ma: 180 },
+            ],
+          },
+          {
+            finger: 'index',
+            speed: 'fast',
+            v: 1,
+            aborted_at: null,
+            points: [
+              { pos: 0.1, ma: 110, excess_ma: 20 },
+              { pos: 0.6, ma: 250, excess_ma: 150 },
+              { pos: 0.9, ma: 350, excess_ma: 230 },
+            ],
+          },
+        ]}
+      />,
+    );
+    await waitFor(() => {
+      const paths = document.querySelectorAll('.recharts-line-curve');
+      expect(paths).toHaveLength(4);
+      paths.forEach((p) => expect(p.getAttribute('d')).toMatch(/L/));
+    });
   });
   it('provides loading and empty states in chart primitives', () => {
     const { rerender } = render(

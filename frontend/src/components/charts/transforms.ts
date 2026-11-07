@@ -55,7 +55,14 @@ export function toFingerSeries(
 ): ChartRow[] {
   return align(
     points.filter((p) => p.finger === finger),
-    timeline,
+    [
+      ...points.map((p) => ({
+        id: p.session_id,
+        started_at: p.started_at,
+        is_demo: p.is_demo,
+      })),
+      ...timeline,
+    ],
     (p) => p.session_id,
     (p) => ({ active: percent(p?.active_max_mean) }),
   );
@@ -67,7 +74,14 @@ export function assistSeries(
 ): ChartRow[] {
   return align(
     points.filter((p) => p.finger === finger),
-    timeline,
+    [
+      ...points.map((p) => ({
+        id: p.session_id,
+        started_at: p.started_at,
+        is_demo: p.is_demo,
+      })),
+      ...timeline,
+    ],
     (p) => p.session_id,
     (p) => ({
       needed: percent(p?.assist_needed_mean),
@@ -82,7 +96,14 @@ export function resistanceSeries(
 ): ChartRow[] {
   return align(
     points.filter((p) => p.finger === finger),
-    timeline,
+    [
+      ...points.map((p) => ({
+        id: p.evaluation_id,
+        started_at: p.started_at,
+        is_demo: p.is_demo,
+      })),
+      ...timeline,
+    ],
     (p) => p.evaluation_id,
     (p) => ({
       slow: p?.slow ?? null,
