@@ -124,6 +124,7 @@ for (const size of [
         .click();
       await expect(page.locator('.focus')).toBeVisible();
       await inspect(page, 'exercise-live', testInfo);
+      await expect(page.getByRole('meter')).toHaveCount(5);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollHeight <= innerHeight,

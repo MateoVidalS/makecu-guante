@@ -29,7 +29,9 @@ def add_session(db, body, attempt, days, values, *, demo=False, pose="full_fist"
                 "assist_needed": required,
                 "final": 1,
             }
-            for finger, value, required in zip(repo.FINGERS, active + [active[-1]] * 2, need + [need[-1]] * 2)
+            for finger, value, required in zip(
+                repo.FINGERS, active + [active[-1]] * 2, need + [need[-1]] * 2
+            )
         ]
         repo.create_attempt(db, session.id, c.AttemptResult.model_validate(data))
     return session.id
@@ -80,11 +82,15 @@ def test_hand_computed_history(client, db, session_body, attempt_body, payload, 
     repo.create_attempt(db, second, c.AttemptResult.model_validate(extra))
     overview = c.HistoryOverview.model_validate(client.get("/api/history/overview").json())
     assert (overview.sessions, overview.attempts, overview.days_practiced_last_7) == (3, 6, 2)
-    assert [f.active_max_first for f in overview.per_finger] == pytest.approx([0.3, 0.5, 0.7, 0.7, 0.7])
+    assert [f.active_max_first for f in overview.per_finger] == pytest.approx(
+        [0.3, 0.5, 0.7, 0.7, 0.7]
+    )
     assert [f.active_max_last for f in overview.per_finger] == pytest.approx([0.9] * 5)
     assert [f.assist_needed_last for f in overview.per_finger] == pytest.approx([0.1] * 5)
     rom = [c.RomPoint.model_validate(p) for p in client.get("/api/history/rom").json()]
-    assert len(rom) == 15 and [p.session_id for p in rom] == [first] * 5 + [second] * 5 + [third] * 5
+    assert (
+        len(rom) == 15 and [p.session_id for p in rom] == [first] * 5 + [second] * 5 + [third] * 5
+    )
     assert [p.is_demo for p in rom] == [False] * 10 + [True] * 5
     index = client.get("/api/history/rom?finger=index&pose=hook").json()
     assert len(index) == 1 and index[0]["active_max_mean"] == pytest.approx(0.9)

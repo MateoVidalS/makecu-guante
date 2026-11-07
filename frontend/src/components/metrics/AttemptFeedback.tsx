@@ -18,7 +18,7 @@ const ICON: Record<ReturnType<typeof attemptOutcome>, IconName> = {
   tried: 'hand',
 };
 
-/** Pure card: a small hand with the three glove fingers filled, plus one sentence. */
+/** Pure card: a small hand with the five glove fingers filled, plus one sentence. */
 export function AttemptFeedbackCard({
   result,
   mirrored = false,

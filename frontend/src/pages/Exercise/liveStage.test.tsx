@@ -145,6 +145,8 @@ describe('live stage', () => {
       'Thumb',
       'Index',
       'Middle',
+      'Ring',
+      'Pinky',
     ]);
     for (const m of meters)
       expect(m.querySelector('.mx-gauge__band')).not.toBeNull();

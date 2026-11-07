@@ -279,29 +279,25 @@ export default function DevHand() {
                 />
               </label>
             ))}
-            {finger === 'ring' || finger === 'pinky' ? (
-              <p className="muted">Always neutral</p>
-            ) : (
-              <label>
-                State{' '}
-                <select
-                  aria-label={`${names[finger]} state`}
-                  value={states[finger]}
-                  onChange={(event) =>
-                    setStates((current) => ({
-                      ...current,
-                      [finger]: event.target.value as FingerState,
-                    }))
-                  }
-                >
-                  {Object.entries(labels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <label>
+              State{' '}
+              <select
+                aria-label={`${names[finger]} state`}
+                value={states[finger]}
+                onChange={(event) =>
+                  setStates((current) => ({
+                    ...current,
+                    [finger]: event.target.value as FingerState,
+                  }))
+                }
+              >
+                {Object.entries(labels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </fieldset>
         ))}
       </div>

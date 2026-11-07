@@ -45,7 +45,17 @@ describe('hand gallery', () => {
       target: { value: 'reached' },
     });
     expect(hand!.state('index')).toBe('reached');
-    expect(screen.queryByRole('combobox', { name: 'Ring state' })).toBeNull();
+    for (const finger of ['Ring', 'Pinky']) {
+      fireEvent.change(
+        screen.getByRole('combobox', { name: `${finger} state` }),
+        {
+          target: { value: 'assist' },
+        },
+      );
+      expect(hand!.state(finger.toLowerCase() as 'ring' | 'pinky')).toBe(
+        'assist',
+      );
+    }
     fireEvent.click(screen.getByRole('checkbox', { name: 'Hand visible' }));
     expect(hand!.actual()).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Show target' }));

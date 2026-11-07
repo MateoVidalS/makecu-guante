@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 const finger = (
-  f: 'thumb' | 'index' | 'middle',
+  f: 'thumb' | 'index' | 'middle' | 'ring' | 'pinky',
   target: number | null,
   active_max: number | null,
   final: number | null = active_max,
@@ -68,8 +68,8 @@ function attempt(over: Partial<AttemptResult> = {}): AttemptResult {
     trace: {
       hz: 20,
       t: [],
-      closure: { thumb: [], index: [], middle: [] },
-      servo: { thumb: [], index: [], middle: [] },
+      closure: { thumb: [], index: [], middle: [], ring: [], pinky: [] },
+      servo: { thumb: [], index: [], middle: [], ring: [], pinky: [] },
       ma: [],
       phase: [],
     },
@@ -130,7 +130,7 @@ describe('metric math', () => {
       summary().per_finger,
       summary().previous!.per_finger,
     );
-    expect(d.map((x) => x.delta)).toEqual([3, 15, null]);
+    expect(d.map((x) => x.delta)).toEqual([3, 15, null, null, null]);
     expect(recapSentence(summary())).toBe(
       'Your index closed further on its own than last time.',
     );
@@ -236,12 +236,17 @@ describe('metric components', () => {
     const { container } = render(
       <HandGlyph
         label="Hand"
-        fills={{ thumb: { own: 0.5, help: 0.25 }, index: null }}
+        fills={{
+          thumb: { own: 0.5, help: 0.25 },
+          index: null,
+          ring: { own: 0.3, help: 0.2 },
+          pinky: { own: 0.7, help: 0 },
+        }}
       />,
     );
-    expect(container.querySelectorAll('.mx-fill--own')).toHaveLength(1);
-    expect(container.querySelectorAll('.mx-fill--help')).toHaveLength(1);
-    expect(container.querySelectorAll('.mx-hand__idle')).toHaveLength(4);
+    expect(container.querySelectorAll('.mx-fill--own')).toHaveLength(3);
+    expect(container.querySelectorAll('.mx-fill--help')).toHaveLength(2);
+    expect(container.querySelectorAll('.mx-hand__idle')).toHaveLength(2);
   });
   it('attempt strip groups by pose and names every outcome', () => {
     render(

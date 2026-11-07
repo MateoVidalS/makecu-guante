@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe('hand feedback', () => {
-  it('tints only the three glove fingers, and keeps ring/pinky neutral', () => {
+  it('tints all five glove fingers with the same state feedback', () => {
     const { scene, animation } = setup();
     animation.tick(POSES.open.render, () => 'assist', true, false, 1 / 60);
     expect(
@@ -28,12 +28,8 @@ describe('hand feedback', () => {
         ),
       ),
     ).toBe(true);
-    expect(scene.fingers[3].color.equals(new Color(tokens.light.hand))).toBe(
-      true,
-    );
-    expect(scene.fingers[4].color.equals(new Color(tokens.light.hand))).toBe(
-      true,
-    );
+    for (const finger of scene.fingers)
+      expect(finger.color.equals(scene.fingers[0].color)).toBe(true);
     expect(scene.ghost.opacity).toBe(GHOST_OPACITY);
   });
   it('pulses for 400 ms once on reaching and fades the target during hold', () => {

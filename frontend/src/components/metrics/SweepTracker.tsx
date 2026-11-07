@@ -1,7 +1,7 @@
 import { Icon } from '../../design-system';
 import { fingerName } from './format';
 
-/** Six steps (each finger, slow then fast): done = check, current = filling, next = ring. */
+/** Ten steps (each finger, slow then fast): done = check, current = filling, next = ring. */
 export function SweepTracker({
   fingers,
   finger,

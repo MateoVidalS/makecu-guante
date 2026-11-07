@@ -118,18 +118,22 @@ void codec_storage_survives_repeated_maximum_lines() {
                         static_cast<int>(protocol::parse(line, 201).error));
 }
 void telemetry_is_bounded_and_rounds_to_two_decimals() {
-  Telemetry t{UINT32_MAX,    {{0.1234F, 0.9999F, 0.555F}}, 32767, State::Fault, Mode::Target,
-              {{1, 0.5F, 0}}};
+  Telemetry t{UINT32_MAX, {{0.1234F, 0.9999F, 0.555F, 0.346F, 0.875F}},
+              32767, State::Fault, Mode::Target, {{1, 0.5F, 0, 0.95F, 0.25F}}};
   char line[202];
   const auto size = protocol::format(t, line, sizeof(line));
   TEST_ASSERT_GREATER_THAN(0, size);
-  TEST_ASSERT_LESS_OR_EQUAL(201, size);
+  TEST_ASSERT_LESS_THAN(200, size);
   TEST_ASSERT_EQUAL_CHAR('\n', line[size - 1]);
   JsonDocument doc;
   TEST_ASSERT_FALSE(deserializeJson(doc, line));
   TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.12F, doc["a"][0].as<float>());
   TEST_ASSERT_FLOAT_WITHIN(0.0001F, 1, doc["a"][1].as<float>());
   TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.56F, doc["a"][2].as<float>());
+  TEST_ASSERT_EQUAL_UINT(config::FINGERS, doc["a"].size());
+  TEST_ASSERT_EQUAL_UINT(config::FINGERS, doc["tg"].size());
+  TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.35F, doc["a"][3].as<float>());
+  TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.88F, doc["a"][4].as<float>());
   TEST_ASSERT_EQUAL_UINT32(UINT32_MAX, doc["ms"].as<uint32_t>());
   TEST_ASSERT_EQUAL_INT(0, protocol::format(t, line, 20));
   t.ma = std::numeric_limits<float>::quiet_NaN();
@@ -156,6 +160,34 @@ void moves_need_all_five_calibrations() {
   h.send("{\"t\":\"calib\",\"i\":0,\"min\":30,\"max\":160}");
   TEST_ASSERT_FALSE(h.safety.calibrated());
   TEST_ASSERT_FALSE(h.safety.info().calib[1].valid);
+}
+void ring_and_pinky_require_calibration_move_and_release_with_the_other_fingers() {
+  Harness h;
+  for (int i = 0; i < 4; ++i) {
+    Command c;
+    c.type = CommandType::Calib;
+    c.i = i;
+    c.min = 20;
+    c.max = 150;
+    TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.safety.handle(c, 0)));
+    TEST_ASSERT_FALSE(h.safety.calibrated());
+  }
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::NoCalib),
+                       static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0,0.8,0.6],\"v\":1}")));
+  h.send("{\"t\":\"calib\",\"i\":4,\"min\":150,\"max\":20}");
+  TEST_ASSERT_TRUE(h.safety.calibrated());
+  h.send("{\"t\":\"target\",\"f\":[0,0,0,0.8,0.6],\"v\":1}");
+  h.advance(800);
+  const auto t = h.safety.telemetry(h.now);
+  TEST_ASSERT_FLOAT_WITHIN(0.001F, 0.8F, t.a[3]);
+  TEST_ASSERT_FLOAT_WITHIN(0.001F, 0.6F, t.a[4]);
+  TEST_ASSERT_FLOAT_WITHIN(0.01F, 72, h.safety.angle(4));
+  h.safety.stopPressed(h.now);
+  h.advance(1000);
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
+    TEST_ASSERT_FALSE(h.safety.attached(i));
+    TEST_ASSERT_FLOAT_WITHIN(0.001F, 0, h.safety.telemetry(h.now).a[i]);
+  }
 }
 void target_speed_cap_and_position_clamps() {
   Harness h;
@@ -672,6 +704,7 @@ int main() {
   RUN_TEST(telemetry_is_bounded_and_rounds_to_two_decimals);
   RUN_TEST(boot_detaches_and_never_reuses_calibration);
   RUN_TEST(moves_need_all_five_calibrations);
+  RUN_TEST(ring_and_pinky_require_calibration_move_and_release_with_the_other_fingers);
   RUN_TEST(target_speed_cap_and_position_clamps);
   RUN_TEST(requested_slow_speed_and_no_catchup_jump);
   RUN_TEST(overcurrent_trips_at_100_ms_with_peak);

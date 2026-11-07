@@ -10,7 +10,7 @@ import {
 
 const LIVE: ExercisePhase[] = ['ATTEMPT', 'HOLD', 'ASSIST', 'ASSIST_HOLD'];
 
-/** Three tall gauges (thumb, index, middle) fed by the camera at frame rate. */
+/** Five tall gauges in glove wire order fed by the camera at frame rate. */
 export function LiveFingerMeters({
   pose,
   phase,

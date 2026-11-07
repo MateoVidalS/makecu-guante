@@ -280,7 +280,7 @@
   text-align: right;
 }
 .effort-bars__scale {
-  color: var(--chart-muted);
+  color: var(--muted);
   font-size: var(--caption);
 }
 .effort-bars__ticks {
@@ -343,7 +343,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  color: var(--chart-muted);
+  color: var(--muted);
   font-size: var(--caption);
 }
 .calendar-scale svg {

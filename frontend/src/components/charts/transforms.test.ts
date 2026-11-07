@@ -4,6 +4,7 @@ import {
   decimate,
   phaseBands,
   resistanceSeries,
+  replayRows,
   toFingerSeries,
 } from './transforms';
 import type {
@@ -11,7 +12,7 @@ import type {
   ResistancePoint,
   RomPoint,
 } from '../../contracts/api';
-import type { ExercisePhase } from '../../contracts/engine';
+import type { AttemptTrace, ExercisePhase } from '../../contracts/engine';
 const timeline = [
   { id: 1, started_at: '2026-01-01T00:00:00Z', is_demo: true },
   { id: 2, started_at: '2026-01-02T00:00:00Z', is_demo: false },
@@ -112,6 +113,24 @@ describe('history transforms', () => {
   });
 });
 describe('replay transforms', () => {
+  it('keeps missing legacy ring and pinky samples unmeasured', () => {
+    const legacy = {
+      hz: 20,
+      t: [0],
+      closure: { thumb: [0.2], index: [0.3], middle: [0.4] },
+      servo: { thumb: [0], index: [0.1], middle: [0.2] },
+      ma: [150],
+      phase: ['ATTEMPT'],
+    } as unknown as AttemptTrace;
+    expect(replayRows(legacy)[0]).toMatchObject({
+      thumbClosure: 20,
+      middleServo: 20,
+      ringClosure: null,
+      ringServo: null,
+      pinkyClosure: null,
+      pinkyServo: null,
+    });
+  });
   it('uses the actual transition time for contiguous phase bands', () => {
     const phase: ExercisePhase[] = [
       'ATTEMPT',
