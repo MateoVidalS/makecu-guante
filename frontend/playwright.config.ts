@@ -26,7 +26,7 @@ export default defineConfig({
     command:
       process.env.REHAB_E2E_MOCK === '1'
         ? 'make -C .. dev-mock'
-        : 'make -C .. dev-sim',
+        : 'make -C .. demo-seed && make -C .. dev-sim',
     env: {
       REHAB_FRONTEND_PORT: frontendPort,
       REHAB_PORT: apiPort,
