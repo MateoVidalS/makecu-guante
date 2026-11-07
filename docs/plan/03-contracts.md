@@ -356,7 +356,7 @@ Backend `backend/.env`:
 | `GEMINI_API_KEY` | – | Voice (Live) and summaries. Missing → voice uses the fixed-phrase fallback, summaries return 503 |
 | `GEMINI_LIVE_MODEL` | `gemini-3.8-live` | **Verify the current name** in Google's Live API docs |
 | `GEMINI_LIVE_VOICE` | `Puck` | Verify |
-| `GEMINI_TEXT_MODEL` | `gemini-2.5-flash` | Verify |
+| `GEMINI_TEXT_MODEL` | `gemini-3.8-flash` | Verify |
 | `REHAB_DB_PATH` | `data/rehab.db` | |
 | `REHAB_PORT` | `8000` | |
 
