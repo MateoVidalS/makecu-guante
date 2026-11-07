@@ -32,6 +32,30 @@ def generate(end: datetime) -> dict:
     return json.loads(result.stdout)
 
 
+def _validate_fingers(calibration, sessions, evaluations) -> None:
+    """New demos must contain measured five-finger data, never padded legacy records."""
+
+    def require(fingers):
+        fingers = list(fingers)
+        if len(fingers) != len(repo.FINGERS) or set(fingers) != set(repo.FINGERS):
+            raise ValueError("Demo data must include all five fingers exactly once")
+
+    require(s.finger for s in calibration.servo)
+    require(calibration.camera.open_flex)
+    require(calibration.camera.closed_flex)
+    for _, attempts, summary in sessions:
+        require(f.finger for f in summary.per_finger)
+        for attempt in attempts:
+            require(f.finger for f in attempt.fingers)
+            require(attempt.trace.closure)
+            require(attempt.trace.servo)
+    for evaluation in evaluations:
+        require(evaluation.settings.fingers)
+        require(f.finger for f in evaluation.fingers)
+        for speed in ("slow", "fast"):
+            require(s.finger for s in evaluation.sweeps if s.speed == speed)
+
+
 def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tuple[int, int]:
     SQLModel.metadata.create_all(engine)
     with Session(engine) as db:
@@ -55,6 +79,7 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
         c.EvaluationIn.model_validate({**value, "calibration_id": 1, "is_demo": True})
         for value in payload["evaluations"]
     ]
+    _validate_fingers(calibration, sessions, evaluations)
     with engine.begin() as connection:
         # SQLite legacy transaction mode otherwise lets the first SAVEPOINT commit itself.
         connection.exec_driver_sql("BEGIN IMMEDIATE")

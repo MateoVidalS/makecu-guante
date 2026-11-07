@@ -55,6 +55,9 @@ def test_sdk_call_prompt_timeout_and_resource_cleanup(monkeypatch, kind, require
     assert "estimate inspired by clinical practice" in instruction
     assert "Never give medical advice or a diagnosis" in instruction
     assert "explicitly say this is demo data" in instruction
+    assert "thumb, index, middle, ring and pinky (little finger)" in instruction
+    assert '"not measured", never zero' in instruction
+    assert "without measurements for both sessions" in instruction
     assert "fake-secret-for-tests" not in call["contents"] + instruction
 
 

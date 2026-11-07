@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 from app.config import settings
 from app.contracts import types as c
+from app.db import models as m
 from app.db import repo
 from app.llm import summaries
 
@@ -38,6 +39,25 @@ def test_session_summary_persists_and_supplies_previous_and_evaluation_trend(
     assert context["summary"]["previous"]["active_ratio_mean"] == summary["active_ratio_mean"]
     assert len(context["evaluation_trend"]) == 5
     assert client.get("/api/summaries?kind=session&limit=1").json() == [saved.model_dump()]
+
+
+def test_summary_context_marks_legacy_fingers_unmeasured(
+    client, db, session_body, payload, monkeypatch
+):
+    model = fake_model(monkeypatch)
+    session = repo.create_session(db, c.SessionIn.model_validate(session_body))
+    summary = payload("sessions")[0]["summary"]
+    summary["per_finger"] = summary["per_finger"][:3]
+    row = db.get(m.Session, session.id)
+    row.summary_json = json.dumps(summary)
+    db.add(row)
+    db.commit()
+    response = client.post("/api/summaries", json={"kind": "session", "session_id": session.id})
+    assert response.status_code == 200, response.text
+    context = json.loads(model.call_args.kwargs["contents"])
+    fingers = context["summary"]["per_finger"]
+    assert [f["finger"] for f in fingers] == list(repo.FINGERS)
+    assert all(f["active_max_mean"] is f["assist_needed_mean"] is None for f in fingers[3:])
 
 
 def test_therapist_summary_digest_excludes_demo_and_summaries_filter(

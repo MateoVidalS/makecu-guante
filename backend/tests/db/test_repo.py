@@ -57,7 +57,7 @@ def test_legacy_three_finger_records_remain_readable_beside_five_finger_records(
         update={"per_finger": [f for f in summary.per_finger if f.finger in legacy_fingers]}
     )
     repo.end_session(db, session.id, legacy_summary)
-    assert len(repo.get_session(db, session.id).attempts[0].fingers) == 3
+    assert len(repo.get_session(db, session.id).attempts[0].fingers) == 5
     assert set(repo.get_trace(db, saved.id).closure) == legacy_fingers
     overview = repo.history_overview(db)
     assert len(overview.per_finger) == 5
@@ -67,7 +67,12 @@ def test_legacy_three_finger_records_remain_readable_beside_five_finger_records(
     current = repo.create_session(db, body)
     ended = repo.end_session(db, current.id, summary)
     assert len(ended.summary.per_finger) == 5
-    assert {f.finger for f in ended.summary.previous.per_finger} == legacy_fingers
+    assert {f.finger for f in ended.summary.previous.per_finger} == set(repo.FINGERS)
+    assert all(
+        f.active_max_mean is None
+        for f in ended.summary.previous.per_finger
+        if f.finger not in legacy_fingers
+    )
 
 
 def test_previous_prefers_real_and_never_uses_self_or_future(data):

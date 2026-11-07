@@ -7,6 +7,7 @@
 #include <cstring>
 #include <new>
 
+#include "boot_event.h"
 #include "calib.h"
 
 namespace rehab::protocol {
@@ -307,8 +308,8 @@ bool validCommand(const Command& c) {
     case CommandType::Calib:
       return c.i >= 0 && c.i < static_cast<int>(config::FINGERS) && calib::valid(c.min, c.max);
     case CommandType::Jog:
-      return c.i >= 0 && c.i < static_cast<int>(config::FINGERS) && std::isfinite(c.deg) && c.deg >= config::HARD_MIN &&
-             c.deg <= config::HARD_MAX;
+      return c.i >= 0 && c.i < static_cast<int>(config::FINGERS) && std::isfinite(c.deg) &&
+             c.deg >= config::HARD_MIN && c.deg <= config::HARD_MAX;
     case CommandType::Limit:
       return std::isfinite(c.ma);
     case CommandType::Release:
@@ -357,7 +358,8 @@ ParseResult parse(const char* line, std::size_t length) {
   if (c.type == CommandType::Calib || c.type == CommandType::Jog) {
     if (!doc["i"].is<double>()) return result;
     const double index = doc["i"].as<double>();
-    if (!std::isfinite(index) || index < 0 || index >= config::FINGERS || std::floor(index) != index)
+    if (!std::isfinite(index) || index < 0 || index >= config::FINGERS ||
+        std::floor(index) != index)
       return result;
     c.i = static_cast<int>(index);
   }
@@ -394,6 +396,12 @@ std::size_t format(const Event& e, char* out, std::size_t capacity) {
     writer.text(",\"ma\":");
     writer.number(e.ma, false);
   }
+  return writer.finish();
+}
+std::size_t formatBoot(uint32_t resetReason, char* out, std::size_t capacity) {
+  Writer writer(out, capacity);
+  writer.text("{\"t\":\"evt\",\"e\":\"boot\",\"reset_reason\":");
+  writer.integer(resetReason);
   return writer.finish();
 }
 std::size_t format(const Info& info, char* out, std::size_t capacity) {
