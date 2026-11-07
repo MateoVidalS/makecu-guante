@@ -1,35 +1,69 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-export type VoiceStatus = 'off' | 'listening' | 'speaking' | 'fallback';
-const Context = createContext<{
-  status: VoiceStatus;
-  mode: 'off' | 'simple' | 'live';
-  setMode(mode: 'off' | 'simple' | 'live'): void;
-  muted: boolean;
-  lastCoachLine: string | null;
-  lastPatientLine: string | null;
-  start(sessionId: number | null): Promise<void>;
-  stop(): void;
-  setMuted(muted: boolean): void;
-} | null>(null);
-export function VoiceProvider({ children }: { children: ReactNode }) {
-  const value = useMemo(
-    () => ({
-      status: 'off' as const,
-      mode: 'off' as const,
-      setMode: (_mode: 'off' | 'simple' | 'live') => {},
-      muted: true,
-      lastCoachLine: null,
-      lastPatientLine: null,
-      start: async (_sessionId: number | null) => {},
-      stop: () => {},
-      setMuted: (_muted: boolean) => {},
-    }),
-    [],
-  );
-  return <Context.Provider value={value}>{children}</Context.Provider>;
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import { createVoiceToken, getSessions, addTranscript } from '../api/client';
+import { useRuntime } from '../runtime';
+import {
+  VoiceController,
+  browserVoiceDependencies,
+  type VoiceDependencies,
+} from './VoiceController';
+export type { VoiceStatus } from './VoiceController';
+const Context = createContext<VoiceController | null>(null);
+export function VoiceProvider({
+  children,
+  dependencies,
+}: {
+  children: ReactNode;
+  dependencies?: VoiceDependencies;
+}) {
+  const runtime = useRuntime();
+  const [controller, setController] = useState<VoiceController | null>(null);
+  useEffect(() => {
+    const local = browserVoiceDependencies.local();
+    const value = new VoiceController(
+      runtime,
+      dependencies ?? {
+        token: createVoiceToken,
+        sessions: () => getSessions(),
+        save: (id, lines) => addTranscript({ id, lines }),
+        transport: browserVoiceDependencies.transport,
+        audio: browserVoiceDependencies.audio(),
+        local,
+      },
+    );
+    setController(value);
+    const unlock = () => (dependencies?.local ?? local).unlock();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+      value.dispose();
+    };
+  }, [runtime, dependencies]);
+  // Children mount only after the subscription exists; StrictMode cleanup is safe.
+  if (!controller) return null;
+  return <Context.Provider value={controller}>{children}</Context.Provider>;
 }
 export function useVoice() {
-  const value = useContext(Context);
-  if (!value) throw new Error('VoiceProvider is missing');
-  return value;
+  const controller = useContext(Context);
+  if (!controller) throw new Error('VoiceProvider is missing');
+  const state = useSyncExternalStore(controller.subscribe, controller.snapshot);
+  const actions = useMemo(
+    () => ({
+      start: (id: number | null) => controller.start(id),
+      stop: () => controller.stop(),
+      setMode: (mode: 'live' | 'simple' | 'off') => controller.setMode(mode),
+      setMuted: (muted: boolean) => controller.setMuted(muted),
+    }),
+    [controller],
+  );
+  return { ...state, ...actions };
 }

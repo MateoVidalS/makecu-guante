@@ -1,5 +1,5 @@
-from app.contracts.types import VoiceToken
+"""Compatibility export for the scaffold's token module."""
 
+from app.voice.gemini_live import create_token
 
-def create_token(session_id: int | None) -> VoiceToken:
-    raise NotImplementedError("WP8")
+__all__ = ["create_token"]

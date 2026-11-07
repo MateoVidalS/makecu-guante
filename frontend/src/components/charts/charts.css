@@ -1,0 +1,157 @@
+.chart-card {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-16);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  break-inside: avoid;
+}
+.chart-card h3 {
+  margin: 0 0 var(--space-8);
+}
+.chart-hint,
+.chart-legend {
+  color: var(--muted);
+  font-size: var(--caption);
+}
+.chart-hint {
+  margin: var(--space-8) 0;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  margin-block: var(--space-8);
+}
+.chart-legend span {
+  display: inline-flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+.chart-swatch {
+  width: var(--space-24);
+  height: var(--space-12);
+}
+.chart-canvas {
+  width: 100%;
+  height: var(--placeholder-height);
+  min-width: 0;
+}
+.chart-card.compact .chart-canvas {
+  height: calc(var(--placeholder-height) - var(--space-48));
+}
+.chart-card .recharts-text {
+  font-size: var(--caption);
+  fill: var(--muted);
+}
+.chart-card .recharts-cartesian-axis-line,
+.chart-card .recharts-cartesian-axis-tick-line {
+  stroke: var(--border);
+}
+.chart-card .recharts-default-tooltip {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text);
+  font-size: var(--caption);
+}
+.chart-card .recharts-tooltip-item {
+  color: var(--text) !important;
+}
+.chart-card details {
+  font-size: var(--small);
+}
+.chart-card summary {
+  cursor: pointer;
+  padding: var(--space-8) 0;
+  color: var(--accent);
+}
+.data-table-wrap {
+  overflow-x: auto;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--small);
+  text-align: left;
+}
+.data-table th,
+.data-table td {
+  border-bottom: var(--control-border) solid var(--border);
+  padding: var(--space-8);
+  vertical-align: top;
+}
+.data-table caption {
+  text-align: left;
+  color: var(--muted);
+  padding: var(--space-8);
+}
+.demo-badge {
+  display: inline-block;
+  padding: var(--space-4) var(--space-8);
+  border: var(--control-border) dashed var(--muted);
+  border-radius: var(--radius-input);
+  color: var(--text);
+  background: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent var(--space-4),
+    color-mix(in srgb, var(--demo) 12%, transparent) var(--space-4),
+    color-mix(in srgb, var(--demo) 12%, transparent) var(--space-8)
+  );
+  font-size: var(--caption);
+}
+.chart-grid,
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--placeholder-height)), 1fr)
+  );
+  gap: var(--space-16);
+}
+.kpi-tile {
+  padding: var(--space-16);
+  background: var(--surface);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+}
+.kpi-tile p {
+  margin: 0;
+}
+.kpi-value {
+  font-size: var(--h1);
+}
+.sparkline {
+  height: var(--space-64);
+}
+.data-page {
+  display: grid;
+  gap: var(--space-24);
+}
+.data-page h1,
+.data-page h2 {
+  margin-block: var(--space-8);
+}
+.data-section {
+  display: grid;
+  gap: var(--space-16);
+  min-width: 0;
+}
+.data-page .card {
+  margin: 0;
+}
+.data-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+.data-tabs [aria-current='page'] {
+  background: var(--accent);
+  color: var(--bg);
+}
+.data-status {
+  padding: var(--space-16);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-input);
+}

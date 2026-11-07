@@ -46,6 +46,8 @@ ignored; unknown `t` → `err`. This extends `README.md §4.4` (the additions ar
 
 Before every finger has received `calib`, `target` and `follow` are rejected with `err no_calib`.
 
+**Client queueing rule (resolved from WP2):** `release` jumps the queue and **discards any not-yet-sent `target`/`follow`/`jog`** (stale motion must never restart the glove after a release). Other commands (`calib`, `limit`, `hello`, `ping`) are never dropped.
+
 ### 2.2 ESP32 → laptop
 
 | `t` | Example | Rate | Meaning |
@@ -59,7 +61,7 @@ Before every finger has received `calib`, `target` and `follow` are rejected wit
 
 ```
 boot ──setup ok──> idle ──target/follow──> run ──release──> idle
-                   │  └──jog──> calib ──release / calib──> idle
+                   │  └──jog──> calib ──release──> idle   (send `calib` only from idle: jog → release → calib)
 any ──overcurrent / stop_button / watchdog──> fault ──release (and STOP not held)──> idle
 ```
 In `fault`: servos have been released and detached; `target`, `follow` and `jog` are rejected with `err fault`.
@@ -76,7 +78,7 @@ In `fault`: servos have been released and detached; `target`, `follow` and `jog`
 | `FOLLOW_SLACK` | 0.05 | Follow stays 5% behind the vision closure |
 | `LIMIT_DEFAULT_MA` / `LIMIT_MAX_MA` | 900 / 1400 | Below the 1.5 A supply limit |
 | `OVERCURRENT_MS` | 100 | Current above the limit for this long → fault |
-| `WATCHDOG_MS` | 1000 | No valid message for this long → release + fault |
+| `WATCHDOG_MS` | 1000 | Elapsed time **strictly greater** than this with no valid message → release + fault (no fault at exactly 1000 ms; it fires on the next tick) |
 | `TEL_HZ` | 50 | |
 | `CONTROL_HZ` | 200 | Ramp/safety loop |
 
@@ -352,7 +354,7 @@ Backend `backend/.env`:
 | Var | Default | Meaning |
 |---|---|---|
 | `GEMINI_API_KEY` | – | Voice (Live) and summaries. Missing → voice uses the fixed-phrase fallback, summaries return 503 |
-| `GEMINI_LIVE_MODEL` | `gemini-live-2.5-flash-preview` | **Verify the current name** in Google's Live API docs |
+| `GEMINI_LIVE_MODEL` | `gemini-3.8-live` | **Verify the current name** in Google's Live API docs |
 | `GEMINI_LIVE_VOICE` | `Puck` | Verify |
 | `GEMINI_TEXT_MODEL` | `gemini-2.5-flash` | Verify |
 | `REHAB_DB_PATH` | `data/rehab.db` | |
