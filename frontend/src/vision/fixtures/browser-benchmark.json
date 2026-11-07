@@ -43,5 +43,31 @@
     "real_webcam_end_to_end_latency_measured": false
   },
   "visual_qa": "GPU overlay inspected in light and dark themes at 1440x900; 21 landmarks, outlined white bones, state dots, guide, confidence badge and missing calibration gaps verified",
-  "limitations": "Shared development host under parallel worker load; headless Chrome and a repeated image do not establish target-laptop webcam performance or physical camera-to-display latency. The 25ms p95 inference target remains unmet and must be retested/optimized on the target laptop. CPU delegates still require the browser graphics context for MediaPipe image processing; the fallback test simulates unavailable GPU delegation, not removal of WebGL itself."
+  "limitations": "Shared development host under parallel worker load; headless Chrome and a repeated image do not establish target-laptop webcam performance or physical camera-to-display latency. The 25ms p95 inference target remains unmet and must be retested/optimized on the target laptop. CPU delegates still require the browser graphics context for MediaPipe image processing; the fallback test simulates unavailable GPU delegation, not removal of WebGL itself. Explicit Metal runs also exceeded 25ms inference p95 (38.0ms two-hand, 36.0ms single-hand). The first GPU entries used default headless settings without capturing the renderer.",
+  "gpu_metal_two_hand_sample": {
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "launch_args": ["--use-gl=angle", "--use-angle=metal"],
+    "frames_at_log": 600,
+    "rolling_samples": 300,
+    "inference_p50_ms": 24.7,
+    "inference_p95_ms": 38,
+    "camera_to_frame_p50_ms": 32.8,
+    "camera_to_frame_p95_ms": 45.4,
+    "skipped_total": 5,
+    "page_errors": 0,
+    "external_requests": 0
+  },
+  "gpu_metal_single_hand_crop": {
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "launch_args": ["--use-gl=angle", "--use-angle=metal"],
+    "frames_at_log": 600,
+    "rolling_samples": 300,
+    "inference_p50_ms": 22.9,
+    "inference_p95_ms": 36,
+    "camera_to_frame_p50_ms": 31.3,
+    "camera_to_frame_p95_ms": 44.1,
+    "skipped_total": 25,
+    "page_errors": 0,
+    "external_requests": 0
+  }
 }
