@@ -81,6 +81,10 @@ CASES = [
 @pytest.mark.parametrize("method,path,body", CASES)
 def test_every_stub_returns_contract_error(client, method, path, body):
     response = client.request(method, f"/api{path}", json=body)
+    if path == "/voice/token":
+        assert response.status_code == 503, response.text
+        assert response.json()["error"]["code"] == "voice_unavailable"
+        return
     assert response.status_code == 501, response.text
     assert response.json()["error"]["code"] == "not_implemented"
     assert isinstance(response.json()["error"]["message"], str)
@@ -102,7 +106,8 @@ def test_all_documented_operations_have_a_test_case(client):
         for method in item:
             if path != "/api/health":
                 assert (method, path.removeprefix("/api")) in operations
-                assert "501" in item[method]["responses"]
+                expected = "503" if path == "/api/voice/token" else "501"
+                assert expected in item[method]["responses"]
 
 
 def test_errors_and_spa_fallback(client, tmp_path, monkeypatch):
