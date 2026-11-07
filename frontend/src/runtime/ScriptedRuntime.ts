@@ -1,3 +1,5 @@
+import { TherapyController } from '../engine/therapy';
+import type { TherapyRuntime } from './therapy';
 import { createStore } from 'zustand/vanilla';
 import type {
   Runtime,
@@ -56,7 +58,7 @@ const emptyTrace = (): AttemptTrace => ({
 });
 
 /** WP0 UI development script. It never calls a glove or an engine. WP10 replaces it. */
-export class ScriptedRuntime implements Runtime {
+export class ScriptedRuntime implements TherapyRuntime {
   readonly exerciseStore = createStore<ExerciseView>(initialExercise);
   readonly evaluationStore = createStore<EvaluationView>(initialEvaluation);
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -78,6 +80,47 @@ export class ScriptedRuntime implements Runtime {
   private evalStarted = '';
   private persist: boolean;
   private generation = 0;
+  private therapyClock = 0;
+  readonly therapy = new TherapyController({
+    sessionId: () => this.exercise.view().sessionId,
+    now: () => this.therapyClock,
+    snapshot: () => {
+      const v = this.exercise.view();
+      if (!v.total) return null;
+      const last = v.lastResult;
+      return {
+        phase: v.phase,
+        pose: v.pose.id,
+        rep: v.rep,
+        index: v.index,
+        total: v.total,
+        seconds_in_phase: v.phaseElapsed,
+        fingers: GLOVE_FINGERS.map((finger) => ({
+          finger,
+          now: v.activeMax[finger] ?? null,
+          target: v.pose.closure[finger],
+          best_alone: v.activeMax[finger] ?? null,
+          glove_helping: v.assisting && v.pose.closure[finger] !== null,
+          lagging: false,
+        })),
+        last_attempt: last
+          ? {
+              reached_alone: last.reached_active,
+              assisted: last.assisted,
+              active_ratio: last.active_ratio,
+            }
+          : null,
+      };
+    },
+    brake: () => {
+      this.interrupted = true;
+      this.exercise.pause();
+      void this.evaluation.stop();
+    },
+    lowerHelp: () => {
+      /* This UI script has no motors. */
+    },
+  });
   constructor(options: { persist?: boolean } = {}) {
     this.persist = options.persist ?? true;
   }
@@ -122,7 +165,9 @@ export class ScriptedRuntime implements Runtime {
           rep: i + 1,
         })),
       );
-      this.settings = settings;
+      this.settings = { ...settings };
+      this.therapy.reset(plan, settings);
+      this.therapyClock = 0;
       this.results = [];
       this.resistanceSent = false;
       this.exerciseStore.setState(
@@ -261,17 +306,23 @@ export class ScriptedRuntime implements Runtime {
     const s = this.settings;
     return {
       PRESENT: s.present_s,
-      ATTEMPT: s.attempt_s,
+      ATTEMPT: this.therapy.current().attempt_s,
       HOLD: s.hold_s,
       ASSIST: Math.min(2, s.assist_max_s),
       ASSIST_HOLD: s.hold_s,
       RELEASE: 0.5,
-      REST: s.rest_s,
+      REST: s.rest_s + this.therapy.current().extra_rest_s,
       PAUSED: null,
       DONE: null,
     }[phase];
   }
   private phase(phase: ExercisePhase) {
+    const overrides = this.therapy.boundary(phase);
+    if (phase === 'PRESENT' && overrides.next_pose) {
+      const index = this.exercise.view().index;
+      this.items[index] = { ...this.items[index], pose: overrides.next_pose };
+      this.exerciseStore.setState({ pose: POSES[overrides.next_pose] });
+    }
     this.elapsed = 0;
     this.exerciseStore.setState({
       phase,
@@ -316,6 +367,7 @@ export class ScriptedRuntime implements Runtime {
   }
   /** Advances fake time in seconds; useful for deterministic page/voice tests. */
   advance(dt: number) {
+    this.therapyClock += dt * 1000;
     if (this.evalSettings) {
       this.advanceEvaluation(dt);
       return;

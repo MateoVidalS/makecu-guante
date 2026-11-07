@@ -16,6 +16,8 @@ import type {
   Output,
   PowerAwareExerciseSettings,
 } from './types';
+import { TherapyController } from './therapy';
+import type { LiveTherapyState } from '../contracts/therapist';
 import { closure, motorSafe, output, visible } from './input';
 import { AttemptMetrics, isoTime, summarizeSession } from './metrics';
 import {
@@ -61,7 +63,107 @@ class Exercise implements ExerciseEngine {
     null;
   private resistance = false;
   private seenSafety = new Set<string>();
-  constructor(private readonly options: EngineOptions) {}
+  readonly therapy: TherapyController;
+  private restDuration = 0;
+  constructor(private readonly options: EngineOptions) {
+    this.therapy = new TherapyController({
+      snapshot: () => this.therapySnapshot(),
+      sessionId: () => options.therapy?.sessionId() ?? null,
+      now: () => this.now,
+      brake: () => {
+        const out = this.brake(this.now);
+        options.onTherapyOutput?.(out);
+      },
+      lowerHelp: () => {
+        if (this.phase !== 'ASSIST' && this.phase !== 'ASSIST_HOLD') return;
+        // Refresh only the existing target, never schedule a new finger mid-pull.
+        const out = output();
+        this.targetSent = false;
+        this.sendTarget(out);
+        options.onTherapyOutput?.(out);
+      },
+      onDecision: (d) => options.therapy?.onDecision?.(d),
+      onFeeling: (f) => options.therapy?.onFeeling?.(f),
+    });
+  }
+
+  private therapySnapshot(): Omit<
+    LiveTherapyState,
+    'adjustments' | 'last_feeling'
+  > | null {
+    if (!this.plan.length) return null;
+    const trusted = this.input && visible(this.input);
+    const fingers = GLOVE_FINGERS.map((finger, i) => {
+      const now = trusted
+        ? (this.input!.vision!.closure?.[finger] ?? null)
+        : null;
+      const target = this.pose.closure[finger];
+      return {
+        finger,
+        now,
+        target,
+        best_alone: this.metrics?.best[finger] ?? null,
+        glove_helping:
+          (this.phase === 'ASSIST' || this.phase === 'ASSIST_HOLD') &&
+          this.targetSent &&
+          target !== null &&
+          this.target[i] >
+            (now ?? this.input?.tel?.a[i] ?? this.target[i]) + 0.02,
+        lagging: false,
+      };
+    });
+    const gap = (f: (typeof fingers)[number]) =>
+      f.now === null || f.target === null
+        ? 0
+        : this.pose.id === 'open'
+          ? Math.max(0, f.now - f.target)
+          : Math.max(0, f.target - f.now);
+    const maxGap = Math.max(...fingers.map(gap));
+    for (const f of fingers)
+      f.lagging = maxGap > this.settings.tolerance && gap(f) >= maxGap - 1e-6;
+    const last = this.results.at(-1);
+    return {
+      ...this.state(),
+      seconds_in_phase: this.state().phaseElapsed,
+      fingers,
+      last_attempt: last
+        ? {
+            reached_alone: last.reached_active,
+            assisted: last.assisted,
+            active_ratio: last.active_ratio,
+          }
+        : null,
+    };
+  }
+
+  phaseDuration(): number | null {
+    if (!this.settings) return null;
+    return {
+      PRESENT: this.settings.present_s,
+      ATTEMPT: this.therapy.current().attempt_s,
+      HOLD: this.settings.hold_s,
+      ASSIST: this.settings.assist_max_s,
+      ASSIST_HOLD: this.settings.hold_s,
+      RELEASE: 0.5,
+      REST: this.restDuration,
+      PAUSED: null,
+      DONE: null,
+    }[this.phase];
+  }
+
+  brake(now: number): Output {
+    this.now = now;
+    const out = output();
+    this.metrics?.safety.push({
+      source: 'coach_brake',
+      t_rel: (now - this.metrics.start) / 1000,
+      finger: null,
+      ma: null,
+    });
+    if (this.phase !== 'DONE' && this.phase !== 'PAUSED') this.interrupt(out);
+    else out.commands.push({ t: 'release' });
+    return out;
+  }
 
   private get pose(): PoseDef {
     const id = this.plan[this.index]?.pose ?? this.plan.at(-1)?.pose ?? 'open';
@@ -104,6 +206,7 @@ class Exercise implements ExerciseEngine {
       assist_stagger_ms: stagger,
       assist_max_parallel: parallel,
     };
+    this.therapy.reset(plan, settings);
     this.calibration = calibration;
     this.plan = plan.flatMap((item) => {
       if (!Number.isInteger(item.reps) || item.reps < 1)
@@ -214,7 +317,10 @@ class Exercise implements ExerciseEngine {
             t_rel: this.metrics!.timeToPosition,
           });
           this.enter('HOLD', out);
-        } else if (elapsed >= this.settings.attempt_s || this.isPlateau()) {
+        } else if (
+          elapsed >= this.therapy.current().attempt_s ||
+          this.isPlateau()
+        ) {
           this.enter(this.settings.assist_enabled ? 'ASSIST' : 'RELEASE', out);
         }
         break;
@@ -235,7 +341,7 @@ class Exercise implements ExerciseEngine {
         }
         break;
       case 'REST':
-        if (elapsed >= this.settings.rest_s) this.next(out);
+        if (elapsed >= this.restDuration) this.next(out);
         break;
     }
     return out;
@@ -300,6 +406,14 @@ class Exercise implements ExerciseEngine {
   /** 06-session §3 entry actions: PRESENT/RELEASE/PAUSED release; ASSIST targets once. */
   private enter(phase: ExercisePhase, out: Output): void {
     const continuingAssist = this.phase === 'ASSIST' && phase === 'ASSIST_HOLD';
+    const overrides = this.therapy.boundary(phase);
+    if (phase === 'PRESENT' && overrides.next_pose && this.plan[this.index])
+      this.plan[this.index] = {
+        ...this.plan[this.index],
+        pose: overrides.next_pose,
+      };
+    if (phase === 'REST')
+      this.restDuration = this.settings.rest_s + overrides.extra_rest_s;
     this.phase = phase;
     this.phaseAt = this.now;
     this.dwellAt = null;
@@ -548,7 +662,14 @@ class Exercise implements ExerciseEngine {
       out.commands.push({
         t: 'target',
         f: [...this.target],
-        v: this.settings.assist_speed,
+        // The wire has one speed: take the minimum cap of every moving servo.
+        v: Math.min(
+          this.settings.assist_speed,
+          0.3,
+          ...GLOVE_FINGERS.filter(
+            (_, i) => Math.abs(this.target[i] - this.input!.tel!.a[i]) > 1e-6,
+          ).map((finger) => this.therapy.current().assist_speed[finger]),
+        ),
       });
       this.targetSent = true;
     }
