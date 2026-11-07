@@ -43,8 +43,8 @@ contract extension for idempotency is requested in the WP10 PR.
 ## Simulator and diagnostics
 
 The calibration page offers known model ranges only when both sources are
-simulated. It never substitutes those values for a real glove or camera. Live
-exercise includes a simulator-only rigid-index toggle for the resistance demo.
+simulated. It never substitutes those values for a real glove or camera. The header’s Demo recovery menu includes simulator-only rigid-finger selection
+and toggles for the resistance demo.
 `VITE_SIM_SPEED` defaults to 1; Playwright sets it to 3.
 
 Setup displays rolling p95 vision-to-command and command-to-telemetry-echo values
@@ -104,3 +104,7 @@ F9 verification, rigid-finger baseline regression, calibration-range validation,
 friction abort behavior and the repeated 20-minute soak runner are documented in
 [`docs/DEV.md`](../../../docs/DEV.md). The F9 runner writes its own evidence to
 `docs/qa/f9-soak.json`; the older WP10 soak evidence is retained unchanged.
+
+Boot `reset_reason: 9` is preserved by the serial codec and displayed in Setup
+and runtime status with capacitor/supply guidance. The optional field is additive;
+legacy boot messages remain valid, and a later normal boot clears the warning.

@@ -19,7 +19,10 @@ make dev-sim
 Open <http://127.0.0.1:5173>, visit Calibrate, choose **Calibrate simulator**, then
 **Continue to practice**. Known simulator ranges apply only to simulated sources.
 Never copy them to hardware. The default plan has fifteen attempts across five
-poses; all five fingers are scored. Pinch scores thumb and index.
+poses; all five fingers are scored. Pinch scores thumb and index. The shell keeps Home/History/Setup navigation;
+Exercise and Evaluate are available from Home. **Demo recovery** in the header
+is the single simulator menu, including patient preset, rigid-finger selection,
+STOP, hand hiding and source restart. The camera preview starts hidden.
 
 | Command | Behavior |
 | --- | --- |
@@ -82,6 +85,13 @@ uses the known model flex range; physical-camera validation uses visible observe
 raw flex. An undersized range that implies more than 105% is flagged rather than
 accepted as extra patient movement. The tolerance accommodates endpoint noise;
 it is not a physical safety limit. Remounting/rerouting still requires calibration.
+
+Boot events retain optional `reset_reason`. Code 9 shows the exact capacitor/
+supply guidance in Setup and runtime status; normal/unknown boots do not claim a
+brown-out. A new shared line fixture lives at
+`contracts/fixtures/serial_boot_brownout.txt`; older event lines remain valid.
+The status notice uses the banner slot below the header to keep its full message
+readable without widening the status row.
 
 Empty-glove friction runs without camera visibility, off the hand. Any safety
 event aborts that whole measurement; stop, disconnect, source replacement and

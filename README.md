@@ -230,7 +230,7 @@ Una app web local (**Rehab Hub**) que corre en la laptop:
 |---|---|
 | `/` | Inicio |
 | `/setup` | Elegir guante (USB o simulado), cámara y mano afectada |
-| `/calibrate` | Asistente: rango de cada servo (jog) → cámara mano abierta / cerrada / pinza → fricción del guante vacío |
+| `/calibrate` | Wizard: five servo ranges (jog) → open / closed / pinch camera range → review. Empty-glove friction is in Evaluate preflight. |
 | `/exercise` | Sesión de ejercicio (modo foco, sin navegación) |
 | `/evaluate` | Evaluación de resistencia |
 | `/history` | Tendencias de rango, ayuda y resistencia; repetición de cada sesión (`/history/sessions/:id`) y evaluación |
@@ -257,6 +257,8 @@ USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). L
 | `tel` (50 Hz) | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.35,0.30,0.30],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.40,0.35,0.35]}` |
 | `evt` | `overcurrent`, `stop_button`, `stop_released`, `watchdog`, `boot`, `ina_missing`, `calib_ok` |
 | `info` / `err` | Versión, cantidad de dedos, límite y calibración / comando rechazado y por qué |
+
+`boot` events include optional `reset_reason` from `esp_reset_reason()`. Code **9** means brown-out: Setup and runtime status tell the helper to check the 470–1000 µF capacitor and the supply limit.
 
 `a` es la posición **comandada** (los micro servos no informan la real). Estados: `boot → idle → run`, `calib` durante el jog, y `fault` tras un corte, hasta un `release`.
 

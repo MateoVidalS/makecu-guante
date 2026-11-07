@@ -8,8 +8,9 @@ test('all five manual servo ranges must be set and acknowledged', async ({
   await page.goto('/calibrate');
   const fingers = page.getByRole('group', { name: 'Finger to calibrate' });
   await expect(fingers.getByRole('button')).toHaveCount(5);
+  await fingers.getByRole('button', { name: /^Pinky ·/ }).click();
   const send = page.getByRole('button', {
-    name: 'Send glove ranges',
+    name: 'Continue to camera range',
     exact: true,
   });
   await expect(send).toBeDisabled();
@@ -21,7 +22,10 @@ test('all five manual servo ranges must be set and acknowledged', async ({
     for (let step = 0; step < 4; step++)
       await page.getByRole('button', { name: '+5°', exact: true }).click();
     await page.getByRole('button', { name: 'Set closed', exact: true }).click();
-    if (finger !== 'Pinky') await expect(send).toBeDisabled();
+    if (finger !== 'Pinky') {
+      await fingers.getByRole('button', { name: /^Pinky ·/ }).click();
+      await expect(send).toBeDisabled();
+    }
   }
   await expect(send).toBeEnabled();
   await expect(fingers.getByRole('button', { name: / · Set$/ })).toHaveCount(5);

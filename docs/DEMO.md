@@ -70,6 +70,7 @@ run. Neither command seeds automatically.
   switch, helper present, fresh calibration for this hand and mounting. Seeded
   model ranges must never substitute for physical calibration.
 - [ ] Rehearse source recovery: open **Demo recovery** → **Use simulated glove**
+  (or **Restart simulated glove** when already connected)
   or **Use simulated camera**. It ends/saves the current run and readies the source
   without reloading. Start a new practice afterward; mixed-source runs are demo.
 - [ ] No unsaved real session. Keep the tab open until the header says **Saved**.
@@ -78,9 +79,9 @@ run. Neither command seeds automatically.
 
 | Time | Action | What to say / show |
 | --- | --- | --- |
-| 0:00–0:45 | Home → Exercise. Choose a single full fist, one repetition; Start practice. | “Try on your own first. The glove helps with the rest.” Explain ghost = target, solid = your hand. For a physical demo, the helper remains beside STOP. |
+| 0:00–0:45 | Home → Exercise. Choose **Fist only, 1 rep**; Start practice. | “Try on your own first. The glove helps with the rest.” Explain ghost = target, solid = your hand. For a physical demo, the helper remains beside STOP. |
 | 0:45–1:30 | Let the moderate simulated patient try halfway; watch blue movement, orange assistance, then green hold. | “The camera estimates how far each finger closes. Assistance fills the remaining movement.” Show all five finger labels and the stagger: starts are at least 150 ms apart, at most three motors move. Targets stay within 95% of the calibrated glove range. |
-| 1:30–2:30 | Start another full-fist repetition. Expand **Simulator controls**, check **Rigid index**, and wait for assistance. | “Here is resistance. The glove stops and releases on its own.” A firmware fault releases and pauses with a safety banner. A softer resistance stop holds the achieved command briefly, then releases; it is also saved in replay. Listen for “Stopping. I felt resistance in your index.” Uncheck Rigid index before Resume or another attempt. Show the current trace later in replay, where technical units belong. Never deliberately stiffen or stall a person's finger. |
+| 1:30–2:30 | Start another full-fist repetition. Open **Demo recovery**, choose Index under **Rigid finger**, check **Rigid index**, and wait for assistance. | “Here is resistance. The glove stops and releases on its own.” A firmware fault releases and pauses with a safety banner. A softer resistance stop holds the achieved command briefly, then releases; it is also saved in replay. Listen for “Stopping. I felt resistance in your index.” Uncheck Rigid index before Resume or another attempt. Show the current trace later in replay, where technical units belong. Never deliberately stiffen or stall a person's finger. |
 | 2:30–3:15 | Finish/end the run; wait for Saved. Open History → Sessions and a demo session → replay. Pick a Full fist attempt. | Show the attempt, assistance and current trace. “These examples are labeled demo data.” Use Show as table if the projector obscures a chart. |
 | 3:15–4:00 | History → range/assistance trends, then resistance/evaluations. | “The synthetic patient improves over three weeks.” Evaluation resistance is an estimate inspired by clinical practice; total servo current cannot isolate a muscle or establish a diagnosis. |
 | 4:00–5:00 | Doctor view → Generate summary (when available). | “The therapist can review trends and request a summary.” Read the actual generated text; do not promise a particular conclusion. Without a key/network, show the unavailable state and the underlying charts. |
@@ -88,6 +89,10 @@ run. Neither command seeds automatically.
 
 The five-finger firmware uses GPIO25/26/27/13/4 in thumb-to-little-finger order,
 a 5 V / 2.5 A supply with 470–1000 µF servo-rail capacitance, and two LEDC timers.
+Setup and runtime status report a board brown-out (boot reset reason 9):
+“The glove board restarted because the 5 V supply dipped. Check the 470-1000 uF
+capacitor and the supply limit.” Stop physical use and have the team check power
+on a fixture; do not repeatedly restart against voltage dips.
 The default total-current cut-off is 1500 mA (hard maximum 2200 mA), sustained
 100 ms. A single stalled servo can stay below that total, so also verify the
 current-plus-stalled-vision resistance stop. Host tests do not prove real force.

@@ -76,10 +76,10 @@ not the mechanical limits of this mounting.
 - [ ] **Camera range**. Confirm affected hand, lighting, full-hand visibility and
   fingertip clearance; capture open, relaxed glove-closed, and pinch references.
   Repeat a capture if movement/tracking makes it unreliable.
-- [ ] **Glove friction** measures an **empty glove only**. Remove the glove from
-  the hand before running it; skip this step if that cannot be done safely. Never
-  run empty-glove sweeps with a person's hand inside. Record “not measured” when
-  skipped; resistance is less specific without a baseline.
+- [ ] **Review** every servo range and camera capture, then save calibration.
+  The wizard has three steps: Glove range → Camera range → Review.
+  Empty-glove friction belongs to Evaluate preflight, off the hand. If it cannot
+  be measured safely, leave evaluation unavailable and use practice only.
 - [ ] Before evaluation, measure complete slow/fast friction for all five
   fingers with an empty glove. Refresh it when missing or older than 24 hours;
   reject aborted/incomplete curves, then put the glove back on and reconfirm the
