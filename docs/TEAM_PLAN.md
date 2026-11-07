@@ -49,8 +49,8 @@ Follow `firmware/BENCH.md` step by step and fill in its Results table. Summary o
 
 | # | Task | Owner |
 |---|---|---|
-| 4.1 | Show a brown-out reset in Setup: the board sends `reset_reason` in `evt boot` and the app drops it today | Software |
-| 4.2 | Contract fixes: the `info` example says `"fw":"0.2.0"` but firmware and fixture say `0.1.0`; `calib_ok` text still says "3 fingers"; document `reset_reason` | Software / coordinator |
+| 4.1 | Show a brown-out reset in Setup: the board sends `reset_reason` in `evt boot` (9 = brown-out, now in the contract) and the app drops it today | Software |
+| 4.2 | ~~Contract fixes (fw version, `calib_ok` = 5 fingers, `reset_reason`)~~ Done in `1666a82` | Coordinator |
 | 4.3 | Rigid-finger case: make sure a rigid finger always ends in a resistance stop or an overcurrent fault during assist, for every finger (brief F9) | Software |
 | 4.4 | Flag calibrations that would show more than 100% (brief F9) | Software |
 | 4.5 | The e2e test "simulated STOP, disconnect and camera loss" fails when the machine is under heavy load; make it robust | Software |
