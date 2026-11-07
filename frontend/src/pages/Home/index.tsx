@@ -84,7 +84,7 @@ export default function Home() {
             >
               Start today's practice
             </Button>
-            <Link to="/exercise">Customize plan</Link>
+            <Link to="/exercise?customize=1">Customize plan</Link>
           </Stack>
           <Checkbox
             label="Short session (1 rep each)"

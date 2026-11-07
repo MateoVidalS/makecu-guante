@@ -162,6 +162,24 @@ describe('Home and Setup', () => {
     );
     await waitFor(() => expect(runtime.exercise.view().total).toBe(5));
   });
+  it('opens Customize plan after an earlier session has finished', () => {
+    const runtime = new ScriptedRuntime({ persist: false });
+    runtime.exerciseStore.setState({ summary: sessions[0].summary });
+    mount(
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/exercise" element={<Exercise />} />
+      </Routes>,
+      runtime,
+    );
+    fireEvent.click(screen.getByRole('link', { name: 'Customize plan' }));
+    expect(
+      screen.getByRole('heading', { name: 'Your practice' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('heading', { name: 'Session complete' }),
+    ).toBeNull();
+  });
   it('routes uncalibrated practice to calibration', () => {
     const runtime = new ScriptedRuntime({ persist: false });
     runtime.calibration.current = null;

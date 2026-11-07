@@ -306,7 +306,9 @@ export default function Exercise() {
     [confirm, setConfirm] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
-    [planning, setPlanning] = useState(false),
+    [planning, setPlanning] = useState(
+      () => new URLSearchParams(location.search).get('customize') === '1',
+    ),
     [preset, setPreset] = useState(short ? 'short' : 'glides');
   const live = phase !== 'DONE';
   const attempts = useSessionAttempts();
