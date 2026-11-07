@@ -135,7 +135,7 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 
 | Pieza | Estado | Medidas | Cant. |
 |---|---|---|---|
-| Guía de tendón | **Definitiva** (`hardware/definitivas/`) | 12 × 9 × 5,6 mm, base cóncava | 13 (+3) |
+| Guía de tendón | **Definitiva, ya impresa** (`hardware/definitivas/1_...`) | 12 × 9 × 5,6 mm, base cóncava | 13 (+3) |
 | Anclaje de punta | **Definitiva** | 12 × 9 × 5,8 mm | 5 (+1) |
 | Módulo de muñeca | Primera prueba | 80,5 × 80 × 41 mm | 1 |
 | Tapa (cóncava, con orejas para correas) | Primera prueba | 80,5 × 102 × 6 mm | 1 |

@@ -1,12 +1,22 @@
-# Piezas definitivas
+# Impresión
 
-Estas piezas van en el guante y **no dependen del módulo de servos**, así que no van a cambiar. Se pueden imprimir ya.
+En `hardware/definitivas/` hay dos archivos:
 
-| Archivo | Qué es | Medidas | Cantidad |
+| Archivo | Estado | Qué tiene | Medidas |
 |---|---|---|---|
-| `placa_guias_x16_anclajes_x6.stl` | **Imprimir esta.** 16 guías + 6 anclajes en una sola placa (incluye repuestos) | 96 × 48 × 5,8 mm | 1 placa |
-| `guia_tendon.stl` | Guía suelta, por si hace falta reponer una | 12 × 9 × 5,6 mm | — |
-| `anclaje_punta.stl` | Anclaje suelto, por si hace falta reponer uno | 12 × 9 × 5,8 mm | — |
+| `1_ya_impreso_guias_x16_anclajes_x6.stl` | **Ya impreso** | 16 guías de tendón + 6 anclajes de punta | 96 × 48 × 5,8 mm |
+| `2_falta_imprimir_modulo_tapa_carretes.stl` | **Falta imprimir** | Módulo de muñeca + tapa + 5 carretes | 169 × 132 × 41 mm |
+
+Las piezas sueltas (para reponer una sola) están en `hardware/stl/`.
+
+## Placa 2: módulo, tapa y carretes
+
+- PLA. Relleno 20% para el módulo y la tapa, 100% para los carretes (la mayoría de los slicers deja cambiarlo por pieza; si no, 30% para todo).
+- Sin soportes: cada pieza apoya su cara plana en la cama.
+- Son ~112 cm³. Si el slicer da más de 4 h (límite del Makerspace), imprimir `hardware/stl/modulo_muneca.stl` solo y después `tapa.stl` + 5 × `carrete.stl`.
+- Antes de imprimir: el servo negro (28 × 8 × 28 mm) **no entra** en su alojamiento; falta medirlo para hacerle uno propio.
+
+## Placa 1: guías y anclajes (ya impresa)
 
 ## Cuántas se usan
 
