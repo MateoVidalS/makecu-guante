@@ -1,0 +1,218 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type {
+  Profile,
+  Health,
+  Session,
+  SessionDetail,
+  Attempt,
+  Evaluation,
+  TranscriptLine,
+  Summary,
+  VoiceToken,
+  HistoryOverview,
+  RomPoint,
+  AssistPoint,
+  ResistancePoint,
+  CalibrationIn,
+  SessionIn,
+  EvaluationIn,
+  SummaryIn,
+  ApiError,
+} from '../contracts/api';
+import type { Calibration } from '../contracts/calibration';
+import type {
+  AttemptResult,
+  AttemptTrace,
+  SessionSummary,
+} from '../contracts/engine';
+import type { GloveFinger } from '../contracts/glove';
+import type { PoseId } from '../contracts/poses';
+
+export class ApiRequestError extends Error {
+  constructor(
+    public status: number,
+    public detail: ApiError['error'],
+  ) {
+    super(detail.message);
+  }
+}
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  });
+  if (!response.ok) {
+    const body: ApiError = await response.json();
+    throw new ApiRequestError(response.status, body.error);
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+const body = (method: string, value?: unknown): RequestInit => ({
+  method,
+  ...(value === undefined ? {} : { body: JSON.stringify(value) }),
+});
+const query = (values: object) => {
+  const params = new URLSearchParams();
+  Object.entries(values).forEach(([k, v]) => {
+    if (v !== undefined) params.set(k, String(v));
+  });
+  const s = params.toString();
+  return s ? `?${s}` : '';
+};
+export interface SessionFilters {
+  mode?: 'exercise';
+  limit?: number;
+  offset?: number;
+}
+export interface RomFilters {
+  finger?: GloveFinger;
+  pose?: PoseId;
+}
+export interface SummaryFilters {
+  kind?: 'session' | 'therapist';
+  limit?: number;
+}
+
+export const getHealth = () => request<Health>('/health');
+export const getProfile = () => request<Profile>('/profile');
+export const putProfile = (value: Profile) =>
+  request<Profile>('/profile', body('PUT', value));
+export const getLatestCalibration = () =>
+  request<Calibration | null>('/calibrations/latest');
+export const getCalibrations = () => request<Calibration[]>('/calibrations');
+export const createCalibration = (value: CalibrationIn) =>
+  request<Calibration>('/calibrations', body('POST', value));
+export const createSession = (value: SessionIn) =>
+  request<Session>('/sessions', body('POST', value));
+export const getSessions = (filters: SessionFilters = {}) =>
+  request<Session[]>(`/sessions${query(filters)}`);
+export const getSession = (id: number) =>
+  request<SessionDetail>(`/sessions/${id}`);
+export const addAttempt = ({
+  id,
+  result,
+}: {
+  id: number;
+  result: AttemptResult;
+}) => request<Attempt>(`/sessions/${id}/attempts`, body('POST', result));
+export const endSession = ({
+  id,
+  summary,
+}: {
+  id: number;
+  summary: SessionSummary;
+}) => request<Session>(`/sessions/${id}/end`, body('POST', { summary }));
+export const deleteSession = (id: number) =>
+  request<void>(`/sessions/${id}`, body('DELETE'));
+export const getAttemptTrace = (id: number) =>
+  request<AttemptTrace>(`/attempts/${id}/trace`);
+export const createEvaluation = (value: EvaluationIn) =>
+  request<Evaluation>('/evaluations', body('POST', value));
+export const getEvaluations = () => request<Evaluation[]>('/evaluations');
+export const getEvaluation = (id: number) =>
+  request<Evaluation>(`/evaluations/${id}`);
+export const addTranscript = ({
+  id,
+  lines,
+}: {
+  id: number;
+  lines: TranscriptLine[];
+}) => request<void>(`/sessions/${id}/transcript`, body('POST', { lines }));
+export const getHistoryOverview = () =>
+  request<HistoryOverview>('/history/overview');
+export const getHistoryRom = (filters: RomFilters = {}) =>
+  request<RomPoint[]>(`/history/rom${query(filters)}`);
+export const getHistoryAssist = () => request<AssistPoint[]>('/history/assist');
+export const getHistoryResistance = () =>
+  request<ResistancePoint[]>('/history/resistance');
+export const createSummary = (value: SummaryIn) =>
+  request<Summary>('/summaries', body('POST', value));
+export const getSummaries = (filters: SummaryFilters = {}) =>
+  request<Summary[]>(`/summaries${query(filters)}`);
+export const createVoiceToken = (session_id: number | null) =>
+  request<VoiceToken>('/voice/token', body('POST', { session_id }));
+export async function exportData(
+  format: 'json' | 'csv' = 'json',
+): Promise<Blob> {
+  const response = await fetch(`/api/export?format=${format}`);
+  if (!response.ok) {
+    const error: ApiError = await response.json();
+    throw new ApiRequestError(response.status, error.error);
+  }
+  return response.blob();
+}
+
+export const useHealth = () =>
+  useQuery({ queryKey: ['health'], queryFn: getHealth });
+export const useProfile = () =>
+  useQuery({ queryKey: ['profile'], queryFn: getProfile });
+export const useLatestCalibration = () =>
+  useQuery({
+    queryKey: ['calibrations', 'latest'],
+    queryFn: getLatestCalibration,
+  });
+export const useCalibrations = () =>
+  useQuery({ queryKey: ['calibrations'], queryFn: getCalibrations });
+export const useSessions = (filters: SessionFilters = {}) =>
+  useQuery({
+    queryKey: ['sessions', filters],
+    queryFn: () => getSessions(filters),
+  });
+export const useSession = (id: number) =>
+  useQuery({ queryKey: ['sessions', id], queryFn: () => getSession(id) });
+export const useAttemptTrace = (id: number) =>
+  useQuery({ queryKey: ['traces', id], queryFn: () => getAttemptTrace(id) });
+export const useEvaluations = () =>
+  useQuery({ queryKey: ['evaluations'], queryFn: getEvaluations });
+export const useEvaluation = (id: number) =>
+  useQuery({ queryKey: ['evaluations', id], queryFn: () => getEvaluation(id) });
+export const useHistoryOverview = () =>
+  useQuery({ queryKey: ['history', 'overview'], queryFn: getHistoryOverview });
+export const useHistoryRom = (filters: RomFilters = {}) =>
+  useQuery({
+    queryKey: ['history', 'rom', filters],
+    queryFn: () => getHistoryRom(filters),
+  });
+export const useHistoryAssist = () =>
+  useQuery({ queryKey: ['history', 'assist'], queryFn: getHistoryAssist });
+export const useHistoryResistance = () =>
+  useQuery({
+    queryKey: ['history', 'resistance'],
+    queryFn: getHistoryResistance,
+  });
+export const useSummaries = (filters: SummaryFilters = {}) =>
+  useQuery({
+    queryKey: ['summaries', filters],
+    queryFn: () => getSummaries(filters),
+  });
+// Writes invalidate related lists and derived history. Live data stays outside Query.
+function useWrite<T, V>(fn: (value: V) => Promise<T>, keys: string[]) {
+  const cache = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: async () => {
+      await Promise.all(
+        keys.map((key) => cache.invalidateQueries({ queryKey: [key] })),
+      );
+    },
+  });
+}
+export const usePutProfile = () => useWrite(putProfile, ['profile']);
+export const useCreateCalibration = () =>
+  useWrite(createCalibration, ['calibrations']);
+export const useCreateSession = () =>
+  useWrite(createSession, ['sessions', 'history']);
+export const useAddAttempt = () =>
+  useWrite(addAttempt, ['sessions', 'history']);
+export const useEndSession = () =>
+  useWrite(endSession, ['sessions', 'history']);
+export const useDeleteSession = () =>
+  useWrite(deleteSession, ['sessions', 'history']);
+export const useCreateEvaluation = () =>
+  useWrite(createEvaluation, ['evaluations', 'history']);
+export const useAddTranscript = () => useWrite(addTranscript, ['sessions']);
+export const useCreateSummary = () => useWrite(createSummary, ['summaries']);
+export const useCreateVoiceToken = () =>
+  useMutation({ mutationFn: createVoiceToken });
+export const useExportData = () => useMutation({ mutationFn: exportData });

@@ -1,0 +1,594 @@
+[
+  {
+    "id": 8,
+    "mode": "exercise",
+    "started_at": "2026-11-05T09:00:00Z",
+    "ended_at": "2026-11-05T09:00:09Z",
+    "calibration_id": 1,
+    "plan": [
+      {
+        "pose": "full_fist",
+        "reps": 1
+      }
+    ],
+    "settings": {
+      "present_s": 3,
+      "attempt_s": 6,
+      "hold_s": 2,
+      "assist_max_s": 6,
+      "rest_s": 3,
+      "tolerance": 0.1,
+      "reach_dwell_s": 0.5,
+      "assist_speed": 0.3,
+      "plateau_s": 2,
+      "assist_enabled": true
+    },
+    "is_demo": false,
+    "summary": {
+      "attempts": 1,
+      "reached_active": 0,
+      "assisted": 1,
+      "interrupted": 0,
+      "active_ratio_mean": 0.63,
+      "per_pose": [
+        {
+          "pose": "full_fist",
+          "active_ratio_mean": 0.63,
+          "assisted": 1,
+          "reps": 1
+        }
+      ],
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.63,
+          "assist_needed_mean": 0.06999999999999995
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.65,
+          "assist_needed_mean": 0.35
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.67,
+          "assist_needed_mean": 0.32999999999999996
+        }
+      ],
+      "previous": {
+        "active_ratio_mean": 0.59,
+        "per_finger": [
+          {
+            "finger": "thumb",
+            "active_max_mean": 0.59
+          },
+          {
+            "finger": "index",
+            "active_max_mean": 0.61
+          },
+          {
+            "finger": "middle",
+            "active_max_mean": 0.63
+          }
+        ]
+      }
+    },
+    "n_attempts": 1
+  },
+  {
+    "id": 7,
+    "mode": "exercise",
+    "started_at": "2026-11-02T09:00:00Z",
+    "ended_at": "2026-11-02T09:00:09Z",
+    "calibration_id": 1,
+    "plan": [
+      {
+        "pose": "full_fist",
+        "reps": 1
+      }
+    ],
+    "settings": {
+      "present_s": 3,
+      "attempt_s": 6,
+      "hold_s": 2,
+      "assist_max_s": 6,
+      "rest_s": 3,
+      "tolerance": 0.1,
+      "reach_dwell_s": 0.5,
+      "assist_speed": 0.3,
+      "plateau_s": 2,
+      "assist_enabled": true
+    },
+    "is_demo": false,
+    "summary": {
+      "attempts": 1,
+      "reached_active": 0,
+      "assisted": 1,
+      "interrupted": 0,
+      "active_ratio_mean": 0.59,
+      "per_pose": [
+        {
+          "pose": "full_fist",
+          "active_ratio_mean": 0.59,
+          "assisted": 1,
+          "reps": 1
+        }
+      ],
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.59,
+          "assist_needed_mean": 0.41
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.61,
+          "assist_needed_mean": 0.39
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.63,
+          "assist_needed_mean": 0.37
+        }
+      ],
+      "previous": {
+        "active_ratio_mean": 0.55,
+        "per_finger": [
+          {
+            "finger": "thumb",
+            "active_max_mean": 0.55
+          },
+          {
+            "finger": "index",
+            "active_max_mean": 0.57
+          },
+          {
+            "finger": "middle",
+            "active_max_mean": 0.59
+          }
+        ]
+      }
+    },
+    "n_attempts": 1
+  },
+  {
+    "id": 6,
+    "mode": "exercise",
+    "started_at": "2026-10-30T09:00:00Z",
+    "ended_at": "2026-10-30T09:00:09Z",
+    "calibration_id": 1,
+    "plan": [
+      {
+        "pose": "full_fist",
+        "reps": 1
+      }
+    ],
+    "settings": {
+      "present_s": 3,
+      "attempt_s": 6,
+      "hold_s": 2,
+      "assist_max_s": 6,
+      "rest_s": 3,
+      "tolerance": 0.1,
+      "reach_dwell_s": 0.5,
+      "assist_speed": 0.3,
+      "plateau_s": 2,
+      "assist_enabled": true
+    },
+    "is_demo": false,
+    "summary": {
+      "attempts": 1,
+      "reached_active": 0,
+      "assisted": 1,
+      "interrupted": 0,
+      "active_ratio_mean": 0.55,
+      "per_pose": [
+        {
+          "pose": "full_fist",
+          "active_ratio_mean": 0.55,
+          "assisted": 1,
+          "reps": 1
+        }
+      ],
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.55,
+          "assist_needed_mean": 0.45
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.57,
+          "assist_needed_mean": 0.43
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.59,
+          "assist_needed_mean": 0.41
+        }
+      ],
+      "previous": {
+        "active_ratio_mean": 0.51,
+        "per_finger": [
+          {
+            "finger": "thumb",
+            "active_max_mean": 0.51
+          },
+          {
+            "finger": "index",
+            "active_max_mean": 0.53
+          },
+          {
+            "finger": "middle",
+            "active_max_mean": 0.55
+          }
+        ]
+      }
+    },
+    "n_attempts": 1
+  },
+  {
+    "id": 5,
+    "mode": "exercise",
+    "started_at": "2026-10-27T09:00:00Z",
+    "ended_at": "2026-10-27T09:00:09Z",
+    "calibration_id": 1,
+    "plan": [
+      {
+        "pose": "full_fist",
+        "reps": 1
+      }
+    ],
+    "settings": {
+      "present_s": 3,
+      "attempt_s": 6,
+      "hold_s": 2,
+      "assist_max_s": 6,
+      "rest_s": 3,
+      "tolerance": 0.1,
+      "reach_dwell_s": 0.5,
+      "assist_speed": 0.3,
+      "plateau_s": 2,
+      "assist_enabled": true
+    },
+    "is_demo": false,
+    "summary": {
+      "attempts": 1,
+      "reached_active": 0,
+      "assisted": 1,
+      "interrupted": 0,
+      "active_ratio_mean": 0.51,
+      "per_pose": [
+        {
+          "pose": "full_fist",
+          "active_ratio_mean": 0.51,
+          "assisted": 1,
+          "reps": 1
+        }
+      ],
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.51,
+          "assist_needed_mean": 0.49
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.53,
+          "assist_needed_mean": 0.47
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.55,
+          "assist_needed_mean": 0.45
+        }
+      ],
+      "previous": {
+        "active_ratio_mean": 0.47,
+        "per_finger": [
+          {
+            "finger": "thumb",
+            "active_max_mean": 0.47
+          },
+          {
+            "finger": "index",
+            "active_max_mean": 0.49
+          },
+          {
+            "finger": "middle",
+            "active_max_mean": 0.51
+          }
+        ]
+      }
+    },
+    "n_attempts": 1
+  },
+  {
+    "id": 4,
+    "mode": "exercise",
+    "started_at": "2026-10-24T09:00:00Z",
+    "ended_at": "2026-10-24T09:00:09Z",
+    "calibration_id": 1,
+    "plan": [
+      {
+        "pose": "full_fist",
+        "reps": 1
+      }
+    ],
+    "settings": {
+      "present_s": 3,
+      "attempt_s": 6,
+      "hold_s": 2,
+      "assist_max_s": 6,
+      "rest_s": 3,
+      "tolerance": 0.1,
+      "reach_dwell_s": 0.5,
+      "assist_speed": 0.3,
+      "plateau_s": 2,
+      "assist_enabled": true
+    },
+    "is_demo": false,
+    "summary": {
+      "attempts": 1,
+      "reached_active": 0,
+      "assisted": 1,
+      "interrupted": 0,
+      "active_ratio_mean": 0.47,
+      "per_pose": [
+        {
+          "pose": "full_fist",
+          "active_ratio_mean": 0.47,
+          "assisted": 1,
+          "reps": 1
+        }
+      ],
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.47,
+          "assist_needed_mean": 0.53
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.49,
+          "assist_needed_mean": 0.51
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.51,
+          "assist_needed_mean": 0.49
+        }
+      ],
+      "previous": {
+        "active_ratio_mean": 0.43,
+        "per_finger": [
+          {
+            "finger": "thumb",
+            "active_max_mean": 0.43
+          },
+          {
+            "finger": "index",
+            "active_max_mean": 0.45
+          },
+          {
+            "finger": "middle",
+            "active_max_mean": 0.47
+          }
+        ]
+      }
+    },
+    "n_attempts": 1
+  },
+  {
+    "id": 3,
+    "mode": "exercise",
+    "started_at": "2026-10-21T09:00:00Z",
+    "ended_at": "2026-10-21T09:00:09Z",
+    "calibration_id": 1,
+    "plan": [
+      {
+        "pose": "full_fist",
+        "reps": 1
+      }
+    ],
+    "settings": {
+      "present_s": 3,
+      "attempt_s": 6,
+      "hold_s": 2,
+      "assist_max_s": 6,
+      "rest_s": 3,
+      "tolerance": 0.1,
+      "reach_dwell_s": 0.5,
+      "assist_speed": 0.3,
+      "plateau_s": 2,
+      "assist_enabled": true
+    },
+    "is_demo": false,
+    "summary": {
+      "attempts": 1,
+      "reached_active": 0,
+      "assisted": 1,
+      "interrupted": 0,
+      "active_ratio_mean": 0.43,
+      "per_pose": [
+        {
+          "pose": "full_fist",
+          "active_ratio_mean": 0.43,
+          "assisted": 1,
+          "reps": 1
+        }
+      ],
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.43,
+          "assist_needed_mean": 0.57
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.45,
+          "assist_needed_mean": 0.55
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.47,
+          "assist_needed_mean": 0.53
+        }
+      ],
+      "previous": {
+        "active_ratio_mean": 0.39,
+        "per_finger": [
+          {
+            "finger": "thumb",
+            "active_max_mean": 0.39
+          },
+          {
+            "finger": "index",
+            "active_max_mean": 0.41
+          },
+          {
+            "finger": "middle",
+            "active_max_mean": 0.43
+          }
+        ]
+      }
+    },
+    "n_attempts": 1
+  },
+  {
+    "id": 2,
+    "mode": "exercise",
+    "started_at": "2026-10-18T09:00:00Z",
+    "ended_at": "2026-10-18T09:00:09Z",
+    "calibration_id": 1,
+    "plan": [
+      {
+        "pose": "full_fist",
+        "reps": 1
+      }
+    ],
+    "settings": {
+      "present_s": 3,
+      "attempt_s": 6,
+      "hold_s": 2,
+      "assist_max_s": 6,
+      "rest_s": 3,
+      "tolerance": 0.1,
+      "reach_dwell_s": 0.5,
+      "assist_speed": 0.3,
+      "plateau_s": 2,
+      "assist_enabled": true
+    },
+    "is_demo": true,
+    "summary": {
+      "attempts": 1,
+      "reached_active": 0,
+      "assisted": 1,
+      "interrupted": 0,
+      "active_ratio_mean": 0.39,
+      "per_pose": [
+        {
+          "pose": "full_fist",
+          "active_ratio_mean": 0.39,
+          "assisted": 1,
+          "reps": 1
+        }
+      ],
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.39,
+          "assist_needed_mean": 0.61
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.41,
+          "assist_needed_mean": 0.59
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.43,
+          "assist_needed_mean": 0.57
+        }
+      ],
+      "previous": {
+        "active_ratio_mean": 0.35,
+        "per_finger": [
+          {
+            "finger": "thumb",
+            "active_max_mean": 0.35
+          },
+          {
+            "finger": "index",
+            "active_max_mean": 0.37
+          },
+          {
+            "finger": "middle",
+            "active_max_mean": 0.39
+          }
+        ]
+      }
+    },
+    "n_attempts": 1
+  },
+  {
+    "id": 1,
+    "mode": "exercise",
+    "started_at": "2026-10-15T09:00:00Z",
+    "ended_at": "2026-10-15T09:00:09Z",
+    "calibration_id": 1,
+    "plan": [
+      {
+        "pose": "full_fist",
+        "reps": 1
+      }
+    ],
+    "settings": {
+      "present_s": 3,
+      "attempt_s": 6,
+      "hold_s": 2,
+      "assist_max_s": 6,
+      "rest_s": 3,
+      "tolerance": 0.1,
+      "reach_dwell_s": 0.5,
+      "assist_speed": 0.3,
+      "plateau_s": 2,
+      "assist_enabled": true
+    },
+    "is_demo": true,
+    "summary": {
+      "attempts": 1,
+      "reached_active": 0,
+      "assisted": 1,
+      "interrupted": 0,
+      "active_ratio_mean": 0.35,
+      "per_pose": [
+        {
+          "pose": "full_fist",
+          "active_ratio_mean": 0.35,
+          "assisted": 1,
+          "reps": 1
+        }
+      ],
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.35,
+          "assist_needed_mean": 0.65
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.37,
+          "assist_needed_mean": 0.63
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.39,
+          "assist_needed_mean": 0.61
+        }
+      ],
+      "previous": null
+    },
+    "n_attempts": 1
+  }
+]

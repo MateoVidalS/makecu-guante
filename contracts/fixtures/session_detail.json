@@ -1,0 +1,158 @@
+{
+  "id": 8,
+  "mode": "exercise",
+  "started_at": "2026-11-05T09:00:00Z",
+  "ended_at": "2026-11-05T09:00:09Z",
+  "calibration_id": 1,
+  "plan": [
+    {
+      "pose": "full_fist",
+      "reps": 1
+    }
+  ],
+  "settings": {
+    "present_s": 3,
+    "attempt_s": 6,
+    "hold_s": 2,
+    "assist_max_s": 6,
+    "rest_s": 3,
+    "tolerance": 0.1,
+    "reach_dwell_s": 0.5,
+    "assist_speed": 0.3,
+    "plateau_s": 2,
+    "assist_enabled": true
+  },
+  "is_demo": false,
+  "summary": {
+    "attempts": 1,
+    "reached_active": 0,
+    "assisted": 1,
+    "interrupted": 0,
+    "active_ratio_mean": 0.63,
+    "per_pose": [
+      {
+        "pose": "full_fist",
+        "active_ratio_mean": 0.63,
+        "assisted": 1,
+        "reps": 1
+      }
+    ],
+    "per_finger": [
+      {
+        "finger": "thumb",
+        "active_max_mean": 0.63,
+        "assist_needed_mean": 0.06999999999999995
+      },
+      {
+        "finger": "index",
+        "active_max_mean": 0.65,
+        "assist_needed_mean": 0.35
+      },
+      {
+        "finger": "middle",
+        "active_max_mean": 0.67,
+        "assist_needed_mean": 0.32999999999999996
+      }
+    ],
+    "previous": {
+      "active_ratio_mean": 0.59,
+      "per_finger": [
+        {
+          "finger": "thumb",
+          "active_max_mean": 0.59
+        },
+        {
+          "finger": "index",
+          "active_max_mean": 0.61
+        },
+        {
+          "finger": "middle",
+          "active_max_mean": 0.63
+        }
+      ]
+    }
+  },
+  "n_attempts": 1,
+  "attempts": [
+    {
+      "pose": "full_fist",
+      "rep": 1,
+      "index": 0,
+      "started_at": "2026-11-05T09:00:00Z",
+      "ended_at": "2026-11-05T09:00:09Z",
+      "reached_active": false,
+      "reached_final": false,
+      "assisted": true,
+      "time_to_position_s": null,
+      "active_ratio": 0.63,
+      "fingers": [
+        {
+          "finger": "thumb",
+          "scored": true,
+          "target": 0.7,
+          "active_max": 0.63,
+          "assist_needed": 0.06999999999999995,
+          "final": 0.7
+        },
+        {
+          "finger": "index",
+          "scored": true,
+          "target": 1,
+          "active_max": 0.65,
+          "assist_needed": 0.35,
+          "final": 0.66
+        },
+        {
+          "finger": "middle",
+          "scored": true,
+          "target": 1,
+          "active_max": 0.67,
+          "assist_needed": 0.32999999999999996,
+          "final": 0.96
+        },
+        {
+          "finger": "ring",
+          "scored": false,
+          "target": 1,
+          "active_max": null,
+          "assist_needed": null,
+          "final": null
+        },
+        {
+          "finger": "pinky",
+          "scored": false,
+          "target": 1,
+          "active_max": null,
+          "assist_needed": null,
+          "final": null
+        }
+      ],
+      "pinch_min": null,
+      "current_peak_ma": 570,
+      "current_mean_ma": 310,
+      "safety_events": [
+        {
+          "source": "resistance",
+          "t_rel": 5.5,
+          "finger": "index",
+          "ma": 570
+        }
+      ],
+      "interrupted": false,
+      "id": 1,
+      "session_id": 8
+    }
+  ],
+  "transcript": [
+    {
+      "t": "2026-11-05T09:00:00Z",
+      "role": "coach",
+      "text": "Give it a try. The glove can help."
+    },
+    {
+      "t": "2026-11-05T09:00:09Z",
+      "role": "system",
+      "text": "Resistance detected in index. The glove stopped pulling."
+    }
+  ]
+}

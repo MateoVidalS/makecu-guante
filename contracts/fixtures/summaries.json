@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "kind": "session",
+    "created_at": "2026-11-05T09:00:09Z",
+    "session_id": 8,
+    "days": null,
+    "model": "fixture",
+    "text": "You closed your fingers further on your own. Keep practicing steadily."
+  },
+  {
+    "id": 2,
+    "kind": "therapist",
+    "created_at": "2026-11-05T09:00:09Z",
+    "session_id": null,
+    "days": 7,
+    "model": "fixture",
+    "text": "Camera estimates show improving active range and decreasing resistance. Demo records are labeled. This is not a validated clinical measurement."
+  }
+]

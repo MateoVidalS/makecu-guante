@@ -1,0 +1,2174 @@
+[
+  {
+    "id": 3,
+    "calibration_id": 1,
+    "is_demo": false,
+    "started_at": "2026-11-05T10:00:00Z",
+    "ended_at": "2026-11-05T10:02:00Z",
+    "settings": {
+      "slow_v": 0.2,
+      "fast_v": 1,
+      "limit_ma": 600,
+      "fingers": [
+        "thumb",
+        "index",
+        "middle"
+      ]
+    },
+    "sweeps": [
+      {
+        "finger": "thumb",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.05,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.1,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.15,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.2,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.25,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.3,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.35,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.4,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.45,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.5,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.55,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.6,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.65,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.7,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.75,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.8,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.85,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.9,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 0.95,
+            "ma": 240,
+            "excess_ma": 140
+          },
+          {
+            "pos": 1.0,
+            "ma": 240,
+            "excess_ma": 140
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "thumb",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.05,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.1,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.15,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.2,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.25,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.3,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.35,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.4,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.45,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.5,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.55,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.6,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.65,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.7,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.75,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.8,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.85,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.9,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 0.95,
+            "ma": 310,
+            "excess_ma": 210
+          },
+          {
+            "pos": 1.0,
+            "ma": 310,
+            "excess_ma": 210
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "index",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.05,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.1,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.15,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.2,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.25,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.3,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.35,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.4,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.45,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.5,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.55,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.6,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.65,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.7,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.75,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.8,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.85,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.9,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 0.95,
+            "ma": 250,
+            "excess_ma": 150
+          },
+          {
+            "pos": 1.0,
+            "ma": 250,
+            "excess_ma": 150
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "index",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.05,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.1,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.15,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.2,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.25,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.3,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.35,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.4,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.45,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.5,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.55,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.6,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.65,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.7,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.75,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.8,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.85,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.9,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 0.95,
+            "ma": 320,
+            "excess_ma": 220
+          },
+          {
+            "pos": 1.0,
+            "ma": 320,
+            "excess_ma": 220
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "middle",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.05,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.1,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.15,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.2,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.25,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.3,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.35,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.4,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.45,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.5,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.55,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.6,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.65,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.7,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.75,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.8,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.85,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.9,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.95,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 1.0,
+            "ma": 260,
+            "excess_ma": 160
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "middle",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.05,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.1,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.15,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.2,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.25,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.3,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.35,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.4,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.45,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.5,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.55,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.6,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.65,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.7,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.75,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.8,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.85,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.9,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 0.95,
+            "ma": 330,
+            "excess_ma": 230
+          },
+          {
+            "pos": 1.0,
+            "ma": 330,
+            "excess_ma": 230
+          }
+        ],
+        "aborted_at": null
+      }
+    ],
+    "fingers": [
+      {
+        "finger": "thumb",
+        "resistance_slow_ma": 140,
+        "resistance_fast_ma": 210,
+        "velocity_dependence_ma": 70,
+        "peak_excess_ma": 210,
+        "aborted": false
+      },
+      {
+        "finger": "index",
+        "resistance_slow_ma": 150,
+        "resistance_fast_ma": 220,
+        "velocity_dependence_ma": 70,
+        "peak_excess_ma": 220,
+        "aborted": false
+      },
+      {
+        "finger": "middle",
+        "resistance_slow_ma": 160,
+        "resistance_fast_ma": 230,
+        "velocity_dependence_ma": 70,
+        "peak_excess_ma": 230,
+        "aborted": false
+      }
+    ],
+    "friction_used": true
+  },
+  {
+    "id": 2,
+    "calibration_id": 1,
+    "is_demo": false,
+    "started_at": "2026-10-25T10:00:00Z",
+    "ended_at": "2026-10-25T10:02:00Z",
+    "settings": {
+      "slow_v": 0.2,
+      "fast_v": 1,
+      "limit_ma": 600,
+      "fingers": [
+        "thumb",
+        "index",
+        "middle"
+      ]
+    },
+    "sweeps": [
+      {
+        "finger": "thumb",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.05,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.1,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.15,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.2,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.25,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.3,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.35,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.4,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.45,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.5,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.55,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.6,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.65,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.7,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.75,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.8,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.85,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.9,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 0.95,
+            "ma": 260,
+            "excess_ma": 160
+          },
+          {
+            "pos": 1.0,
+            "ma": 260,
+            "excess_ma": 160
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "thumb",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.05,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.1,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.15,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.2,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.25,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.3,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.35,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.4,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.45,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.5,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.55,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.6,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.65,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.7,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.75,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.8,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.85,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.9,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 0.95,
+            "ma": 350,
+            "excess_ma": 250
+          },
+          {
+            "pos": 1.0,
+            "ma": 350,
+            "excess_ma": 250
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "index",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.05,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.1,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.15,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.2,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.25,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.3,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.35,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.4,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.45,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.5,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.55,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.6,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.65,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.7,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.75,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.8,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.85,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.9,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 0.95,
+            "ma": 270,
+            "excess_ma": 170
+          },
+          {
+            "pos": 1.0,
+            "ma": 270,
+            "excess_ma": 170
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "index",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.05,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.1,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.15,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.2,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.25,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.3,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.35,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.4,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.45,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.5,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.55,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.6,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.65,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.7,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.75,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.8,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.85,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.9,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 0.95,
+            "ma": 360,
+            "excess_ma": 260
+          },
+          {
+            "pos": 1.0,
+            "ma": 360,
+            "excess_ma": 260
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "middle",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.05,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.1,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.15,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.2,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.25,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.3,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.35,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.4,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.45,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.5,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.55,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.6,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.65,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.7,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.75,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.8,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.85,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.9,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.95,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 1.0,
+            "ma": 280,
+            "excess_ma": 180
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "middle",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.05,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.1,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.15,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.2,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.25,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.3,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.35,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.4,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.45,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.5,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.55,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.6,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.65,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.7,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.75,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.8,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.85,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.9,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 0.95,
+            "ma": 370,
+            "excess_ma": 270
+          },
+          {
+            "pos": 1.0,
+            "ma": 370,
+            "excess_ma": 270
+          }
+        ],
+        "aborted_at": null
+      }
+    ],
+    "fingers": [
+      {
+        "finger": "thumb",
+        "resistance_slow_ma": 160,
+        "resistance_fast_ma": 250,
+        "velocity_dependence_ma": 90,
+        "peak_excess_ma": 250,
+        "aborted": false
+      },
+      {
+        "finger": "index",
+        "resistance_slow_ma": 170,
+        "resistance_fast_ma": 260,
+        "velocity_dependence_ma": 90,
+        "peak_excess_ma": 260,
+        "aborted": false
+      },
+      {
+        "finger": "middle",
+        "resistance_slow_ma": 180,
+        "resistance_fast_ma": 270,
+        "velocity_dependence_ma": 90,
+        "peak_excess_ma": 270,
+        "aborted": false
+      }
+    ],
+    "friction_used": true
+  },
+  {
+    "id": 1,
+    "calibration_id": 1,
+    "is_demo": true,
+    "started_at": "2026-10-15T10:00:00Z",
+    "ended_at": "2026-10-15T10:02:00Z",
+    "settings": {
+      "slow_v": 0.2,
+      "fast_v": 1,
+      "limit_ma": 600,
+      "fingers": [
+        "thumb",
+        "index",
+        "middle"
+      ]
+    },
+    "sweeps": [
+      {
+        "finger": "thumb",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.05,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.1,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.15,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.2,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.25,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.3,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.35,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.4,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.45,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.5,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.55,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.6,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.65,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.7,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.75,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.8,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.85,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.9,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 0.95,
+            "ma": 280,
+            "excess_ma": 180
+          },
+          {
+            "pos": 1.0,
+            "ma": 280,
+            "excess_ma": 180
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "thumb",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.05,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.1,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.15,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.2,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.25,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.3,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.35,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.4,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.45,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.5,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.55,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.6,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.65,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.7,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.75,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.8,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.85,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.9,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 0.95,
+            "ma": 390,
+            "excess_ma": 290
+          },
+          {
+            "pos": 1.0,
+            "ma": 390,
+            "excess_ma": 290
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "index",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.05,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.1,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.15,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.2,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.25,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.3,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.35,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.4,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.45,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.5,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.55,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.6,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.65,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.7,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.75,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.8,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.85,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.9,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 0.95,
+            "ma": 290,
+            "excess_ma": 190
+          },
+          {
+            "pos": 1.0,
+            "ma": 290,
+            "excess_ma": 190
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "index",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.05,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.1,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.15,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.2,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.25,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.3,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.35,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.4,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.45,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.5,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.55,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.6,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.65,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.7,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.75,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.8,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.85,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.9,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 0.95,
+            "ma": 400,
+            "excess_ma": 300
+          },
+          {
+            "pos": 1.0,
+            "ma": 400,
+            "excess_ma": 300
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "middle",
+        "speed": "slow",
+        "v": 0.2,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.05,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.1,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.15,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.2,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.25,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.3,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.35,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.4,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.45,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.5,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.55,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.6,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.65,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.7,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.75,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.8,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.85,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.9,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 0.95,
+            "ma": 300,
+            "excess_ma": 200
+          },
+          {
+            "pos": 1.0,
+            "ma": 300,
+            "excess_ma": 200
+          }
+        ],
+        "aborted_at": null
+      },
+      {
+        "finger": "middle",
+        "speed": "fast",
+        "v": 1,
+        "points": [
+          {
+            "pos": 0.0,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.05,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.1,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.15,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.2,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.25,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.3,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.35,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.4,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.45,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.5,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.55,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.6,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.65,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.7,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.75,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.8,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.85,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.9,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 0.95,
+            "ma": 410,
+            "excess_ma": 310
+          },
+          {
+            "pos": 1.0,
+            "ma": 410,
+            "excess_ma": 310
+          }
+        ],
+        "aborted_at": null
+      }
+    ],
+    "fingers": [
+      {
+        "finger": "thumb",
+        "resistance_slow_ma": 180,
+        "resistance_fast_ma": 290,
+        "velocity_dependence_ma": 110,
+        "peak_excess_ma": 290,
+        "aborted": false
+      },
+      {
+        "finger": "index",
+        "resistance_slow_ma": 190,
+        "resistance_fast_ma": 300,
+        "velocity_dependence_ma": 110,
+        "peak_excess_ma": 300,
+        "aborted": false
+      },
+      {
+        "finger": "middle",
+        "resistance_slow_ma": 200,
+        "resistance_fast_ma": 310,
+        "velocity_dependence_ma": 110,
+        "peak_excess_ma": 310,
+        "aborted": false
+      }
+    ],
+    "friction_used": true
+  }
+]
