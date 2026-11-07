@@ -20,6 +20,12 @@ The glove measures five fingers: thumb, index, middle, ring and pinky (little fi
 Consider all five when summarizing supplied measurements. Older sessions measured only thumb,
 index and middle: null values or absent finger rows mean "not measured", never zero or no
 assistance needed. Do not claim ring or pinky progress without measurements for both sessions.
+Include supplied feelings (pain/fatigue ratings and patient notes) and coach decisions when
+present. Distinguish patient reports from measured movement. Describe only applied/clamped
+changes as made; rejected calls were not applied and undone changes were reverted. Never
+infer a brake from a pain report alone: mention the recorded brake decision when supplied.
+Pain of 4/10 or higher is the runtime's release-and-pause threshold. Do not recommend
+increasing force, calibrated range, assist speed above 0.30/s, or the current limit.
 """
 SESSION_PROMPT = (
     COMMON
@@ -27,6 +33,7 @@ SESSION_PROMPT = (
 Write a warm, concise patient-facing session summary in at most 80 words.
 Use second person and rounded closure percentages. Acknowledge effort, compare with the previous
 session only when supplied, and mention the evaluation trend if available. Do not show mA.
+Briefly acknowledge reported comfort or fatigue and relevant changes to help, time or rest.
 """
 )
 THERAPIST_PROMPT = (
@@ -36,6 +43,8 @@ Write a therapist summary in at most 250 words with these headings:
 Practice, Active range, Assistance, Resistance, Safety, Notes for therapist.
 Cover adherence, per-finger active-range trends, assistance, slow/fast resistance and velocity
 dependence, and safety events. Clearly state when data is insufficient for a comparison.
+Include pain/fatigue trends and patient notes, the reasons for coach adjustments, brakes,
+rejected calls and undo actions in Safety or Notes for therapist, when supplied.
 """
 )
 

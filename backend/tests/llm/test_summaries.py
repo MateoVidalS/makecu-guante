@@ -58,6 +58,10 @@ def test_sdk_call_prompt_timeout_and_resource_cleanup(monkeypatch, kind, require
     assert "thumb, index, middle, ring and pinky (little finger)" in instruction
     assert '"not measured", never zero' in instruction
     assert "without measurements for both sessions" in instruction
+    assert "Include supplied feelings" in instruction
+    assert "rejected calls were not applied and undone changes were reverted" in instruction
+    assert "release-and-pause threshold" in instruction
+    assert "Do not recommend" in instruction and "assist speed above 0.30/s" in instruction
     assert "fake-secret-for-tests" not in call["contents"] + instruction
 
 

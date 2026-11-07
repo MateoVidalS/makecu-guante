@@ -8,6 +8,7 @@ import pytest
 from sqlmodel import select
 
 from app.contracts import types as c
+from app.contracts.therapist import SessionDetail
 from app.db import models as m
 
 
@@ -45,7 +46,7 @@ def test_session_attempt_trace_transcript_and_cascade(
     transcript = payload("session_detail")["transcript"]
     response = client.post(f"/api/sessions/{id}/transcript", json={"lines": transcript})
     assert response.status_code == 204 and not response.content
-    detail = c.SessionDetail.model_validate(client.get(f"/api/sessions/{id}").json())
+    detail = SessionDetail.model_validate(client.get(f"/api/sessions/{id}").json())
     assert detail.n_attempts == 1 and detail.attempts == [attempt]
     assert [t.model_dump() for t in detail.transcript] == transcript
     summary = payload("sessions")[0]["summary"]
@@ -88,8 +89,13 @@ def test_fixture_sessions_roundtrip(client, payload, calibration):
         expected["summary"]["previous"] = ended["summary"]["previous"]
         assert ended == expected
         detail = client.get(f"/api/sessions/{created['id']}").json()
-        c.SessionDetail.model_validate(detail)
-        assert {k: v for k, v in detail.items() if k not in ("attempts", "transcript")} == ended
+        SessionDetail.model_validate(detail)
+        assert detail["coach_decisions"] == detail["feelings"] == []
+        assert {
+            k: v
+            for k, v in detail.items()
+            if k not in ("attempts", "transcript", "coach_decisions", "feelings")
+        } == ended
 
 
 def test_evaluations_roundtrip_and_compression(client, db, payload, calibration):

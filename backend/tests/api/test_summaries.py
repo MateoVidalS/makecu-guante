@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 from app.config import settings
 from app.contracts import types as c
+from app.contracts.therapist import CoachDecision, FeelingEntry
 from app.db import models as m
 from app.db import repo
 from app.llm import summaries
@@ -124,3 +125,98 @@ def test_invalid_summary_requests(client, session_body, monkeypatch):
             == 422
         )
     model.assert_not_called()
+
+
+def test_summary_inputs_include_feelings_and_full_decision_audit(
+    client, db, session_body, payload, monkeypatch
+):
+    model = fake_model(monkeypatch)
+    id = client.post("/api/sessions", json=session_body).json()["id"]
+    path = f"/api/sessions/{id}"
+    feelings = [
+        FeelingEntry(
+            t="2026-11-07T12:00:00Z",
+            session_id=id,
+            attempt_index=0,
+            pain=5,
+            fatigue=7,
+            note="My index hurts",
+            source="ui",
+        ).model_dump()
+    ]
+    decisions = [
+        CoachDecision(
+            id=f"decision-{result}",
+            t=f"2026-11-07T12:00:0{i}Z",
+            session_id=id,
+            tool="brake" if result == "applied" else "adjust_help",
+            requested={"reason": "Reported pain"} if result == "applied" else {"finger": "index"},
+            applied=None if result == "rejected" else {"phase": "PAUSED"},
+            result=result,
+            reason="Reported pain" if result == "applied" else "Safe help limit",
+            source="local_rule" if result == "applied" else "coach",
+        ).model_dump()
+        for i, result in enumerate(("applied", "clamped", "rejected", "undone"))
+    ]
+    assert client.post(path + "/feelings", json={"feelings": feelings}).status_code == 204
+    assert client.post(path + "/coach_decisions", json={"decisions": decisions}).status_code == 204
+    client.post(path + "/end", json={"summary": payload("sessions")[0]["summary"]})
+    for request in ({"kind": "session", "session_id": id}, {"kind": "therapist", "days": 7}):
+        response = client.post("/api/summaries", json=request)
+        assert response.status_code == 200, response.text
+        context = json.loads(model.call_args.kwargs["contents"])
+        assert context["feelings"] == feelings
+        assert context["coach_decisions"] == decisions
+
+
+def test_digest_filters_therapy_records_by_session_demo_status_and_window(db, session_body):
+    from datetime import datetime, timedelta, timezone
+
+    body = c.SessionIn.model_validate(session_body)
+    demo = repo.create_demo_session(db, body)
+    old = repo.create_session(
+        db,
+        body,
+        started_at=(datetime.now(timezone.utc) - timedelta(days=30)).isoformat(),
+    )
+    for session in (demo, old):
+        repo.add_feelings(
+            db,
+            session.id,
+            [
+                FeelingEntry(
+                    t=repo.now(),
+                    session_id=session.id,
+                    attempt_index=None,
+                    pain=0,
+                    fatigue=2,
+                    note="Fine",
+                    source="voice",
+                )
+            ],
+        )
+        repo.add_coach_decisions(
+            db,
+            session.id,
+            [
+                CoachDecision(
+                    id="rest",
+                    t=repo.now(),
+                    session_id=session.id,
+                    tool="add_rest",
+                    requested={"seconds": 10},
+                    applied={"seconds": 10},
+                    result="applied",
+                    reason="Tired",
+                    source="coach",
+                )
+            ],
+        )
+    digest = repo.therapist_digest(db, 7)
+    assert digest["only_demo"] is True
+    assert {f["session_id"] for f in digest["feelings"]} == {demo.id}
+    assert {d["session_id"] for d in digest["coach_decisions"]} == {demo.id}
+    repo.create_session(db, body.model_copy(update={"is_demo": False}))
+    digest = repo.therapist_digest(db, 7)
+    assert digest["only_demo"] is False
+    assert digest["coach_decisions"] == digest["feelings"] == []
