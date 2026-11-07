@@ -46,7 +46,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await page
     .getByRole('checkbox', { name: 'Rigid index', exact: true })
     .check();
-  const safety = page.getByRole('alert', { name: 'Safety stop' });
+  const safety = page.locator('#safety-banner-slot').getByRole('alert');
   await expect(safety).toBeVisible({ timeout: 45_000 });
   await safety.getByText('What happened?', { exact: true }).click();
   await expect(safety).toContainText('overcurrent');
@@ -93,7 +93,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   ).toBe(true);
   expect(detail.is_demo).toBe(true);
   await page.getByRole('link', { name: 'See progress', exact: true }).click();
-  await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+  await page.getByRole('tab', { name: 'Sessions', exact: true }).click();
   await page.locator(`a[href="/history/sessions/${sessionId}"]`).click();
   await expect(
     page.getByRole('heading', { name: 'Session replay', exact: true }),
@@ -106,13 +106,13 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await page
     .getByRole('checkbox', { name: 'Hand relaxed in the glove' })
     .check();
+  await expect(page.getByRole('checkbox')).toHaveCount(1);
   await expect(
-    page.getByRole('checkbox', { name: 'Calibrated', exact: true }),
-  ).toBeEnabled();
-  await page.getByRole('checkbox', { name: 'Calibrated', exact: true }).check();
-  await page
-    .getByRole('checkbox', { name: 'Glove connected', exact: true })
-    .check();
+    page.locator('main .ds-status-chip').filter({ hasText: 'Calibration:' }),
+  ).toContainText('Ready');
+  await expect(
+    page.locator('main .ds-status-chip').filter({ hasText: 'Glove:' }),
+  ).toContainText('Connected');
   await page
     .getByRole('button', { name: 'Start evaluation', exact: true })
     .click();
@@ -124,7 +124,10 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   ).toHaveText('Saved');
   await page.goto('/doctor');
   await expect(
-    page.getByRole('heading', { name: 'Doctor view', exact: true }),
+    page.getByRole('heading', {
+      name: 'Practice and movement report',
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByText('Active range over sessions', { exact: true }),

@@ -9,7 +9,7 @@ const routes: [string, string | RegExp][] = [
   ['/history', 'History'],
   ['/history/sessions/8', 'Session replay'],
   ['/history/evaluations/3', 'Evaluation detail'],
-  ['/doctor', 'Doctor view'],
+  ['/doctor', 'Practice and movement report'],
   ['/profile', 'Profile'],
   ['/_dev/hand', 'Virtual hand gallery'],
 ];
@@ -40,11 +40,7 @@ test('real exercise enters focus, pauses and ends safely', async ({ page }) => {
     page.getByRole('button', { name: 'Resume', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
-  await page.getByRole('button', { name: 'End practice', exact: true }).click();
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'End session', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'End session', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: 'Session complete', exact: true }),
   ).toBeVisible();
