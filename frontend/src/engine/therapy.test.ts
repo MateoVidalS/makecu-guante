@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { CoachToolName } from '../contracts/therapist';
 import type { ExerciseSettings } from '../contracts/engine';
 import { GLOVE_FINGERS } from '../contracts/glove';
@@ -13,8 +13,10 @@ import { calibration, FakeWorld } from './test/fakeWorld';
 function harness(settings: Partial<ExerciseSettings> = {}) {
   const world = new FakeWorld();
   const outputs: Output[] = [];
+  const sentCommands: GloveCommand[] = [];
   const accept = (out: Output) => {
     outputs.push(out);
+    sentCommands.push(...out.commands);
     world.apply(out.commands);
   };
   const engine = createExerciseEngine({
@@ -48,7 +50,7 @@ function harness(settings: Partial<ExerciseSettings> = {}) {
   };
   const call = (tool: CoachToolName, args: Record<string, unknown> = {}) =>
     engine.therapy.adjust(tool, args, 'coach');
-  const commands = () => outputs.flatMap((out) => out.commands);
+  const commands = () => sentCommands;
   return {
     world,
     engine,
@@ -278,6 +280,26 @@ describe('therapy engine policy and boundaries', () => {
     expect(h.therapy.state()?.last_feeling?.minutes_ago).toBe(1);
   });
 
+  it('gives distinct reports unique timestamps even within one millisecond', () => {
+    const h = harness();
+    h.until(() => h.engine.state().phase === 'ATTEMPT');
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    h.therapy.recordFeeling({
+      pain: 1,
+      fatigue: 2,
+      note: 'First.',
+      source: 'ui',
+    });
+    h.therapy.recordFeeling({
+      pain: 2,
+      fatigue: 3,
+      note: 'Second.',
+      source: 'ui',
+    });
+    const [first, second] = h.therapy.feelings();
+    expect(Date.parse(second.t) - Date.parse(first.t)).toBe(1);
+  });
+
   it('exposes five fingers, best alone, lagging, help, last result and unavailable vision accurately', () => {
     const h = harness();
     h.world.hand = [0.4, 0.1, 0.4, 0.4, 0.4];
@@ -405,12 +427,13 @@ it('property: arbitrary tool sequences cannot bypass position, speed, calibrated
       });
       if (tool === 'brake')
         expect(h.commands().slice(before)).toEqual([{ t: 'release' }]);
-      for (const speed of Object.values(
-        h.therapy.state()!.adjustments.assist_speed,
-      )) {
-        expect(speed).toBeGreaterThanOrEqual(Math.min(initialCap, 0.1));
-        expect(speed).toBeLessThanOrEqual(Math.min(initialCap, 0.3));
-      }
+      const speeds = Object.values(h.therapy.state()!.adjustments.assist_speed);
+      expect(Math.min(...speeds)).toBeGreaterThanOrEqual(
+        Math.min(initialCap, 0.1),
+      );
+      expect(Math.max(...speeds)).toBeLessThanOrEqual(
+        Math.min(initialCap, 0.3),
+      );
       if (h.engine.state().phase === 'PAUSED' && random() < 0.2)
         h.world.apply(h.engine.resume(h.world.now).commands);
       h.tick(100);

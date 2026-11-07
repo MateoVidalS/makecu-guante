@@ -54,6 +54,7 @@ export class TherapyController implements TherapyApi {
   private log: CoachDecision[] = [];
   private feelingLog: FeelingEntry[] = [];
   private feelingAt: number | null = null;
+  private feelingTimestamp = 0;
   private restSpent = 0;
   private restBoundary = 0;
   private sequence = 0;
@@ -78,6 +79,7 @@ export class TherapyController implements TherapyApi {
     this.log = [];
     this.feelingLog = [];
     this.feelingAt = null;
+    this.feelingTimestamp = 0;
     this.restSpent = 0;
     this.restBoundary = 0;
   }
@@ -250,8 +252,10 @@ export class TherapyController implements TherapyApi {
         return reject(
           'Pain and fatigue must be numbers from 0 to 10, with a text note.',
         );
+      // A3 identifies a feeling by (session_id, t), including retried uploads.
+      this.feelingTimestamp = Math.max(Date.now(), this.feelingTimestamp + 1);
       const feeling: FeelingEntry = {
-        t: new Date().toISOString(),
+        t: new Date(this.feelingTimestamp).toISOString(),
         session_id: this.context.sessionId() ?? 0,
         attempt_index: snapshot.index,
         pain: args.pain,

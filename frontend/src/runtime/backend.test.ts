@@ -175,6 +175,18 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     )
       world.advance(20);
     expect(runtime.exercise.view().phase).toBe('ASSIST');
+    runtime.therapy.recordFeeling({
+      pain: 1,
+      fatigue: 2,
+      note: 'First check-in.',
+      source: 'ui',
+    });
+    runtime.therapy.recordFeeling({
+      pain: 2,
+      fatigue: 3,
+      note: 'Updated check-in.',
+      source: 'ui',
+    });
     runtime.therapy.adjust(
       'adjust_help',
       { finger: 'index', direction: 'less', reason: 'Gentler help.' },
@@ -206,6 +218,8 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       feelings: FeelingEntry[];
     }>(`/sessions/${id}`);
     expect(audit.coach_decisions.map((d) => d.tool)).toEqual([
+      'record_feeling',
+      'record_feeling',
       'adjust_help',
       'set_attempt_time',
       'brake',
@@ -213,19 +227,18 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       'get_live_state',
     ]);
     expect(audit.coach_decisions.every((d) => d.session_id === id)).toBe(true);
-    expect(audit.coach_decisions[2]).toMatchObject({
+    expect(audit.coach_decisions[4]).toMatchObject({
       source: 'local_rule',
       applied: { safety_source: 'coach_brake' },
     });
-    expect(audit.feelings).toEqual([
-      expect.objectContaining({
-        session_id: id,
-        attempt_index: 0,
-        pain: 5,
-        fatigue: 7,
-        source: 'ui',
-      }),
-    ]);
+    expect(audit.feelings.map((f) => f.pain)).toEqual([1, 2, 5]);
+    expect(audit.feelings.at(-1)).toMatchObject({
+      session_id: id,
+      attempt_index: 0,
+      pain: 5,
+      fatigue: 7,
+      source: 'ui',
+    });
     expect((await api.getSession(id)).attempts[0].safety_events).toContainEqual(
       expect.objectContaining({ source: 'coach_brake' }),
     );
