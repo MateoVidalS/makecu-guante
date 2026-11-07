@@ -70,7 +70,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await expect(
     page.getByRole('heading', { name: 'Session complete', exact: true }),
   ).toBeVisible({ timeout: 100_000 });
-  await expect(page.getByText('15 attempts', { exact: false })).toBeVisible();
+  await expect(page.getByText(/^15 attempts ·/)).toBeVisible();
   await expect(
     page.getByText('You completed 15 attempts. Good effort today.', {
       exact: true,
