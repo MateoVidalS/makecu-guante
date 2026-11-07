@@ -5,6 +5,7 @@ import type {
   HistoryOverview,
   ResistancePoint,
   RomPoint,
+  Session,
 } from '../../contracts/api';
 import type {
   AttemptTrace,
@@ -12,7 +13,7 @@ import type {
   FingerAttemptMetrics,
 } from '../../contracts/engine';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
-import { phaseBands } from './transforms';
+import { phaseBands, type TimelineEntry } from './transforms';
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -28,12 +29,32 @@ export interface HandValue {
 }
 export type HandValues = Partial<Record<GloveFinger, HandValue>>;
 
-export function handFromOverview(overview: HistoryOverview | undefined): {
+export function handFromOverview(
+  overview: HistoryOverview | undefined,
+  sessions?: Session[],
+): {
   first: HandValues;
   last: HandValues;
 } {
   const first: HandValues = {},
     last: HandValues = {};
+  if (sessions) {
+    // The overview uses each finger's first measured session, which may be newer
+    // than the date on the hand map when history mixes three and five fingers.
+    const ordered = sessions
+      .filter((s) => s.summary)
+      .sort(
+        (a, b) =>
+          Date.parse(a.started_at) - Date.parse(b.started_at) || a.id - b.id,
+      );
+    ordered[0]?.summary?.per_finger.forEach((f) => {
+      first[f.finger] = { own: f.active_max_mean };
+    });
+    ordered.at(-1)?.summary?.per_finger.forEach((f) => {
+      last[f.finger] = { own: f.active_max_mean };
+    });
+    return { first, last };
+  }
   overview?.per_finger.forEach((f) => {
     first[f.finger] = { own: f.active_max_first };
     last[f.finger] = { own: f.active_max_last };
@@ -78,6 +99,7 @@ export function effortSeries(
   rom: RomPoint[],
   assist: AssistPoint[],
   finger: GloveFinger,
+  timeline: TimelineEntry[] = [],
 ): EffortPoint[] {
   const rows = new Map<number, EffortPoint>();
   const row = (id: number, date: string, demo: boolean) => {
@@ -88,6 +110,11 @@ export function effortSeries(
     }
     return r;
   };
+  // Include every session, even when this finger was not measured.
+  timeline.forEach((s) => row(s.id, s.started_at, s.is_demo));
+  [...rom, ...assist].forEach((p) =>
+    row(p.session_id, p.started_at, p.is_demo),
+  );
   rom
     .filter((p) => p.finger === finger)
     .forEach((p) => {
@@ -115,7 +142,7 @@ export function effortSeries(
 
 export function effortTakeaway(points: EffortPoint[], finger: GloveFinger) {
   const measured = points.filter((p) => p.own != null);
-  if (!measured.length) return `${cap(finger)}: no sessions yet`;
+  if (!measured.length) return `${cap(finger)}: not measured`;
   const first = measured[0].own!,
     last = measured.at(-1)!.own!;
   if (measured.length === 1) return `${cap(finger)}: ${pct(last)} on your own`;
@@ -242,18 +269,27 @@ export function dumbbellRows(
     ring: [],
     pinky: [],
   } as Record<GloveFinger, DumbbellRow[]>;
-  points.forEach((p) =>
-    out[p.finger]?.push({
-      evaluationId: p.evaluation_id,
-      date: p.started_at,
-      demo: p.is_demo,
-      slow: p.slow,
-      fast: p.fast,
-      gap:
-        p.dependence ??
-        (p.slow != null && p.fast != null ? p.fast - p.slow : null),
-    }),
+  const evaluations = new Map(points.map((p) => [p.evaluation_id, p]));
+  const byFinger = new Map(
+    points.map((p) => [`${p.evaluation_id}-${p.finger}`, p]),
   );
+  // Legacy and subset evaluations retain a row for each unmeasured finger.
+  evaluations.forEach((evaluation) => {
+    GLOVE_FINGERS.forEach((finger) => {
+      const p = byFinger.get(`${evaluation.evaluation_id}-${finger}`);
+      const slow = p?.slow ?? null;
+      const fast = p?.fast ?? null;
+      out[finger].push({
+        evaluationId: evaluation.evaluation_id,
+        date: evaluation.started_at,
+        demo: evaluation.is_demo,
+        slow,
+        fast,
+        gap:
+          p?.dependence ?? (slow != null && fast != null ? fast - slow : null),
+      });
+    });
+  });
   GLOVE_FINGERS.forEach((f) =>
     out[f].sort(
       (a, b) =>
@@ -293,9 +329,13 @@ export function resistanceTakeaway(
       : 'No resistance measured yet';
   }
   if (changes.every((c) => c < 0))
-    return 'Speed-dependent resistance eased on every finger';
+    return changes.length === GLOVE_FINGERS.length
+      ? 'Speed-dependent resistance eased on every finger'
+      : 'Speed-dependent resistance eased on measured fingers';
   if (changes.every((c) => c > 0))
-    return 'Speed-dependent resistance rose on every finger';
+    return changes.length === GLOVE_FINGERS.length
+      ? 'Speed-dependent resistance rose on every finger'
+      : 'Speed-dependent resistance rose on measured fingers';
   if (changes.every((c) => c === 0))
     return 'Speed-dependent resistance held steady';
   return 'Speed-dependent resistance changed unevenly across fingers';

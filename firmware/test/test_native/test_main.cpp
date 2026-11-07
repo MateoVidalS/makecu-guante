@@ -10,6 +10,7 @@
 #include "boot_event.h"
 #include "calib.h"
 #include "current_filter.h"
+#include "pwm_plan.h"
 #include "ramp.h"
 #include "ring_frame.h"
 #include "safety.h"
@@ -822,6 +823,15 @@ void checkDeviceFixture(JsonDocument& input, char* output, std::size_t capacity)
   TEST_ASSERT_TRUE_MESSAGE(sameJson(input.as<JsonVariantConst>(), formatted.as<JsonVariantConst>()),
                            output);
 }
+void servo_timers_cover_every_finger() {
+  // Four channels per LEDC timer: five fingers need two timers, never one.
+  TEST_ASSERT_EQUAL_UINT(1, pwm::timersFor(1));
+  TEST_ASSERT_EQUAL_UINT(1, pwm::timersFor(4));
+  TEST_ASSERT_EQUAL_UINT(2, pwm::timersFor(5));
+  TEST_ASSERT_EQUAL_UINT(2, pwm::timersFor(8));
+  TEST_ASSERT_EQUAL_UINT(2, pwm::SERVO_TIMERS);
+  TEST_ASSERT_GREATER_OR_EQUAL(config::FINGERS, pwm::SERVO_TIMERS * pwm::CHANNELS_PER_TIMER);
+}
 void shared_serial_fixtures_match_expected() {
   std::ifstream lines("../contracts/fixtures/serial_lines.txt");
   std::ifstream expectedFile("../contracts/fixtures/serial_lines.expected.json");
@@ -917,6 +927,7 @@ int main() {
   RUN_TEST(rejected_calibration_invalidates_that_finger_without_keepalive);
   RUN_TEST(assistance_waits_for_out_of_range_jog_to_unwind);
   RUN_TEST(decimal_writer_never_overruns_and_parser_survives_noise);
+  RUN_TEST(servo_timers_cover_every_finger);
   RUN_TEST(shared_serial_fixtures_match_expected);
   return UNITY_END();
 }

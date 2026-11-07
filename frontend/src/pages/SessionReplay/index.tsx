@@ -14,6 +14,7 @@ import {
   useSession,
 } from '../../api/client';
 import type { Attempt } from '../../contracts/api';
+import { GLOVE_FINGERS } from '../../contracts/glove';
 import { POSES } from '../../contracts/poses';
 import './replay.css';
 import {
@@ -104,17 +105,31 @@ function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
             </tr>
           </thead>
           <tbody>
-            {attempt.fingers
-              .filter((f) => f.scored)
-              .map((f) => (
-                <tr key={f.finger}>
-                  <th scope="row">{fingerName(f.finger)}</th>
-                  <td className="num">{percentage(f.target)}</td>
-                  <td className="num">{percentage(f.active_max)}</td>
-                  <td className="num">{percentage(f.assist_needed)}</td>
-                  <td className="num">{percentage(f.final)}</td>
+            {GLOVE_FINGERS.map((finger) => {
+              const f = attempt.fingers.find((f) => f.finger === finger);
+              const measured =
+                f &&
+                (f.active_max != null ||
+                  f.final != null ||
+                  f.assist_needed != null);
+              return (
+                <tr key={finger}>
+                  <th scope="row">{fingerName(finger)}</th>
+                  <td className="num">
+                    {f?.scored ? percentage(f.target) : '—'}
+                  </td>
+                  {measured ? (
+                    <>
+                      <td className="num">{percentage(f.active_max)}</td>
+                      <td className="num">{percentage(f.assist_needed)}</td>
+                      <td className="num">{percentage(f.final)}</td>
+                    </>
+                  ) : (
+                    <td colSpan={3}>Not measured</td>
+                  )}
                 </tr>
-              ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

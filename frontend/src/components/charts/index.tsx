@@ -80,7 +80,7 @@ const numberLabel = (
 ) =>
   typeof value === 'number'
     ? `${unit.includes('mA') || unit === '%' ? Math.round(value) : value.toFixed(1)}${unit}`
-    : '—';
+    : 'Not measured';
 
 /** Softened finger colours: defined in charts.css from the --finger-* tokens. */
 const color = (finger: GloveFinger) => `var(--chart-${finger})`;
@@ -320,7 +320,7 @@ function Chart({
         </div>
       ) : !hasData ? (
         <Text size="small" tone="muted" className="chart__empty">
-          No measurements recorded yet.
+          Not measured. No measurements recorded yet.
         </Text>
       ) : (
         <>
@@ -846,7 +846,7 @@ export function ReplayChart({
               ? `Motor current peaked at ${Math.round(peak)} mA while the glove helped`
               : 'Motor current stayed low: the glove did not need to help'
           }
-          hint="Total current of the five servos. Spikes mean the finger pushed back."
+          hint="Total motor current from the recorded glove. Spikes can indicate resistance."
           rows={reduced}
           series={[
             {

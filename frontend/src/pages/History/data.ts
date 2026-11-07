@@ -22,9 +22,12 @@ export function useAllSessions() {
 
 /** Dates and demo flags of the first and latest sessions, for the hand map captions. */
 export function firstAndLast(sessions: Session[] | undefined) {
-  const ordered = [...(sessions ?? [])].sort(
-    (a, b) => Date.parse(a.started_at) - Date.parse(b.started_at),
-  );
+  const ordered = [...(sessions ?? [])]
+    .filter((s) => s.summary)
+    .sort(
+      (a, b) =>
+        Date.parse(a.started_at) - Date.parse(b.started_at) || a.id - b.id,
+    );
   const first = ordered[0],
     last = ordered.at(-1);
   return {

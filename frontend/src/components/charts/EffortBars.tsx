@@ -1,10 +1,11 @@
 import type { AssistPoint, RomPoint } from '../../contracts/api';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
+import type { TimelineEntry } from './transforms';
 import { effortSeries, effortTakeaway, type EffortPoint } from './visuals';
 import { useWidth, VisualCard, type LegendEntry } from './VisualCard';
 
 const pct = (v: number | null | undefined) =>
-  v == null ? '—' : `${Math.round(v * 100)}%`;
+  v == null ? 'Not measured' : `${Math.round(v * 100)}%`;
 const fingerName = (f: string) => f.charAt(0).toUpperCase() + f.slice(1);
 const shortDate = (d: string) =>
   new Date(d).toLocaleDateString('en', {
@@ -81,14 +82,16 @@ export function EffortColumns({
   assist,
   finger,
   loading,
+  timeline,
 }: {
   rom: RomPoint[];
   assist: AssistPoint[];
+  timeline?: TimelineEntry[];
   finger: GloveFinger;
   loading?: boolean;
 }) {
   const [ref, width] = useWidth<HTMLDivElement>(320);
-  const rows = effortSeries(rom, assist, finger);
+  const rows = effortSeries(rom, assist, finger, timeline);
   const has = rows.some((r) => r.own != null || r.glove != null);
   const plotW = Math.max(60, width - M.left - M.right);
   const band = plotW / Math.max(1, rows.length);
@@ -111,7 +114,7 @@ export function EffortColumns({
   return (
     <VisualCard
       title={effortTakeaway(rows, finger)}
-      hint="Each column is one session. More blue and less orange is better."
+      hint="Each column is one session. A dash means not measured. More blue and less orange is better."
       label={`${fingerName(finger)}, per session: ${rows
         .map(
           (r) =>
@@ -176,6 +179,16 @@ export function EffortColumns({
                   width={band}
                   height={PLOT_H}
                 />
+                {r.own == null && r.glove == null && (
+                  <text
+                    className="viz-tick"
+                    x={cx}
+                    y={y(0) - 6}
+                    textAnchor="middle"
+                  >
+                    —
+                  </text>
+                )}
                 {ownH > 0 && (
                   <path
                     className={`viz-own${demo}`}
@@ -235,6 +248,7 @@ export function EffortColumns({
 export function EffortSmallMultiples(props: {
   rom: RomPoint[];
   assist: AssistPoint[];
+  timeline?: TimelineEntry[];
   loading?: boolean;
 }) {
   return (
@@ -251,21 +265,23 @@ export function LatestEffortBars({
   rom,
   assist,
   loading,
+  timeline,
 }: {
   rom: RomPoint[];
   assist: AssistPoint[];
+  timeline?: TimelineEntry[];
   loading?: boolean;
 }) {
-  const latest = GLOVE_FINGERS.map((f) => {
-    const rows = effortSeries(rom, assist, f).filter(
-      (r) => r.own != null || r.glove != null,
-    );
-    return { finger: f, row: rows.at(-1), first: rows[0] };
-  });
-  const rows = latest.filter((l) => l.row);
+  const rows = GLOVE_FINGERS.map((finger) => ({
+    finger,
+    row: effortSeries(rom, assist, finger, timeline).at(-1),
+  }));
   const date = rows[0]?.row?.date;
-  const owns = rows.map((l) => l.row!.own ?? 0);
-  const best = rows[owns.indexOf(Math.max(...owns))];
+  const measured = rows.filter((l) => l.row?.own != null);
+  const best = measured.reduce<(typeof rows)[number] | undefined>(
+    (best, l) => (!best || l.row!.own! > best.row!.own! ? l : best),
+    undefined,
+  );
   return (
     <VisualCard
       className="effort-latest"
@@ -278,31 +294,51 @@ export function LatestEffortBars({
       label={`Latest session per finger: ${rows
         .map(
           (l) =>
-            `${fingerName(l.finger)} ${pct(l.row!.own)} on your own and ${pct(l.row!.glove)} from the glove`,
+            `${fingerName(l.finger)} ${pct(l.row?.own)} on your own and ${pct(l.row?.glove)} from the glove`,
         )
         .join('; ')}.`}
       legend={EFFORT_LEGEND}
       loading={loading}
-      empty={!rows.length}
+      empty={!date}
       table={
-        <EffortTable
-          rows={rows.map((l) => ({
-            ...l.row!,
-            sessionId: l.row!.sessionId * 10 + GLOVE_FINGERS.indexOf(l.finger),
-          }))}
-          caption="Latest session: thumb, index, middle"
-        />
+        <table className="data-table">
+          <caption>
+            Latest session: on your own and glove help by finger
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Finger</th>
+              <th scope="col" className="num">
+                On your own
+              </th>
+              <th scope="col" className="num">
+                Glove helped
+              </th>
+              <th scope="col">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ finger, row }) => (
+              <tr key={finger}>
+                <th scope="row">{fingerName(finger)}</th>
+                <td className="num">{pct(row?.own)}</td>
+                <td className="num">{pct(row?.glove)}</td>
+                <td>{row?.demo ? 'Demo data' : 'Recorded'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       }
     >
       <div className="effort-bars">
         {rows.map(({ finger, row }) => {
-          const own = row!.own ?? 0,
-            glove = row!.glove ?? 0;
+          const own = row?.own ?? 0,
+            glove = row?.glove ?? 0;
           return (
             <div key={finger} className="effort-bars__row">
               <span className="effort-bars__name">{fingerName(finger)}</span>
               <div
-                className={`effort-bars__track${row!.demo ? ' viz-demo' : ''}`}
+                className={`effort-bars__track${row?.demo ? ' viz-demo' : ''}`}
               >
                 {own > 0 && (
                   <span
@@ -321,7 +357,11 @@ export function LatestEffortBars({
                   </span>
                 )}
               </div>
-              <span className="effort-bars__total">{pct(own + glove)}</span>
+              <span className="effort-bars__total">
+                {row?.own == null || row?.glove == null
+                  ? 'Not measured'
+                  : pct(own + glove)}
+              </span>
             </div>
           );
         })}

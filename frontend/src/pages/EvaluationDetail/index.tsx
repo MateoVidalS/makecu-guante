@@ -12,8 +12,8 @@ import {
   formatDate,
   sweepsAreConstant,
 } from '../../components/charts';
-const ma = (value: number | null) =>
-  value == null ? '—' : `${Math.round(value)} mA`;
+const ma = (value: number | null | undefined) =>
+  value == null ? 'Not measured' : `${Math.round(value)} mA`;
 
 export default function EvaluationDetail() {
   const { id } = useParams(),
@@ -69,22 +69,31 @@ export default function EvaluationDetail() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.fingers.map((f) => (
-                        <tr key={f.finger}>
-                          <th scope="row">{fingerName(f.finger)}</th>
-                          <td className="num">{ma(f.resistance_slow_ma)}</td>
-                          <td className="num">{ma(f.resistance_fast_ma)}</td>
-                          <td className="num">
-                            {ma(f.velocity_dependence_ma)}
-                          </td>
-                          <td className="num">{ma(f.peak_excess_ma)}</td>
-                          <td>
-                            {f.aborted
-                              ? 'Stopped safely; incomplete'
-                              : 'Complete'}
-                          </td>
-                        </tr>
-                      ))}
+                      {GLOVE_FINGERS.map((finger) => {
+                        const f = data.fingers.find((f) => f.finger === finger);
+                        const measured =
+                          f &&
+                          (f.resistance_slow_ma != null ||
+                            f.resistance_fast_ma != null);
+                        return (
+                          <tr key={finger}>
+                            <th scope="row">{fingerName(finger)}</th>
+                            <td className="num">{ma(f?.resistance_slow_ma)}</td>
+                            <td className="num">{ma(f?.resistance_fast_ma)}</td>
+                            <td className="num">
+                              {ma(f?.velocity_dependence_ma)}
+                            </td>
+                            <td className="num">{ma(f?.peak_excess_ma)}</td>
+                            <td>
+                              {f?.aborted
+                                ? 'Stopped safely; incomplete'
+                                : measured
+                                  ? 'Complete'
+                                  : 'Not measured'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 }
