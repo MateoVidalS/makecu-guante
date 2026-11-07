@@ -1,23 +1,26 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useStore } from 'zustand';
-import { useProfile, useSessions, useHistoryOverview } from '../../api/client';
+import { useProfile, useSessions } from '../../api/client';
 import { useRuntime } from '../../runtime';
 import { useGlove } from '../../glove';
 import { useVisionFrame } from '../../vision';
 import { DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
+import { Section, StatusList } from '../../components/common';
 import {
-  percent,
-  Section,
-  StatusList,
-  Readouts,
-} from '../../components/common';
-import { Button, PageHeader, Checkbox, DemoBadge } from '../../design-system';
+  Button,
+  PageHeader,
+  Checkbox,
+  DemoBadge,
+  Stack,
+} from '../../design-system';
 import { formatDate } from '../../components/charts';
+import { ThenNow, WeekStrip, lastSevenDays } from '../../components/metrics';
+import { rangeComparison } from './range';
+import './home.css';
 export default function Home() {
   const profile = useProfile(),
-    sessions = useSessions({ limit: 5 }),
-    overview = useHistoryOverview();
+    sessions = useSessions({ limit: 30 });
   const runtime = useRuntime(),
     navigate = useNavigate(),
     { store } = useGlove();
@@ -26,7 +29,6 @@ export default function Home() {
   const [short, setShort] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
-  const last = sessions.data?.[0];
   const calibrated = !!runtime.calibration.current;
   async function start() {
     if (!runtime.calibration.current) {
@@ -57,12 +59,10 @@ export default function Home() {
       : !seen
         ? "The camera can't see the hand. Start opens Setup first."
         : null;
-  const trend =
-    sessions.data
-      ?.slice()
-      .reverse()
-      .map((s) => s.summary?.active_ratio_mean ?? null) ?? [];
-  const x = (i: number) => i * 90 + 20;
+  const list = sessions.data ?? [];
+  const week = lastSevenDays(list.map((s) => s.started_at));
+  const range = rangeComparison(list);
+  const mirrored = runtime.calibration.current?.camera.affected_hand === 'left';
   return (
     <div className="hp-page">
       <PageHeader
@@ -93,100 +93,71 @@ export default function Home() {
         )}
       </Section>
       <div className="hp-columns">
-        <Section title="Readiness">
-          <StatusList
-            label="Readiness checklist"
-            items={[
-              {
-                label: 'Glove',
-                value: connected ? 'Connected' : 'Not connected',
-                tone: connected ? 'reached' : 'off',
-                action: (
-                  <Link to="/setup">{connected ? 'Setup' : 'Connect'}</Link>
-                ),
-              },
-              {
-                label: 'Calibration',
-                value: calibrated ? 'Saved' : 'Needed',
-                tone: calibrated ? 'reached' : 'caution',
-                action: (
-                  <Link to="/calibrate">
-                    {calibrated ? 'Review' : 'Calibrate'}
-                  </Link>
-                ),
-              },
-              {
-                label: 'Camera',
-                value: seen ? 'Sees the hand' : "Can't see the hand",
-                tone: seen ? 'reached' : 'caution',
-                action: <Link to="/setup">{seen ? 'Setup' : 'Fix'}</Link>,
-              },
-            ]}
-          />
-          <p className="hp-note">
-            To measure resistance before practice,{' '}
-            <Link to="/evaluate">run an evaluation</Link>.
-          </p>
-        </Section>
+        <Stack gap={32}>
+          <Section title="This week">
+            {sessions.isPending ? (
+              <p className="hp-note">Loading your week…</p>
+            ) : (
+              <WeekStrip days={week} />
+            )}
+          </Section>
+          <Section title="Readiness">
+            <StatusList
+              label="Readiness checklist"
+              items={[
+                {
+                  label: 'Glove',
+                  value: connected ? 'Connected' : 'Not connected',
+                  tone: connected ? 'reached' : 'off',
+                  action: (
+                    <Link to="/setup">{connected ? 'Setup' : 'Connect'}</Link>
+                  ),
+                },
+                {
+                  label: 'Calibration',
+                  value: calibrated ? 'Saved' : 'Needed',
+                  tone: calibrated ? 'reached' : 'caution',
+                  action: (
+                    <Link to="/calibrate">
+                      {calibrated ? 'Review' : 'Calibrate'}
+                    </Link>
+                  ),
+                },
+                {
+                  label: 'Camera',
+                  value: seen ? 'Sees the hand' : "Can't see the hand",
+                  tone: seen ? 'reached' : 'caution',
+                  action: <Link to="/setup">{seen ? 'Setup' : 'Fix'}</Link>,
+                },
+              ]}
+            />
+            <p className="hp-note">
+              To measure resistance before practice,{' '}
+              <Link to="/evaluate">run an evaluation</Link>.
+            </p>
+          </Section>
+        </Stack>
         <Section
-          title="Last session"
-          actions={
-            sessions.data?.some((s) => s.is_demo) ? <DemoBadge /> : undefined
-          }
+          title="Your active range"
+          description="How far each finger closes on its own."
+          actions={list.some((s) => s.is_demo) ? <DemoBadge /> : undefined}
         >
-          {last ? (
-            <>
-              <Readouts
-                label="Last session summary"
-                items={[
-                  { label: 'Date', value: formatDate(last.started_at) },
-                  {
-                    label: 'On your own',
-                    value: percent(last.summary?.active_ratio_mean),
-                  },
-                  {
-                    label: 'This week',
-                    value: overview.data
-                      ? `${overview.data.days_practiced_last_7} of 5`
-                      : '—',
-                    unit: 'days',
-                  },
-                ]}
+          {range ? (
+            <div className="home-range">
+              <ThenNow
+                deltas={range.deltas}
+                thenLabel={range.thenLabel}
+                nowLabel={`Latest · ${formatDate(range.latest.started_at)}`}
+                size={104}
+                mirrored={mirrored}
               />
-              <svg
-                className="hp-sparkline"
-                viewBox="0 0 400 90"
-                role="img"
-                aria-label="Recent practice estimates, oldest to newest"
-              >
-                {trend.map((value, i) => {
-                  const previous = trend[i - 1];
-                  return value == null ? null : (
-                    <g key={i}>
-                      {previous != null && (
-                        <line
-                          x1={x(i - 1)}
-                          y1={80 - previous * 70}
-                          x2={x(i)}
-                          y2={80 - value * 70}
-                          stroke="var(--active)"
-                          strokeWidth="2"
-                        />
-                      )}
-                      <circle
-                        cx={x(i)}
-                        cy={80 - value * 70}
-                        r="3.5"
-                        fill="var(--surface)"
-                        stroke="var(--active)"
-                        strokeWidth="2"
-                      />
-                    </g>
-                  );
-                })}
-              </svg>
-              <Link to={`/history/sessions/${last.id}`}>See session</Link>
-            </>
+              <p className="hp-note">
+                {range.changeText}{' '}
+                <Link to={`/history/sessions/${range.latest.id}`}>
+                  See session
+                </Link>
+              </p>
+            </div>
           ) : (
             <p className="hp-note">
               {sessions.isPending

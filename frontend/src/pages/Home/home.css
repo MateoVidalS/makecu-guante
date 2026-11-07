@@ -1,0 +1,8 @@
+/* Home: week strip and the active-range hand map. Tokens only. */
+.home-range {
+  display: grid;
+  gap: var(--space-16);
+}
+.home-range .mx-thennow__list {
+  margin-inline-start: 0;
+}
