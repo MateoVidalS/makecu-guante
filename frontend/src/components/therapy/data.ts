@@ -13,6 +13,8 @@ export const adjustmentTools = new Set([
   'set_attempt_time',
   'add_rest',
   'choose_next_pose',
+  'adjust_target',
+  'repeat_pose',
 ]);
 
 export function canUndo(decisions: CoachDecision[]) {
@@ -28,10 +30,33 @@ export function canUndo(decisions: CoachDecision[]) {
 }
 
 export function decisionLabel(decision: CoachDecision) {
-  const args = decision.applied ?? decision.requested;
+  const args = { ...decision.requested, ...decision.applied };
+  const finger = typeof args.finger === 'string' ? ` · ${args.finger}` : '';
   switch (decision.tool) {
     case 'adjust_help':
-      return `Help adjusted${typeof args.finger === 'string' ? ` · ${args.finger}` : ''}`;
+      return `${args.direction === 'more' ? 'Help starts sooner' : args.direction === 'less' ? 'Help starts later' : args.direction === 'gentler' ? 'Gentler help' : 'Help adjusted'}${finger}`;
+    case 'assist_finger_now':
+      return `Immediate help${finger}`;
+    case 'adjust_target':
+      return `${args.direction === 'lower' ? 'Target lowered' : args.direction === 'raise' ? 'Target restored' : 'Target adjusted'}${finger}`;
+    case 'highlight_finger':
+      return `Coach focus${finger}`;
+    case 'note_for_therapist':
+      return 'Therapist note';
+    case 'repeat_pose':
+      return 'Extra repetition queued';
+    case 'pause_session':
+      return 'Practice paused';
+    case 'resume_session':
+      return 'Practice resumed';
+    case 'skip_pose':
+      return 'Pose skipped';
+    case 'repeat_instruction':
+      return 'Instruction repeated';
+    case 'stop_session':
+      return 'Practice ended';
+    case 'get_progress':
+      return 'Progress checked';
     case 'set_attempt_time':
       return 'Try time adjusted';
     case 'add_rest':

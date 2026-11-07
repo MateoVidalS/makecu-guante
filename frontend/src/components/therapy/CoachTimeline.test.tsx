@@ -9,7 +9,7 @@ import {
 import '@testing-library/jest-dom/vitest';
 import { CoachTimeline } from './CoachTimeline';
 import { FakeTherapy } from './testing/FakeTherapy';
-import { attemptTherapyMarkers, canUndo } from './data';
+import { attemptTherapyMarkers, canUndo, decisionLabel } from './data';
 afterEach(cleanup);
 describe('therapy audit timeline', () => {
   it('interleaves decisions and feelings with elapsed time, result, source and requested/applied values', () => {
@@ -87,6 +87,53 @@ describe('therapy audit timeline', () => {
         label: expect.stringContaining('Try time adjusted'),
       },
     ]);
+  });
+  it('describes sooner/later/gentler help and the new safe tools', () => {
+    const therapy = new FakeTherapy();
+    expect(
+      decisionLabel(
+        therapy.emit('adjust_help', { finger: 'index', direction: 'more' }),
+      ),
+    ).toBe('Help starts sooner · index');
+    expect(
+      decisionLabel(
+        therapy.emit('adjust_help', { finger: 'index', direction: 'less' }),
+      ),
+    ).toBe('Help starts later · index');
+    expect(
+      decisionLabel(
+        therapy.emit('adjust_help', { finger: 'index', direction: 'gentler' }),
+      ),
+    ).toBe('Gentler help · index');
+    expect(
+      decisionLabel(
+        therapy.emit('adjust_target', { finger: 'ring', direction: 'raise' }),
+      ),
+    ).toBe('Target restored · ring');
+    expect(
+      decisionLabel(therapy.emit('assist_finger_now', { finger: 'pinky' })),
+    ).toBe('Immediate help · pinky');
+    expect(decisionLabel(therapy.emit('repeat_pose', {}))).toBe(
+      'Extra repetition queued',
+    );
+    expect(canUndo(therapy.decisions())).toBe(true);
+  });
+  it('shows an accepted therapist note without opening its JSON audit', () => {
+    const therapy = new FakeTherapy();
+    therapy.emit('note_for_therapist', {
+      text: 'Reports tingling in the little finger.',
+    });
+    render(
+      <CoachTimeline
+        startedAt="2026-11-07T12:00:00Z"
+        decisions={therapy.decisions()}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Therapist note: Reports tingling in the little finger.',
+      ),
+    ).toBeVisible();
   });
   it('shows a clear empty state for older sessions', () => {
     render(<CoachTimeline startedAt="2026-11-07T12:00:00Z" />);

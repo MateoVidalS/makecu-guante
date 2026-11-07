@@ -25,6 +25,7 @@ import { GloveProvider } from '../../glove';
 import { VisionProvider } from '../../vision';
 import { VoiceProvider } from '../../voice';
 import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
+import { FakeTherapy } from '../../components/therapy/testing/FakeTherapy';
 import Exercise, { LiveStage } from './index';
 
 vi.mock('../../hand3d/VirtualHand', () => ({
@@ -133,6 +134,38 @@ describe('live stage', () => {
     expect(document.querySelector('.live-hero .live-stage')).not.toBeNull();
     // The old picture-in-picture camera is gone from the side column.
     expect(document.querySelector('.live-details .camera-overlay')).toBeNull();
+  });
+  it('marks the named finger without changing its movement state', async () => {
+    const runtime = new ScriptedRuntime({ persist: false });
+    const therapy = new FakeTherapy();
+    Object.assign(runtime, { therapy });
+    await runtime.exercise.start(
+      [{ pose: 'full_fist', reps: 1 }],
+      DEFAULT_EXERCISE_SETTINGS,
+    );
+    runtime.dispose();
+    mount(<Exercise />, runtime);
+    act(() => {
+      therapy.emit('highlight_finger', { finger: 'index' });
+    });
+    const meter = screen.getByRole('meter', { name: 'Index' });
+    expect(meter.closest('.mx-gauge')).toHaveAttribute(
+      'data-highlighted',
+      'true',
+    );
+    expect(meter).toHaveAttribute(
+      'aria-valuetext',
+      expect.stringContaining('coach focus'),
+    );
+    expect(screen.getByText('Coach decisions · Focus: Index')).toBeVisible();
+    expect(
+      document.querySelectorAll('.mx-gauge[data-highlighted]'),
+    ).toHaveLength(1);
+    act(() => {
+      therapy.live!.highlighted_finger = null;
+      therapy.emit('get_live_state', {});
+    });
+    expect(meter.closest('.mx-gauge')).not.toHaveAttribute('data-highlighted');
   });
   it('shows a tall gauge per glove finger with the goal band and a legend', async () => {
     const runtime = new ScriptedRuntime({ persist: false });

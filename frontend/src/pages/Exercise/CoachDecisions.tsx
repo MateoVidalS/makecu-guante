@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { TherapyApi } from '../../contracts/therapist';
 import { Button, Dialog } from '../../design-system';
 import { canUndo, decisionLabel } from '../../components/therapy/data';
+import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
 import { CoachTimeline } from '../../components/therapy/CoachTimeline';
 
 export function CoachDecisions({
@@ -19,6 +20,8 @@ export function CoachDecisions({
   const [checkIn, setCheckIn] = useState(false);
   const [fatigue, setFatigue] = useState<number | null>(null);
   const [message, setMessage] = useState('');
+  const [feelingError, setFeelingError] = useState('');
+  const highlighted = useHighlightedFinger(therapy);
   useEffect(() => {
     const refresh = () => {
       setMessage('');
@@ -52,6 +55,7 @@ export function CoachDecisions({
       note: '',
       source: 'ui',
     });
+    setFeelingError(decision.result === 'rejected' ? decision.reason : '');
     setMessage(
       decision.result === 'rejected'
         ? decision.reason
@@ -65,7 +69,12 @@ export function CoachDecisions({
     <>
       <section className="therapy-live" aria-label="Coach decisions">
         <div className="therapy-live__copy" aria-live="polite">
-          <strong>Coach decisions</strong>
+          <strong>
+            Coach decisions
+            {highlighted
+              ? ` · Focus: ${highlighted.charAt(0).toUpperCase()}${highlighted.slice(1)}`
+              : ''}
+          </strong>
           <p>
             {message ||
               (latest
@@ -90,6 +99,7 @@ export function CoachDecisions({
           disabled={!therapy}
           onClick={() => {
             setFatigue(null);
+            setFeelingError('');
             setCheckIn(true);
           }}
         >
@@ -148,6 +158,11 @@ export function CoachDecisions({
             ? 'First, choose tiredness. Then choose pain.'
             : `Pain ${therapy?.limits.pain_brake_at ?? 4} or more releases the glove immediately.`}
         </p>
+        {feelingError && (
+          <p className="feeling-error" role="alert">
+            {feelingError}
+          </p>
+        )}
         <div
           className="feeling-scale"
           role="group"

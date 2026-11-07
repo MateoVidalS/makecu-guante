@@ -72,6 +72,17 @@ export function CoachTimeline({
                   <strong>{decisionLabel(decision)}</strong> · {decision.result}
                 </p>
                 <p>{decision.reason}</p>
+                {decision.tool === 'note_for_therapist' &&
+                  decision.result !== 'rejected' &&
+                  typeof (decision.applied?.text ?? decision.requested.text) ===
+                    'string' && (
+                    <p>
+                      Therapist note:{' '}
+                      {String(
+                        decision.applied?.text ?? decision.requested.text,
+                      )}
+                    </p>
+                  )}
                 <DecisionDetail decision={decision} />
               </>
             ) : (

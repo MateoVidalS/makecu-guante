@@ -86,3 +86,9 @@
   overflow: auto;
   min-block-size: 0;
 }
+
+.feeling-error {
+  margin: 0;
+  max-block-size: calc(var(--control-lg) * 2);
+  overflow: auto;
+}

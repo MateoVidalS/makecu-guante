@@ -110,6 +110,7 @@ const Hand = memo(function Hand() {
       role="img"
       aria-label={`Target pose: ${pose.name}`}
     >
+      {/* TODO(U2): Pass therapy.state()?.highlighted_finger via highlight once VirtualHand exposes that prop. */}
       <VirtualHand
         target={pose.render}
         actual={actual}

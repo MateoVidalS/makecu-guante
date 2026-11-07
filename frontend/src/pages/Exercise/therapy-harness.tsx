@@ -26,6 +26,17 @@ createRoot(document.getElementById('root')!).render(
     >
       Test coach decision
     </Button>
+    <Button
+      size="lg"
+      onClick={() => {
+        therapy.emit('highlight_finger', { finger: 'index' });
+        window.setTimeout(() => {
+          therapy.live!.highlighted_finger = null;
+        }, 4000);
+      }}
+    >
+      Test finger highlight
+    </Button>
     <CoachDecisions therapy={therapy} onBrake={brake} sessionId={1} />
   </main>,
 );

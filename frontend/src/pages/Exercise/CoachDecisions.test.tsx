@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   act,
   cleanup,
@@ -36,7 +36,7 @@ describe('patient therapy controls', () => {
     });
     expect(undo).toBeEnabled();
     expect(
-      screen.getByText(/Help adjusted · ring.*A slower pace/),
+      screen.getByText(/Help starts later · ring.*A slower pace/),
     ).toBeVisible();
     fireEvent.click(undo);
     expect(therapy.undos).toBe(1);
@@ -88,6 +88,35 @@ describe('patient therapy controls', () => {
       therapy.brake('Stop words.', 'local_rule');
     });
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+  it('shows a rejected feeling inside the check-in and keeps Brake available', () => {
+    const { therapy } = mount();
+    vi.spyOn(therapy, 'recordFeeling').mockImplementation(() =>
+      therapy.emit(
+        'record_feeling',
+        { reason: 'Please start practice first.' },
+        'rejected',
+        'patient_ui',
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'How I feel' }));
+    fireEvent.click(
+      within(
+        screen.getByRole('group', { name: 'Fatigue from 0 to 10' }),
+      ).getByRole('button', { name: '6' }),
+    );
+    fireEvent.click(
+      within(
+        screen.getByRole('group', { name: 'Pain from 0 to 10' }),
+      ).getByRole('button', { name: '5' }),
+    );
+    expect(
+      within(screen.getByRole('dialog')).getByRole('alert'),
+    ).toHaveTextContent('Please start practice first.');
+    expect(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Brake' }),
+    ).toBeEnabled();
+    expect(therapy.brakes).toBe(0);
   });
   it('does not invent feelings when cancelled or when the runtime is unavailable', () => {
     const { therapy, rerender } = mount();

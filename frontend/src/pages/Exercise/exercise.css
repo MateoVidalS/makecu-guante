@@ -494,3 +494,10 @@
   > :not(.therapy-brake) {
   display: none;
 }
+
+/* Coach focus is separate from the movement state and uses no animation. */
+.exercise-live .mx-gauge[data-highlighted] {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--space-4);
+  border-radius: var(--radius-input);
+}

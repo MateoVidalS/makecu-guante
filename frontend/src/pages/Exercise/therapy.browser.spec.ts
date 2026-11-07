@@ -176,6 +176,16 @@ for (const theme of ['light', 'dark']) {
       .getByRole('button', { name: 'Brake', exact: true })
       .click();
     await expect(page.getByRole('dialog')).not.toBeVisible();
+    await page
+      .getByRole('button', { name: 'Test finger highlight', exact: true })
+      .click();
+    await expect(
+      page.getByText('Coach decisions · Focus: Index'),
+    ).toBeVisible();
+    await expect(page.getByText('Coach decisions · Focus: Index')).toHaveCount(
+      0,
+      { timeout: 6000 },
+    );
     expect(errors).toEqual([]);
   });
 }
@@ -209,6 +219,18 @@ test('saved therapy records appear on attempt phases, the session timeline and d
           source: 'coach',
         },
       ];
+      if (session.id === 8)
+        session.coach_decisions.push({
+          id: 'note-8',
+          t: t(3),
+          session_id: 8,
+          tool: 'note_for_therapist',
+          requested: { text: 'Reports tingling in the little finger.' },
+          applied: { text: 'Reports tingling in the little finger.' },
+          result: 'applied',
+          reason: 'For therapist review.',
+          source: 'coach',
+        });
       session.feelings =
         session.id === 4
           ? []
@@ -237,7 +259,12 @@ test('saved therapy records appear on attempt phases, the session timeline and d
   await expect(timeline).toContainText('0:01');
   await expect(timeline).toContainText('Rest added · clamped');
   await expect(timeline).toContainText('Pain 3/10 · Fatigue 6/10');
-  await timeline.getByText('Decision details').click();
+  await expect(
+    timeline.getByText(
+      'Therapist note: Reports tingling in the little finger.',
+    ),
+  ).toBeVisible();
+  await timeline.getByText('Decision details').first().click();
   await expect(timeline).toContainText('"seconds": 30');
   await expect(timeline).toContainText('"seconds": 20');
   await page.screenshot({
