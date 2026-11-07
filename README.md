@@ -316,6 +316,8 @@ SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con
 
 ### 4.10 Pendiente
 
+**Plan del equipo, paso a paso y con responsables:** [`docs/TEAM_PLAN.md`](docs/TEAM_PLAN.md).
+
 - **Pasar de 3 a 5 dedos** (en curso): contrato (`docs/plan/03-contracts.md`, `contracts/fixtures/`, `firmware/lib/core/protocol.h`, `frontend/src/contracts/`, `backend/app/contracts/`) y todo lo que lo usa: firmware, calibración, mano virtual, métricas, gráficos, simulador, tests y prompt de voz.
 - **Umbral de corriente para 5 servos:** medirlo en el banco de pruebas.
 - **Probar el firmware en la placa** con [`firmware/BENCH.md`](firmware/BENCH.md) y después [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), sin el guante puesto.
