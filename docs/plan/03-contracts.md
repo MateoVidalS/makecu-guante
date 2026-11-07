@@ -16,8 +16,8 @@ Implemented in WP0 as:
 
 | Term | Meaning |
 |---|---|
-| `GloveFinger` | `"thumb" \| "index" \| "middle"`, the three actuated fingers. **Array order on the wire is always `[thumb, index, middle]`** (index 0, 1, 2). |
-| `FingerId` | `"thumb" \| "index" \| "middle" \| "ring" \| "pinky"`. Vision measures all five (for the virtual hand); the session engine only scores and assists the glove fingers. |
+| `GloveFinger` | All five fingers are actuated (**fixed at 5**, see `12-five-finger-update.md`). **Array order on the wire is always `[thumb, index, middle, ring, pinky]`** (index 0–4). |
+| `FingerId` | `"thumb" \| "index" \| "middle" \| "ring" \| "pinky"`. Vision measures all five; the session engine scores and assists all five. |
 | Closure | 0.0 = open, 1.0 = closed, per finger. Vision closure is normalized by the patient's camera calibration and may read up to 1.1. Servo position `a` is normalized by the servo calibration. |
 | Speed `v` | Fraction of the calibrated range per second (e.g. 0.5 = half the range per second). |
 | Current | Milliamps (mA), the **total** for all servos (one INA219). |
@@ -35,16 +35,16 @@ ignored; unknown `t` → `err`. This extends `README.md §4.4` (the additions ar
 
 | `t` | Example | Allowed in state | Effect |
 |---|---|---|---|
-| `target` | `{"t":"target","f":[0.8,0.6,0.0],"v":0.5}` | `idle`, `run` | Ramp each servo to `f[i]` (clamped 0–1) at `min(v, V_MAX)`. Mode → `target`. State → `run` |
-| `follow` | `{"t":"follow","f":[0.3,0.4,0.1]}` | `idle`, `run` | Take up slack: each servo goes to `max(0, f[i] − FOLLOW_SLACK)` at `V_FOLLOW`. It never pulls beyond the vision position. Mode → `follow`. State → `run` |
+| `target` | `{"t":"target","f":[0.8,0.6,0.0,0.5,0.5],"v":0.5}` | `idle`, `run` | Ramp each servo to `f[i]` (clamped 0–1) at `min(v, V_MAX)`. Mode → `target`. State → `run` |
+| `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | `idle`, `run` | Take up slack: each servo goes to `max(0, f[i] − FOLLOW_SLACK)` at `V_FOLLOW`. It never pulls beyond the vision position. Mode → `follow`. State → `run` |
 | `release` | `{"t":"release"}` | any | All servos → 0 at `V_RELEASE`, then PWM detaches after 500 ms. **Clears `fault`.** State → `idle` |
-| `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | `idle` | Servo angles (degrees) for 0% and 100% of finger `i`. Must satisfy `HARD_MIN ≤ min, max ≤ HARD_MAX` and `|max − min| ≥ 20`. `min > max` is allowed (mirrored mount) |
+| `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | `idle` | Servo angles (degrees) for 0% and 100% of finger `i` (0–4). Must satisfy `HARD_MIN ≤ min, max ≤ HARD_MAX` and `|max − min| ≥ 20`. `min > max` is allowed (mirrored mount) |
 | `limit` | `{"t":"limit","ma":900}` | any | Overcurrent threshold, clamped to `[100, LIMIT_MAX_MA]` |
 | `ping` | `{"t":"ping"}` | any | Keepalive (any valid message also feeds the watchdog) |
 | ➕ `jog` | `{"t":"jog","i":1,"deg":95}` | `idle` (or `calib`) | Move servo `i` to an absolute angle within `[HARD_MIN, HARD_MAX]` at `V_JOG_DEG` deg/s. Used by the calibration wizard before a `calib` exists. State → `calib` |
 | ➕ `hello` | `{"t":"hello"}` | any | Firmware answers with `info` |
 
-Before every finger has received `calib`, `target` and `follow` are rejected with `err no_calib`.
+Before all 5 fingers have received `calib`, `target` and `follow` are rejected with `err no_calib`.
 
 **Client queueing rule (resolved from WP2):** `release` jumps the queue and **discards any not-yet-sent `target`/`follow`/`jog`** (stale motion must never restart the glove after a release). Other commands (`calib`, `limit`, `hello`, `ping`) are never dropped.
 
@@ -52,9 +52,9 @@ Before every finger has received `calib`, `target` and `follow` are rejected wit
 
 | `t` | Example | Rate | Meaning |
 |---|---|---|---|
-| `tel` | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.0],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.05]}` | 50 Hz | `a` = current **commanded, ramped** position per servo (0–1; hobby servos don't report their real position). `ma` = INA219 total current (filtered, 10 ms). `st` = state. ➕ `md` = mode `none\|follow\|target\|jog`. ➕ `tg` = the final target being ramped to |
+| `tel` | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.0,0.3,0.3],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.05,0.3,0.3]}` | 50 Hz | `a` = current **commanded, ramped** position per servo (0–1; hobby servos don't report their real position). `ma` = INA219 total current (filtered, 10 ms). `st` = state. ➕ `md` = mode `none\|follow\|target\|jog`. ➕ `tg` = the final target being ramped to |
 | `evt` | `{"t":"evt","e":"overcurrent","ma":950}` | on event | `e`: `boot`, `overcurrent`, `stop_button`, `watchdog`, ➕ `stop_released` (button released, still faulted), ➕ `ina_missing` (sensor not found; target/follow refused), ➕ `calib_ok` (all 3 fingers calibrated) |
-| ➕ `info` | `{"t":"info","fw":"0.1.0","fingers":3,"limit":900,"calib":[[20,150],[25,160],null]}` | on `hello` and boot | Firmware identity + current config |
+| ➕ `info` | `{"t":"info","fw":"0.2.0","fingers":5,"limit":1500,"calib":[[20,150],[25,160],null,null,null]}` | on `hello` and boot | Firmware identity + current config |
 | ➕ `err` | `{"t":"err","c":"target","why":"no_calib"}` | on error | `why`: `bad_json`, `unknown_type`, `bad_args`, `no_calib`, `fault`, `state` |
 
 ### 2.3 Firmware states
@@ -76,7 +76,7 @@ In `fault`: servos have been released and detached; `target`, `follow` and `jog`
 | `V_RELEASE` | 3.0 /s | Release speed (unwinding is safe) |
 | `V_JOG_DEG` | 60 °/s | |
 | `FOLLOW_SLACK` | 0.05 | Follow stays 5% behind the vision closure |
-| `LIMIT_DEFAULT_MA` / `LIMIT_MAX_MA` | 900 / 1400 | Below the 1.5 A supply limit |
+| `LIMIT_DEFAULT_MA` / `LIMIT_MAX_MA` | 1500 / 2200 | Below the 2.5 A supply limit (5 servos) |
 | `OVERCURRENT_MS` | 100 | Current above the limit for this long → fault |
 | `WATCHDOG_MS` | 1000 | Elapsed time **strictly greater** than this with no valid message → release + fault (no fault at exactly 1000 ms; it fires on the next tick) |
 | `TEL_HZ` | 50 | |
@@ -88,14 +88,14 @@ In `fault`: servos have been released and detached; `target`, `follow` and `jog`
 
 ```ts
 // ---------- glove (src/contracts/glove.ts) ----------
-type GloveFinger = "thumb" | "index" | "middle";
-const GLOVE_FINGERS: GloveFinger[] = ["thumb", "index", "middle"];
-type Triple = [number, number, number];                 // [thumb, index, middle]
+type GloveFinger = FingerId;                            // all five are actuated
+const GLOVE_FINGERS: GloveFinger[] = ["thumb", "index", "middle", "ring", "pinky"];
+type Quint = [number, number, number, number, number];  // [thumb, index, middle, ring, pinky] (replaces Quint)
 type FirmwareState = "boot" | "idle" | "run" | "calib" | "fault";
 type FirmwareMode = "none" | "follow" | "target" | "jog";
 type GloveEventKind = "boot" | "overcurrent" | "stop_button" | "watchdog" | "stop_released" | "ina_missing" | "calib_ok";
 
-interface GloveTelemetry { t: number; ms: number; a: Triple; ma: number; st: FirmwareState; md: FirmwareMode; tg: Triple | null }
+interface GloveTelemetry { t: number; ms: number; a: Quint; ma: number; st: FirmwareState; md: FirmwareMode; tg: Quint | null }
 interface GloveEvent { t: number; e: GloveEventKind; ma?: number }
 interface GloveInfo { fw: string; fingers: number; limit: number; calib: ([number, number] | null)[] }
 interface GloveError { t: number; c: string; why: string }
@@ -106,11 +106,11 @@ interface GloveClient {                                  // implemented by WebSe
   connection(): GloveConnection;
   connect(): Promise<GloveInfo>;                         // serial: requestPort() needs a user gesture
   disconnect(): Promise<void>;
-  target(f: Triple, v: number): void;
-  follow(f: Triple): void;
+  target(f: Quint, v: number): void;
+  follow(f: Quint): void;
   release(): void;
-  calib(i: 0 | 1 | 2, minDeg: number, maxDeg: number): void;
-  jog(i: 0 | 1 | 2, deg: number): void;
+  calib(i: 0 | 1 | 2 | 3 | 4, minDeg: number, maxDeg: number): void;
+  jog(i: 0 | 1 | 2 | 3 | 4, deg: number): void;
   limit(ma: number): void;
   hello(): void;
   onTelemetry(cb: (t: GloveTelemetry) => void): Unsubscribe;
@@ -159,7 +159,7 @@ interface CameraCalibration {
 interface FrictionCurve { v: number; points: { pos: number; ma: number }[] }   // empty glove, per finger and speed
 interface Calibration {
   id: number; created_at: string;
-  servo: ServoCalibration[];                   // 3
+  servo: ServoCalibration[];                   // 5
   camera: CameraCalibration;
   friction: Partial<Record<GloveFinger, FrictionCurve[]>>;   // slow and fast; may be empty if skipped
   current_limit_ma: number;                    // default 900
@@ -191,7 +191,7 @@ type EngineEvent =
   | { kind: "phase"; phase: ExercisePhase; pose: PoseId; rep: number; index: number }   // index = attempt index in the session
   | { kind: "reached"; t_rel: number; assisted: boolean }
   | { kind: "progress"; finger: GloveFinger; active_max: number }                        // throttled to at most 2 Hz per finger
-  | { kind: "assist_started"; fingers: GloveFinger[]; from: Triple; to: Triple }
+  | { kind: "assist_started"; fingers: GloveFinger[]; from: Quint; to: Quint }
   | { kind: "resistance"; finger: GloveFinger; ma: number }                              // current high + finger not following
   | { kind: "safety"; source: "overcurrent" | "stop_button" | "watchdog" | "camera_lost" | "glove_disconnected"; finger: GloveFinger | null; ma: number | null }
   | { kind: "attempt_done"; result: AttemptResult }

@@ -37,12 +37,12 @@ change and what it means for the software**, then the plan to update the whole p
 
 ## 3. Design decisions for the update
 
-1. **Variable-length finger arrays, not a fixed 5.** Wire arrays have length `N = info.fingers` (3 or 5), always in the order
-   `[thumb, index, middle, ring, pinky]` truncated to N. The firmware builds with `FINGERS = 5` by default and `-DREHAB_FINGERS=3` for
-   a 3-servo demo. The app reads `info.fingers` on connect and adapts. Old 3-finger data in the DB stays valid (missing fingers = null).
-   - TS: `GloveFinger = FingerId` (all five); `FingerArray = number[]` with length = `gloveFingers.length`; a `useGloveFingers()`
-     selector exposes the active list. Py: `GloveFinger = FingerId`. C++: `FINGERS` from a build flag, `MAX_FINGERS = 5` for buffers.
-   - Serial line length: a `tel` with 5 values stays under 200 bytes (2-decimal values); verify with a test.
+1. **Fixed at 5 fingers (owner decision).** Every glove array has exactly 5 values in the order `[thumb, index, middle, ring, pinky]`.
+   No 3-finger mode. `info.fingers` is always 5; the app shows a clear error if a board reports anything else.
+   - TS: `GloveFinger = FingerId` (all five); `Triple` is replaced by `Quint = [number, number, number, number, number]`; `GLOVE_FINGERS` has 5 entries.
+     Py: `GloveFinger = FingerId`. C++: `FINGERS = 5`, `SERVO_PINS = {25, 26, 27, 13, 4}`.
+   - A `tel` line with 5 values must stay under 200 bytes (2-decimal values); test it.
+   - Old 3-finger sessions in the DB stay readable: ring/pinky show as "not measured".
 2. **Power-aware assist.** The engine assists the unreached fingers in a **stagger**: starting each finger 150 ms apart and capping the number
    moving at once (default 3), so that 5 simultaneous stalls can't happen. The firmware limits: `LIMIT_DEFAULT_MA = 1500`, `LIMIT_MAX_MA = 2200`
    (below the 2.5 A supply), with a per-build override.
@@ -65,16 +65,16 @@ Wave 0 is done by the coordinator. Waves 1–2 are parallel Codex workers throug
 
 | WP | Name | Owns | Depends | Wave |
 |---|---|---|---|---|
-| **F0** | Contract v2 (5 fingers, variable length) + reconcile `main` | `docs/plan/03-contracts.md`, `docs/plan/06-session.md §2`, `frontend/src/contracts/**`, `backend/app/contracts/**`, `firmware/lib/core/protocol.h`, `contracts/fixtures/**`, README merge with main's #26 | metrics PRs merged | 0 (coordinator) |
-| **F1** | Firmware: 5 servos, build-flag N, pins 13/4, limits, per-servo profiles, 5-segment ring, native tests for N=3 and N=5, `BENCH.md` for 5 servos + measuring stall currents | `firmware/**` | F0 | 1 |
-| **F2** | Glove link + simulator: variable-length codec, `info.fingers` handling, simFirmware N, per-finger servo profiles and power model, patient model for 5 fingers (ring/pinky presets), conformance for N=3 and N=5 | `frontend/src/glove/**` | F0 | 1 |
+| **F0** | **Mechanical migration to 5 fingers** across the whole codebase (contracts, fixtures, every `Triple`/`GLOVE_FINGERS` consumer, firmware arrays/pins) so everything compiles and `make test` is green with 5 fingers; the semantic work (stagger, profiles, palm-down, etc.) stays for F1–F8. Also reconcile `main`'s README (#26) | everything needed for the mechanical change (contracts, fixtures, all consumers); docs updated by the coordinator | – (merges metrics PRs as they land) | 0 |
+| **F1** | Firmware: 5 servos (fixed), pins 13/4, limits, per-servo profiles, 5-segment ring, native tests for 5 fingers, `BENCH.md` for 5 servos + measuring stall currents | `firmware/**` | F0 | 1 |
+| **F2** | Glove link + simulator: 5-value codec, rejects `info.fingers` ≠ 5, simFirmware with 5 servos, per-finger servo profiles and power model, patient model for 5 fingers (ring/pinky presets), conformance for 5 fingers | `frontend/src/glove/**` | F0 | 1 |
 | **F3** | Engine: scoring/assist/attribution over N fingers, **staggered power-aware assist**, reachable-target cap, evaluation over N fingers (finger subset selectable; 10 sweeps take ~2 min), resistance thresholds per servo profile | `frontend/src/engine/**` | F0 | 1 |
 | **F4** | Vision: palm-down diagonal posture, handedness from config, confidence/robustness stats, closure for 5 fingers in calibration (glove closes all 5), glove-detection check API for Setup | `frontend/src/vision/**` | F0 | 1 |
 | **F5** | Backend: 5-finger contracts, aggregations, export columns, summary prompts mention all fingers, demo seeder with 5 fingers, tests incl. mixed 3/5-finger history | `backend/**` | F0 | 1 |
 | **F6** | Voice: prompt, cues and safety phrases for 5 fingers ("ring", "little finger"), finger naming helper | `frontend/src/voice/**`, `backend/app/voice/**` | F0 | 1 |
 | **F7** | Live UI: Setup (telemetry ×N, camera placement step, glove-detection check), Calibrate (N servos, power warning), Exercise meters ×N, attempt feedback hand, Evaluate ×N, `hand3d` palm-down view + 5-finger tint, the `--finger-ring/--finger-pinky` tokens | pages Home/Setup/Calibrate/Exercise/Evaluate, `components/common`, `components/metrics`, `hand3d/**`, `styles/tokens*` (finger tokens only) | F0 (+F2 for sim visuals) | 2 |
 | **F8** | Data UI: history, replay, evaluation detail, doctor for N fingers (5 small multiples / hand map with 5 fingers, mixed 3/5 data) | pages History/SessionReplay/EvaluationDetail/Doctor, `components/charts` | F0, F5 | 2 |
-| **F9** | Integration + docs: runtime adapts to `info.fingers`, e2e for N=5 and a 3-finger firmware, soak; update `docs/plan/*`, `docs/HARDWARE_CHECKLIST.md` (5 servos, 2.5 A, pins, posture, camera, glove test), `docs/DEMO.md`, README | `frontend/src/runtime/**`, `frontend/e2e/**`, docs | F1–F8 | 3 |
+| **F9** | Integration + docs: runtime for 5 fingers, e2e for 5 fingers, soak; update `docs/plan/*`, `docs/HARDWARE_CHECKLIST.md` (5 servos, 2.5 A, pins, posture, camera, glove test), `docs/DEMO.md`, README | `frontend/src/runtime/**`, `frontend/e2e/**`, docs | F1–F8 | 3 |
 
 ```
 F0 ─┬─ F1 firmware ──────────────┐
@@ -88,11 +88,11 @@ F0 ─┬─ F1 firmware ──────────────┐
 ## 5. Acceptance criteria (whole update)
 1. With 5-finger firmware (or the sim with N=5): calibrate 5 servos, practice the default plan with all 5 fingers scored and assisted, evaluate
    any subset, see 5 fingers in history, replay, the doctor view and export.
-2. With a 3-finger firmware build, the same app still works (adapts to `info.fingers = 3`).
+2. A board reporting `info.fingers` ≠ 5 is rejected with a clear message in Setup.
 3. The simulator never exceeds 2.2 A during a 5-finger assist (stagger verified), and overcurrent still trips in < 100 ms + one tick.
 4. The virtual hand is shown palm-down, matching the patient's view; the setup shows the camera placement guide and the glove-detection check.
 5. Old 3-finger sessions in the DB still render (ring/pinky shown as "not measured").
-6. `make test` and `make e2e` green; firmware native tests for N=3 and N=5.
+6. `make test` and `make e2e` green; firmware native tests for 5 fingers.
 
 ## 6. Hardware-side actions (for the team, feeding the software)
 - Bench (`firmware/BENCH.md`, updated in F1): measure each servo's idle, moving and stall current, and the thumb servo's torque/size. Put the numbers
