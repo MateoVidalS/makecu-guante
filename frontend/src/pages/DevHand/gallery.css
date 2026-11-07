@@ -1,0 +1,66 @@
+.hand-gallery .hand-pose-picker,
+.hand-gallery-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  margin-block: var(--space-24);
+}
+.hand-pose-picker button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--bg);
+}
+.hand-gallery-options label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.hand-gallery select {
+  padding: var(--space-8);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-input);
+  color: var(--text);
+  background: var(--surface);
+  min-height: var(--button-min-height);
+}
+.hand-joint-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--placeholder-height), 1fr)
+  );
+  gap: var(--space-16);
+}
+.hand-joint-grid fieldset {
+  min-width: 0;
+  padding: var(--space-16);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.hand-joint-grid legend {
+  font-weight: bold;
+}
+.hand-joint-grid label {
+  display: block;
+  margin-block: var(--space-12);
+}
+.hand-joint-grid input {
+  display: block;
+  width: 100%;
+  min-height: var(--space-32);
+  accent-color: var(--accent);
+}
+.hand-joint-grid output {
+  float: right;
+}
+.hand-diagnostics {
+  color: var(--muted);
+}
+.hand-camera {
+  display: block;
+  width: var(--placeholder-height);
+  max-width: 100%;
+  border-radius: var(--radius-input);
+  margin-block: var(--space-16);
+}
