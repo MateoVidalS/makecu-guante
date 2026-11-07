@@ -105,9 +105,6 @@ for (const size of [
         ['/exercise', 'exercise-plan'],
         ['/evaluate', 'evaluate-preflight'],
         ['/history', 'history'],
-        ['/history?tab=active%20range', 'history-range'],
-        ['/history?tab=assistance', 'history-assistance'],
-        ['/history?tab=resistance', 'history-resistance'],
         ['/history?tab=sessions', 'history-sessions'],
         [`/history/sessions/${session.id}`, 'session-replay'],
         [`/history/evaluations/${evaluation.id}`, 'evaluation-detail'],
@@ -160,11 +157,33 @@ for (const size of [
       await page
         .getByRole('button', { name: 'End session', exact: true })
         .click();
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'End session', exact: true })
+        .click();
       await expect(
         page.getByRole('heading', { name: 'Session complete', exact: true }),
       ).toBeVisible();
       await inspect(page, 'exercise-summary', testInfo);
       await page.goto('/evaluate');
+      const measureFriction = page.getByRole('button', {
+        name: 'Measure glove friction',
+        exact: true,
+      });
+      if (await measureFriction.count()) {
+        await page
+          .getByRole('checkbox', {
+            name: 'The glove is empty and hanging freely',
+          })
+          .check();
+        await measureFriction.click();
+        await expect(
+          page.getByText(
+            'Recent glove friction saved. Put the glove on, then relax.',
+          ),
+        ).toBeVisible({ timeout: 60_000 });
+      }
+
       await page
         .getByRole('checkbox', { name: 'Hand relaxed in the glove' })
         .check();

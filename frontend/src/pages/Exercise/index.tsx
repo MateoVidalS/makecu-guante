@@ -5,8 +5,6 @@ import {
   Stack,
   Inline,
   PageHeader,
-  Checkbox,
-  Input,
   Pill,
   Switch,
   VisuallyHidden,
@@ -14,18 +12,11 @@ import {
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useStore } from 'zustand';
-import {
-  useRuntime,
-  useExerciseView,
-  useSavingStatus,
-  RuntimeSimulatorControls,
-} from '../../runtime';
+import { useRuntime, useExerciseView, useSavingStatus } from '../../runtime';
 import {
   DEFAULT_PLAN,
-  PINCH_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
   POSES,
-  type PoseId,
 } from '../../contracts/poses';
 import type {
   ExercisePlanItem,
@@ -48,7 +39,12 @@ import { AttemptFeedback } from '../../components/metrics';
 import type { AttemptResult } from '../../contracts/engine';
 import { liveFingerState } from './fingerState';
 import { LiveFingerMeters } from './LiveFingerMeters';
+import { GloveMotors } from './GloveMotors';
 import { SessionRecap, useSessionAttempts } from './SessionRecap';
+import {
+  practicePlan,
+  useShortPractice,
+} from '../../components/common/practice';
 import './exercise.css';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
@@ -135,13 +131,21 @@ const CoachArea = memo(function CoachArea() {
             (voice.mode === 'off' ? 'Voice off' : 'Your coach is here.')}
         </p>
         <div className="actions coach-quick-controls">
-          <Switch
-            label="Microphone"
-            checked={voice.mode === 'live' && !voice.muted}
-            disabled={voice.mode !== 'live'}
-            onCheckedChange={(on) => voice.setMuted(!on)}
-          />
+          {voice.mode === 'live' && (
+            <Switch
+              label="Microphone"
+              checked={voice.mode === 'live' && !voice.muted}
+              disabled={voice.mode !== 'live'}
+              onCheckedChange={(on) => voice.setMuted(!on)}
+            />
+          )}
           <details
+            data-safety-popover
+            data-voice-mode={voice.mode}
+            onToggle={(event) => {
+              if (document.querySelector('#safety-banner-slot [role="alert"]'))
+                event.currentTarget.open = false;
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 e.preventDefault();
@@ -163,12 +167,12 @@ const CoachArea = memo(function CoachArea() {
 const CAMERA_KEY = 'rehab-hub.exercise.camera';
 function readCameraPreference() {
   try {
-    return window.localStorage.getItem(CAMERA_KEY) !== 'hidden';
+    return window.localStorage.getItem(CAMERA_KEY) === 'shown';
   } catch {
-    return true;
+    return false;
   }
 }
-/** Two equal panels: the virtual hand against its target, and what the camera sees. */
+/** The virtual hand stays prominent next to an optional small camera panel: the virtual hand against its target, and what the camera sees. */
 export function LiveStage() {
   const [camera, setCamera] = useState(readCameraPreference);
   const toggle = (on: boolean) => {
@@ -231,9 +235,9 @@ function LiveDetails() {
         activeMax={view.activeMax}
         assisting={view.assisting}
       />
+      <GloveMotors />
       <div className="live-tools">
         <CoachArea />
-        <RuntimeSimulatorControls />
       </div>
     </aside>
   );
@@ -296,15 +300,18 @@ export default function Exercise() {
     paused = phase === 'PAUSED',
     summary = useExerciseView((v) => v.summary);
   const connected = useStore(store, (s) => s.connection === 'connected');
-  const [plan, setPlan] = useState<ExercisePlanItem[]>(DEFAULT_PLAN),
-    [settings, setSettings] = useState<ExerciseSettings>(
-      DEFAULT_EXERCISE_SETTINGS,
+  const [short, setShort] = useShortPractice();
+  const [plan, setPlan] = useState<ExercisePlanItem[]>(() =>
+      practicePlan(short),
     ),
+    [settings] = useState<ExerciseSettings>(DEFAULT_EXERCISE_SETTINGS),
     [confirm, setConfirm] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
-    [planning, setPlanning] = useState(false),
-    [preset, setPreset] = useState('glides');
+    [planning, setPlanning] = useState(
+      () => new URLSearchParams(location.search).get('customize') === '1',
+    ),
+    [preset, setPreset] = useState(short ? 'short' : 'glides');
   const live = phase !== 'DONE';
   const attempts = useSessionAttempts();
   const index = useExerciseView((v) => v.index);
@@ -326,6 +333,11 @@ export default function Exercise() {
         ? 'Bend only at the knuckles'
         : 'Palm down, fingers beyond the table edge';
   useSessionLeaveGuard('exercise');
+  useEffect(() => {
+    const finish = () => setConfirm(true);
+    window.addEventListener('rehab-finish-practice', finish);
+    return () => window.removeEventListener('rehab-finish-practice', finish);
+  }, []);
   useEffect(() => {
     if (!live) return;
     const keyboard = (e: KeyboardEvent) => {
@@ -398,7 +410,11 @@ export default function Exercise() {
         <Inline>
           {[
             { id: 'glides', label: 'Tendon glides', plan: DEFAULT_PLAN },
-            { id: 'pinch', label: 'Pinch practice', plan: PINCH_PLAN },
+            {
+              id: 'fist',
+              label: 'Fist only, 1 rep',
+              plan: [{ pose: 'full_fist' as const, reps: 1 }],
+            },
             {
               id: 'short',
               label: 'Short session',
@@ -409,6 +425,7 @@ export default function Exercise() {
               key={p.id}
               selected={preset === p.id}
               onClick={() => {
+                setShort(p.id === 'short');
                 setPreset(p.id);
                 setPlan(p.plan);
               }}
@@ -417,71 +434,13 @@ export default function Exercise() {
             </Pill>
           ))}
         </Inline>
-        <Card>
-          <Stack gap={12}>
-            {Object.values(POSES).map((p) => (
-              <div key={p.id} className="plan-row">
-                <Checkbox
-                  label={p.name}
-                  checked={plan.some((i) => i.pose === p.id)}
-                  onChange={(e) => {
-                    setPreset('custom');
-                    setPlan(
-                      e.target.checked
-                        ? [...plan, { pose: p.id as PoseId, reps: 3 }]
-                        : plan.filter((i) => i.pose !== p.id),
-                    );
-                  }}
-                />
-                <Input
-                  label={`Repetitions for ${p.name}`}
-                  hideLabel
-                  type="number"
-                  min={1}
-                  max={10}
-                  disabled={!plan.some((i) => i.pose === p.id)}
-                  value={plan.find((i) => i.pose === p.id)?.reps ?? ''}
-                  onChange={(e) => {
-                    setPreset('custom');
-                    setPlan(
-                      plan.map((i) =>
-                        i.pose === p.id
-                          ? { ...i, reps: Number(e.target.value) }
-                          : i,
-                      ),
-                    );
-                  }}
-                />
-              </div>
-            ))}
-          </Stack>
+        <Card title="Plan">
+          <p>
+            {plan
+              .map((item) => `${POSES[item.pose].name} × ${item.reps}`)
+              .join(' · ')}
+          </p>
         </Card>
-        <Checkbox
-          label="Observation only (no glove help)"
-          checked={!settings.assist_enabled}
-          onChange={(e) =>
-            setSettings({ ...settings, assist_enabled: !e.target.checked })
-          }
-        />
-        <details>
-          <summary>Advanced settings</summary>
-          {Object.entries(settings)
-            .filter(([k]) => k !== 'assist_enabled')
-            .map(([key, value]) => (
-              <Input
-                key={key}
-                label={key.replaceAll('_', ' ')}
-                type="number"
-                min={key === 'tolerance' ? 0.01 : 0.1}
-                max={key === 'assist_speed' || key === 'tolerance' ? 1 : 60}
-                step={0.1}
-                value={Number(value)}
-                onChange={(e) =>
-                  setSettings({ ...settings, [key]: Number(e.target.value) })
-                }
-              />
-            ))}
-        </details>
         {!runtime.calibration.current && (
           <p>
             Find your comfortable range first.{' '}

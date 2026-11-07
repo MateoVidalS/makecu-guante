@@ -35,12 +35,12 @@
   color: var(--muted);
 }
 
-/* ---- Stage: two equal panels ---- */
+/* ---- Stage: hand with an optional small camera ---- */
 .live-stage {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
   gap: var(--space-16);
 }
 .live-stage[data-camera='hidden'] {
@@ -342,4 +342,103 @@
 }
 .exercise-live .phase-ring strong {
   font-size: calc(var(--body) * 1.75);
+}
+
+/* Keep the optional camera small; hide it before squeezing the finger meters. */
+.live-panel--camera {
+  align-self: end;
+  height: calc(var(--control-lg) * 2);
+}
+[data-voice-mode='simple'] .coach-popover .ds-switch-row {
+  display: none;
+}
+@media (max-width: 1279px) {
+  .live-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .live-panel--camera {
+    display: none;
+  }
+}
+
+/* Glove motors: which motor is helping (orange), following (blue) or resting. */
+.glove-motors {
+  display: grid;
+  gap: var(--space-8);
+}
+.glove-motors__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+}
+.glove-motors__title {
+  margin: 0;
+  font-size: var(--small);
+  font-weight: var(--weight-semibold);
+  color: var(--muted);
+}
+.glove-motors__tag {
+  font-size: var(--caption);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-4);
+}
+.glove-motors__row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.glove-motor {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  font-size: var(--caption);
+  color: var(--muted);
+}
+.glove-motor__bar {
+  position: relative;
+  inline-size: 100%;
+  max-inline-size: 40px;
+  block-size: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.glove-motor__fill {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  background: var(--muted);
+  opacity: 0.35;
+  transition: block-size 120ms linear;
+}
+.glove-motor__name {
+  color: var(--text);
+}
+.glove-motor[data-state='following'] .glove-motor__fill {
+  background: var(--active);
+  opacity: 0.6;
+}
+.glove-motor[data-state='pulling'] .glove-motor__fill,
+.glove-motor[data-state='holding'] .glove-motor__fill {
+  background: var(--assist);
+  opacity: 1;
+}
+.glove-motor[data-state='pulling'] .glove-motor__state,
+.glove-motor[data-state='holding'] .glove-motor__state {
+  color: var(--assist-text);
+  font-weight: var(--weight-semibold);
+}
+.glove-motor[data-state='stopped'] .glove-motor__state {
+  color: var(--danger-text);
+  font-weight: var(--weight-semibold);
+}
+@media (prefers-reduced-motion: reduce) {
+  .glove-motor__fill {
+    transition: none;
+  }
 }

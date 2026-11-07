@@ -49,7 +49,10 @@ let memory = freshDraft();
 export function loadDraft(): Draft {
   try {
     const value = sessionStorage.getItem('rehab-calibration');
-    if (value) return { ...freshDraft(), ...JSON.parse(value) };
+    if (value) {
+      const saved = { ...freshDraft(), ...JSON.parse(value) } as Draft;
+      return { ...saved, step: Math.min(2, saved.step) };
+    }
   } catch {
     /* Storage may be disabled. */
   }

@@ -1,0 +1,98 @@
+import { GLOVE_FINGERS, type GloveTelemetry } from '../../contracts/glove';
+import type { FingerId } from '../../contracts/vision';
+import { useGlove, useGloveTelemetry } from '../../glove';
+
+export type MotorState =
+  | 'off'
+  | 'stopped'
+  | 'idle'
+  | 'following'
+  | 'pulling'
+  | 'holding'
+  | 'releasing';
+
+const NAMES: Record<FingerId, string> = {
+  thumb: 'Thumb',
+  index: 'Index',
+  middle: 'Middle',
+  ring: 'Ring',
+  pinky: 'Pinky',
+};
+
+const WORDS: Record<MotorState, string> = {
+  off: 'Off',
+  stopped: 'Stopped',
+  idle: 'Resting',
+  following: 'Following',
+  pulling: 'Helping',
+  holding: 'Holding',
+  releasing: 'Letting go',
+};
+
+/** One motor's state from telemetry: `a` is the ramped servo position, `tg` its goal. */
+export function motorState(tel: GloveTelemetry | null, i: number): MotorState {
+  if (!tel) return 'off';
+  if (tel.st === 'fault') return 'stopped';
+  const a = tel.a[i] ?? 0;
+  const goal = tel.tg?.[i] ?? a;
+  if (tel.md === 'target') {
+    if (goal - a > 0.01) return 'pulling';
+    if (a - goal > 0.01) return 'releasing';
+    return a > 0.03 ? 'holding' : 'idle';
+  }
+  if (tel.md === 'follow') return a > 0.02 ? 'following' : 'idle';
+  if (tel.md === 'none' && a > 0.03) return 'releasing';
+  return 'idle';
+}
+
+/**
+ * Compact strip of the five glove motors: which one is helping, holding or just following.
+ * Selects a rounded signature so the 50 Hz telemetry only re-renders on visible changes.
+ */
+export function GloveMotors() {
+  const glove = useGlove();
+  const simulated = glove.client.kind === 'sim';
+  const signature = useGloveTelemetry((tel) =>
+    tel
+      ? GLOVE_FINGERS.map(
+          (_, i) => `${motorState(tel, i)}:${Math.round((tel.a[i] ?? 0) * 20)}`,
+        ).join('|')
+      : 'off',
+  );
+  const motors = GLOVE_FINGERS.map((finger, i) => {
+    const [state, step] = (
+      signature === 'off' ? 'off:0' : signature.split('|')[i]
+    ).split(':');
+    return { finger, state: state as MotorState, position: Number(step) * 5 };
+  });
+  const helping = motors.filter(
+    (m) => m.state === 'pulling' || m.state === 'holding',
+  );
+  return (
+    <section className="glove-motors" aria-label="Glove motors">
+      <header className="glove-motors__head">
+        <h2 className="glove-motors__title">Glove motors</h2>
+        {simulated && <span className="glove-motors__tag">Simulated</span>}
+      </header>
+      <ul className="glove-motors__row">
+        {motors.map((m) => (
+          <li key={m.finger} className="glove-motor" data-state={m.state}>
+            <span className="glove-motor__bar" aria-hidden="true">
+              <span
+                className="glove-motor__fill"
+                style={{ blockSize: `${m.position}%` }}
+              />
+            </span>
+            <span className="glove-motor__name">{NAMES[m.finger]}</span>
+            <span className="glove-motor__state">{WORDS[m.state]}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="sr-only" aria-live="polite">
+        {helping.length
+          ? `Glove helping: ${helping.map((m) => NAMES[m.finger]).join(', ')}`
+          : 'Glove not helping'}
+      </p>
+    </section>
+  );
+}

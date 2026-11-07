@@ -32,8 +32,6 @@ import {
   EmptyState,
   Icon,
   PageErrorBoundary,
-  readTheme,
-  ThemeToggle,
   ToastProvider,
 } from './design-system';
 import Home from './pages/Home';
@@ -50,7 +48,7 @@ import DevHand from './pages/DevHand';
 
 // Light by default (whatever the OS says). Applied before the first render so no route flashes dark,
 // including the focus and doctor shells, which don't mount the theme toggle.
-if (typeof document !== 'undefined') applyTheme(readTheme());
+if (typeof document !== 'undefined') applyTheme('light');
 
 const DesignGallery = lazy(() => import('./design-system/gallery'));
 
@@ -58,12 +56,10 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
 
-// Spec §4: Home · Exercise · Evaluate · History · Setup. Profile lives in the tools on the right.
+// Patient navigation stays short; planning and evaluation are reached from Home.
 // Text-only links: icons next to every nav word are decoration, not information.
 const NAV: [to: string, label: string][] = [
   ['/', 'Home'],
-  ['/exercise', 'Exercise'],
-  ['/evaluate', 'Evaluate'],
   ['/history', 'History'],
   ['/setup', 'Setup'],
 ];
@@ -85,6 +81,7 @@ function Shell() {
     total = useExerciseView((v) => v.total),
     rep = useExerciseView((v) => v.rep);
   const runtime = useRuntime();
+  const evaluation = useEvaluationView();
   const focus =
     (location.pathname === '/exercise' && phase !== 'DONE') ||
     (location.pathname === '/evaluate' &&
@@ -104,14 +101,22 @@ function Shell() {
                 <Button
                   icon="x"
                   onClick={() => {
-                    void runtime.exercise.stop();
-                    void runtime.evaluation.stop();
+                    if (location.pathname === '/evaluate')
+                      void runtime.evaluation.stop();
+                    else
+                      window.dispatchEvent(new Event('rehab-finish-practice'));
                   }}
                 >
-                  End session
+                  {location.pathname === '/evaluate'
+                    ? 'Stop evaluation'
+                    : 'End session'}
                 </Button>
                 <span className="app-progress">
-                  Pose {index + 1} of {total} · Rep {rep}
+                  {location.pathname === '/evaluate'
+                    ? evaluation.finger
+                      ? `${evaluation.finger} · ${evaluation.speed ?? evaluation.stage}`
+                      : `Evaluation · ${evaluation.stage}`
+                    : `Pose ${index + 1} of ${total} · Rep ${rep}`}
                 </span>
               </>
             ) : doctor ? (
@@ -161,7 +166,6 @@ function Shell() {
                 >
                   <Icon name="user" />
                 </NavLink>
-                <ThemeToggle />
               </div>
             )}
           </header>

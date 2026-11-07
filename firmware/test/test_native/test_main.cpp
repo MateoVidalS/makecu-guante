@@ -2,6 +2,7 @@
 #include <unity.h>
 
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <limits>
@@ -759,6 +760,141 @@ void decimal_writer_never_overruns_and_parser_survives_noise() {
   }
 }
 
+// ---------- the app's real command sequences (frontend runtime, engine, calibration wizard) ----------
+// Replays what the browser sends over Web Serial, at its cadence, through the board's safety
+// controller: every command must be accepted and no safety event may fire on a healthy run.
+struct AppLink {
+  Harness& h;
+  uint32_t lastSent = 0;
+  ErrorCode send(const char* json) {
+    lastSent = h.now;
+    return h.send(json);
+  }
+  void sendOk(const char* json) {
+    TEST_ASSERT_EQUAL_STRING_MESSAGE("", protocol::name(send(json)), json);
+  }
+  void sendFingers(const char* type, const Quint& f, float v = 0) {
+    char json[160];
+    if (v > 0)
+      std::snprintf(json, sizeof(json), "{\"t\":\"%s\",\"f\":[%.2f,%.2f,%.2f,%.2f,%.2f],\"v\":%.2f}",
+                    type, f[0], f[1], f[2], f[3], f[4], v);
+    else
+      std::snprintf(json, sizeof(json), "{\"t\":\"%s\",\"f\":[%.2f,%.2f,%.2f,%.2f,%.2f]}", type, f[0],
+                    f[1], f[2], f[3], f[4]);
+    sendOk(json);
+  }
+  // One 5 ms control tick; the client pings only after 300 ms without any other write.
+  void tick(float ma = 300) {
+    h.now += 5;
+    if (h.now - lastSent >= 300) sendOk("{\"t\":\"ping\"}");
+    h.safety.current(ma, h.now);
+    h.safety.tick(h.now);
+  }
+  void connect() {
+    // runtime.sendToGlove(): release, then calib for all five fingers, then the limit.
+    sendOk("{\"t\":\"hello\"}");
+    sendOk("{\"t\":\"release\"}");
+    const char* ranges[] = {"{\"t\":\"calib\",\"i\":0,\"min\":20,\"max\":150}",
+                            "{\"t\":\"calib\",\"i\":1,\"min\":25,\"max\":155}",
+                            "{\"t\":\"calib\",\"i\":2,\"min\":150,\"max\":30}",
+                            "{\"t\":\"calib\",\"i\":3,\"min\":30,\"max\":150}",
+                            "{\"t\":\"calib\",\"i\":4,\"min\":30,\"max\":150}"};
+    for (const char* json : ranges) sendOk(json);
+    sendOk("{\"t\":\"limit\",\"ma\":1500}");
+  }
+};
+void no_safety_event(const Harness& h) {
+  for (auto kind : {EventKind::Overcurrent, EventKind::StopButton, EventKind::Watchdog,
+                    EventKind::InaMissing})
+    TEST_ASSERT_FALSE_MESSAGE(h.saw(kind), protocol::name(kind));
+}
+void app_practice_sequence_is_accepted_end_to_end() {
+  Harness h;
+  AppLink app{h};
+  app.connect();
+  TEST_ASSERT_TRUE(h.saw(EventKind::CalibOk));
+  TEST_ASSERT_EQUAL_FLOAT(1500, h.safety.info().limit);
+  // ATTEMPT: follow at 30 Hz while the patient closes to 40%. Follow alone feeds the watchdog.
+  Quint vision{};
+  for (int frame = 0; frame < 90; ++frame) {
+    vision.fill(0.4F * frame / 89);
+    app.sendFingers("follow", vision);
+    for (int t = 0; t < 7; ++t) app.tick();  // ~33 ms between follow lines
+  }
+  auto tel = h.safety.telemetry(h.now);
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(Mode::Follow), static_cast<int>(tel.md));
+  for (std::size_t i = 0; i < config::FINGERS; ++i)
+    TEST_ASSERT_FLOAT_WITHIN(0.02F, 0.35F, tel.a[i]);  // slack: never past vision - 0.05
+  // ASSIST: the engine staggers fingers 150 ms apart; waiting fingers hold their position.
+  const Quint goal{0.7F, 0.95F, 0.95F, 0.95F, 0.95F};
+  for (std::size_t released = 1; released <= config::FINGERS; ++released) {
+    Quint f = tel.a;
+    for (std::size_t i = 0; i < released; ++i) f[i] = goal[i];
+    app.sendFingers("target", f, 0.3F);
+    for (int t = 0; t < 30; ++t) app.tick(900);
+  }
+  for (int t = 0; t < 600; ++t) app.tick(900);  // 3 s at 0.3 range/s reaches every goal
+  tel = h.safety.telemetry(h.now);
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(Mode::Target), static_cast<int>(tel.md));
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
+    TEST_ASSERT_FLOAT_WITHIN(0.001F, goal[i], tel.a[i]);
+    TEST_ASSERT_TRUE(h.safety.attached(i));
+  }
+  // RELEASE: unwind at 3 ranges/s, then detach 500 ms after reaching open.
+  app.sendOk("{\"t\":\"release\"}");
+  for (int t = 0; t < 200; ++t) app.tick(100);
+  for (std::size_t i = 0; i < config::FINGERS; ++i) TEST_ASSERT_FALSE(h.safety.attached(i));
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Idle), static_cast<int>(h.safety.state()));
+  no_safety_event(h);
+}
+void app_calibration_wizard_sequence_is_accepted() {
+  Harness h;
+  AppLink app{h};
+  // Calibrate page: a low limit while jogging each finger, then release before the ranges.
+  for (int finger = 0; finger < static_cast<int>(config::FINGERS); ++finger) {
+    char json[48];
+    app.sendOk("{\"t\":\"limit\",\"ma\":400}");
+    std::snprintf(json, sizeof(json), "{\"t\":\"jog\",\"i\":%d,\"deg\":95}", finger);
+    app.sendOk(json);
+    for (int t = 0; t < 40; ++t) app.tick(150);
+    TEST_ASSERT_TRUE(h.safety.attached(finger));
+  }
+  TEST_ASSERT_EQUAL_FLOAT(400, h.safety.info().limit);
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Calib), static_cast<int>(h.safety.state()));
+  // Ranges are rejected until release; uncalibrated jogs then go limp at once.
+  TEST_ASSERT_EQUAL_STRING("state",
+                           protocol::name(app.send("{\"t\":\"calib\",\"i\":0,\"min\":20,\"max\":150}")));
+  app.connect();
+  for (std::size_t i = 0; i < config::FINGERS; ++i) TEST_ASSERT_FALSE(h.safety.attached(i));
+  // "Glove closes the hand": limit min(1500, draft) and a slow target on all five.
+  app.sendOk("{\"t\":\"limit\",\"ma\":1500}");
+  app.sendFingers("target", Quint{1, 1, 1, 1, 1}, 0.3F);
+  for (int t = 0; t < 800; ++t) app.tick(900);
+  for (std::size_t i = 0; i < config::FINGERS; ++i)
+    TEST_ASSERT_FLOAT_WITHIN(0.001F, 1, h.safety.telemetry(h.now).a[i]);
+  app.sendOk("{\"t\":\"release\"}");
+  no_safety_event(h);
+}
+void app_silence_still_trips_the_watchdog() {
+  // If the browser stops writing (tab hung, cable out), the board releases on its own.
+  Harness h;
+  AppLink app{h};
+  app.connect();
+  app.sendFingers("target", Quint{0.5F, 0.5F, 0.5F, 0.5F, 0.5F}, 0.3F);
+  auto silent = [&](int ticks) {
+    for (int t = 0; t < ticks; ++t) {
+      h.now += 5;
+      h.safety.current(300, h.now);
+      h.safety.tick(h.now);
+    }
+  };
+  silent(200);  // exactly 1000 ms: not yet (strictly greater than WATCHDOG_MS)
+  TEST_ASSERT_FALSE(h.saw(EventKind::Watchdog));
+  silent(1);  // 1005 ms: the next tick releases
+  TEST_ASSERT_TRUE(h.saw(EventKind::Watchdog));
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Fault), static_cast<int>(h.safety.state()));
+}
+
 bool sameJson(JsonVariantConst a, JsonVariantConst b) {
   if (a.is<double>() && b.is<double>())
     return std::fabs(a.as<double>() - b.as<double>()) < 0.000001;
@@ -928,6 +1064,9 @@ int main() {
   RUN_TEST(assistance_waits_for_out_of_range_jog_to_unwind);
   RUN_TEST(decimal_writer_never_overruns_and_parser_survives_noise);
   RUN_TEST(servo_timers_cover_every_finger);
+  RUN_TEST(app_practice_sequence_is_accepted_end_to_end);
+  RUN_TEST(app_calibration_wizard_sequence_is_accepted);
+  RUN_TEST(app_silence_still_trips_the_watchdog);
   RUN_TEST(shared_serial_fixtures_match_expected);
   return UNITY_END();
 }
