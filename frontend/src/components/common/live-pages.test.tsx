@@ -395,7 +395,9 @@ describe('Safety and accessible common controls', () => {
       'ds-status-chip--neutral',
     );
     expect(screen.queryByText('Stopped')).not.toBeInTheDocument();
-    act(() => emit({ kind: 'safety', source: 'camera_lost' }));
+    act(() =>
+      emit({ kind: 'safety', source: 'camera_lost', finger: null, ma: null }),
+    );
     expect(screen.getByText('Stopped').closest('.ds-status-chip')).toHaveClass(
       'ds-status-chip--danger',
     );

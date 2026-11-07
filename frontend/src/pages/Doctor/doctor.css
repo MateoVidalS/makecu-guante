@@ -135,3 +135,28 @@
     height: 100%;
   }
 }
+@media print {
+  .doctor-report .ds-card {
+    gap: var(--space-4);
+  }
+  .doctor-report .report-page > .ds-badge {
+    display: none;
+  }
+  .doctor-report .chart-card {
+    display: block;
+  }
+  .doctor-report .chart-card > .ds-card__header {
+    float: right;
+    margin: 0 0 var(--space-4) var(--space-8);
+  }
+  .doctor-report .chart-card h3 {
+    margin: 0;
+  }
+  .doctor-report .chart-hint {
+    line-height: var(--leading-snug);
+  }
+  .doctor-report .chart-canvas,
+  .doctor-report .compact .chart-canvas {
+    height: calc(var(--placeholder-height) - var(--space-64) - var(--space-48));
+  }
+}
