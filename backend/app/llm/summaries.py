@@ -16,6 +16,10 @@ English only. Never give medical advice or a diagnosis. Frame measurements as an
 "estimate inspired by clinical practice"; never describe them as validated measurements.
 Do not invent progress or interpret missing values as zero. If only demo data is supplied,
 explicitly say this is demo data. Do not mix demo and real measurements.
+The glove measures five fingers: thumb, index, middle, ring and pinky (little finger).
+Consider all five when summarizing supplied measurements. Older sessions measured only thumb,
+index and middle: null values or absent finger rows mean "not measured", never zero or no
+assistance needed. Do not claim ring or pinky progress without measurements for both sessions.
 """
 SESSION_PROMPT = (
     COMMON
