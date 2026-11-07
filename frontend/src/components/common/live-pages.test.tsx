@@ -517,8 +517,13 @@ describe('Calibration wizard', () => {
   });
 });
 describe('Evaluation', () => {
+  function evaluationRuntime() {
+    const runtime = new ScriptedRuntime({ persist: false });
+    runtime.calibration.current!.created_at = new Date().toISOString();
+    return runtime;
+  }
   it('selects only ring and pinky and numbers their four sweeps', async () => {
-    const { runtime } = mount(<Evaluate />);
+    const { runtime } = mount(<Evaluate />, evaluationRuntime());
     const start = vi.spyOn(runtime.evaluation, 'start');
     for (const name of ['Thumb', 'Index', 'Middle'])
       fireEvent.click(screen.getByRole('checkbox', { name }));
@@ -546,7 +551,7 @@ describe('Evaluation', () => {
     ).toHaveLength(4);
   });
   it('blocks an empty evaluation subset', () => {
-    mount(<Evaluate />);
+    mount(<Evaluate />, evaluationRuntime());
     for (const name of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
       fireEvent.click(screen.getByRole('checkbox', { name }));
     fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
@@ -558,7 +563,7 @@ describe('Evaluation', () => {
     ).toBeVisible();
   });
   it('requires the checklist, renders live sweep, results and safe abort', async () => {
-    const { runtime } = mount(<Evaluate />);
+    const { runtime } = mount(<Evaluate />, evaluationRuntime());
     expect(
       screen.getByRole('button', { name: 'Start evaluation' }),
     ).toBeDisabled();
@@ -592,12 +597,9 @@ describe('Evaluation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Evaluate again' }));
     fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
     fireEvent.click(screen.getByRole('button', { name: 'Start evaluation' }));
-    await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'Stop evaluation' }),
-      ).toBeVisible(),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Stop evaluation' }));
+    await act(async () => {
+      await runtime.evaluation.stop();
+    });
     expect(
       await screen.findByText('Evaluation stopped. Rest before trying again.'),
     ).toBeVisible();

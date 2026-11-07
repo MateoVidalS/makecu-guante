@@ -12,7 +12,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      'VITE_MOCK_API=1 VITE_SIM=1 pnpm exec vite --host 127.0.0.1 --port 5174 --strictPort',
+      'VITE_MOCK_API=1 VITE_SIM=1 VITE_SIM_SPEED=3 pnpm exec vite --host 127.0.0.1 --port 5174 --strictPort',
     cwd: new URL('../../..', import.meta.url).pathname,
     url: 'http://127.0.0.1:5174',
     reuseExistingServer: !process.env.CI,
