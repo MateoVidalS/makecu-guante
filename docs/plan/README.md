@@ -19,6 +19,7 @@ progress.
 | [11-ux-design.md](11-ux-design.md) | **UX/UI design**: users, principles, tokens, shell, wireframes, choreography, microcopy, accessibility, QA |
 | [10-orchestration.md](10-orchestration.md) | **How the build runs**: Orca handoffs to Codex, waves, merges, hardware gate |
 | [13-ai-therapist.md](13-ai-therapist.md) | **Live AI therapy assistant**: Gemini Live tool calling, safe limits, braking, decisions log |
+| [14-ux-fixes.md](14-ux-fixes.md) | **UX fixes from the Nov 7 design review**: findings, U1–U4 waves around the AI-therapist wave |
 | [12-five-finger-update.md](12-five-finger-update.md) | **Hardware changes analysis + plan to move to 5 fingers** (contract v2, power-aware assist, palm-down view, glove vision check) |
 | [`/handoffs/`](../../handoffs/) | One self-contained brief per work package (WP0–WP11) + `STATUS.md` |
 | [`/AGENTS.md`](../../AGENTS.md) | Rules every coding agent follows |
