@@ -1,0 +1,27 @@
+{
+  "sessions": 8,
+  "attempts": 8,
+  "evaluations": 3,
+  "days_practiced_last_7": 3,
+  "last_session_at": "2026-11-05T09:00:00Z",
+  "per_finger": [
+    {
+      "finger": "thumb",
+      "active_max_first": 0.35,
+      "active_max_last": 0.63,
+      "assist_needed_last": 0.06999999999999995
+    },
+    {
+      "finger": "index",
+      "active_max_first": 0.37,
+      "active_max_last": 0.65,
+      "assist_needed_last": 0.35
+    },
+    {
+      "finger": "middle",
+      "active_max_first": 0.39,
+      "active_max_last": 0.67,
+      "assist_needed_last": 0.32999999999999996
+    }
+  ]
+}
