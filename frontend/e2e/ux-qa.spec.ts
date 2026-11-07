@@ -34,13 +34,22 @@ async function inspect(page: Page, name: string, testInfo: TestInfo) {
       ? resolve('../docs/design/screenshots/after-wp11')
       : testInfo.outputDir;
   await mkdir(directory, { recursive: true });
-  await page.screenshot({
-    path: resolve(
-      directory,
-      `${testInfo.title.replaceAll(' ', '-')}-${name}.png`,
-    ),
-    fullPage: true,
-  });
+  const fileName = `${testInfo.title.replaceAll(' ', '-')}-${name}`;
+  await page.screenshot({ path: resolve(directory, `${fileName}.png`) });
+  if (
+    await page.evaluate(
+      () => document.documentElement.scrollHeight > innerHeight,
+    )
+  ) {
+    await page.screenshot({
+      path: resolve(directory, `${fileName}-full.png`),
+      fullPage: true,
+    });
+  }
+  expect(
+    await page.locator('main .ds-button--primary:visible').count(),
+    `${name}: one primary action`,
+  ).toBeLessThanOrEqual(1);
 }
 
 for (const size of [
