@@ -14,6 +14,7 @@ import {
   useExerciseView,
   useEvaluationView,
   useRuntime,
+  RuntimeStatus,
 } from './runtime';
 import { VoiceProvider } from './voice';
 import { StatusChip, Toasts } from './components/common';
@@ -95,6 +96,7 @@ function Shell() {
           </>
         )}
         <div className="statuses">
+          <RuntimeStatus />
           <StatusChip>● Glove: Simulator</StatusChip>
           <StatusChip>● Camera: Simulated hand</StatusChip>
           {!focus && !doctor && (
