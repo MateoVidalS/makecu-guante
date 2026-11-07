@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { calibrateSimulator } from './helpers';
 
 test('all five manual servo ranges must be set and acknowledged', async ({
   page,
 }) => {
-  await calibrateSimulator(page);
+  // Exercise first-time setup; saved calibrations now correctly open on Review.
+  await page.route('**/api/calibrations/latest', (route) =>
+    route.fulfill({ json: null }),
+  );
   await page.goto('/calibrate');
   const fingers = page.getByRole('group', { name: 'Finger to calibrate' });
   await expect(fingers.getByRole('button')).toHaveCount(5);

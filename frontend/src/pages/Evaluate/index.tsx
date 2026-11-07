@@ -4,7 +4,6 @@ import {
   PageHeader,
   Checkbox,
   StatusDot,
-  Banner,
 } from '../../design-system';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -26,6 +25,11 @@ import {
   stifferAtSpeed,
 } from '../../components/metrics';
 import { hasCompleteFriction, hasRecentFriction } from './friction';
+import {
+  useCalibrationStatus,
+  calibrationReadiness,
+} from '../../runtime/calibrationValidation';
+import { RelaxedHandSafetyStrip } from '../../components/calibration';
 import './evaluate.css';
 interface Point {
   pos: number;
@@ -166,21 +170,6 @@ function SweepChart({ measuringFriction }: { measuringFriction: boolean }) {
     </>
   );
 }
-function SafetyLine({ text, release }: { text: string; release: () => void }) {
-  return (
-    <Banner
-      tone="warning"
-      title={text}
-      action={
-        <Button size="sm" onClick={release}>
-          Release glove now
-        </Button>
-      }
-    >
-      Keep the hand relaxed. Press STOP anytime. Stop if it hurts.
-    </Banner>
-  );
-}
 const mA = (value: number | null) =>
   value == null ? (
     'Unavailable'
@@ -194,6 +183,9 @@ export default function Evaluate() {
   const runtime = useRuntime(),
     view = useEvaluationView(),
     { store, client } = useGlove();
+  const calibrationStatus = useCalibrationStatus();
+  const readiness = calibrationReadiness(calibrationStatus);
+  const calibrated = calibrationStatus.state === 'ok';
   const connected = useStore(store, (s) => s.connection === 'connected');
   const [relaxed, setRelaxed] = useState(false),
     [error, setError] = useState(''),
@@ -223,7 +215,8 @@ export default function Evaluate() {
   }
   async function measureFriction() {
     const calibration = runtime.calibration.current;
-    if (!calibration || !emptyGlove || !connected || busy) return;
+    if (!calibration || !calibrated || !emptyGlove || !connected || busy)
+      return;
     setError('');
     setBusy(true);
     setMeasuringFriction(true);
@@ -257,6 +250,7 @@ export default function Evaluate() {
   }
   async function start() {
     if (
+      !calibrated ||
       !hasRecentFriction(runtime.calibration.current) ||
       !relaxed ||
       !connected ||
@@ -302,12 +296,8 @@ export default function Evaluate() {
             </span>
           }
         />
-        <SafetyLine
-          text={
-            measuringFriction
-              ? 'Keep the glove empty and hanging freely.'
-              : 'Keep your hand relaxed.'
-          }
+        <RelaxedHandSafetyStrip
+          emptyGlove={measuringFriction}
           release={release}
         />
         <progress
@@ -452,7 +442,6 @@ export default function Evaluate() {
       </div>
     );
   }
-  const calibrated = !!runtime.calibration.current;
   const blocked =
     !relaxed ||
     !connected ||
@@ -466,7 +455,7 @@ export default function Evaluate() {
         lead="The glove moves each finger gently, slowly and then quickly, and estimates resistance."
       />
       <div className="hp-wizard">
-        <SafetyLine text="Keep your hand relaxed." release={release} />
+        <RelaxedHandSafetyStrip release={release} />
         {view.stage === 'aborted' && (
           <p role="status">Evaluation stopped. Rest before trying again.</p>
         )}
@@ -475,10 +464,8 @@ export default function Evaluate() {
             label="Evaluation checklist"
             items={[
               {
-                label: 'Calibration',
-                value: calibrated ? 'Ready' : 'Needed',
-                tone: calibrated ? 'reached' : 'caution',
-                action: <Link to="/calibrate">Review calibration</Link>,
+                ...readiness,
+                action: <Link to={readiness.href}>{readiness.action}</Link>,
               },
               {
                 label: 'Glove',
@@ -572,7 +559,8 @@ export default function Evaluate() {
               {!connected
                 ? 'Connect your glove in Setup first.'
                 : !calibrated
-                  ? 'Calibrate your comfortable range first.'
+                  ? (calibrationStatus.issues[0]?.message ??
+                    'Calibrate your comfortable range first.')
                   : !frictionReady
                     ? 'Measure empty-glove friction before evaluating.'
                     : !selectedFingers.length

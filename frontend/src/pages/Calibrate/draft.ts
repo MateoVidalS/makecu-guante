@@ -1,7 +1,10 @@
 import { captureStats } from '../../vision/calibration';
 import type { CalibrationIn } from '../../contracts/api';
 import type { FingerId, VisionFrame } from '../../contracts/vision';
-import type { ServoCalibration } from '../../contracts/calibration';
+import type {
+  Calibration,
+  ServoCalibration,
+} from '../../contracts/calibration';
 export const fingers: FingerId[] = [
   'thumb',
   'index',
@@ -14,6 +17,8 @@ export interface Capture {
   pinch: number;
 }
 export interface Draft {
+  sourceId?: number;
+  edited?: boolean;
   step: number;
   finger: number;
   angle: number;
@@ -104,4 +109,34 @@ export function stableCapture(frames: VisionFrame[]): Capture {
     throw new Error("Too much movement — let's try again.");
   const measured = captureStats(frames, 2);
   return { raw: measured.rawFlexSum, pinch: measured.pinch };
+}
+
+/** Saved values are a complete starting point for review or a focused redo. */
+export function draftFromCalibration(calibration: Calibration): Draft {
+  return {
+    ...freshDraft(),
+    step: 2,
+    sourceId: calibration.id,
+    servo: Object.fromEntries(
+      calibration.servo.map((range) => [range.finger, { ...range }]),
+    ),
+    hand: calibration.camera.affected_hand,
+    open: {
+      raw: { ...calibration.camera.open_flex },
+      pinch: calibration.camera.pinch_open,
+    },
+    closed: {
+      raw: { ...calibration.camera.closed_flex },
+      pinch: calibration.camera.pinch_closed,
+    },
+    limit: calibration.current_limit_ma,
+    friction: calibration.friction,
+  };
+}
+
+export function resumableDraft(calibration: Calibration | null): Draft {
+  const draft = loadDraft();
+  return calibration && !(draft.sourceId === calibration.id && draft.edited)
+    ? draftFromCalibration(calibration)
+    : draft;
 }

@@ -41,7 +41,7 @@ async function withSerial(page: Page, mode: Mode) {
 }
 
 const gloveHeading = (page: Page) =>
-  page.locator('.hp-columns section').first().locator('h2,h3').first();
+  page.getByLabel('Glove connection').getByRole('heading');
 const connect = (page: Page) =>
   page.getByRole('button', { name: /Connect glove|Reconnect glove/ }).click();
 const simulate = (page: Page) =>
@@ -51,7 +51,7 @@ async function expectSimulatedReady(page: Page) {
   await expect(gloveHeading(page)).toHaveText(/Glove ready/, {
     timeout: 5_000,
   });
-  await expect(page.getByText(/Simulated glove: no motors move/)).toBeVisible();
+  await expect(page.getByText(/Simulated glove.*No motors move/)).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Simulate glove' }),
   ).toHaveCount(0);

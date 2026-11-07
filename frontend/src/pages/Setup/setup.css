@@ -47,3 +47,27 @@
   justify-content: space-between;
   gap: var(--space-16);
 }
+
+/* One reading column; the preview remains wider than 480px at 1280px. */
+.setup-page {
+  max-width: calc(var(--space-64) * 12);
+  margin-inline: auto;
+  gap: var(--space-24);
+}
+.setup-readiness,
+.setup-cards {
+  display: grid;
+  gap: var(--space-16);
+}
+.setup-readiness {
+  justify-items: start;
+}
+.setup-cards .ds-card {
+  display: grid;
+  gap: var(--space-16);
+}
+.setup-cards .ds-card__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}

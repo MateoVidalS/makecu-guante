@@ -8,10 +8,11 @@ import {
   Slider,
   Checkbox,
   ProgressRing,
+  StatusChip,
 } from '../../design-system';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
-import { useRuntime, RuntimeSimulatorCalibration } from '../../runtime';
+import { useRuntime } from '../../runtime';
 
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision, useVisionFrame } from '../../vision';
@@ -27,20 +28,42 @@ import type { VisionFrame } from '../../contracts/vision';
 import { Readouts, Section, Stepper, title } from '../../components/common';
 import {
   fingers,
-  loadDraft,
+  resumableDraft,
+  draftFromCalibration,
   saveDraft,
   freshDraft,
   stableCapture,
   validRange,
   type Draft,
 } from './draft';
+import {
+  CalibrationIssueBanner,
+  RelaxedHandSafetyStrip,
+} from '../../components/calibration';
+import {
+  useCalibrationStatus,
+  useSavedCalibration,
+  selectCalibrationStatus,
+  calibrationReadiness,
+} from '../../runtime/calibrationValidation';
+
+import { SimulatorCalibrationShortcut } from './SimulatorCalibrationShortcut';
+
 export default function Calibrate() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const linkedStep = params.get('step');
+  const linkedFinger = params.get('finger');
+  const calibration = useSavedCalibration();
+  const calibrationStatus = useCalibrationStatus();
+  const readiness = calibrationReadiness(calibrationStatus);
+  const hydrated = useRef(!!calibration);
+  const edited = useRef(false);
   const [short] = useShortPractice();
   const runtime = useRuntime(),
     { client } = useGlove(),
     vision = useVision();
-  const [draft, setDraft] = useState(loadDraft),
+  const [draft, setDraft] = useState(() => resumableDraft(calibration)),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [capture, setCapture] = useState(false),
@@ -57,9 +80,43 @@ export default function Calibrate() {
   const finger = GLOVE_FINGERS[draft.finger],
     range = draft.servo[finger];
   function update(patch: Partial<Draft>) {
-    setDraft((d) => ({ ...d, ...patch }));
+    edited.current = true;
+    setDraft((d) => ({ ...d, ...patch, edited: true }));
     setError('');
   }
+  // Backend reload can finish after mount. Never overwrite edits already underway.
+  useEffect(() => {
+    if (!hydrated.current && calibration && !edited.current) {
+      hydrated.current = true;
+      const initial = resumableDraft(calibration);
+      setDraft({
+        ...initial,
+        step:
+          linkedStep === 'glove'
+            ? 0
+            : linkedStep === 'camera'
+              ? 1
+              : initial.step,
+        finger:
+          linkedFinger && GLOVE_FINGERS.includes(linkedFinger as typeof finger)
+            ? GLOVE_FINGERS.indexOf(linkedFinger as typeof finger)
+            : initial.finger,
+      });
+    }
+  }, [calibration, linkedStep, linkedFinger]);
+  useEffect(() => {
+    if (linkedStep !== 'glove' && linkedStep !== 'camera') return;
+    cancel.current();
+    client.release();
+    setDraft((current) => ({
+      ...current,
+      step: linkedStep === 'glove' ? 0 : 1,
+      finger:
+        linkedFinger && GLOVE_FINGERS.includes(linkedFinger as typeof finger)
+          ? GLOVE_FINGERS.indexOf(linkedFinger as typeof finger)
+          : current.finger,
+    }));
+  }, [linkedStep, linkedFinger, client]);
   useEffect(() => {
     saveDraft(draft);
   }, [draft]);
@@ -251,7 +308,9 @@ export default function Calibrate() {
           throw new Error('Move further from your open position. Try again.');
         if (kind === 'pinch' && draft.open && value.pinch >= draft.open.pinch)
           throw new Error('Touch your thumb and index finger. Try again.');
-        update({ [kind]: value });
+        update(
+          kind === 'open' ? { open: value, closed: null } : { [kind]: value },
+        );
       } catch (e) {
         setError((e as Error).message);
       }
@@ -288,6 +347,34 @@ export default function Calibrate() {
     saveDraft(freshDraft());
     setSaved(true);
   }
+  const draftStatus = selectCalibrationStatus(
+    {
+      servo: GLOVE_FINGERS.map(
+        (f) => draft.servo[f] as ServoCalibration,
+      ).filter(Boolean),
+      camera: {
+        affected_hand: draft.hand,
+        open_flex: draft.open?.raw ?? {
+          thumb: 0,
+          index: 0,
+          middle: 0,
+          ring: 0,
+          pinky: 0,
+        },
+        closed_flex: draft.closed?.raw ?? {
+          thumb: 0,
+          index: 0,
+          middle: 0,
+          ring: 0,
+          pinky: 0,
+        },
+        pinch_open: draft.open?.pinch ?? 1,
+        pinch_closed: draft.closed?.pinch ?? 0,
+      },
+    },
+    vision.source.kind === 'sim',
+    vision.latest,
+  );
   const allRangesSet = GLOVE_FINGERS.every((f) => validRange(draft.servo[f]));
   const simulated = client.kind === 'sim' && vision.source.kind === 'sim';
   /** Simulated glove with the real camera: no servos to range, the patient closes their own hand. */
@@ -362,21 +449,19 @@ export default function Calibrate() {
             update({ step });
           }}
         />
-        <div className="hp-safety-line" role="note">
-          <p>
-            <strong>Keep the hand relaxed. Press STOP anytime.</strong>
-          </p>
-          <Button
-            size="sm"
-            onClick={() => {
-              cancel.current();
-              client.release();
-              void runtime.evaluation.stop();
-            }}
-          >
-            Release glove now
-          </Button>
-        </div>
+        <StatusChip
+          label="Calibration"
+          value={readiness.value}
+          tone={readiness.tone}
+        />
+        <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
+        <RelaxedHandSafetyStrip
+          release={() => {
+            cancel.current();
+            client.release();
+            void runtime.evaluation.stop();
+          }}
+        />
         {error && (
           <p role="alert" className="hp-alert">
             {error}
@@ -388,7 +473,7 @@ export default function Calibrate() {
             title={`Step 1 · Glove range: ${title(finger)}`}
             description="Rest palm down, forearm on a towel. Stop if it hurts."
           >
-            {client.kind === 'sim' && (
+            {ownFist && (
               <div className="hp-set-row">
                 <div>
                   <p>
@@ -398,11 +483,7 @@ export default function Calibrate() {
                     Use standard ranges and go straight to the camera step.
                   </p>
                 </div>
-                <Button
-                  variant="primary"
-                  disabled={busy}
-                  onClick={applySimulatedRanges}
-                >
+                <Button disabled={busy} onClick={applySimulatedRanges}>
                   Use simulated glove ranges
                 </Button>
               </div>
@@ -499,6 +580,13 @@ export default function Calibrate() {
               {client.kind !== 'sim' &&
                 ' After sending, wait for the glove to confirm its ranges.'}
             </p>
+            {(!validRange(range) || !allRangesSet) && (
+              <p id="next-finger-hint" className="hp-note">
+                {!validRange(range)
+                  ? 'Set open and closed first, at least 20° apart.'
+                  : 'Set open and closed for every finger before continuing.'}
+              </p>
+            )}
             <div className="hp-wizard__footer">
               <ButtonLink variant="quiet" to="/setup">
                 Back
@@ -506,6 +594,11 @@ export default function Calibrate() {
               <div className="hp-actions">
                 <Button
                   variant="primary"
+                  aria-describedby={
+                    !validRange(range) || !allRangesSet
+                      ? 'next-finger-hint'
+                      : undefined
+                  }
                   disabled={
                     busy ||
                     !validRange(range) ||
@@ -531,7 +624,7 @@ export default function Calibrate() {
         {draft.step === 1 && (
           <Section
             flush
-            title="Step 2 · Camera range"
+            title={`Step 2 · Camera range${linkedStep === 'camera' ? `: ${title(finger)}` : ''}`}
             description="Palm down. Keep still for two seconds during each capture."
           >
             <div className="hp-actions hp-actions--between">
@@ -635,9 +728,16 @@ export default function Calibrate() {
             title="Review your range"
             description="Check the values, then save. Saving also sends them to the glove."
           >
-            <p>All five glove ranges and both camera captures are ready.</p>
+            <p>
+              {draftStatus.state === 'ok'
+                ? 'All five glove ranges and both camera captures are ready.'
+                : 'Check the flagged ranges before saving.'}
+            </p>
             <p>Current limit: {draft.limit} mA</p>
-            <details className="hp-disclosure">
+            <details
+              className="hp-disclosure"
+              open={draftStatus.state === 'invalid' ? true : undefined}
+            >
               <summary>Details</summary>
               <table className="hp-table">
                 <caption>Glove angles</caption>
@@ -650,6 +750,7 @@ export default function Calibrate() {
                     <th scope="col" className="hp-num">
                       Closed
                     </th>
+                    <th scope="col">Review</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -658,6 +759,12 @@ export default function Calibrate() {
                       <th scope="row">{title(f)}</th>
                       <td className="hp-num">{draft.servo[f]?.min_deg}°</td>
                       <td className="hp-num">{draft.servo[f]?.max_deg}°</td>
+                      <td>
+                        {draftStatus.issues.find(
+                          (issue) =>
+                            issue.finger === f && issue.step === 'glove',
+                        )?.message ?? 'Ready'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -673,6 +780,7 @@ export default function Calibrate() {
                     <th scope="col" className="hp-num">
                       Closed
                     </th>
+                    <th scope="col">Review</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -684,6 +792,12 @@ export default function Calibrate() {
                       </td>
                       <td className="hp-num">
                         {draft.closed?.raw[f].toFixed(1)}°
+                      </td>
+                      <td>
+                        {draftStatus.issues.find(
+                          (issue) =>
+                            issue.finger === f && issue.step === 'camera',
+                        )?.message ?? 'Ready'}
                       </td>
                     </tr>
                   ))}
@@ -722,7 +836,7 @@ export default function Calibrate() {
               {back(1)}
               <Button
                 variant="primary"
-                disabled={busy}
+                disabled={busy || draftStatus.state !== 'ok'}
                 onClick={() => void action(save)}
               >
                 Save calibration
@@ -733,7 +847,13 @@ export default function Calibrate() {
       </div>
       {simulated && (
         <Section className="hp-plain">
-          <RuntimeSimulatorCalibration />
+          <SimulatorCalibrationShortcut
+            onSaved={(value) => {
+              edited.current = false;
+              hydrated.current = true;
+              setDraft(draftFromCalibration(value));
+            }}
+          />
         </Section>
       )}
     </div>
