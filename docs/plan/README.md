@@ -18,5 +18,6 @@ progress.
 | [09-testing.md](09-testing.md) | Test layers, README acceptance criteria mapping, definition of done |
 | [11-ux-design.md](11-ux-design.md) | **UX/UI design**: users, principles, tokens, shell, wireframes, choreography, microcopy, accessibility, QA |
 | [10-orchestration.md](10-orchestration.md) | **How the build runs**: Orca handoffs to Codex, waves, merges, hardware gate |
+| [12-five-finger-update.md](12-five-finger-update.md) | **Hardware changes analysis + plan to move to 5 fingers** (contract v2, power-aware assist, palm-down view, glove vision check) |
 | [`/handoffs/`](../../handoffs/) | One self-contained brief per work package (WP0–WP11) + `STATUS.md` |
 | [`/AGENTS.md`](../../AGENTS.md) | Rules every coding agent follows |
