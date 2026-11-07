@@ -71,3 +71,13 @@ describe('metrics (06-session §4)', () => {
     });
   });
 });
+
+it('marks held vision samples unknown after the frame expires', () => {
+  const w = new FakeWorld();
+  const t = new TraceBuilder(0);
+  t.sample(w.step(0), 'ATTEMPT');
+  t.sample(w.step(500), 'ATTEMPT');
+  expect(t.trace.closure.index.slice(0, 7)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+  expect(t.trace.closure.index.slice(7, 10)).toEqual([null, null, null]);
+  expect(t.trace.closure.index[10]).toBe(0);
+});

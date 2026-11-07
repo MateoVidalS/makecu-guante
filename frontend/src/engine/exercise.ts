@@ -54,6 +54,7 @@ class Exercise implements ExerciseEngine {
   private high: { at: number; finger: GloveFinger; closure: number } | null =
     null;
   private resistance = false;
+  private seenSafety = new Set<string>();
   constructor(private readonly options: EngineOptions) {}
 
   private get pose(): PoseDef {
@@ -95,6 +96,7 @@ class Exercise implements ExerciseEngine {
     this.metrics = null;
     this.input = null;
     this.gaps = [];
+    this.seenSafety.clear();
     this.progress.clear();
     this.lastFollow = null;
     const out = output();
@@ -114,23 +116,30 @@ class Exercise implements ExerciseEngine {
     if (this.phase === 'DONE') return out;
     this.metrics?.observe(input, this.phase);
     this.rememberGaps(input);
-    if (this.phase !== 'PAUSED') {
-      const event = input.gloveEvents.find(
-        (e) =>
-          e.e === 'overcurrent' || e.e === 'stop_button' || e.e === 'watchdog',
+    let receivedSafety = false;
+    for (const event of input.gloveEvents) {
+      if (
+        event.e !== 'overcurrent' &&
+        event.e !== 'stop_button' &&
+        event.e !== 'watchdog'
+      )
+        continue;
+      const key = `${event.e}:${event.t}`;
+      if (this.seenSafety.has(key)) continue;
+      this.seenSafety.add(key);
+      this.safety(
+        {
+          kind: 'safety',
+          source: event.e,
+          finger: event.e === 'overcurrent' ? this.attribute() : null,
+          ma: event.ma ?? input.tel?.ma ?? null,
+        },
+        out,
       );
-      if (event) {
-        this.safety(
-          {
-            kind: 'safety',
-            source: event.e as Safety['source'],
-            finger: event.e === 'overcurrent' ? this.attribute() : null,
-            ma: event.ma ?? input.tel?.ma ?? null,
-          },
-          out,
-        );
-        return out;
-      }
+      receivedSafety = true;
+    }
+    if (receivedSafety) return out;
+    if (this.phase !== 'PAUSED') {
       if (!input.gloveConnected) {
         this.safety(
           {
@@ -367,7 +376,7 @@ class Exercise implements ExerciseEngine {
       finger: event.finger,
       ma: event.ma,
     });
-    this.interrupt(out);
+    if (this.phase !== 'PAUSED') this.interrupt(out);
   }
 
   /** 06-session §3 PAUSED row: all interruptions retain partial attempt metrics. */

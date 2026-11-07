@@ -45,7 +45,9 @@ export class TraceBuilder {
     this.trace.t.push((this.next - this.start) / 1000);
     for (const f of GLOVE_FINGERS) {
       this.trace.closure[f].push(
-        visible(input) ? input.vision!.closure![f] : null,
+        visible({ ...input, now: this.next })
+          ? input.vision!.closure![f]
+          : null,
       );
       this.trace.servo[f].push(input.tel?.a[GLOVE_FINGERS.indexOf(f)] ?? 0);
     }

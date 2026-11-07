@@ -467,3 +467,77 @@ it('preserves the motion safety property over seeded random inputs and lifecycle
   expect(phases.has('ASSIST')).toBe(true);
   expect(phases.has('PAUSED')).toBe(true);
 });
+
+describe('safety boundary regressions', () => {
+  it('reports a delayed fault event once, even after fault telemetry already paused the engine', () => {
+    const r = new Run();
+    r.until('ATTEMPT');
+    r.step(50, (input) => {
+      input.tel!.st = 'fault';
+    });
+    expect(r.engine.state().phase).toBe('PAUSED');
+    const input = r.world.step();
+    input.gloveEvents = [{ t: input.now, e: 'watchdog' }];
+    const out = r.accept(r.engine.tick(input));
+    expect(out.events.filter((e) => e.kind === 'safety')).toHaveLength(1);
+    expect(out.commands).toEqual([]);
+    expect(r.engine.tick(input).events).toEqual([]);
+    r.accept(r.engine.resume(r.world.now));
+    r.until('DONE');
+    expect(r.results()[0].safety_events).toHaveLength(1);
+  });
+  it('keeps the camera-loss deadline across ASSIST_HOLD and requires resume after a vision release', () => {
+    const r = new Run('hook', { attempt_s: 0.1, assist_max_s: 0.5, hold_s: 5 });
+    r.until('ASSIST');
+    r.world.confidence = 0;
+    r.step();
+    const start = r.world.now;
+    r.until('ASSIST_HOLD');
+    r.until('PAUSED');
+    expect(r.world.now - start).toBe(1000);
+    const recovered = new Run('hook', { attempt_s: 0.1 });
+    recovered.until('ASSIST');
+    recovered.world.confidence = 0;
+    for (let i = 0; i < 7; i++) recovered.step();
+    recovered.world.confidence = 1;
+    expect(recovered.step().commands).toEqual([{ t: 'release' }]);
+    expect(recovered.engine.state().phase).toBe('PAUSED');
+  });
+  it('does not declare resistance for brief current spikes or fingers that keep moving', () => {
+    const spike = new Run('hook', { attempt_s: 0.1 });
+    spike.until('ASSIST');
+    for (let i = 0; i < 7; i++) spike.step();
+    spike.world.ma = 500;
+    for (let i = 0; i < 4; i++) spike.step();
+    spike.world.ma = 100;
+    spike.until('DONE');
+    expect(spike.events.some((e) => e.kind === 'resistance')).toBe(false);
+    const moving = new Run('full_fist', { attempt_s: 0.1 });
+    moving.until('ASSIST');
+    for (let i = 0; i < 7; i++) moving.step();
+    moving.world.ma = 500;
+    for (let i = 0; i < 10; i++) {
+      moving.world.hand = [0, i * 0.01, i * 0.01];
+      moving.step(50, (input) => {
+        input.tel!.a = [0, 0.7, 0.2];
+      });
+    }
+    expect(moving.events.some((e) => e.kind === 'resistance')).toBe(false);
+  });
+  it('refreshes assist goals only after drift exceeds 0.1', () => {
+    const r = new Run('hook', { attempt_s: 0.1 });
+    r.until('ASSIST');
+    r.world.hand = [0, 0.1, 0.1];
+    expect(r.step().commands).toEqual([]);
+    r.world.hand = [0, 0.11, 0.11];
+    expect(r.step().commands).toEqual([
+      { t: 'target', f: [0, 0.6, 0.6], v: 0.3 },
+    ]);
+  });
+  it('includes the first successful ATTEMPT frame in active dwell time', () => {
+    const r = new Run('hook');
+    r.world.hand = [0, 0.6, 0.6];
+    r.until('DONE');
+    expect(r.results()[0].time_to_position_s).toBe(0);
+  });
+});
