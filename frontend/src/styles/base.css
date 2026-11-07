@@ -101,14 +101,11 @@ hr {
 }
 
 /* ---------- Form elements (legacy default; prefer design-system Field/Input/Select) ---------- */
-button,
-input,
-select,
-textarea {
+/* :where() keeps these at zero specificity so any class (design system or page CSS) wins. */
+:where(button, input, select, textarea) {
   font: inherit;
   color: inherit;
 }
-/* :where() keeps these at zero specificity so any class (design system or page CSS) wins. */
 :where(
   input:not([type='checkbox'], [type='radio'], [type='range']),
   select,
@@ -217,6 +214,7 @@ nav:not(.app-nav),
   white-space: nowrap;
 }
 .card {
+  align-content: start; /* when a page makes a card a grid, don't spread rows to match a taller neighbour */
   margin-block: var(--space-24);
   padding: var(--space-24);
   border: var(--control-border) solid var(--border);
