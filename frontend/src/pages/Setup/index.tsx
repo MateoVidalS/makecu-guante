@@ -49,6 +49,7 @@ export default function Setup() {
     [deviceId, setDevice] = useState(''),
     [mirror, setMirror] = useState(true),
     [busy, setBusy] = useState(false),
+    [cameraBusy, setCameraBusy] = useState(false),
     [simulating, setSimulating] = useState(false),
     [rawPreviewReady, setRawPreviewReady] = useState(false);
   const [samples, setSamples] = useState<number[]>([]);
@@ -61,10 +62,14 @@ export default function Setup() {
       }
     });
   }, [glove.client]);
-  async function action(fn: () => Promise<unknown>) {
+  async function action(
+    fn: () => Promise<unknown>,
+    target: 'glove' | 'camera' = 'glove',
+  ) {
+    const setActionBusy = target === 'camera' ? setCameraBusy : setBusy;
     setError('');
-    setInfo(null);
-    setBusy(true);
+    if (target === 'glove') setInfo(null);
+    setActionBusy(true);
     try {
       await fn();
     } catch (e) {
@@ -81,7 +86,7 @@ export default function Setup() {
               : message,
       );
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
   /** Drop a pending or stuck USB attempt; the serial client rejects it as cancelled. */
@@ -302,7 +307,10 @@ export default function Setup() {
                 Stop camera
               </Button>
             ) : (
-              <Button disabled={busy} onClick={() => void action(camera)}>
+              <Button
+                disabled={cameraBusy}
+                onClick={() => void action(camera, 'camera')}
+              >
                 Connect camera
               </Button>
             )}

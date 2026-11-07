@@ -452,7 +452,7 @@ export default function Evaluate() {
     <div className="hp-page">
       <PageHeader
         title="Check your comfortable movement"
-        lead="The glove moves each finger gently, slowly and then quickly, and estimates resistance."
+        lead="The glove moves each finger slowly, then quickly. You’ll see resistance estimates."
       />
       <div className="hp-wizard">
         <RelaxedHandSafetyStrip release={release} />
