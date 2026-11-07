@@ -177,7 +177,9 @@ describe('04-firmware §4 safety conformance', () => {
     expect(fw.info().calib).toEqual([null, null, null]);
     const infos: unknown[] = [];
     fw.infos.subscribe((info) => infos.push(info));
+    fw.handle({ t: 'calib', i: 0, min: 20, max: 150 }, 0);
     fw.boot();
+    expect(fw.info().calib).toEqual([null, null, null]);
     expect(infos).toHaveLength(1);
     expect(new SimFirmware().info().calib).toEqual([null, null, null]);
   });

@@ -22,7 +22,10 @@ export class SimWorld {
   readonly ticks = new Signal<number>();
   readonly telemetry = new Signal<number>();
   readonly camera = new Signal<number>();
-  readonly origin = performance.now();
+  private clockOrigin = performance.now();
+  get origin() {
+    return this.clockOrigin;
+  }
   now = 0;
   handHiddenUntil = 0;
   readonly timeScale: number;
@@ -69,6 +72,8 @@ export class SimWorld {
   start() {
     if (!this.autoStart || this.timer) return;
     this.wallStart = performance.now();
+    // A world can be created long before the user selects the simulator.
+    this.clockOrigin = Math.max(this.clockOrigin, this.wallStart - this.now);
     this.simStart = this.requestedTime;
     this.timer = setInterval(() => {
       const due =

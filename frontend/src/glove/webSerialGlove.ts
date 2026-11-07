@@ -43,6 +43,7 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
   private readTask?: Promise<void>;
   private connectTask?: Promise<GloveInfo>;
   private closing?: Promise<void>;
+  private disconnectTask?: Promise<void>;
   private generation = 0;
   private timer?: ReturnType<typeof setInterval>;
   private followTimer?: ReturnType<typeof setInterval>;
@@ -76,6 +77,8 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
     this.release();
   };
   connect(): Promise<GloveInfo> {
+    if (this.disconnectTask)
+      return this.disconnectTask.then(() => this.connect());
     if (this.status === 'connected' && this.info)
       return Promise.resolve(this.info);
     if (this.connectTask) return this.connectTask;
@@ -214,6 +217,7 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
   }
   private enqueue(cmd: SerialCommand) {
     if (
+      this.disconnectTask ||
       !this.writer ||
       (this.status !== 'connected' && this.status !== 'connecting')
     )
@@ -252,9 +256,16 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
         }
       });
   }
-  async disconnect() {
+  disconnect(): Promise<void> {
+    if (this.disconnectTask) return this.disconnectTask;
+    this.release();
+    this.disconnectTask = this.closeGracefully().finally(() => {
+      this.disconnectTask = undefined;
+    });
+    return this.disconnectTask;
+  }
+  private async closeGracefully() {
     if (this.writer) {
-      this.release();
       // Best effort: never wait indefinitely for a broken USB writer.
       let timeout: ReturnType<typeof setTimeout> | undefined;
       await Promise.race([
@@ -336,7 +347,7 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
     this.enqueue({ t: 'target', f: [...f], v });
   }
   follow(f: Triple) {
-    if (!this.writer) return;
+    if (!this.writer || this.disconnectTask) return;
     encode({ t: 'follow', f });
     this.pendingFollow = { t: 'follow', f: [...f] };
     if (

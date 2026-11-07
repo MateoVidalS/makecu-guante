@@ -67,7 +67,7 @@ describe('SimWorld patient and camera', () => {
     const world = new SimWorld({ autoStart: false });
     const frames: VisionFrame[] = [];
     world.vision.onFrame((frame) => {
-      expect(world.timestamp() - frame.t).toBe(60);
+      expect(world.timestamp() - frame.t).toBeCloseTo(60, 6);
       frames.push(frame);
     });
     await world.vision.start({ affectedHand: 'left' });
@@ -132,7 +132,8 @@ describe('SimWorld patient and camera', () => {
     let peakGap = 0;
     world.glove.onTelemetry((tel) => {
       const closure = world.vision.latest()?.closure;
-      if (closure && tel.st === 'run') peakGap = Math.max(peakGap, tel.a[1] - closure.index);
+      if (closure && tel.st === 'run')
+        peakGap = Math.max(peakGap, tel.a[1] - closure.index);
     });
     world.glove.target([1, 1, 1], 0.3);
     world.advance(1000);
@@ -167,6 +168,22 @@ describe('SimWorld patient and camera', () => {
     await world.glove.connect();
     await vi.advanceTimersByTimeAsync(100);
     expect(world.now).toBe(2200);
+    world.stop();
+  });
+  it('lazy connection and restart keep real-time timestamps aligned to performance.now()', async () => {
+    vi.useFakeTimers({
+      toFake: ['setInterval', 'clearInterval', 'performance'],
+    });
+    const world = new SimWorld();
+    await vi.advanceTimersByTimeAsync(5000);
+    await world.glove.connect();
+    await vi.advanceTimersByTimeAsync(20);
+    expect(world.glove.latest()?.t).toBe(performance.now());
+    world.stop();
+    await vi.advanceTimersByTimeAsync(2000);
+    await world.glove.connect();
+    await vi.advanceTimersByTimeAsync(20);
+    expect(world.glove.latest()?.t).toBe(performance.now());
     world.stop();
   });
   it('rejects invalid timeScale and advance durations', () => {

@@ -225,6 +225,27 @@ describe('Web Serial connection lifecycle', () => {
     await flush();
     expect(port.writes.at(-1)).toEqual({ t: 'limit', ma: 600 });
   });
+  it('disconnect rejects new motion while draining and a concurrent reconnect waits for cleanup', async () => {
+    const { client, port } = setup();
+    clients.push(client);
+    await client.connect();
+    await flush();
+    port.hold = true;
+    client.limit(600);
+    await flush();
+    const closing = client.disconnect();
+    client.target([1, 1, 1], 0.3);
+    client.follow([1, 1, 1]);
+    const reconnect = client.connect();
+    port.hold = false;
+    port.unblock?.();
+    await closing;
+    await reconnect;
+    expect(
+      port.writes.filter((c) => c.t === 'target' || c.t === 'follow'),
+    ).toEqual([]);
+    expect(client.connection()).toBe('connected');
+  });
   it('beforeunload writes a best-effort release and removes its listener on disconnect', async () => {
     const { client, port, lifecycle } = setup();
     clients.push(client);
