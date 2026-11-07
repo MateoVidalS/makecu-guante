@@ -75,15 +75,17 @@ export default function Home() {
       />
       <Section flush>
         <div className="hp-actions">
-          <Button
-            variant="primary"
-            size="lg"
-            disabled={busy}
-            onClick={() => void start()}
-          >
-            Start today's practice
-          </Button>
-          <Link to="/exercise">Customize plan</Link>
+          <Stack gap={8}>
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={busy}
+              onClick={() => void start()}
+            >
+              Start today's practice
+            </Button>
+            <Link to="/exercise">Customize plan</Link>
+          </Stack>
           <Checkbox
             label="Short session (1 rep each)"
             checked={short}
