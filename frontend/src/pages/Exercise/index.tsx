@@ -510,7 +510,12 @@ export default function Exercise() {
             >
               {paused ? 'Resume' : 'Pause'}
             </Button>
-            <Button size="lg" variant="danger" onClick={brake}>
+            <Button
+              className="therapy-brake"
+              size="lg"
+              variant="danger"
+              onClick={brake}
+            >
               Brake
             </Button>
             <Button

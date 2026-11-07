@@ -481,3 +481,16 @@
     display: none;
   }
 }
+
+/* Safety owns Resume, while the patient's Brake stays available below the hand. */
+.shell--focus:has(#safety-banner-slot [role='alert'])
+  .exercise-live
+  .practice-actions {
+  display: flex;
+}
+.shell--focus:has(#safety-banner-slot [role='alert'])
+  .exercise-live
+  .practice-actions
+  > :not(.therapy-brake) {
+  display: none;
+}

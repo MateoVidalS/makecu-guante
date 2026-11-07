@@ -75,6 +75,26 @@ for (const theme of ['light', 'dark']) {
     await expect(
       page.getByRole('button', { name: 'Resume', exact: true }).first(),
     ).toBeVisible();
+    await page.getByText('Demo tools', { exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Press simulated STOP', exact: true })
+      .click();
+    await expect(
+      page.locator('#safety-banner-slot').getByRole('alert'),
+    ).toBeVisible();
+    await page.getByText('Demo tools', { exact: true }).click();
+    await expect(
+      page.getByRole('button', { name: 'Brake', exact: true }),
+    ).toBeVisible();
+    const brakeBox = await page
+      .getByRole('button', { name: 'Brake', exact: true })
+      .boundingBox();
+    expect(brakeBox!.y + brakeBox!.height).toBeLessThanOrEqual(720);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollHeight <= innerHeight,
+      ),
+    ).toBe(true);
   });
   test(`check-in, immediate pain brake, audit, Undo and keyboard access (${theme})`, async ({
     page,
