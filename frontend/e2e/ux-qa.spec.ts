@@ -77,6 +77,13 @@ for (const size of [
       page.on('pageerror', (error) => errors.push(error.message));
       await page.setViewportSize(size);
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+      await page.addInitScript((t) => {
+        try {
+          localStorage.setItem('rehab-hub.theme', t);
+        } catch {
+          /* storage unavailable */
+        }
+      }, theme);
       await silenceCoach(page);
       await calibrateSimulator(page);
       const sessions = (await (
