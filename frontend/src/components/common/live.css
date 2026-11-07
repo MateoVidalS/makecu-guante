@@ -1,0 +1,264 @@
+.live-stack {
+  display: grid;
+  gap: var(--space-16);
+}
+.live-stack > :is(h1, h2, h3, p) {
+  margin: 0;
+}
+.two-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-24);
+}
+.plan-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--space-64) * 2));
+  align-items: center;
+  gap: var(--space-24);
+}
+/* Flex height follows the safety banner instead of assuming a fixed header. */
+.shell--focus:has(.exercise-live) {
+  height: 100dvh;
+}
+.shell--focus:has(.exercise-live) .app-top {
+  flex-shrink: 0;
+}
+.shell--focus:has(.exercise-live) main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.exercise-live {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--space-8);
+}
+.live-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-24);
+  min-height: 0;
+}
+.live-hero {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  text-align: center;
+  gap: var(--space-8);
+}
+.live-hero > [role='img'] {
+  order: 3;
+  flex: 1;
+  min-height: 0;
+}
+.live-hero .hand-view {
+  height: 100%;
+  min-height: 0;
+}
+.live-hero .instruction {
+  font-size: var(--display);
+  line-height: var(--leading-tight);
+  margin: 0;
+}
+.live-hero :is(.pose-hint, p) {
+  margin: 0;
+}
+.pose-hint {
+  font-size: var(--h3);
+}
+.live-details {
+  display: grid;
+  align-content: center;
+  gap: var(--space-16);
+  min-width: 0;
+  min-height: 0;
+}
+.phase-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  font-size: var(--h2);
+  line-height: var(--leading-snug);
+}
+.phase-ring .ds-ring {
+  flex: none;
+}
+.finger-bars {
+  display: grid;
+  gap: var(--space-12);
+}
+.finger-bars .ds-meter__value {
+  font-size: var(--h2);
+}
+.finger-bars .ds-meter__label {
+  font-size: var(--h3);
+}
+.coach-compact {
+  min-width: 0;
+}
+.coach-compact > .coach-caption {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--h3);
+  margin: 0;
+}
+.coach-quick-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+}
+.coach-quick-controls summary {
+  min-height: var(--control-md);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.coach-popover {
+  position: absolute;
+  inset-inline: var(--space-32);
+  inset-block-start: var(--space-64);
+  z-index: var(--z-toast);
+  background: var(--surface);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-24);
+  box-shadow: var(--elevation-overlay);
+}
+.camera-pip .camera-overlay {
+  margin: 0 auto;
+}
+.camera-pip .camera-overlay figcaption {
+  display: none;
+}
+.exercise-live .attempt-toast {
+  justify-self: center;
+  max-width: 100%;
+}
+.exercise-live .attempt-toast .ds-toast__title {
+  font-size: var(--small);
+}
+.summary-fingers {
+  display: flex;
+  justify-content: space-around;
+  gap: var(--space-24);
+  flex-wrap: wrap;
+}
+.live-chart {
+  width: 100%;
+  min-height: var(--placeholder-height);
+  background: var(--surface-2);
+  border-radius: var(--radius-card);
+}
+.live-chart text {
+  fill: var(--text);
+  font: inherit;
+}
+.system-toast {
+  position: fixed;
+  inset-block-start: var(--space-16);
+  inset-inline-end: var(--space-16);
+  padding: var(--space-16);
+  background: var(--surface);
+  color: var(--text);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--elevation-overlay);
+}
+.focus .system-info {
+  display: none;
+}
+@media (max-width: 1280px) {
+  .live-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: var(--space-16);
+  }
+  .live-details {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+  .live-details .camera-pip {
+    display: none;
+  }
+  .finger-bars {
+    gap: var(--space-4);
+  }
+  .finger-bars .ds-meter__head {
+    margin-bottom: 0;
+  }
+  .phase-ring {
+    font-size: var(--h2);
+  }
+}
+@media (max-height: 800px) {
+  .live-details .camera-pip {
+    display: none;
+  }
+}
+@media (max-width: 720px) {
+  .two-columns {
+    grid-template-columns: 1fr;
+  }
+  .live-details {
+    grid-template-columns: 1fr 1fr;
+  }
+  .coach-compact {
+    grid-column: 1 / -1;
+  }
+}
+.live-tools {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-8);
+}
+.live-tools > details {
+  padding: var(--space-8) var(--space-16);
+  margin: 0;
+  background: var(--demo-soft);
+  border-color: var(--demo);
+}
+.live-tools > details > summary {
+  font-size: var(--small);
+}
+.practice-plan > .ds-button {
+  align-self: start;
+}
+.live-stack > .ds-button {
+  justify-self: start;
+}
+@media (max-width: 1280px) {
+  .statuses .ds-status-chip__icon {
+    display: none;
+  }
+  .statuses .ds-status-chip {
+    padding-inline: var(--space-8);
+    gap: var(--space-4);
+  }
+  .statuses > [aria-label='Session saving status'] {
+    font-size: var(--small);
+  }
+}
+@media (max-width: 1280px) {
+  .live-details .finger-bars {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-12);
+  }
+  .live-details .finger-bars .ds-meter__head {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+}
+
+/* Safety owns the next action; previous-attempt feedback must not crowd it. */
+.practice-paused .attempt-toast,
+.shell--focus:has(#safety-banner-slot [role='alert']) .practice-actions {
+  display: none;
+}

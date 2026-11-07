@@ -1,0 +1,235 @@
+/*
+ * Rehab Hub design tokens. Source of truth for colors, type, space, shape, depth and motion.
+ * Keep in sync with tokens.ts (canvas / three.js) — foundation.test.ts checks contrast on the TS copy.
+ *
+ * Rules
+ * - State colors carry ONE meaning everywhere (see docs/design/DESIGN_SYSTEM.md):
+ *   --active = moving on your own, --assist = the glove helping, --reached = reached,
+ *   --danger = safety only, --demo = demo data, --caution = a non-safety heads-up.
+ * - The plain state colors are for fills, dots, bars and the hand. For TEXT and icons on a surface use the
+ *   `-text` variant (≥ 4.5:1). For tinted backgrounds use the `-soft` variant.
+ * - Every name that existed in WP0 still exists; new names are additive.
+ */
+:root {
+  /* ---- Color: neutrals ---- */
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #efede8;
+  --surface-3: #e5e2db;
+  --text: #1d1f22;
+  --muted: #5c6168;
+  --border: #dad7d0;
+  --border-strong: #80868e; /* control outlines: ≥ 3:1 on every surface */
+  --scrim: rgb(21 23 26 / 0.48);
+
+  /* ---- Color: accent (actions, links, focus) ---- */
+  --accent: #2a5bd7;
+  --accent-hover: #2149b3;
+  --accent-soft: #e6ecfb;
+  --on-accent: #ffffff;
+  --focus-ring: #2a5bd7;
+
+  /* ---- Color: states (fill) ---- */
+  --target: #8a9099;
+  --active: #2f6feb;
+  --assist: #e8890c;
+  --reached: #1f9d55;
+  --danger: #c62828;
+  --demo: #7b61ff;
+  --caution: #c99400;
+
+  /* ---- Color: states (text/icon on surfaces, ≥ 4.5:1) ---- */
+  --active-text: #1f57c9;
+  --assist-text: #9a5200;
+  --reached-text: #16733f;
+  --danger-text: #b3261e;
+  --demo-text: #5b3fd9;
+  --caution-text: #7a5900;
+
+  /* ---- Color: states (soft tint backgrounds) ---- */
+  --active-soft: #e6eefd;
+  --assist-soft: #fdf0df;
+  --reached-soft: #e3f4ea;
+  --danger-soft: #fbe9e9;
+  --demo-soft: #efebff;
+  --caution-soft: #fbf3d9;
+  --on-danger: #ffffff;
+
+  /* ---- Color: per-finger series (charts only) ---- */
+  --finger-thumb: #7b61ff;
+  --finger-index: #00a3bf;
+  --finger-middle: #c2185b;
+  --hand: #d9cfc4;
+
+  /* ---- Color: chrome (doctor shell banner) ---- */
+  --chrome: #2e3946;
+  --on-chrome: #ffffff;
+
+  /* ---- Type ---- */
+  --root: 18px;
+  --font: 'Atkinson Hyperlegible', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --display: 3.5rem;
+  --h1: 2.25rem;
+  --h2: 1.6rem;
+  --h3: 1.25rem;
+  --body: 1rem;
+  --small: 0.85rem;
+  --caption: 0.75rem;
+  --weight-regular: 400;
+  --weight-bold: 700;
+  --line-height: 1.5;
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --tracking-tight: -0.01em;
+
+  /* ---- Space (4 px grid) ---- */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --space-64: 64px;
+
+  /* ---- Shape ---- */
+  --radius-sm: 6px;
+  --radius-input: 8px;
+  --radius-md: var(--radius-input);
+  --radius-card: 16px;
+  --radius-lg: var(--radius-card);
+  --radius-pill: 999px;
+  --control-border: 1px;
+
+  /* ---- Depth (dark mode uses borders instead) ---- */
+  --elevation-card: 0 1px 2px #1d1f220f, 0 2px 8px #1d1f220a;
+  --elevation-overlay: 0 12px 40px #1d1f2229, 0 2px 6px #1d1f2214;
+  --z-header: 20;
+  --z-toast: 40;
+  --z-dialog: 50;
+
+  /* ---- Motion ---- */
+  --dur-fast: 120ms;
+  --dur: 240ms;
+  --dur-slow: 480ms;
+  --dur-reach: 400ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ---- Focus ---- */
+  --focus-width: 3px;
+  --focus-offset: 4px;
+
+  /* ---- Controls ---- */
+  --control-sm: 36px; /* doctor / dense data views only */
+  --control-md: 48px; /* helper + data views */
+  --control-lg: 64px; /* patient views (spec §8) */
+  --button-min-height: var(--control-lg);
+  --button-label: 20px;
+
+  /* ---- Layout ---- */
+  --content-max: 1200px;
+  --instruction-max: 60ch;
+  --text-max: 68ch;
+  --header-height: 72px;
+  --focus-content: 60%;
+  --placeholder-height: 240px;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #15171a;
+  --surface: #1e2125;
+  --surface-2: #262a2f;
+  --surface-3: #30353b;
+  --text: #f1f2f4;
+  --muted: #a3a9b1;
+  --border: #363b42;
+  --border-strong: #767e88;
+  --scrim: rgb(0 0 0 / 0.6);
+  --accent: #7ea2ff;
+  --accent-hover: #a3beff;
+  --accent-soft: #1f2a44;
+  --on-accent: #0f1a33;
+  --focus-ring: #7ea2ff;
+  --target: #c5cad1;
+  --active: #6e9bff;
+  --assist: #ffb257;
+  --reached: #4ccb86;
+  --danger: #ff6b6b;
+  --demo: #a996ff;
+  --caution: #e3b341;
+  --active-text: #8fb2ff;
+  --assist-text: #ffb257;
+  --reached-text: #4ccb86;
+  --danger-text: #ff8a85;
+  --demo-text: #b9a9ff;
+  --caution-text: #e3b341;
+  --active-soft: #1d2a45;
+  --assist-soft: #3a2a14;
+  --reached-soft: #173426;
+  --danger-soft: #3d1e1f;
+  --demo-soft: #2a2545;
+  --caution-soft: #362e14;
+  --on-danger: #15171a;
+  --finger-thumb: #a996ff;
+  --finger-index: #60d5e9;
+  --finger-middle: #f785b2;
+  --hand: #bfb3a6;
+  --chrome: #2a3442;
+  --on-chrome: #f1f2f4;
+  --elevation-card: none;
+  --elevation-overlay: 0 16px 48px #00000080;
+  color-scheme: dark;
+}
+
+/* Same dark values when the OS asks for dark and the user has not forced light. Keep in sync with the block above. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #15171a;
+    --surface: #1e2125;
+    --surface-2: #262a2f;
+    --surface-3: #30353b;
+    --text: #f1f2f4;
+    --muted: #a3a9b1;
+    --border: #363b42;
+    --border-strong: #767e88;
+    --scrim: rgb(0 0 0 / 0.6);
+    --accent: #7ea2ff;
+    --accent-hover: #a3beff;
+    --accent-soft: #1f2a44;
+    --on-accent: #0f1a33;
+    --focus-ring: #7ea2ff;
+    --target: #c5cad1;
+    --active: #6e9bff;
+    --assist: #ffb257;
+    --reached: #4ccb86;
+    --danger: #ff6b6b;
+    --demo: #a996ff;
+    --caution: #e3b341;
+    --active-text: #8fb2ff;
+    --assist-text: #ffb257;
+    --reached-text: #4ccb86;
+    --danger-text: #ff8a85;
+    --demo-text: #b9a9ff;
+    --caution-text: #e3b341;
+    --active-soft: #1d2a45;
+    --assist-soft: #3a2a14;
+    --reached-soft: #173426;
+    --danger-soft: #3d1e1f;
+    --demo-soft: #2a2545;
+    --caution-soft: #362e14;
+    --on-danger: #15171a;
+    --finger-thumb: #a996ff;
+    --finger-index: #60d5e9;
+    --finger-middle: #f785b2;
+    --hand: #bfb3a6;
+    --chrome: #2a3442;
+    --on-chrome: #f1f2f4;
+    --elevation-card: none;
+    --elevation-overlay: 0 16px 48px #00000080;
+    color-scheme: dark;
+  }
+}

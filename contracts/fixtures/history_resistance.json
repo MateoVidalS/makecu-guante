@@ -1,0 +1,83 @@
+[
+  {
+    "evaluation_id": 1,
+    "started_at": "2026-10-15T10:00:00Z",
+    "finger": "thumb",
+    "slow": 180,
+    "fast": 290,
+    "dependence": 110,
+    "is_demo": true
+  },
+  {
+    "evaluation_id": 1,
+    "started_at": "2026-10-15T10:00:00Z",
+    "finger": "index",
+    "slow": 190,
+    "fast": 300,
+    "dependence": 110,
+    "is_demo": true
+  },
+  {
+    "evaluation_id": 1,
+    "started_at": "2026-10-15T10:00:00Z",
+    "finger": "middle",
+    "slow": 200,
+    "fast": 310,
+    "dependence": 110,
+    "is_demo": true
+  },
+  {
+    "evaluation_id": 2,
+    "started_at": "2026-10-25T10:00:00Z",
+    "finger": "thumb",
+    "slow": 160,
+    "fast": 250,
+    "dependence": 90,
+    "is_demo": false
+  },
+  {
+    "evaluation_id": 2,
+    "started_at": "2026-10-25T10:00:00Z",
+    "finger": "index",
+    "slow": 170,
+    "fast": 260,
+    "dependence": 90,
+    "is_demo": false
+  },
+  {
+    "evaluation_id": 2,
+    "started_at": "2026-10-25T10:00:00Z",
+    "finger": "middle",
+    "slow": 180,
+    "fast": 270,
+    "dependence": 90,
+    "is_demo": false
+  },
+  {
+    "evaluation_id": 3,
+    "started_at": "2026-11-05T10:00:00Z",
+    "finger": "thumb",
+    "slow": 140,
+    "fast": 210,
+    "dependence": 70,
+    "is_demo": false
+  },
+  {
+    "evaluation_id": 3,
+    "started_at": "2026-11-05T10:00:00Z",
+    "finger": "index",
+    "slow": 150,
+    "fast": 220,
+    "dependence": 70,
+    "is_demo": false
+  },
+  {
+    "evaluation_id": 3,
+    "started_at": "2026-11-05T10:00:00Z",
+    "finger": "middle",
+    "slow": 160,
+    "fast": 230,
+    "dependence": 70,
+    "is_demo": false
+  }
+]

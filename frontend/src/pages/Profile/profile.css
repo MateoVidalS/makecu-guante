@@ -1,0 +1,11 @@
+.profile-form {
+  display: grid;
+  gap: var(--space-16);
+  max-width: var(--instruction-max);
+}
+.profile-form textarea {
+  resize: vertical;
+}
+.profile-form > .ds-button {
+  justify-self: start;
+}

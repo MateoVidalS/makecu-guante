@@ -1,0 +1,21 @@
+{
+  "fallback": {
+    "mode": "simple",
+    "unavailable": true
+  },
+  "audio": {
+    "chunks": 1,
+    "bytes": 640
+  },
+  "timing": {
+    "earconScheduled": 3.400000000372529,
+    "phraseQueued": 3.599999999627471,
+    "caption": "Stopping. I felt resistance in your index.",
+    "context": "running",
+    "baseLatency": 0.005333333333333333,
+    "voices": 180,
+    "phraseStarted": 20.800000000745058
+  },
+  "errors": [],
+  "screenshot": "/tmp/wp8-browser-check.png"
+}
