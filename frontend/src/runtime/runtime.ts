@@ -12,6 +12,7 @@ import {
   GLOVE_FINGERS,
   type GloveFinger,
   type GloveTelemetry,
+  type GloveEvent,
 } from '../contracts/glove';
 import { POSES, calibratedPinch } from '../contracts/poses';
 import type { createGloveController } from '../glove/GloveProvider';
@@ -95,6 +96,10 @@ export class RehabRuntime implements Runtime {
   private ticking = false;
   private pendingTick = false;
   private mounted = false;
+  private switching = false;
+  private evaluationLimit = 600;
+  private retryAt = 0;
+  private pendingEvents: GloveEvent[] = [];
   private readonly clock: () => number;
   constructor(private readonly options: RuntimeOptions) {
     this.clock =
@@ -134,11 +139,21 @@ export class RehabRuntime implements Runtime {
       },
       setGlove: async (kind) => {
         this.requireIdle();
-        await options.glove.setKind(kind);
+        this.switching = true;
+        try {
+          await options.glove.setKind(kind);
+        } finally {
+          this.switching = false;
+        }
       },
       setVision: async (kind) => {
         this.requireIdle();
-        await options.vision.setKind(kind);
+        this.switching = true;
+        try {
+          await options.vision.setKind(kind);
+        } finally {
+          this.switching = false;
+        }
       },
     };
   }
@@ -147,15 +162,18 @@ export class RehabRuntime implements Runtime {
     current: null,
     reload: async () => {
       this.requireIdle();
-      this.setCalibration(await api.getLatestCalibration());
+      const value = await api.getLatestCalibration();
+      if (!this.mode && !this.switching) this.setCalibration(value);
     },
     save: async (value) => {
       this.requireIdle();
       const saved = await api.createCalibration(value);
+      this.requireIdle();
       this.setCalibration(saved);
       return saved;
     },
     sendToGlove: async () => {
+      this.requireIdle();
       this.sendCalibration();
     },
   };
@@ -181,12 +199,12 @@ export class RehabRuntime implements Runtime {
     }
     client.limit(
       this.mode === 'evaluation' || this.mode === 'friction'
-        ? (this.evaluationStore.getState().result?.settings.limit_ma ?? 600)
+        ? this.evaluationLimit
         : c.current_limit_ma,
     );
   }
   private requireIdle() {
-    if (this.mode)
+    if (this.mode || this.switching)
       throw new Error(
         'End the current session before changing sources or calibration',
       );
@@ -264,6 +282,7 @@ export class RehabRuntime implements Runtime {
         this.clock(),
       );
       this.runCalibration = calibration;
+      this.evaluationLimit = settings.limit_ma;
       this.mode = 'evaluation';
       this.options.glove.world.setIntent('open', 'DONE');
       this.handle(out);
@@ -277,12 +296,18 @@ export class RehabRuntime implements Runtime {
     view: () => this.evaluationStore.getState(),
     subscribe: (cb) => this.evaluationStore.subscribe(cb),
     runFriction: async (fingers) => {
-      const calibration = this.requireReady();
+      this.requireIdle();
+      if (this.options.glove.client.connection() !== 'connected')
+        throw new Error('Connect the glove first');
+      const calibration = {
+        friction: {},
+        current_limit_ma: this.calibration.current?.current_limit_ma ?? 900,
+      };
       if (!fingers.length) throw new Error('Choose at least one finger');
       this.friction = frictionRun({
         timestamp: () => new Date().toISOString(),
       });
-      this.runCalibration = calibration;
+      this.evaluationLimit = 600;
       this.mode = 'friction';
       const result = new Promise<Partial<Record<GloveFinger, FrictionCurve[]>>>(
         (resolve) => {
@@ -319,6 +344,10 @@ export class RehabRuntime implements Runtime {
             this.sendCalibration();
           this.tick([event]);
         }),
+        client.onError(() => {
+          if (this.mode === 'exercise') this.exercise.pause();
+          else if (this.mode) void this.evaluation.stop();
+        }),
         client.onConnection((connection) => {
           if (connection === 'connected') this.sendCalibration();
           this.tick();
@@ -335,7 +364,10 @@ export class RehabRuntime implements Runtime {
     ];
     this.timer = setInterval(() => {
       this.tick();
-      void this.persistence.flush();
+      if (performance.now() >= this.retryAt) {
+        this.retryAt = performance.now() + 2000;
+        void this.persistence.flush();
+      }
     }, 100);
     void this.persistence.flush();
     void this.calibration.reload().catch(() => {
@@ -348,6 +380,7 @@ export class RehabRuntime implements Runtime {
     if (!this.mode) return;
     // Simulator release can synchronously emit events. Defer nested ticks until output is applied.
     if (this.ticking) {
+      this.pendingEvents.push(...events);
       this.pendingTick = true;
       return;
     }
@@ -357,7 +390,7 @@ export class RehabRuntime implements Runtime {
         now: this.clock(),
         vision: this.options.vision.latest,
         tel: this.options.glove.client.latest(),
-        gloveEvents: events,
+        gloveEvents: [...this.pendingEvents.splice(0), ...events],
         gloveConnected: this.options.glove.client.connection() === 'connected',
       };
       this.handle(

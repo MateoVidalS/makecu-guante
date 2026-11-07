@@ -70,6 +70,11 @@ function fingerResult(
 }
 
 export interface FrictionEngine extends EvaluationEngine {
+  start(
+    settings: EvalSettings,
+    calibration: Pick<Calibration, 'friction' | 'current_limit_ma'>,
+    now: number,
+  ): Output;
   /** Available after successful completion; aborted sweeps never become calibration curves. */
   curves(): Partial<Record<GloveFinger, FrictionCurve[]>>;
 }
@@ -77,7 +82,7 @@ export interface FrictionEngine extends EvaluationEngine {
 class Evaluation implements FrictionEngine {
   private stage: EvaluationView['stage'] = 'idle';
   private settings!: EvalSettings;
-  private calibration!: Calibration;
+  private calibration!: Pick<Calibration, 'friction' | 'current_limit_ma'>;
   private started = 0;
   private now = 0;
   private phaseAt = 0;
@@ -101,7 +106,11 @@ class Evaluation implements FrictionEngine {
   ) {}
 
   /** 06-session §5.1–2: lower the current limit and release before the first sweep. */
-  start(settings: EvalSettings, calibration: Calibration, now: number): Output {
+  start(
+    settings: EvalSettings,
+    calibration: Pick<Calibration, 'friction' | 'current_limit_ma'>,
+    now: number,
+  ): Output {
     if (
       ![settings.slow_v, settings.fast_v, settings.limit_ma].every(
         (v) => Number.isFinite(v) && v > 0,
@@ -196,12 +205,14 @@ class Evaluation implements FrictionEngine {
       if (
         this.zeroAt !== null &&
         this.now - this.zeroAt >= 1000 &&
-        motorSafe(input)
+        (this.raw
+          ? input.gloveConnected && input.tel?.st === 'idle'
+          : motorSafe(input))
       )
         this.beginSweep(input, out);
     } else if (this.stage === 'sweep') {
       // No pause/resume exists for evaluation; losing vision aborts rather than restarting a sweep.
-      if (!visible(input)) {
+      if (!this.raw && !visible(input)) {
         out.events.push({
           kind: 'safety',
           source: 'camera_lost',

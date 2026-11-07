@@ -257,3 +257,35 @@ it('restores durable pending attempts without creating another session', async (
     pending: 0,
   });
 });
+
+it('measures empty-glove friction before any patient calibration and without camera visibility', async () => {
+  const { runtime, world, vision, posts } = await harness();
+  runtime.calibration.current = null;
+  vision.setCalibration(null);
+  world.controls.handOutOfFrame(100_000);
+  const result = runtime.evaluation.runFriction(['index']);
+  until(world, () => runtime.evaluation.view().stage === 'done');
+  const curves = await result;
+  expect(curves.index).toHaveLength(2);
+  expect(curves.index?.every((c) => c.points.length > 10)).toBe(true);
+  expect(posts.createEvaluation).not.toHaveBeenCalled();
+  expect(world.firmware.info().limit).toBe(900);
+});
+
+it('ignores a late calibration reload while a session is running', async () => {
+  const { runtime, world, calibration } = await harness();
+  let resolve!: (c: Calibration) => void;
+  vi.mocked(api.getLatestCalibration).mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    }),
+  );
+  const reload = runtime.calibration.reload();
+  await runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS);
+  until(world, () => runtime.exercise.view().phase === 'ATTEMPT');
+  const release = vi.spyOn(world.glove, 'release');
+  resolve({ ...calibration, id: 2 });
+  await reload;
+  expect(runtime.calibration.current?.id).toBe(1);
+  expect(release).not.toHaveBeenCalled();
+});
