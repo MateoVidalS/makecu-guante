@@ -1,0 +1,17 @@
+.history-pose {
+  width: min(100%, 18rem);
+}
+.history-pose .ds-field--inline {
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-12);
+}
+.history-pose .ds-field__label {
+  color: var(--muted);
+  font-size: var(--small);
+  font-weight: var(--weight-regular);
+}
+.history-pose .ds-input {
+  min-height: var(--control-sm);
+  padding-block: var(--space-4);
+  font-size: var(--small);
+}

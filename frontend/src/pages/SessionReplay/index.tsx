@@ -15,9 +15,11 @@ import {
 } from '../../api/client';
 import type { Attempt } from '../../contracts/api';
 import { POSES } from '../../contracts/poses';
+import './replay.css';
 import {
+  DataSection,
   DataStatus,
-  DemoBadge,
+  KpiRow,
   KpiTile,
   ReplayChart,
   formatDate,
@@ -25,21 +27,31 @@ import {
   fingerName,
 } from '../../components/charts';
 
+const meanAssist = (attempt: Attempt) => {
+  const scored = attempt.fingers.filter(
+    (f) => f.scored && f.assist_needed != null,
+  );
+  return scored.length
+    ? scored.reduce((sum, f) => sum + f.assist_needed!, 0) / scored.length
+    : null;
+};
+
 function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
   const trace = useAttemptTrace(attempt.id);
   return (
-    <section className="data-section">
-      <h2>
-        {POSES[attempt.pose].name} · Rep {attempt.rep}
-      </h2>
-      <p>
-        {attempt.interrupted
+    <DataSection
+      title={`${POSES[attempt.pose].name} · Rep ${attempt.rep}`}
+      description={
+        attempt.interrupted
           ? 'This attempt was interrupted.'
           : attempt.reached_active
             ? 'You did that on your own.'
-            : 'The glove helped with the rest.'}
-      </p>
-      <div className="kpi-grid">
+            : 'The glove helped with the rest.'
+      }
+      demo={demo}
+      demoNote="Demo data"
+    >
+      <KpiRow>
         <KpiTile label="On your own" value={percentage(attempt.active_ratio)} />
         <KpiTile
           label="Time to reach on your own"
@@ -51,20 +63,10 @@ function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
         />
         <KpiTile
           label="Glove help needed"
-          value={percentage(
-            (() => {
-              const scored = attempt.fingers.filter(
-                (f) => f.scored && f.assist_needed != null,
-              );
-              return scored.length
-                ? scored.reduce((sum, f) => sum + f.assist_needed!, 0) /
-                    scored.length
-                : null;
-            })(),
-          )}
+          value={percentage(meanAssist(attempt))}
         />
         <KpiTile label="Safety events" value={attempt.safety_events.length} />
-      </div>
+      </KpiRow>
       <DataStatus error={trace.error}>
         <ReplayChart
           trace={trace.data}
@@ -78,17 +80,14 @@ function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
           <caption>Per-finger estimates from the camera</caption>
           <thead>
             <tr>
-              {[
-                'Finger',
-                'Target',
-                'Best on your own',
-                'Help needed',
-                'Final',
-              ].map((s) => (
-                <th key={s} scope="col">
-                  {s}
-                </th>
-              ))}
+              <th scope="col">Finger</th>
+              {['Target', 'Best on your own', 'Help needed', 'Final'].map(
+                (s) => (
+                  <th key={s} scope="col" className="num">
+                    {s}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
@@ -97,20 +96,20 @@ function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
               .map((f) => (
                 <tr key={f.finger}>
                   <th scope="row">{fingerName(f.finger)}</th>
-                  <td>{percentage(f.target)}</td>
-                  <td>{percentage(f.active_max)}</td>
-                  <td>{percentage(f.assist_needed)}</td>
-                  <td>{percentage(f.final)}</td>
+                  <td className="num">{percentage(f.target)}</td>
+                  <td className="num">{percentage(f.active_max)}</td>
+                  <td className="num">{percentage(f.assist_needed)}</td>
+                  <td className="num">{percentage(f.final)}</td>
                 </tr>
               ))}
           </tbody>
         </table>
       </div>
-      <p className="muted">
+      <p className="footnote">
         Servo position is commanded; the servo cannot report its physical
         position.
       </p>
-    </section>
+    </DataSection>
   );
 }
 export default function SessionReplay() {
@@ -126,30 +125,28 @@ export default function SessionReplay() {
   const selected = Math.min(index, Math.max(0, attempts.length - 1));
   return (
     <section className="data-page">
-      <Link to="/history?tab=sessions">Back to sessions</Link>
+      <Link className="back-link" to="/history?tab=sessions">
+        <span aria-hidden="true">← </span>Back to sessions
+      </Link>
       <PageHeader
         title="Session replay"
-        lead="Estimated from the camera — not a medical measurement."
+        lead={
+          detail
+            ? `${formatDate(detail.started_at)} · Estimated from the camera, not a medical measurement.`
+            : 'Estimated from the camera, not a medical measurement.'
+        }
       />
       <DataStatus loading={session.isPending} error={session.error}>
         {detail && (
           <>
-            <p>
-              {formatDate(detail.started_at)} {detail.is_demo && <DemoBadge />}
-            </p>
             {attempts.length === 0 ? (
-              <p>No attempts recorded in this session.</p>
+              <p className="footnote">No attempts recorded in this session.</p>
             ) : (
               <>
-                <div className="actions">
-                  <Button
-                    disabled={selected === 0}
-                    onClick={() => setIndex(selected - 1)}
-                  >
-                    ← Previous attempt
-                  </Button>
+                <div className="replay-nav">
                   <Select
                     label="Attempt"
+                    layout="inline"
                     value={selected}
                     onChange={(e) => setIndex(Number(e.target.value))}
                   >
@@ -159,12 +156,25 @@ export default function SessionReplay() {
                       </option>
                     ))}
                   </Select>
-                  <Button
-                    disabled={selected === attempts.length - 1}
-                    onClick={() => setIndex(selected + 1)}
-                  >
-                    Next attempt →
-                  </Button>
+                  <Inline gap={8}>
+                    <Button
+                      size="sm"
+                      disabled={selected === 0}
+                      onClick={() => setIndex(selected - 1)}
+                    >
+                      ← Previous attempt
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={selected === attempts.length - 1}
+                      onClick={() => setIndex(selected + 1)}
+                    >
+                      Next attempt →
+                    </Button>
+                  </Inline>
+                  <span className="replay-nav__count">
+                    {selected + 1} of {attempts.length}
+                  </span>
                 </div>
                 <AttemptReplay
                   key={attempts[selected].id}
@@ -173,10 +183,10 @@ export default function SessionReplay() {
                 />
               </>
             )}
-            <details className="card">
+            <details className="replay-transcript">
               <summary>Session transcript</summary>
               {detail.transcript.length === 0 ? (
-                <p>No transcript recorded.</p>
+                <p className="footnote">No transcript recorded.</p>
               ) : (
                 <ol>
                   {detail.transcript.map((line, i) => (
@@ -244,11 +254,15 @@ export default function SessionReplay() {
                 </p>
               )}
             </Dialog>
-            <Inline>
-              <Button variant="quiet" onClick={() => setConfirm(true)}>
+            <div className="replay-footer">
+              <Button
+                variant="quiet"
+                size="sm"
+                onClick={() => setConfirm(true)}
+              >
                 Delete session
               </Button>
-            </Inline>
+            </div>
           </>
         )}
       </DataStatus>
