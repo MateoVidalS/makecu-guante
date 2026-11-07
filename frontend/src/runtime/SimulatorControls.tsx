@@ -30,17 +30,21 @@ export function RuntimeSimulatorControls() {
         <option value="severe">Severe</option>
       </Select>
       {vision.source.kind === 'sim' && (
-        <Button onClick={() => world.controls.handOutOfFrame(3000)}>
+        <Button size="sm" onClick={() => world.controls.handOutOfFrame(3000)}>
           Hide simulated hand for 3 seconds
         </Button>
       )}
-      <Button variant="danger" onClick={() => world.controls.pressStop()}>
+      <Button
+        size="sm"
+        variant="danger"
+        onClick={() => world.controls.pressStop()}
+      >
         Press simulated STOP
       </Button>
-      <Button onClick={() => world.controls.releaseStop()}>
+      <Button size="sm" onClick={() => world.controls.releaseStop()}>
         Release simulated STOP
       </Button>
-      <Button onClick={() => world.controls.unplug()}>
+      <Button size="sm" onClick={() => world.controls.unplug()}>
         Unplug simulated glove
       </Button>
       <Select

@@ -94,9 +94,14 @@ export default function Calibrate() {
       }
     });
     const errors = client.onError((e) => {
-      client.release();
+      // STOP can reject release; retrying that same error would loop indefinitely.
+      if (e.c !== 'release') client.release();
       cancel.current();
-      setError(`Glove: ${e.why.replaceAll('_', ' ')}`);
+      setError(
+        e.c === 'release' && e.why === 'fault'
+          ? 'The glove remains stopped. Release STOP before continuing.'
+          : `Glove: ${e.why.replaceAll('_', ' ')}`,
+      );
     });
     const connection = client.onConnection((c) => {
       if (c !== 'connected') {
@@ -202,11 +207,11 @@ export default function Calibrate() {
       setProgress(Math.min(100, (performance.now() - holdStarted) / 20));
     });
     const cleanup = () => {
+      cancel.current = () => {};
       clearInterval(timer);
       unsubscribe();
       client.release();
       if (mounted.current) setCapture(false);
-      cancel.current = () => {};
     };
     const timer = setInterval(() => {
       const now = performance.now();

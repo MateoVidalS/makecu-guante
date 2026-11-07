@@ -72,16 +72,16 @@ export function RuntimeFallbackControls() {
       <Stack className="runtime-fallback__panel" gap={8}>
         <Text>Switching sources ends and saves the current run.</Text>
         {!simulated && (
-          <Button disabled={busy} onClick={() => change('both')}>
+          <Button size="sm" disabled={busy} onClick={() => change('both')}>
             Use simulator
           </Button>
         )}
-        <Button disabled={busy} onClick={() => change('glove')}>
+        <Button size="sm" disabled={busy} onClick={() => change('glove')}>
           {glove.client.kind === 'sim' && glove.connection === 'connected'
             ? 'Restart simulated glove'
             : 'Use simulated glove'}
         </Button>
-        <Button disabled={busy} onClick={() => change('vision')}>
+        <Button size="sm" disabled={busy} onClick={() => change('vision')}>
           {vision.source.kind === 'sim'
             ? 'Restart simulated camera'
             : 'Use simulated camera'}
