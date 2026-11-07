@@ -1,0 +1,24 @@
+.profile-form {
+  display: grid;
+  gap: var(--space-16);
+  max-width: var(--instruction-max);
+}
+.profile-form label {
+  display: grid;
+  gap: var(--space-8);
+}
+.profile-form input,
+.profile-form textarea,
+.profile-form select,
+.data-page select {
+  font: inherit;
+  padding: var(--space-12);
+  color: var(--text);
+  background: var(--surface);
+  border: var(--control-border) solid var(--muted);
+  border-radius: var(--radius-input);
+  max-width: 100%;
+}
+.profile-form textarea {
+  resize: vertical;
+}
