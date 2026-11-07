@@ -12,20 +12,22 @@ import {
   useHistoryRom,
 } from '../../api/client';
 import { POSES, type PoseId } from '../../contracts/poses';
-import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
-  AssistTrend,
   DataSection,
   DataStatus,
+  EffortSmallMultiples,
+  HandRangeMap,
   KpiRow,
   KpiTile,
-  ResistanceSlowFast,
+  LatestEffortBars,
+  PracticeCalendar,
+  ResistanceDumbbells,
   TrendSmallMultiples,
-  fingerName,
   formatDate,
+  handFromOverview,
   percentage,
 } from '../../components/charts';
-import { useAllSessions } from './data';
+import { firstAndLast, useAllSessions } from './data';
 import { ExportButtons } from '../Doctor/ExportButtons';
 import './history.css';
 
@@ -45,10 +47,10 @@ export default function History() {
     sessions = useAllSessions(),
     evaluations = useEvaluations();
   const rom = useHistoryRom(pose ? { pose } : {}),
+    allRom = useHistoryRom(),
     assist = useHistoryAssist(),
     resistance = useHistoryResistance();
   const timeline = sessions.data?.map((s) => ({ ...s, id: s.id }));
-  const evalTimeline = evaluations.data;
   const demoSessions = !!sessions.data?.some((s) => s.is_demo);
   const demoEvaluations = !!evaluations.data?.some((e) => e.is_demo);
   return (
@@ -81,25 +83,33 @@ export default function History() {
               </KpiRow>
               <DataSection
                 title="First and latest sessions"
-                description="Best finger position on your own, first session compared with the latest. Opening and closing poses differ."
+                description="How far each glove finger closed on its own: your first session next to the latest."
                 demo={demoSessions}
-                demoNote="Includes demo data"
+                demoNote="Demo data is drawn hollow"
               >
-                <KpiRow>
-                  {overview.data.per_finger.map((f) => (
-                    <KpiTile
-                      key={f.finger}
-                      label={fingerName(f.finger)}
-                      value={`${percentage(f.active_max_first)} → ${percentage(f.active_max_last)}`}
-                      hint="First → latest"
-                    />
-                  ))}
-                </KpiRow>
-                {overview.data.sessions === 0 && (
+                {overview.data.sessions === 0 ? (
                   <p className="footnote">
                     No sessions yet.{' '}
                     <Link to="/exercise">Start your practice</Link>.
                   </p>
+                ) : (
+                  <>
+                    <HandRangeMap
+                      {...handFromOverview(overview.data)}
+                      {...firstAndLast(sessions.data)}
+                    />
+                    <div className="viz-grid-2">
+                      <LatestEffortBars
+                        rom={allRom.data ?? []}
+                        assist={assist.data ?? []}
+                        loading={allRom.isPending || assist.isPending}
+                      />
+                      <PracticeCalendar
+                        sessions={sessions.data ?? []}
+                        loading={sessions.isPending}
+                      />
+                    </div>
+                  </>
                 )}
               </DataSection>
             </>
@@ -145,22 +155,17 @@ export default function History() {
       )}
       {selected === 'Assistance' && (
         <DataSection
-          title="Help from the glove"
-          description="How much the glove had to add to reach the target (solid), and the share of attempts it helped with (dashed)."
+          title="On your own vs. help from the glove"
+          description="Each session split into what the finger closed on its own (blue) and what the glove added to reach the target (orange). All poses."
           demo={demoSessions}
+          demoNote="Demo data is drawn hollow"
         >
-          <DataStatus error={assist.error || sessions.error}>
-            <div className="chart-grid">
-              {GLOVE_FINGERS.map((finger) => (
-                <AssistTrend
-                  key={finger}
-                  finger={finger}
-                  points={assist.data ?? []}
-                  timeline={timeline}
-                  loading={assist.isPending || sessions.isPending}
-                />
-              ))}
-            </div>
+          <DataStatus error={assist.error || allRom.error}>
+            <EffortSmallMultiples
+              rom={allRom.data ?? []}
+              assist={assist.data ?? []}
+              loading={assist.isPending || allRom.isPending}
+            />
           </DataStatus>
         </DataSection>
       )}
@@ -170,19 +175,13 @@ export default function History() {
             title="Resistance estimates for your care team"
             description="Extra motor current at slow and fast speeds. An estimate inspired by clinical practice."
             demo={demoEvaluations}
+            demoNote="Demo data is drawn hollow"
           >
             <DataStatus error={resistance.error || evaluations.error}>
-              <div className="chart-grid">
-                {GLOVE_FINGERS.map((finger) => (
-                  <ResistanceSlowFast
-                    key={finger}
-                    finger={finger}
-                    points={resistance.data ?? []}
-                    timeline={evalTimeline}
-                    loading={resistance.isPending || evaluations.isPending}
-                  />
-                ))}
-              </div>
+              <ResistanceDumbbells
+                points={resistance.data ?? []}
+                loading={resistance.isPending || evaluations.isPending}
+              />
             </DataStatus>
           </DataSection>
           <EvaluationList />

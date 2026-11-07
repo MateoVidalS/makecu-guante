@@ -100,6 +100,15 @@ describe('record review pages', () => {
   it('shows fixture improvement, pose selection, accessible tables, and session safety counts', async () => {
     mount('/history');
     expect(await screen.findByText('35% → 63%')).toBeVisible();
+    expect(
+      screen.getByRole('img', { name: /Hand map, first session/ }),
+    ).toHaveAccessibleName(/Thumb 35% then, 63% now/);
+    expect(
+      await screen.findByRole('img', { name: /Latest session per finger/ }),
+    ).toHaveAccessibleName(/Index 65% on your own and 35% from the glove/);
+    expect(
+      screen.getByRole('img', { name: /Practice calendar/ }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Active range' }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Pose' }), {
       target: { value: 'full_fist' },
@@ -136,6 +145,12 @@ describe('record review pages', () => {
     expect(
       await screen.findByText('Your attempt, moment by moment'),
     ).toBeVisible();
+    expect(
+      await screen.findByRole('img', { name: /Attempt phases: On your own/ }),
+    ).toHaveAccessibleName(/1 safety event marked/);
+    expect(
+      screen.getByRole('img', { name: /Hand map for this attempt/ }),
+    ).toHaveAccessibleName(/Index: 65% on your own, glove added 35%/);
     fireEvent.click(screen.getByRole('button', { name: 'Delete session' }));
     expect(mockState.details[8]).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Keep session' }));
@@ -159,8 +174,12 @@ describe('record review pages', () => {
     mockState.evaluations[0].friction_used = false;
     mount(`/history/evaluations/${mockState.evaluations[0].id}`);
     expect(await screen.findByText(/No friction calibration/)).toBeVisible();
-    expect(screen.getAllByText('Show as table')).toHaveLength(3);
+    // Resistance dumbbells plus one sweep chart per finger, each with a table twin.
+    expect(screen.getAllByText('Show as table')).toHaveLength(4);
     expect(screen.getAllByRole('table')[0]).toHaveTextContent('mA');
+    expect(
+      await screen.findByRole('img', { name: /Resistance per finger/ }),
+    ).toBeInTheDocument();
   });
   it('renders doctor review and handles an unavailable therapist summary', async () => {
     server.use(
@@ -177,6 +196,12 @@ describe('record review pages', () => {
     });
     await waitFor(() => expect(generate).toBeEnabled());
     expect(await screen.findByText('Active range over sessions')).toBeVisible();
+    expect(screen.getByText('At a glance')).toBeVisible();
+    expect(
+      await screen.findByText(
+        'Speed-dependent resistance eased on every finger',
+      ),
+    ).toBeVisible();
     fireEvent.click(generate);
     expect(
       await screen.findByText(
