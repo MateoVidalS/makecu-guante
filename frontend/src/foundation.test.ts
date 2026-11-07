@@ -82,9 +82,9 @@ describe('shared contracts', () => {
     });
     expect(calibratedPinch(0.2).pinch!.max_ratio).toBeCloseTo(0.26);
   });
-  it('fails explicitly at unimplemented engine operations', () => {
-    expect(() => createExerciseEngine().state()).toThrow('WP4');
-    expect(() => createEvaluationEngine().state()).toThrow('WP4');
+  it('exposes safe initial states from the implemented engines', () => {
+    expect(createExerciseEngine().state().phase).toBe('DONE');
+    expect(createEvaluationEngine().state().stage).toBe('idle');
   });
 });
 

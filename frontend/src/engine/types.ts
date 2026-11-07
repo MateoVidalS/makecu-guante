@@ -51,3 +51,8 @@ export interface EvaluationEngine {
   stop(now: number): Output;
   state(): EvaluationView;
 }
+
+/** Inject a monotonic-to-UTC mapping in live runtime; default interprets now as epoch ms. */
+export interface EngineOptions {
+  timestamp?: (now: number) => string;
+}
