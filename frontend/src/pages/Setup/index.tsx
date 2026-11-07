@@ -42,7 +42,8 @@ export default function Setup() {
     [devices, setDevices] = useState<MediaDeviceInfo[]>([]),
     [deviceId, setDevice] = useState(''),
     [mirror, setMirror] = useState(true),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [simulating, setSimulating] = useState(false);
   const [samples, setSamples] = useState<number[]>([]);
   useEffect(() => {
     let last = 0;
@@ -61,15 +62,44 @@ export default function Setup() {
       await fn();
     } catch (e) {
       const message = (e as Error).message;
+      // A USB attempt the helper cancelled (or replaced with the simulator) is not an error.
+      if (/Connection cancelled|Serial disconnected/.test(message)) return;
       setError(
         /comes in WP[23]/.test(message)
           ? 'Hardware connection is unavailable in this preview. Use the simulator.'
-          : /No port selected|requestPort|NotFoundError/i.test(message)
-            ? "No glove was selected. If the glove isn't here, choose Simulate glove: the camera still tracks your real hand and the app shows which motor would help."
-            : message,
+          : /^no_info$/.test(message)
+            ? 'A USB device answered, but not as the Rehab glove. Check that the board is flashed with the glove firmware and finished starting, then try again, or choose Simulate glove.'
+            : /No port selected|requestPort|NotFoundError/i.test(message)
+              ? "No glove was selected. If the glove isn't here, choose Simulate glove: the camera still tracks your real hand and the app shows which motor would help."
+              : message,
       );
     } finally {
       setBusy(false);
+    }
+  }
+  /** Drop a pending or stuck USB attempt; the serial client rejects it as cancelled. */
+  async function cancelSerial() {
+    const client = glove.store.getState().client;
+    if (client.kind === 'serial') await client.disconnect();
+    setBusy(false);
+  }
+  /**
+   * Only the glove becomes simulated: no motor moves, the camera keeps tracking the real hand.
+   * Never blocked by a USB attempt that is still pending; it cancels that attempt first.
+   */
+  async function simulateGlove() {
+    setError('');
+    setInfo(null);
+    setSimulating(true);
+    try {
+      await cancelSerial();
+      await glove.setKind('sim');
+      await runtime.sources.setGlove('sim');
+      setInfo(await glove.store.getState().client.connect());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSimulating(false);
     }
   }
   async function camera() {
@@ -159,18 +189,16 @@ export default function Setup() {
             >
               {connected ? 'Reconnect glove' : 'Connect glove'}
             </Button>
+            {connection === 'connecting' && !simulated && (
+              <Button variant="quiet" onClick={() => void cancelSerial()}>
+                Cancel
+              </Button>
+            )}
             {!(connected && simulated) && (
               <Button
                 variant="secondary"
-                disabled={busy}
-                onClick={() =>
-                  void action(async () => {
-                    // Only the glove becomes simulated; the camera keeps tracking the real hand.
-                    await glove.setKind('sim');
-                    await runtime.sources.setGlove('sim');
-                    setInfo(await glove.client.connect());
-                  })
-                }
+                disabled={simulating}
+                onClick={() => void simulateGlove()}
               >
                 Simulate glove
               </Button>

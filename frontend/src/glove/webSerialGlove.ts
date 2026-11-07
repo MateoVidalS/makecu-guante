@@ -28,6 +28,7 @@ export interface WebSerialOptions {
   now?: () => number;
   lifecycle?: Pick<Window, 'addEventListener' | 'removeEventListener'>;
 }
+const OPEN_TIMEOUT_MS = 5000;
 const FILTERS = [0x10c4, 0x1a86, 0x0403].map((usbVendorId) => ({
   usbVendorId,
 }));
@@ -110,7 +111,30 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
       }
       if (generation !== this.generation)
         throw new Error('Connection cancelled');
-      await this.port.open({ baudRate: 115200 });
+      // A previously granted port can be absent or owned by another app; never hang on it.
+      let openTimer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          this.port.open({ baudRate: 115200 }),
+          new Promise<never>((_, reject) => {
+            openTimer = setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    'The glove port did not open. Unplug and replug the USB cable, or close other apps using it, then try again.',
+                  ),
+                ),
+              OPEN_TIMEOUT_MS,
+            );
+          }),
+        ]);
+      } catch (error) {
+        // Forget the port so the next attempt shows Chrome's chooser instead of the stale one.
+        this.port = undefined;
+        throw error;
+      } finally {
+        clearTimeout(openTimer);
+      }
       if (generation !== this.generation) {
         await this.port.close();
         throw new Error('Connection cancelled');
