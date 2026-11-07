@@ -138,6 +138,16 @@ describe('live stage', () => {
   it('marks the named finger without changing its movement state', async () => {
     const runtime = new ScriptedRuntime({ persist: false });
     const therapy = new FakeTherapy();
+    therapy.live!.fingers = [
+      {
+        finger: 'index',
+        now: 0.2,
+        target: 0.4,
+        best_alone: 0.2,
+        glove_helping: false,
+        lagging: true,
+      },
+    ];
     Object.assign(runtime, { therapy });
     await runtime.exercise.start(
       [{ pose: 'full_fist', reps: 1 }],
@@ -149,6 +159,10 @@ describe('live stage', () => {
       therapy.emit('highlight_finger', { finger: 'index' });
     });
     const meter = screen.getByRole('meter', { name: 'Index' });
+    expect(meter).toHaveAttribute(
+      'aria-valuetext',
+      expect.stringContaining('goal 40%'),
+    );
     expect(meter.closest('.mx-gauge')).toHaveAttribute(
       'data-highlighted',
       'true',
