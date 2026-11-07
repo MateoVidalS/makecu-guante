@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { Euler, Vector3 } from 'three';
+import { Euler, OrthographicCamera, Vector3 } from 'three';
 import { palmDownCamera, HAND_LOOK_AT, PALM_DOWN_ROTATION } from './view';
+import { POSES } from '../contracts/poses';
+import { applyJoints, createHandRig, FINGERS } from './rig';
 import { tokens } from '../styles/tokens';
 import { contrast } from '../design-system/contrast';
 
@@ -19,6 +21,29 @@ describe('palm-down thumb-side camera', () => {
             new Vector3(0, 0, 1).applyEuler(new Euler(...PALM_DOWN_ROTATION)),
           ),
       ).toBeLessThan(0);
+    }
+  });
+  it('mirrors the projected palm-down fingertips for all six poses', () => {
+    for (const pose of Object.values(POSES)) {
+      const projected = (hand: 'left' | 'right') => {
+        const rig = createHandRig(hand);
+        rig.rotation.set(...PALM_DOWN_ROTATION);
+        applyJoints(rig, pose.render);
+        rig.updateMatrixWorld(true);
+        const camera = new OrthographicCamera(-4, 4, 4, -4, 0.1, 50);
+        camera.position.set(...palmDownCamera(hand, pose.id === 'pinch'));
+        camera.lookAt(...HAND_LOOK_AT);
+        camera.updateMatrixWorld(true);
+        return FINGERS.map((f) =>
+          rig.fingers[f].tip.getWorldPosition(new Vector3()).project(camera),
+        );
+      };
+      const left = projected('left'),
+        right = projected('right');
+      for (let i = 0; i < FINGERS.length; i++) {
+        expect(left[i].x).toBeCloseTo(-right[i].x);
+        expect(left[i].y).toBeCloseTo(right[i].y);
+      }
     }
   });
 });
