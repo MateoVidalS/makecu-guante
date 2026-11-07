@@ -9,6 +9,7 @@ import type {
   AttemptResult,
   SessionSummary,
 } from "../../frontend/src/contracts/engine";
+import { GLOVE_FINGERS } from "../../frontend/src/contracts/glove";
 import type { GloveEvent } from "../../frontend/src/contracts/glove";
 import {
   DEFAULT_PLAN,
@@ -49,8 +50,11 @@ export async function generateDemo(endDate: string) {
     const events: GloveEvent[] = [];
     world.glove.onEvent((event) => events.push(event));
     await world.glove.connect();
-    for (const [i, servo] of calibration.servo.entries())
+    for (const [i, finger] of GLOVE_FINGERS.entries()) {
+      const servo = calibration.servo.find((entry) => entry.finger === finger);
+      if (!servo) throw new Error(`Missing demo calibration for ${finger}`);
       world.glove.calib(i as 0 | 1 | 2 | 3 | 4, servo.min_deg, servo.max_deg);
+    }
     world.glove.limit(calibration.current_limit_ma);
     world.vision.setCalibration(calibration.camera);
     await world.vision.start({ affectedHand: "right" });
