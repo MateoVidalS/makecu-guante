@@ -253,20 +253,40 @@ describe('SimGlove acceptance and timing', () => {
     expect(peak).toBeLessThan(1500);
     expect(world.firmware.state).toBe('run');
   });
-  it('Rigid index faults with overcurrent between position 0.25 and 0.4 during target ramp', async () => {
+  it('Rigid index faults with the evaluation current limit between position 0.25 and 0.4', async () => {
     const world = new SimWorld({ autoStart: false });
     await world.glove.connect();
     calibrateWorld(world);
+    world.glove.limit(600);
     world.controls.setRigid('index', true);
     let position: number | null = null;
     world.glove.onEvent((e) => {
       if (e.e === 'overcurrent') position = world.firmware.position[1];
     });
-    world.glove.target([1, 1, 1, 1, 1], 0.3);
+    world.glove.target([0, 1, 0, 0, 0], 0.3);
     world.advance(2000);
     expect(position).toBeGreaterThanOrEqual(0.25);
     expect(position).toBeLessThanOrEqual(0.4);
     expect(world.firmware.state).toBe('fault');
+  });
+  it('Mild follow and release remain usable with a saved 900 mA calibration', async () => {
+    const world = new SimWorld({ autoStart: false, preset: 'mild' });
+    await world.glove.connect();
+    calibrateWorld(world);
+    world.glove.limit(900);
+    world.glove.follow([0.7, 0.7, 0.7, 0.6, 0.55]);
+    world.advance(1000);
+    expect(world.firmware.state).toBe('run');
+    world.glove.release();
+    world.advance(1000);
+    expect(world.firmware.state).toBe('idle');
+    expect(world.firmware.attached).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
   it('Unplug stops keepalive; firmware watchdog releases even with no browser telemetry or synthetic event', async () => {
     const world = new SimWorld({ autoStart: false });

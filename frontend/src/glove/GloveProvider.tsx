@@ -57,7 +57,7 @@ export function createGloveController(
           ...(connection === 'connecting' || connection === 'disconnected'
             ? { connectionError: null }
             : {}),
-          ...(connection === 'disconnected' ? { latest: null } : {}),
+          ...(connection !== 'connected' ? { latest: null } : {}),
         }),
       ),
       client.onError((error) => {

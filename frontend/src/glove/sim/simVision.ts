@@ -38,7 +38,7 @@ export class SimVision implements VisionSource {
       if (!this.running) return;
       const detected = now >= world.handHiddenUntil;
       const real = world.patient.realPosition(
-        world.firmware.position,
+        world.servoPosition,
         world.random,
       );
       const closure = Object.fromEntries(

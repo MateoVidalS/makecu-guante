@@ -191,7 +191,26 @@ describe('Web Serial connection lifecycle', () => {
   it('rejects incompatible info received after connection and discards buffered telemetry', async () => {
     const { client, port } = setup();
     clients.push(client);
+    const provider = createGloveController({
+      kind: 'serial',
+      serial: client,
+      world: new SimWorld({ autoStart: false }),
+    });
+    provider.mount();
     await client.connect();
+    port.receive(
+      JSON.stringify({
+        t: 'tel',
+        ms: 10,
+        a: [0, 0, 0, 0, 0],
+        ma: 30,
+        st: 'idle',
+        md: 'none',
+        tg: null,
+      }) + '\n',
+    );
+    await flush();
+    expect(provider.latest).not.toBeNull();
     const errors: string[] = [];
     client.onError((error) => errors.push(error.why));
     port.receive(
@@ -211,9 +230,12 @@ describe('Web Serial connection lifecycle', () => {
     await flush();
     expect(client.connection()).toBe('error');
     expect(client.latest()).toBeNull();
+    expect(provider.latest).toBeNull();
+    expect(provider.connectionError).toContain('requires 5-finger firmware');
     expect(errors).toEqual([
       'This glove reports 3 fingers. Rehab Hub requires 5-finger firmware.',
     ]);
+    provider.dispose();
   });
   it('reports the unsupported browser error', async () => {
     const client = new WebSerialGlove();

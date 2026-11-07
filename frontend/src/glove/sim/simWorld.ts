@@ -1,11 +1,17 @@
 import type { ExercisePhase } from '../../contracts/engine';
 import type { PoseId } from '../../contracts/poses';
-import type { GloveFinger, Quint } from '../../contracts/glove';
+import {
+  GLOVE_FINGERS,
+  type GloveFinger,
+  type Quint,
+} from '../../contracts/glove';
 import { Signal } from '../clientBase';
 import { FW, SimFirmware } from './simFirmware';
 import { SimPatient, type PatientPreset } from './patient';
 import { SimGlove } from './simGlove';
 import { SimVision } from './simVision';
+import { SERVO_PROFILES } from './servoProfiles';
+import { supplyPower, type SimPower } from './power';
 
 export interface SimWorldOptions {
   seed?: number;
@@ -28,6 +34,9 @@ export class SimWorld {
   }
   now = 0;
   handHiddenUntil = 0;
+  /** Physical shafts may stall while firmware telemetry continues its commanded ramp. */
+  servoPosition: Quint = [0, 0, 0, 0, 0];
+  power: SimPower = supplyPower([0, 0, 0, 0, 0]);
   readonly timeScale: number;
   private randomState: number;
   private tickIndex = 0;
@@ -95,10 +104,36 @@ export class SimWorld {
       // Use the actual ramp velocity (including requested target speed), not just the cap.
       const before: Quint = [...f.position];
       const beforeAngles: Quint = [...f.angles];
-      f.tick(
-        this.now,
-        this.patient.current(f.position, this.lastVelocity, this.random),
+      const ranges = f.calibration.map((c) =>
+        c ? Math.abs(c[1] - c[0]) : FW.HARD_MAX - FW.HARD_MIN,
+      ) as Quint;
+      this.power = supplyPower(
+        this.patient.servoCurrents(
+          f.position,
+          this.lastVelocity,
+          this.random,
+          f.attached,
+          ranges,
+        ),
       );
+      f.tick(this.now, this.power.totalMa);
+      this.servoPosition = this.servoPosition.map((position, i) => {
+        const profile = SERVO_PROFILES[GLOVE_FINGERS[i]];
+        let goal = f.position[i];
+        if (!f.attached[i]) return 0;
+        if (goal > position) {
+          // Model the current-limited supply as loss of closing torque. A rigid
+          // finger stalls its own servo; unwinding remains possible for release.
+          if (
+            this.power.saturated ||
+            this.power.perServoMa[i] >= profile.stall_ma
+          )
+            return position;
+          if (this.patient.rigid[GLOVE_FINGERS[i]]) goal = Math.min(goal, 0.22);
+        }
+        const step = ((profile.max_speed_deg_s / ranges[i]) * tickMs) / 1000;
+        return position + Math.max(-step, Math.min(step, goal - position));
+      }) as Quint;
       this.lastVelocity = f.position.map(
         (p, i) => (p - before[i]) / (tickMs / 1000),
       ) as Quint;
