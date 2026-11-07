@@ -5,13 +5,45 @@
 
 ---
 
+## Estado y cómo correrlo
+
+| Parte | Estado |
+|---|---|
+| **Software** (app web, backend, firmware) | Construido y mergeado: WP0–WP12 en [`handoffs/STATUS.md`](handoffs/STATUS.md). Funciona entero con el **simulador**, sin hardware |
+| **Hardware** | Guías y anclajes impresos. Falta imprimir módulo, tapa y carretes (`hardware/definitivas/2_...`), coser, cablear y probar |
+| **Firmware en la placa** | Compila y pasa los tests nativos, pero **nunca se cargó en una ESP32**. Primero el banco de pruebas de [`firmware/BENCH.md`](firmware/BENCH.md) |
+
+> **Ojo: el software mueve 3 dedos (pulgar, índice y medio); el hardware tiene 5 servos.** El plan de software se hizo cuando anular y meñique no se actuaban, y todo (protocolo, firmware, app y prompt de voz) usa arrays de 3. Para la demo: conectar solo los servos de pulgar (GPIO 25), índice (26) y medio (27). Anular y meñique quedan montados pero sin conectar hasta que se extienda el contrato (ver 4.10).
+
+**Requisitos:** Node 20+, pnpm, Python 3.11+, [uv](https://docs.astral.sh/uv/), Chrome o Edge (Web Serial). PlatformIO solo para el firmware.
+
+```sh
+make setup        # instala backend y frontend
+make demo-seed    # opcional: 11 sesiones y 4 evaluaciones de ejemplo (marcadas como demo)
+make dev-sim      # API en :8000 + app en http://127.0.0.1:5173, con guante y cámara simulados
+```
+
+| Comando | Para qué |
+|---|---|
+| `make dev` | Igual que `dev-sim`, pero con guante (USB) y cámara reales |
+| `make dev-mock` | Solo el frontend, con la API simulada en el navegador |
+| `make test` / `make e2e` | pytest, vitest, TypeScript, Ruff, ESLint (+ tests nativos del firmware si hay `pio`) / Playwright |
+| `make demo` | Compila el frontend y lo sirve desde el backend en http://127.0.0.1:8000 |
+| `make fw-build` / `make fw-flash` | Compilar / cargar el firmware (**solo después del banco de pruebas**) |
+
+- **Gemini:** copiar `backend/.env.example` a `backend/.env` y poner `GEMINI_API_KEY`. Sin key, la app funciona igual con voz simple (frases fijas del navegador) y sin resúmenes.
+- La app está **en inglés**. Este README es el concepto; el plan técnico detallado está en [`docs/plan/`](docs/plan/README.md) y el contrato (fuente de verdad) en [`docs/plan/03-contracts.md`](docs/plan/03-contracts.md).
+- Más detalle: [`docs/DEV.md`](docs/DEV.md) (desarrollo), [`docs/DEMO.md`](docs/DEMO.md) (guion de demo de 6 min y cómo recuperarse de fallas), [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md) (antes de ponerle el guante a alguien).
+
+---
+
 ## 1. La idea
 
 Un guante que **ayuda a mover los dedos** de una mano afectada (por ejemplo, después de un ACV) y **mide cuánto puede moverlos la persona sola**.
 
 - La pantalla muestra una **mano virtual** con la posición que hay que hacer: puño, gancho, pinza.
 - El paciente **intenta hacerla** con la mano afectada. Una webcam mide hasta dónde llega cada dedo.
-- Si no llega, **el guante completa el movimiento**: servos en el antebrazo tiran de hilos que funcionan como tendones y cierran los dedos.
+- Si no llega, **el guante completa el movimiento**: servos en un módulo bajo la muñeca tiran de hilos que funcionan como tendones y cierran los dedos.
 - Un medidor de corriente detecta cuánto **se resiste la mano** al movimiento (rigidez o espasticidad, muy comunes después de un ACV).
 - Un asistente de voz (Gemini) guía la sesión y resume la evolución para el terapeuta.
 
@@ -83,7 +115,7 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 ### Electrónica
 
 ```
-  Fuente 5 V (límite 2,5 A) ──> [INA219] ──> (+) 5 servos
+  Fuente 5 V (límite 1,5 A) ──> [INA219] ──> (+) servos (3 hoy, 5 a futuro)
                                    │ I2C              ▲ PWM
                                    ▼                  │
   Botón STOP ───────────────────> [ESP32-WROOM-32] ───┘
@@ -98,8 +130,8 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 | Servo pulgar | GPIO 25 | |
 | Servo índice | GPIO 26 | |
 | Servo medio | GPIO 27 | |
-| Servo anular | GPIO 13 | |
-| Servo meñique | GPIO 4 | |
+| Servo anular | GPIO 13 | Reservado: el firmware todavía no lo usa |
+| Servo meñique | GPIO 4 | Reservado: el firmware todavía no lo usa |
 | NeoPixel (datos) | GPIO 33 | Level shifter (3,3 → 5 V) + resistencia de ~330 Ω |
 | INA219 SDA / SCL | GPIO 21 / 22 | I2C |
 | Botón STOP | GPIO 32 | `INPUT_PULLUP`, el botón va a GND |
@@ -110,7 +142,8 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 
 ### Alimentación
 
-- **Fuente de laboratorio Facmogu en 5 V con límite de 2,5 A** (5 servos). Los servos **no** se alimentan desde la ESP32.
+- **Fuente de laboratorio Facmogu en 5 V.** Con los 3 servos que maneja el firmware hoy: **límite de 1,5 A** (lo que pide `firmware/README.md`). Con los 5: 2,5 A. Los servos **no** se alimentan desde la ESP32.
+- El firmware corta solo si la corriente total pasa de **900 mA** durante 100 ms (configurable entre 100 y 1400 mA).
 - El límite de corriente es un **corte físico**: aunque el software falle, la fuente no deja pasar más.
 - **GND común** entre la fuente, los servos y la ESP32.
 - Verificar los 5 V con el multímetro **antes** de conectar los servos.
@@ -149,140 +182,138 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 
 ## 4. Software
 
-> Esta sección es la **especificación** del software. Está pensada para que otro agente (o integrante) arme el plan de implementación a partir de acá: qué tiene que hacer el sistema, sus partes, las interfaces entre ellas y cómo se valida. No fija la implementación.
+> Lo que está construido. El detalle de cada parte (tipos, constantes, endpoints, umbrales) está en [`docs/plan/`](docs/plan/README.md); el contrato que comparten todas las partes es [`docs/plan/03-contracts.md`](docs/plan/03-contracts.md).
 
-### 4.1 Objetivo
+### 4.1 Qué hace
 
-Una app web en la laptop que:
-1. Le muestra al paciente una **mano virtual** con la posición objetivo.
-2. Mide con la **webcam** cuánto cierra cada dedo de la mano afectada.
+Una app web local (**Rehab Hub**) que corre en la laptop:
+1. Le muestra al paciente una **mano virtual** con la posición objetivo (fantasma) y su mano real (sólida) superpuestas.
+2. Mide con la **webcam** cuánto cierra cada dedo.
 3. Le pide al **guante** (ESP32 por USB) que complete el movimiento cuando el paciente no llega.
-4. Registra cada intento, lo muestra en un **dashboard** y genera resúmenes con **Gemini**.
+4. Registra cada intento, lo muestra en un **historial** con gráficos y genera resúmenes con **Gemini**.
+5. Un **coach de voz** (Gemini Live) guía la sesión. Los avisos de seguridad son locales e inmediatos.
 
-### 4.2 Componentes
-
-| # | Componente | Dónde corre | Responsabilidad |
-|---|---|---|---|
-| A | **Firmware del guante** | ESP32-WROOM-32 (Arduino / PlatformIO) | Mover servos, leer el INA219, aplicar los cortes de seguridad, hablar por serie |
-| B | **Puente serie** | Navegador (Web Serial API, Chrome) | Conectar con la ESP32, enviar comandos, recibir telemetría |
-| C | **Visión** | Navegador (MediaPipe Hand Landmarker, WASM/GPU) | 21 puntos de la mano → % de cierre por dedo |
-| D | **Mano virtual** | Navegador (three.js) | Dibujar la mano objetivo y la mano real superpuestas |
-| E | **Motor de sesión** | Navegador | Máquina de estados de cada ejercicio, lógica de "ayuda solo lo que falta", métricas |
-| F | **Voz** | Navegador (Web Speech API) + Gemini API | Frases fijas en tiempo real; conversación y resúmenes con Gemini |
-| G | **Registro y dashboard** | Navegador (IndexedDB o archivo JSON) | Guardar intentos, gráficos de evolución, exportar para el terapeuta |
-
-Todo lo de la laptop puede ser **una sola app web estática** (sin backend), salvo la llamada a Gemini, que necesita la API key. Para el hackathon alcanza con un servidor local mínimo que haga de proxy a Gemini y no exponga la key en el navegador.
-
-### 4.3 Flujo de datos
+### 4.2 Arquitectura
 
 ```
- webcam ──> [C Visión] ──% cierre por dedo (30 Hz)──┐
-                                                    ▼
-                         [E Motor de sesión] ──objetivo por dedo──> [B Serie] ──USB──> [A Firmware]
-                           │      ▲                                     ▲                  │
-                           │      └────────telemetría (corriente, ángulos, estado, 50 Hz)──┘
-                           ├──> [D Mano virtual]
-                           ├──> [F Voz] <──> Gemini
-                           └──> [G Registro] ──> dashboard
+ Chrome / Edge (React + Vite)
+   webcam ─> Visión (MediaPipe) ──┐                ┌─> Mano virtual (three.js)
+                                  ▼                │
+                 Runtime ─tick─> Motor de ejercicio / evaluación (TS puro)
+                   │  ▲                │ comandos
+                   │  └─ telemetría ───┴──> Web Serial ──USB──> ESP32 (o guante simulado)
+                   ├─> Voz: red de seguridad local + coach Gemini Live
+                   └─> API REST ──> FastAPI + SQLite (localhost:8000)
+                                     sesiones, intentos, trazas, calibraciones,
+                                     evaluaciones, historial, exportación, Gemini
 ```
+
+- **Toda la lógica en tiempo real corre en el navegador.** El backend solo guarda datos, agrega el historial y habla con Gemini (así la API key no llega al navegador).
+- **La seguridad no depende del navegador.** El firmware aplica límites, rampas, corte por corriente, STOP y watchdog por su cuenta; el navegador es una segunda capa (pausa si pierde la cámara, se anticipa a la resistencia).
+- **Simulador (`SimWorld`):** un guante simulado que se comporta como el firmware, un modelo de paciente (severo, moderado, leve, con "índice rígido") y una cámara simulada. Permite desarrollar, testear y hacer la demo sin hardware.
+
+| Carpeta | Qué hay |
+|---|---|
+| `frontend/` | React 18 + TypeScript + Vite, three.js (`@react-three/fiber`), MediaPipe Tasks Vision, Recharts, `@google/genai`. Tests con Vitest y Playwright |
+| `backend/` | FastAPI + SQLModel + SQLite (WAL). Sirve también el frontend compilado. `tools/seed_demo.py` genera los datos de ejemplo |
+| `firmware/` | PlatformIO, Arduino-ESP32. Lógica de seguridad en C++ puro con tests nativos (Unity) |
+| `contracts/fixtures/` | Ejemplos de mensajes serie y REST que verifican las tres partes |
+| `docs/plan/` | Plan técnico: producto, arquitectura, contratos, firmware, visión, sesión, voz, frontend, tests, UX |
+| `handoffs/` | Encargos (WP0–WP12) con los que agentes de código construyeron cada parte, y su estado |
+| `hardware/` | CAD, STL y visor 3D (sección 3) |
+
+### 4.3 Pantallas
+
+| Ruta | Pantalla |
+|---|---|
+| `/` | Inicio |
+| `/setup` | Elegir guante (USB o simulado), cámara y mano afectada |
+| `/calibrate` | Asistente: rango de cada servo (jog) → cámara mano abierta / cerrada / pinza → fricción del guante vacío |
+| `/exercise` | Sesión de ejercicio (modo foco, sin navegación) |
+| `/evaluate` | Evaluación de resistencia |
+| `/history` | Tendencias de rango, ayuda y resistencia; repetición de cada sesión (`/history/sessions/:id`) y evaluación |
+| `/doctor` | Vista del terapeuta (solo lectura): tendencias, resumen de Gemini a pedido, exportar JSON/CSV, imprimir |
+| `/profile` | Perfil opcional del paciente |
+
+En el encabezado hay un menú **Demo recovery** para pasar a guante o cámara simulados en medio de la demo sin recargar.
 
 ### 4.4 Protocolo serie (laptop ↔ ESP32)
 
-USB a **115200 baud**, líneas de texto terminadas en `\n`, una por mensaje (JSON compacto). Simple de depurar con cualquier monitor serie.
+USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). Los arrays de dedos van siempre en orden **[pulgar, índice, medio]**.
 
-**Laptop → ESP32**
-
-| Mensaje | Ejemplo | Significado |
+| Laptop → ESP32 | Ejemplo | Qué hace |
 |---|---|---|
-| `target` | `{"t":"target","f":[0.8,0.6,0.6,0.5,0.5],"v":0.5}` | Objetivo de cierre (0–1) para pulgar, índice, medio, anular, meñique; `v` = velocidad máxima (fracción del recorrido por segundo) |
-| `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | Posición actual de los dedos según la cámara: el servo enrolla el hilo flojo hasta ahí sin tirar |
-| `release` | `{"t":"release"}` | Aflojar todo (volver a 0) |
-| `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | Ángulos de servo para 0% y 100% del dedo `i` |
-| `limit` | `{"t":"limit","ma":900}` | Umbral de corriente para el corte |
-| `ping` | `{"t":"ping"}` | Keepalive |
+| `target` | `{"t":"target","f":[0.8,0.6,0.0],"v":0.5}` | Ir al cierre objetivo (0–1) a velocidad `v` (fracción del rango por segundo) |
+| `follow` | `{"t":"follow","f":[0.3,0.4,0.1]}` | Enrollar el hilo flojo hasta 5% menos de lo que ve la cámara, sin tirar |
+| `release` | `{"t":"release"}` | Aflojar todo; también sale de `fault` |
+| `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | Ángulos del servo para 0% y 100% del dedo `i` (no se guardan en la placa) |
+| `jog` | `{"t":"jog","i":1,"deg":95}` | Mover un servo a un ángulo, para calibrar |
+| `limit` / `ping` / `hello` | `{"t":"limit","ma":900}` | Umbral de corriente / keepalive / pedir `info` |
 
-**ESP32 → laptop** (telemetría a ~50 Hz, más eventos)
-
-| Mensaje | Ejemplo | Significado |
-|---|---|---|
-| `tel` | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.35,0.3,0.3],"ma":312,"st":"run"}` | Posición actual de cada servo (0–1), corriente total en mA, estado |
-| `evt` | `{"t":"evt","e":"overcurrent","ma":950}` | Evento: `overcurrent`, `stop_button`, `watchdog`, `boot` |
-
-**Reglas de seguridad que el firmware aplica siempre, aunque la laptop diga otra cosa:**
-- Nunca mover un servo fuera de su rango calibrado.
-- Rampa: el servo no puede cambiar más rápido que `v`, con un tope fijo en el firmware.
-- **Corte por corriente:** si la corriente supera `limit` durante más de ~100 ms, aflojar todo y mandar `evt overcurrent`. Queda en estado `fault` hasta un `release` explícito.
-- **Botón STOP:** aflojar todo al instante (interrupción), estado `fault`.
-- **Watchdog:** si no llega ningún mensaje en 1 s (laptop colgada o cable desconectado), aflojar todo.
-
-### 4.5 Visión: % de cierre por dedo
-
-- MediaPipe Hand Landmarker devuelve 21 puntos 3D por mano.
-- Para cada dedo, sumar los ángulos de flexión de sus articulaciones (MCP, PIP, DIP; para el pulgar, MCP e IP) a partir de los vectores entre puntos consecutivos.
-- Normalizar con la **calibración del paciente**: mano abierta = 0%, puño = 100% (o el máximo que el guante logra con la mano relajada).
-- Suavizar (por ejemplo, filtro One Euro) para que el número no salte.
-- Informar una **confianza** por cuadro; si la mano no se ve o la confianza es baja, el motor de sesión no debe pedirle nada nuevo al guante.
-
-Limitaciones conocidas: la profundidad desde una sola cámara es aproximada y los dedos se tapan en el puño. La cámara se monta arriba y de costado. El dato es una **estimación**, no un goniómetro.
-
-### 4.6 Motor de sesión
-
-Máquina de estados por intento:
-
-```
- PRESENTAR ──> INTENTO (paciente solo, N s) ──> llegó? ──sí──> SOSTENER ──> REGISTRAR
-                    │                                │
-                    │ (servos en "follow")            no
-                    │                                ▼
-                    │                           ASISTENCIA (target = posición objetivo)
-                    │                                │
-                    └─────── overcurrent / STOP ─────┴──> PAUSA (aviso por voz) ──> REGISTRAR
-```
-
-- **Intento:** los servos solo siguen al dedo (`follow`), sin tirar. Se guarda el máximo cierre logrado sin ayuda.
-- **Asistencia:** se manda el objetivo con velocidad baja. Lo que el guante completa es la "ayuda necesaria".
-- **Retiro del feedback:** un parámetro de sesión define en qué porcentaje de intentos hay luces y ayuda (por ejemplo, de 100% a 50% a lo largo de las sesiones).
-- **Modo evaluación:** con la mano relajada, cerrar cada dedo a velocidad lenta y rápida y registrar la curva corriente vs. posición. Antes, medir el guante vacío para restar la fricción propia.
-- **Modo espejo** (extra): el % de cierre de una mano sana se manda directo como `target`.
-
-### 4.7 Métricas por intento
-
-| Métrica | Fuente |
+| ESP32 → laptop | Ejemplo |
 |---|---|
-| Cierre activo máximo por dedo (0–100%) | Visión, durante INTENTO |
-| Tiempo hasta la posición | Visión |
-| Ayuda necesaria (objetivo − cierre activo) | Motor de sesión |
-| Corriente pico y media durante la asistencia | Telemetría |
-| Resistencia lenta vs. rápida (modo evaluación) | Telemetría − calibración del guante vacío |
-| Eventos de seguridad | Telemetría |
+| `tel` (50 Hz) | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.0],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.05]}` |
+| `evt` | `overcurrent`, `stop_button`, `stop_released`, `watchdog`, `boot`, `ina_missing`, `calib_ok` |
+| `info` / `err` | Versión, cantidad de dedos, límite y calibración / comando rechazado y por qué |
+
+`a` es la posición **comandada** (los micro servos no informan la real). Estados: `boot → idle → run`, `calib` durante el jog, y `fault` tras un corte, hasta un `release`.
+
+### 4.5 Seguridad en el firmware
+
+Se aplica siempre, aunque la laptop diga otra cosa (detalle en [`firmware/README.md`](firmware/README.md)):
+- Al arrancar, PWM desconectado: no recuerda calibración ni movimiento. `target` y `follow` se rechazan hasta calibrar los 3 dedos.
+- Nunca sale del rango calibrado; rampa con tope de 1 rango/s.
+- **Corte por corriente:** más de 900 mA (filtrado) durante 100 ms → afloja todo y queda en `fault`.
+- **STOP:** se engancha al primer flanco; para seguir hay que soltarlo y mandar `release`.
+- **Watchdog:** 1 s sin mensajes válidos → afloja todo.
+- Al aflojar, desenrolla hasta abierto y recién 500 ms después desconecta el PWM.
+
+### 4.6 Visión
+
+- MediaPipe Hand Landmarker (modelo local en `frontend/public/models/`), 640×480 a 30 Hz.
+- Cierre por dedo a partir de los ángulos de flexión, normalizado con la calibración del paciente y suavizado con filtro One Euro.
+- Si la mano no se ve, la confianza baja o la cámara se traba (100 ms sin cuadros), el dato se invalida y la sesión no le pide nada nuevo al guante.
+- Es una **estimación**, no un goniómetro.
+
+### 4.7 Motor de sesión
+
+Motor determinista en TypeScript (`frontend/src/engine/`), sin reloj propio, testeado con el simulador.
+
+```
+ PRESENTAR ──> INTENTO (servos en follow) ──llegó?──sí──> SOSTENER ──> REGISTRAR
+                    │                           no
+                    │                           ▼
+                    │                    ASISTENCIA (target, velocidad baja)
+                    └──── corriente / STOP / cámara perdida ──> PAUSA (aviso por voz)
+```
+
+- **Plan por defecto:** mano abierta, gancho, mesa, puño recto y puño completo, 3 repeticiones cada una (15 intentos). La pinza pulgar–índice es un plan aparte, opcional.
+- La asistencia arranca por tiempo o cuando el paciente deja de progresar.
+- **Evaluación:** con la mano relajada, cierra cada dedo lento y rápido y registra corriente vs. posición, restando la fricción del guante vacío medida en la calibración.
+
+**Métricas por intento:** cierre activo máximo por dedo, tiempo hasta la posición, ayuda necesaria, corriente pico y media, eventos de seguridad, y una traza a 20 Hz para repetir el intento después.
 
 ### 4.8 Voz y Gemini
 
-- **Tiempo real** ("bien", "un poco más", "paramos acá"): frases fijas con la Web Speech API. Sin LLM: tiene demasiada latencia.
-- **Entre intentos y al final de la sesión:** Gemini recibe un resumen estructurado de las métricas (no video ni datos crudos) y devuelve una frase para el paciente o un resumen para el terapeuta.
-- **Resumen semanal para el terapeuta:** texto + los gráficos del dashboard.
-- Todo lo que dice Gemini se presenta como acompañamiento, no como indicación médica.
+| Capa | Qué hace |
+|---|---|
+| **Red de seguridad local** | Sonidos y voz del navegador para los avisos de seguridad ("Stopping. I felt resistance in your index."). Funciona en cualquier modo, sin red |
+| **Coach (Gemini Live)** | Da la instrucción, alienta, comenta cada intento y responde. Comandos de voz: pausa, seguir, saltar, repetir, parar, "cómo voy" |
+| **Voz simple** | Frases fijas, sin key. Se activa sola si Gemini Live falla 3 veces |
+| **Resúmenes (Gemini texto)** | Para el paciente al terminar la sesión y para el terapeuta a pedido desde `/doctor` |
+
+Gemini solo recibe métricas resumidas, nunca video. Todo se presenta como acompañamiento, no como indicación médica.
 
 ### 4.9 Datos
 
-Por sesión: paciente (seudónimo), fecha, calibración, modo. Por intento: posición objetivo, métricas de 4.7, serie temporal reducida (% cierre por dedo y corriente a ~20 Hz) y eventos. Se guarda localmente; exportable a JSON o CSV. Para la demo, sesiones de ejemplo marcadas como tales.
+SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con trazas, evaluaciones y transcripciones de voz. Exportable a JSON y CSV desde la vista del terapeuta. Los datos de ejemplo de `make demo-seed` (11 sesiones en 3 semanas, paciente simulado que mejora de severo a leve) llevan `is_demo` y se marcan en la UI.
 
-### 4.10 Criterios de aceptación (demo)
+### 4.10 Pendiente
 
-1. La mano virtual sigue la mano real con menos de ~150 ms de demora visible.
-2. Un `target` llega al servo en menos de 50 ms.
-3. Con el índice rígido a propósito, el corte por corriente afloja el guante y la voz lo anuncia.
-4. El botón STOP afloja todo en cualquier estado.
-5. Desconectar el USB afloja el guante en 1 s como máximo (watchdog).
-6. Una sesión completa (5 posiciones × 3 intentos) queda registrada y genera un resumen de Gemini.
-
-### 4.11 Decisiones abiertas (para quien haga el plan)
-
-- Framework de la app (vanilla + Vite, React, etc.).
-- Proxy de Gemini: servidor local mínimo vs. otra solución.
-- IndexedDB vs. archivos JSON para el registro.
-- Filtro de suavizado y umbrales exactos de "llegó a la posición".
-- Si se usa Zelos para ver la telemetría durante el desarrollo.
+- **Anular y meñique.** El protocolo, el firmware, la app, el simulador y el prompt de voz usan arrays de 3. Pasar a 5 implica cambiar el contrato (`docs/plan/03-contracts.md`, `contracts/fixtures/`, `firmware/lib/core/protocol.h`, `frontend/src/contracts/`, `backend/app/contracts/`) y todo lo que lo usa. Un atajo para la demo: sin tocar nada, dejarlos sin conectar.
+- **Probar el firmware en la placa** con [`firmware/BENCH.md`](firmware/BENCH.md) y después [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), sin el guante puesto.
+- **Gemini con la key real:** confirmar que `/api/health` diga `gemini: true` y ensayar una conexión de voz y un resumen.
+- Fuera de alcance: modo espejo, retiro gradual del feedback, acceso remoto, varios pacientes, otros idiomas.
 
 ---
 
@@ -292,14 +323,14 @@ Por sesión: paciente (seudónimo), fecha, calibración, modo. Por intento: posi
 |---|---|---|
 | **Ejercicio** (principal) | Posiciones de terapia. El paciente intenta solo y el guante ayuda lo que falta | Cuánto llega solo cada dedo, tiempo hasta la posición, cuánta ayuda necesitó |
 | **Evaluación** | Con la mano relajada, el guante cierra cada dedo despacio y después rápido | Resistencia de cada dedo según la velocidad |
-| **Espejo** (extra, si sobra tiempo) | Una mano sana frente a la cámara controla el guante | Nada: es para practicar y para la demo |
+| **Espejo** (no construido) | Una mano sana frente a la cámara controla el guante | Nada: es para practicar y para la demo |
 
 **Posiciones** (ejercicios reales de terapia de mano):
 - **Deslizamiento de tendones:** mano abierta, gancho, puño completo, mesa, puño recto.
 - **Oposición del pulgar:** tocar con el pulgar la punta de cada dedo (inspirado en el test de Kapandji).
 - **Pinza:** pulgar e índice.
 
-**Feedback que se retira:** en modo rehabilitación, la ayuda del guante y las luces se reducen de a poco (por ejemplo, del 100% de los intentos al 50%). El feedback constante genera dependencia.
+**Feedback que se retira** (no construido): en modo rehabilitación, la ayuda del guante y las luces se reducen de a poco (por ejemplo, del 100% de los intentos al 50%). El feedback constante genera dependencia.
 
 ---
 
@@ -333,6 +364,8 @@ La rigidez después de un ACV aumenta con la velocidad del movimiento. Comparar 
 
 ## 8. Demo y pitch
 
+El guion detallado (6 minutos, con qué decir en cada paso y cómo recuperarse si falla la cámara, el guante o Gemini) está en [`docs/DEMO.md`](docs/DEMO.md). Todo lo que fuerce resistencia o STOP se muestra con el simulador, nunca con la mano de una persona.
+
 1. Un integrante se pone el guante con la mano relajada. La mano virtual pide un puño, el integrante intenta a medias y el guante completa el movimiento.
 2. **Momento clave:** el integrante pone el índice rígido a propósito. En pantalla sube la corriente, **el guante se detiene solo** y la voz dice "detecto resistencia en el índice, paramos acá". Muestra la medición clínica y la seguridad a la vez.
 3. Dashboard con la evolución entre sesiones (datos de prueba marcados como tales).
@@ -345,7 +378,7 @@ La rigidez después de un ACV aumenta con la velocidad del movimiento. Comparar 
 | Problem solving | Paciente post-ACV, falta de horas de terapia, telerrehabilitación |
 | Innovation | Ayuda solo lo que falta + medición de rigidez con la corriente de los servos |
 | Technology | Visión por computadora, tendones artificiales, control de servos con corte por corriente, Gemini |
-| Design | Guante liviano, servos en el antebrazo, seguridad en capas |
+| Design | Guante liviano, servos en un módulo de muñeca, seguridad en capas |
 | Completion | Demo en vivo |
 
 ---
@@ -409,14 +442,15 @@ Piezas en `hardware/`: módulo de muñeca, tapa, carretes, guías y anclajes (ve
 
 ## 11. Plan de trabajo
 
-| Rol | Tarea | Hito |
+| Rol | Tarea | Estado |
 |---|---|---|
-| Mecánica | Guante, guías, anclajes, soporte de servos | **Un dedo cerrando con el servo antes de la medianoche del sábado** |
-| Firmware | ESP32: servos, INA219, STOP, protocolo serie | Servo controlado desde la laptop con corte por corriente |
-| Visión | MediaPipe, % de cierre por dedo, mano virtual | Mano virtual siguiendo la mano real |
-| Voz y pitch | Gemini, dashboard, video | Resumen de sesión generado con datos reales |
+| Software | App, backend, firmware, simulador, voz | **Hecho** (WP0–WP12). Falta probarlo con hardware real |
+| Mecánica | Imprimir módulo, tapa y carretes; coser guías, anclajes y elásticos al guante | Guías y anclajes impresos |
+| Electrónica | Cablear ESP32, INA219, STOP y servos; banco de pruebas de `firmware/BENCH.md` | Pendiente |
+| Integración | Un dedo de punta a punta: calibrar, `follow`, asistencia, corte por corriente | Pendiente. **Hito: un dedo cerrando con el servo antes de la medianoche del sábado** |
+| Pitch | Ensayar `docs/DEMO.md`, video de Devpost | Pendiente |
 
-**Orden:** primero **un dedo + un servo + la cámara de punta a punta**. Después escalar a los cinco dedos.
+**Orden:** primero **un dedo + un servo + la cámara de punta a punta**. Después los otros dos dedos actuados. Anular y meñique, solo si sobra tiempo (sección 4.10).
 
 ### Riesgos
 
@@ -424,4 +458,5 @@ Piezas en `hardware/`: módulo de muñeca, tapa, carretes, guías y anclajes (ve
 - **Servos:** ya los tenemos (SG92R, MG90S, 2× S51 y uno negro sin identificar). Falta medir el negro y confirmar que los 5 entran en sus alojamientos.
 - **Recorrido del hilo:** 31 mm por media vuelta puede no alcanzar para un puño completo. Medir con un dedo antes de imprimir los carretes definitivos.
 - **Cámara con dedos tapados:** probar la posición de la webcam temprano.
-- Si la mecánica falla, la mano virtual con la cámara sigue siendo una demo que funciona sola.
+- **Firmware nunca probado en una placa:** hacer el banco de pruebas temprano, con el guante sin poner.
+- Si la mecánica falla, la app con el simulador (o con la cámara real y el guante simulado) sigue siendo una demo que funciona sola.
