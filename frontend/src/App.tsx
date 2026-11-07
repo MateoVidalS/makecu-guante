@@ -26,12 +26,13 @@ import {
   Toasts,
 } from './components/common';
 import {
+  applyTheme,
   Button,
   ButtonLink,
   EmptyState,
   Icon,
-  type IconName,
   PageErrorBoundary,
+  readTheme,
   ThemeToggle,
   ToastProvider,
 } from './design-system';
@@ -47,6 +48,10 @@ import Doctor from './pages/Doctor';
 import Profile from './pages/Profile';
 import DevHand from './pages/DevHand';
 
+// Light by default (whatever the OS says). Applied before the first render so no route flashes dark,
+// including the focus and doctor shells, which don't mount the theme toggle.
+if (typeof document !== 'undefined') applyTheme(readTheme());
+
 const DesignGallery = lazy(() => import('./design-system/gallery'));
 
 const queryClient = new QueryClient({
@@ -54,18 +59,19 @@ const queryClient = new QueryClient({
 });
 
 // Spec §4: Home · Exercise · Evaluate · History · Setup. Profile lives in the tools on the right.
-const NAV: [to: string, label: string, icon: IconName][] = [
-  ['/', 'Home', 'home'],
-  ['/exercise', 'Exercise', 'practice'],
-  ['/evaluate', 'Evaluate', 'evaluate'],
-  ['/history', 'History', 'history'],
-  ['/setup', 'Setup', 'setup'],
+// Text-only links: icons next to every nav word are decoration, not information.
+const NAV: [to: string, label: string][] = [
+  ['/', 'Home'],
+  ['/exercise', 'Exercise'],
+  ['/evaluate', 'Evaluate'],
+  ['/history', 'History'],
+  ['/setup', 'Setup'],
 ];
 
 function Brand() {
   return (
     <Link className="app-brand" to="/" aria-label="Rehab Hub, home">
-      <Icon name="logo" size={26} />
+      <Icon name="logo" size={20} />
       <span>Rehab Hub</span>
     </Link>
   );
@@ -111,10 +117,7 @@ function Shell() {
             ) : doctor ? (
               <>
                 <Brand />
-                <span className="doctor-label">
-                  <Icon name="doctor" size="1.1em" />
-                  Doctor view · read-only
-                </span>
+                <span className="doctor-label">Doctor view · read-only</span>
                 <div className="app-tools">
                   <ButtonLink to="/" size="sm" icon="arrow-left">
                     Exit doctor view
@@ -125,9 +128,8 @@ function Shell() {
               <>
                 <Brand />
                 <nav className="app-nav" aria-label="Main navigation">
-                  {NAV.map(([to, label, icon]) => (
+                  {NAV.map(([to, label]) => (
                     <NavLink key={to} to={to} end={to === '/'}>
-                      <Icon name={icon} />
                       {label}
                     </NavLink>
                   ))}

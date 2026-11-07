@@ -108,6 +108,9 @@ const COLOR_ROLES: [
   ['bg', '--bg', 'Page'],
   ['surface', '--surface', 'Cards'],
   ['surface2', '--surface-2', 'Insets, chart wells'],
+  ['border', '--border', 'Hairlines: cards, dividers'],
+  ['borderControl', '--border-control', 'Button and pill outlines'],
+  ['borderStrong', '--border-strong', 'Input outlines (≥ 3:1)'],
   ['text', '--text', 'Body text'],
   ['muted', '--muted', 'Secondary text'],
   ['accent', '--accent', 'Actions, links, focus'],
@@ -152,26 +155,27 @@ function Foundations() {
       </div>
       <div>
         <Heading level={3}>
-          Type scale · Atkinson Hyperlegible, 18 px root
+          Type scale · Atkinson Hyperlegible Next, 17 px root, regular +
+          semibold
         </Heading>
         <Stack gap={12} className="gallery-type">
           <div>
             <span className="ds-display ds-heading">Make a hook</span>
-            <code>display 3.5rem · patient instruction</code>
+            <code>display 3rem · patient instruction only</code>
           </div>
           <div>
             <span className="ds-h1 ds-heading">Session complete</span>
-            <code>h1 2.25rem</code>
+            <code>h1 2rem · one per page</code>
           </div>
           <div>
             <span className="ds-h2 ds-heading">Active range over sessions</span>
-            <code>h2 1.6rem</code>
+            <code>h2 1.375rem (1.75rem in the focus shell)</code>
           </div>
           <div>
             <span className="ds-h3 ds-heading">
               Index: closing further on its own
             </span>
-            <code>h3 1.25rem</code>
+            <code>h3 1.125rem (1.375rem in the focus shell)</code>
           </div>
           <div>
             <Text>
@@ -183,7 +187,7 @@ function Foundations() {
             <Text size="small">
               Estimated from the camera — not a medical measurement.
             </Text>
-            <code>small 0.85rem</code>
+            <code>small 0.875rem</code>
           </div>
           <div>
             <Text size="caption">
@@ -212,13 +216,13 @@ function Foundations() {
               className="gallery-shape"
               style={{ borderRadius: 'var(--radius-sm)' }}
             >
-              sm 6
+              sm 4
             </div>
             <div
               className="gallery-shape"
               style={{ borderRadius: 'var(--radius-input)' }}
             >
-              input 8
+              input 6
             </div>
             <div
               className="gallery-shape"
@@ -227,7 +231,7 @@ function Foundations() {
                 boxShadow: 'var(--elevation-card)',
               }}
             >
-              card 16
+              card 10
             </div>
             <div
               className="gallery-shape"
