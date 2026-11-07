@@ -34,6 +34,45 @@ describe('serial fixtures', () => {
     );
     expect(() => encode({ t: 'limit', ma: NaN })).toThrow('finite');
   });
+  it.each([0, 3, 4, 6])(
+    'rejects info for %i fingers with a clear compatibility error',
+    (fingers) => {
+      const errors: Error[] = [];
+      expect(
+        decode(
+          JSON.stringify({
+            t: 'info',
+            fw: 'old',
+            fingers,
+            limit: 900,
+            calib: Array(fingers).fill(null),
+          }),
+          42,
+          (error) => errors.push(error),
+        ),
+      ).toBeNull();
+      expect(errors[0]?.message).toContain(`reports ${fingers} fingers`);
+      expect(errors[0]?.message).toContain('requires 5-finger firmware');
+    },
+  );
+  it('accepts only five telemetry values and keeps a full two-decimal tel under 200 bytes', () => {
+    const tel = {
+      t: 'tel',
+      ms: 4294967295,
+      a: [0.12, 0.34, 0.56, 0.78, 1],
+      ma: 2500,
+      st: 'run',
+      md: 'target',
+      tg: [1, 0.98, 0.76, 0.54, 0.32],
+    };
+    const line = JSON.stringify(tel);
+    expect(new TextEncoder().encode(line + '\n').length).toBeLessThanOrEqual(
+      200,
+    );
+    expect(decode(line, 42)).toMatchObject({ a: tel.a, tg: tel.tg });
+    expect(decode(JSON.stringify({ ...tel, a: [0, 0, 0] }))).toBeNull();
+    expect(decode(JSON.stringify({ ...tel, tg: [0, 0, 0] }))).toBeNull();
+  });
   it.each([
     'null',
     '{"t":"tel"}',
