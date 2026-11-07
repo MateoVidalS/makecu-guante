@@ -1,3 +1,11 @@
+import {
+  Button,
+  Card,
+  Input,
+  Select,
+  Field,
+  PageHeader,
+} from '../../design-system';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useProfile, usePutProfile } from '../../api/client';
@@ -18,60 +26,53 @@ function ProfileForm({ initial }: { initial: ProfileData }) {
     mutation.mutate(value, { onSuccess: () => setSaved(true) });
   };
   return (
-    <form className="profile-form card" onSubmit={submit}>
-      <label>
-        Pseudonym
-        <input
-          autoComplete="nickname"
-          value={value.pseudonym}
-          onChange={(e) => field('pseudonym', e.target.value)}
-        />
-      </label>
-      <label>
-        Affected hand
-        <select
-          value={value.affected_hand}
-          onChange={(e) => field('affected_hand', e.target.value)}
-        >
-          <option value="left">Left</option>
-          <option value="right">Right</option>
-        </select>
-      </label>
-      <label>
-        Condition
-        <input
-          value={value.condition}
-          onChange={(e) => field('condition', e.target.value)}
-        />
-      </label>
-      <label>
-        Goals
-        <textarea
-          rows={3}
-          value={value.goals}
-          onChange={(e) => field('goals', e.target.value)}
-        />
-      </label>
-      <label>
-        Therapist name
-        <input
-          autoComplete="off"
-          value={value.therapist_name}
-          onChange={(e) => field('therapist_name', e.target.value)}
-        />
-      </label>
-      <label>
-        Therapist email
-        <input
-          type="email"
-          autoComplete="off"
-          value={value.therapist_email}
-          onChange={(e) => field('therapist_email', e.target.value)}
-        />
-      </label>
-      <button className="primary" disabled={mutation.isPending}>
+    <Card as="form" className="profile-form" onSubmit={submit}>
+      <Input
+        label="Pseudonym"
+        autoComplete="nickname"
+        value={value.pseudonym}
+        onChange={(e) => field('pseudonym', e.target.value)}
+      />
+      <Select
+        label="Affected hand"
+        value={value.affected_hand}
+        onChange={(e) => field('affected_hand', e.target.value)}
+      >
+        <option value="left">Left</option>
+        <option value="right">Right</option>
+      </Select>
+      <Input
+        label="Condition"
+        value={value.condition}
+        onChange={(e) => field('condition', e.target.value)}
+      />
+      <Field label="Goals">
+        {(ids) => (
+          <textarea
+            {...ids}
+            className="ds-input"
+            rows={3}
+            value={value.goals}
+            onChange={(e) => field('goals', e.target.value)}
+          />
+        )}
+      </Field>
+      <Input
+        label="Therapist name"
+        autoComplete="off"
+        value={value.therapist_name}
+        onChange={(e) => field('therapist_name', e.target.value)}
+      />
+      <Input
+        label="Therapist email"
+        type="email"
+        autoComplete="off"
+        value={value.therapist_email}
+        onChange={(e) => field('therapist_email', e.target.value)}
+      />
+      <Button type="submit" variant="primary" disabled={mutation.isPending}>
         {mutation.isPending ? 'Saving…' : 'Save profile'}
-      </button>
+      </Button>
       <p role="status">
         {saved
           ? 'Profile saved.'
@@ -79,15 +80,17 @@ function ProfileForm({ initial }: { initial: ProfileData }) {
             ? 'Could not save your profile. Please try again.'
             : ''}
       </p>
-    </form>
+    </Card>
   );
 }
 export default function Profile() {
   const profile = useProfile();
   return (
     <section className="data-page">
-      <h1>Profile</h1>
-      <p>These optional details personalize your coach and doctor view.</p>
+      <PageHeader
+        title="Profile"
+        lead="These optional details personalize your coach and doctor view."
+      />
       <p>
         Review hand calibration before your next practice.{' '}
         <Link to="/calibrate">Review calibration</Link>.

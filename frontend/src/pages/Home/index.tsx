@@ -84,7 +84,7 @@ export default function Home() {
       {error && <p role="alert">{error}</p>}
       {!runtime.calibration.current && (
         <Banner tone="info" title="Calibration needed">
-          Calibration needed. Let's find your comfortable range first.{' '}
+          Let's find your comfortable range first.{' '}
           <Link to="/calibrate">Calibrate</Link>
         </Banner>
       )}

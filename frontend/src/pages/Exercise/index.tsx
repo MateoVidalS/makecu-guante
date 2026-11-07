@@ -467,7 +467,7 @@ export default function Exercise() {
             void runtime.exercise.stop();
           }}
         >
-          <p>Your practice so far will be saved.</p>
+          Your practice so far will be saved.
         </ConfirmDialog>
       )}
     </section>

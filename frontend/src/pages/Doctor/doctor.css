@@ -50,8 +50,7 @@
     width: 186mm;
     margin-inline: auto;
   }
-  .doctor-banner,
-  .doctor header,
+  .doctor .app-header,
   .doctor nav,
   .doctor .no-print,
   .doctor .chart-card details,
@@ -85,7 +84,7 @@
     max-width: none;
     margin-block: var(--space-8);
   }
-  .doctor-report .card {
+  .doctor-report .ds-card {
     margin-block: var(--space-12);
     padding: var(--space-12);
     box-shadow: none;
@@ -94,10 +93,10 @@
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-8);
   }
-  .doctor-report .kpi-tile {
+  .doctor-report .ds-kpi {
     padding: var(--space-8);
   }
-  .doctor-report .kpi-value {
+  .doctor-report .ds-kpi__value {
     font-size: var(--h2);
   }
   .doctor-report .chart-grid {

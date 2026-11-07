@@ -1,7 +1,8 @@
+import { Button, Inline } from '../../design-system';
 import { useState } from 'react';
 import { exportData } from '../../api/client';
 
-export function ExportButtons() {
+export function ExportButtons({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState('');
   const download = async (format: 'json' | 'csv') => {
@@ -27,15 +28,23 @@ export function ExportButtons() {
   };
   return (
     <div className="no-print">
-      <div className="actions">
-        <button disabled={busy} onClick={() => void download('json')}>
+      <Inline>
+        <Button
+          size={size}
+          disabled={busy}
+          onClick={() => void download('json')}
+        >
           Export JSON
-        </button>
-        <button disabled={busy} onClick={() => void download('csv')}>
+        </Button>
+        <Button
+          size={size}
+          disabled={busy}
+          onClick={() => void download('csv')}
+        >
           Export CSV
-        </button>
-      </div>
-      <p role="status">{message}</p>
+        </Button>
+      </Inline>
+      {message && <p role="status">{message}</p>}
     </div>
   );
 }
