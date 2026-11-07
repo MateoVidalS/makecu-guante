@@ -133,7 +133,11 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await page
     .getByRole('checkbox', { name: 'Hand relaxed in the glove' })
     .check();
-  await expect(page.getByRole('checkbox')).toHaveCount(1);
+  await expect(
+    page
+      .getByRole('group', { name: 'Fingers to measure' })
+      .getByRole('checkbox', { checked: true }),
+  ).toHaveCount(5);
   await expect(
     page.locator('main .ds-status-chip').filter({ hasText: 'Calibration:' }),
   ).toContainText('Ready');
