@@ -95,14 +95,20 @@ export default function History() {
                 ) : (
                   <>
                     <HandRangeMap
-                      {...handFromOverview(overview.data)}
+                      loading={sessions.isPending}
+                      {...handFromOverview(overview.data, sessions.data)}
                       {...firstAndLast(sessions.data)}
                     />
                     <div className="viz-grid-2">
                       <LatestEffortBars
+                        timeline={sessions.data}
                         rom={allRom.data ?? []}
                         assist={assist.data ?? []}
-                        loading={allRom.isPending || assist.isPending}
+                        loading={
+                          allRom.isPending ||
+                          assist.isPending ||
+                          sessions.isPending
+                        }
                       />
                       <PracticeCalendar
                         sessions={sessions.data ?? []}
@@ -162,9 +168,12 @@ export default function History() {
         >
           <DataStatus error={assist.error || allRom.error}>
             <EffortSmallMultiples
+              timeline={sessions.data}
               rom={allRom.data ?? []}
               assist={assist.data ?? []}
-              loading={assist.isPending || allRom.isPending}
+              loading={
+                assist.isPending || allRom.isPending || sessions.isPending
+              }
             />
           </DataStatus>
         </DataSection>

@@ -113,6 +113,40 @@ describe('history transforms', () => {
   });
 });
 describe('replay transforms', () => {
+  it('preserves all five closure and servo lines, including measured zero', () => {
+    const fingers = ['thumb', 'index', 'middle', 'ring', 'pinky'] as const;
+    const trace: AttemptTrace = {
+      hz: 20,
+      t: [0, 0.05],
+      ma: [100, 200],
+      phase: ['ATTEMPT', 'ASSIST'],
+      closure: {
+        thumb: [0, 0.1],
+        index: [0, 0.2],
+        middle: [0, 0.3],
+        ring: [0, 0.4],
+        pinky: [0, 0.5],
+      },
+      servo: {
+        thumb: [0, 1],
+        index: [0, 1],
+        middle: [0, 1],
+        ring: [0, 1],
+        pinky: [0, 1],
+      },
+    };
+    const rows = replayRows(trace, true);
+    fingers.forEach((f, i) => {
+      expect(rows[0][`${f}Closure`]).toBe(0);
+      expect(rows[1][`${f}Closure`]).toBeCloseTo((i + 1) * 10);
+      expect(rows[1][`${f}Servo`]).toBe(100);
+    });
+    expect(rows[1]).toMatchObject({
+      current: 200,
+      demo: true,
+      phase: 'ASSIST',
+    });
+  });
   it('keeps missing legacy ring and pinky samples unmeasured', () => {
     const legacy = {
       hz: 20,

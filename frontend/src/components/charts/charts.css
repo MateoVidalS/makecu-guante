@@ -7,8 +7,17 @@
   --chart-thumb: color-mix(in oklab, var(--finger-thumb) 78%, var(--muted));
   --chart-index: color-mix(in oklab, var(--finger-index) 78%, var(--muted));
   --chart-middle: color-mix(in oklab, var(--finger-middle) 78%, var(--muted));
-  --chart-ring: var(--reached);
-  --chart-pinky: var(--caution);
+  /* F7 owns the global finger tokens; these local colors cover the interim. */
+  --chart-ring: color-mix(
+    in oklab,
+    var(--finger-ring, #387d72) 78%,
+    var(--muted)
+  );
+  --chart-pinky: color-mix(
+    in oklab,
+    var(--finger-pinky, #a16b25) 78%,
+    var(--muted)
+  );
   --chart-muted: color-mix(in oklab, var(--muted) 80%, var(--surface));
   --chart-grid: color-mix(in oklab, var(--border) 60%, var(--surface));
   --chart-surface: var(--surface);

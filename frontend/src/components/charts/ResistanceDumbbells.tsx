@@ -24,7 +24,7 @@ const longDate = (d: string) =>
     timeZone: 'UTC',
   });
 const ma = (v: number | null | undefined) =>
-  v == null ? '—' : `${Math.round(v)} mA`;
+  v == null ? 'Not measured' : `${Math.round(v)} mA`;
 
 const GROUP_GAP = 10;
 const M = { top: 4, right: 76, left: 100, axis: 40 };
@@ -157,6 +157,11 @@ export function ResistanceDumbbells({
         )}
         {r.fast != null && (
           <Diamond className="db-fast" x={x(r.fast)} y={cy} r={6.5} />
+        )}
+        {r.slow == null && r.fast == null && (
+          <text className="viz-label" x={M.left} y={cy} dy={4}>
+            Not measured
+          </text>
         )}
         {on && (
           <text

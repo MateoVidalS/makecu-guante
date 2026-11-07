@@ -111,7 +111,7 @@ export function HandFigure({
           textAnchor="middle"
           dominantBaseline="middle"
         >
-          {pct(v.own)}
+          {v.own == null ? '—' : pct(v.own)}
         </text>
       </g>
     );
@@ -175,7 +175,7 @@ export function HandRangeMap({
       : [],
   );
   const title =
-    gains.length && gains.every((g) => g > 0)
+    gains.length === GLOVE_FINGERS.length && gains.every((g) => g > 0)
       ? 'Every glove finger closes further on its own'
       : gains.some((g) => g > 0)
         ? 'Some fingers close further on their own'
@@ -185,7 +185,7 @@ export function HandRangeMap({
     <VisualCard
       className="hand-map"
       title={title}
-      hint="Each finger fills from the knuckle (0%) to the tip (fully closed). Higher is better."
+      hint="Each finger fills from the knuckle (0%) to the tip (fully closed). A dash means not measured. Higher is better."
       label={`Hand map, first session compared with the latest. ${GLOVE_FINGERS.map(
         (f) =>
           `${fingerName(f)} ${pct(first[f]?.own)} then, ${pct(last[f]?.own)} now`,
@@ -304,14 +304,10 @@ export function AttemptHand({
     <div className="attempt-hand">
       <div
         role="img"
-        aria-label={`Hand map for this attempt. ${GLOVE_FINGERS.filter(
-          (f) => values[f],
-        )
-          .map(
-            (f) =>
-              `${fingerName(f)}: ${pct(values[f]?.own)} on your own, glove added ${pct(values[f]?.glove)}, target ${pct(values[f]?.target)}`,
-          )
-          .join('; ')}.`}
+        aria-label={`Hand map for this attempt. ${GLOVE_FINGERS.map(
+          (f) =>
+            `${fingerName(f)}: ${pct(values[f]?.own)} on your own, glove added ${pct(values[f]?.glove)}, target ${pct(values[f]?.target)}`,
+        ).join('; ')}.`}
       >
         <HandFigure values={values} demo={demo} mirror={mirror} width={230} />
       </div>
