@@ -62,6 +62,8 @@ CASES = [
     ),
     ("GET", "/attempts/1/trace", None),
     ("POST", "/sessions/8/transcript", {"lines": []}),
+    ("POST", "/sessions/8/coach_decisions", {"decisions": []}),
+    ("POST", "/sessions/8/feelings", {"feelings": []}),
     ("POST", "/evaluations", {k: v for k, v in fixture("evaluations")[0].items() if k != "id"}),
     ("GET", "/evaluations", None),
     ("GET", "/evaluations/3", None),
