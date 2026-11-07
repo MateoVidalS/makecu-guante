@@ -7,7 +7,7 @@ export function safetyPhrase(event: SafetyEvent): string {
   if (event.kind === 'resistance' || event.source === 'overcurrent')
     return `Stopping. I felt resistance${event.finger ? ` in your ${event.finger}` : ''}.`;
   if (event.source === 'stop_button')
-    return "Stopped. Press release when you're ready.";
+    return 'Stopped. Release the STOP button, then press Resume.';
   if (event.source === 'camera_lost') return "I can't see your hand. Pausing.";
   return 'The glove disconnected. It has released.';
 }
@@ -32,22 +32,24 @@ export class BrowserLocalVoice implements LocalVoice {
   tone(kind: 'safety' | 'cue' | 'reached' | 'assist') {
     this.unlock();
     if (!this.context) return;
-    const oscillator = this.context.createOscillator();
-    const gain = this.context.createGain();
-    oscillator.frequency.value = {
-      safety: 440,
-      cue: 660,
-      reached: 880,
-      assist: 550,
-    }[kind];
-    gain.gain.setValueAtTime(0.12, this.context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(
-      0.001,
-      this.context.currentTime + 0.16,
-    );
-    oscillator.connect(gain).connect(this.context.destination);
-    oscillator.start();
-    oscillator.stop(this.context.currentTime + 0.18);
+    const context = this.context;
+    const count = kind === 'safety' ? 3 : 1;
+    for (let i = 0; i < count; i++) {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const at = context.currentTime + i * 0.22;
+      oscillator.frequency.value = {
+        safety: 440,
+        cue: 660,
+        reached: 880,
+        assist: 550,
+      }[kind];
+      gain.gain.setValueAtTime(kind === 'safety' ? 0.12 : 0.06, at);
+      gain.gain.exponentialRampToValueAtTime(0.001, at + 0.16);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(at);
+      oscillator.stop(at + 0.18);
+    }
   }
   speak(text: string, done?: () => void) {
     if (!globalThis.speechSynthesis) {

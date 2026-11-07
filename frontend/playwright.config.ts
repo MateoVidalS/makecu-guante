@@ -7,6 +7,8 @@ const baseURL = `http://127.0.0.1:${frontendPort}`;
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // Leave CPU headroom for concurrent 3D scenes and wall-time recovery checks.
+  workers: 3,
   use: { baseURL, trace: 'retain-on-failure', actionTimeout: 10_000 },
   projects: [
     {
@@ -26,7 +28,7 @@ export default defineConfig({
     command:
       process.env.REHAB_E2E_MOCK === '1'
         ? 'make -C .. dev-mock'
-        : 'make -C .. dev-sim',
+        : 'make -C .. demo-seed && make -C .. dev-sim',
     env: {
       REHAB_FRONTEND_PORT: frontendPort,
       REHAB_PORT: apiPort,

@@ -100,6 +100,7 @@ export class RehabRuntime implements Runtime {
   private evaluationLimit = 600;
   private retryAt = 0;
   private pendingEvents: GloveEvent[] = [];
+  private beforeRelease: GloveTelemetry | null = null;
   private readonly clock: () => number;
   constructor(private readonly options: RuntimeOptions) {
     this.clock =
@@ -137,24 +138,10 @@ export class RehabRuntime implements Runtime {
       get vision() {
         return options.vision.source.kind;
       },
-      setGlove: async (kind) => {
-        this.requireIdle();
-        this.switching = true;
-        try {
-          await options.glove.setKind(kind);
-        } finally {
-          this.switching = false;
-        }
-      },
-      setVision: async (kind) => {
-        this.requireIdle();
-        this.switching = true;
-        try {
-          await options.vision.setKind(kind);
-        } finally {
-          this.switching = false;
-        }
-      },
+      setGlove: (kind) =>
+        this.switchSource(kind, () => options.glove.setKind(kind)),
+      setVision: (kind) =>
+        this.switchSource(kind, () => options.vision.setKind(kind)),
     };
   }
   readonly sources: Runtime['sources'];
@@ -202,6 +189,26 @@ export class RehabRuntime implements Runtime {
         ? this.evaluationLimit
         : c.current_limit_ma,
     );
+  }
+  private async switchSource(
+    kind: 'serial' | 'camera' | 'sim',
+    change: () => Promise<void>,
+  ) {
+    if (this.switching)
+      throw new Error('A source change is already in progress');
+    // A fallback ends the run before replacing its sources. This preserves demo provenance
+    // and never resumes an interrupted physical command on the replacement transport.
+    if (kind !== 'sim') this.requireIdle();
+    this.switching = true;
+    try {
+      await this.exercise.stop();
+      await this.evaluation.stop();
+      this.options.glove.client.release();
+      this.options.glove.world.setIntent('open', 'DONE');
+      await change();
+    } finally {
+      this.switching = false;
+    }
   }
   private requireIdle() {
     if (this.mode || this.switching)
@@ -377,7 +384,7 @@ export class RehabRuntime implements Runtime {
   tick(
     events: Parameters<typeof this.exerciseEngine.tick>[0]['gloveEvents'] = [],
   ) {
-    if (!this.mode) return;
+    if (!this.mode || this.switching) return;
     // Simulator release can synchronously emit events. Defer nested ticks until output is applied.
     if (this.ticking) {
       this.pendingEvents.push(...events);
@@ -389,7 +396,12 @@ export class RehabRuntime implements Runtime {
       const input = {
         now: this.clock(),
         vision: this.options.vision.latest,
-        tel: this.options.glove.client.latest(),
+        // A camera tick may precede the first telemetry confirming release. Never
+        // re-pause on the old fault frame or treat it as permission for movement.
+        tel:
+          this.options.glove.client.latest() === this.beforeRelease
+            ? null
+            : this.options.glove.client.latest(),
         gloveEvents: [...this.pendingEvents.splice(0), ...events],
         gloveConnected: this.options.glove.client.connection() === 'connected',
       };
@@ -423,6 +435,7 @@ export class RehabRuntime implements Runtime {
         else client.follow(command.f);
       } else if (command.t === 'release') {
         this.echo = null;
+        this.beforeRelease = client.latest();
         client.release();
       } else client.limit(command.ma);
     }

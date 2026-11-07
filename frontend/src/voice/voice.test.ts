@@ -75,7 +75,7 @@ afterEach(() => {
 
 it.each([
   ['overcurrent', 'Stopping. I felt resistance in your index.'],
-  ['stop_button', "Stopped. Press release when you're ready."],
+  ['stop_button', 'Stopped. Release the STOP button, then press Resume.'],
   ['watchdog', 'The glove disconnected. It has released.'],
   ['glove_disconnected', 'The glove disconnected. It has released.'],
   ['camera_lost', "I can't see your hand. Pausing."],
@@ -515,4 +515,49 @@ it('does not count successful periodic reconnects as failures', async () => {
   }
   expect(s.deps.token).toHaveBeenCalledTimes(5);
   s.controller.dispose();
+});
+
+it('schedules a distinct three-beep safety cue above the ordinary cue volume', () => {
+  const starts: number[] = [];
+  const volumes: number[] = [];
+  vi.stubGlobal(
+    'AudioContext',
+    class {
+      currentTime = 10;
+      destination = {};
+      resume = async () => {};
+      close = async () => {};
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: (value: number) => volumes.push(value),
+            exponentialRampToValueAtTime: vi.fn(),
+          },
+          connect: vi.fn(),
+        };
+      }
+      createOscillator() {
+        return {
+          frequency: { value: 0 },
+          connect: (gain: unknown) => gain,
+          start: (at: number) => starts.push(at),
+          stop: vi.fn(),
+        };
+      }
+    },
+  );
+  try {
+    const voice = new BrowserLocalVoice();
+    voice.tone('safety');
+    expect(starts).toEqual([10, 10.22, 10.44]);
+    const safetyVolume = volumes[0];
+    starts.length = 0;
+    volumes.length = 0;
+    voice.tone('cue');
+    expect(starts).toEqual([10]);
+    expect(volumes[0]).toBeLessThan(safetyVolume);
+    voice.dispose();
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

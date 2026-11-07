@@ -1,4 +1,4 @@
-.PHONY: setup dev dev-sim dev-mock test lint typecheck e2e fw-build fw-flash build demo
+.PHONY: setup dev dev-sim dev-mock test lint typecheck e2e fw-build fw-flash build demo demo-seed
 
 setup:
 	cd backend && uv sync --locked
@@ -49,3 +49,7 @@ build:
 
 demo: build
 	cd backend && uv run python -m app
+
+# Opt-in only; DEMO_SEED_ARGS=--reset replaces flagged demo history.
+demo-seed:
+	cd backend && uv run python -m tools.seed_demo $(DEMO_SEED_ARGS)

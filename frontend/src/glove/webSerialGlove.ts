@@ -181,7 +181,7 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
     try {
       while (generation === this.generation) {
         const { value, done } = await reader.read();
-        if (done) break;
+        if (done || generation !== this.generation) break;
         // Decode incrementally: arbitrary UTF-8 byte chunks and multiple lines are supported.
         for (const char of decoder.decode(value, { stream: true })) {
           if (char === '\n') {
@@ -318,11 +318,11 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
     this.writing = undefined;
     this.closing = (async () => {
       try {
-        await reader?.cancel();
+        if (reader) await this.bounded(reader.cancel());
       } catch {
         /* The device may already be gone. */
       }
-      await this.readTask;
+      if (this.readTask) await this.bounded(this.readTask);
       try {
         if (writer) await this.bounded(writer.abort());
       } catch {

@@ -210,11 +210,11 @@ export function FingerBars({
 }
 type Safety = Extract<EngineEvent, { kind: 'safety' }>;
 const safetyCopy: Record<Safety['source'], string> = {
-  overcurrent: 'Stopping. I felt resistance in your hand.',
-  stop_button: 'Stopped. Take your time.',
+  overcurrent: 'Stopped — I felt resistance in your hand.',
+  stop_button: 'Stopped. Release the STOP button, then press Resume.',
   watchdog: 'The glove stopped. Check the connection.',
-  camera_lost: "I can't see your hand. Move it into view.",
-  glove_disconnected: 'The glove disconnected. Check the USB cable.',
+  camera_lost: "I can't see your hand. Move it into the frame.",
+  glove_disconnected: 'The glove disconnected. Reconnect it in Setup.',
 };
 export function SafetyBanner() {
   const runtime = useRuntime(),
@@ -259,7 +259,13 @@ export function SafetyBanner() {
   return (
     <Banner
       tone="safety"
-      title={releasing ? 'Releasing the glove…' : safetyCopy[event.source]}
+      title={
+        releasing
+          ? 'Releasing the glove…'
+          : event.source === 'overcurrent'
+            ? `Stopped — I felt resistance in your ${event.finger ?? 'hand'}.`
+            : safetyCopy[event.source]
+      }
       action={
         <Button
           ref={resume}

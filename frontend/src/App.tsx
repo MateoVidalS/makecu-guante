@@ -18,6 +18,7 @@ import {
   RuntimeStatus,
 } from './runtime';
 import { VoiceProvider } from './voice';
+import { RuntimeFallbackControls } from './runtime/FallbackControls';
 import {
   GloveChip,
   CameraChip,
@@ -137,6 +138,7 @@ function Shell() {
               <RuntimeStatus />
               <GloveChip />
               <CameraChip />
+              <RuntimeFallbackControls />
             </div>
             {!focus && !doctor && (
               <div className="app-tools">

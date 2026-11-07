@@ -95,7 +95,10 @@ export function createGloveController(
     setKind(nextKind: 'serial' | 'sim') {
       switchTask = switchTask.then(async () => {
         const previous = store.getState().client;
-        if (previous.kind === nextKind) return;
+        if (previous.kind === nextKind) {
+          if (mounted && nextKind === 'sim') await previous.connect();
+          return;
+        }
         await previous.disconnect();
         const client = nextKind === 'sim' ? world.glove : serial;
         if (mounted) bind(client);

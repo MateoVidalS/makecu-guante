@@ -150,7 +150,7 @@ for (const viewport of [
       await capture('exercise-live', false);
       await page.getByText('Coach controls', { exact: true }).click();
       await expect(
-        page.getByRole('switch', { name: 'Mic on' }).last(),
+        page.getByRole('switch', { name: 'Microphone' }).last(),
       ).toBeVisible();
       await expect(page.getByLabel('Voice mode')).toBeVisible();
       await page.getByText('Coach controls', { exact: true }).click();

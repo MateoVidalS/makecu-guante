@@ -236,3 +236,21 @@ main {
     overflow-x: auto;
   }
 }
+
+/* Keep navigation and recovery tools separate on the demo laptop widths. */
+@media (max-width: 1440px) {
+  .shell--setup-data .app-header {
+    flex-wrap: wrap;
+  }
+  .shell--setup-data .app-nav {
+    flex-shrink: 0;
+  }
+  .shell--setup-data .app-tools {
+    margin-inline-start: auto;
+  }
+  .shell--setup-data .statuses {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+}

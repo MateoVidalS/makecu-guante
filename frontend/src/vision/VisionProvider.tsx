@@ -90,7 +90,7 @@ export function createVisionController(
       }
     },
     async setKind(kind: 'camera' | 'sim', opts?: StartOptions) {
-      if (controller.source.kind === kind && !opts) return;
+      if (controller.source.kind === kind && !opts && kind !== 'sim') return;
       controller.stop();
       store.setState({
         source: kind === 'camera' ? camera : sim,
