@@ -58,7 +58,7 @@ PRESENT ──present_s──> ATTEMPT ──reached (dwell)──> HOLD ──h
 | REST | none (already released) | `rest_s` |
 
 **Vision gating:** with confidence < 0.6, ATTEMPT stops sending `follow` (the servos keep their last goal; the watchdog stays fed by
-the client's pings) and the timers keep running. In ASSIST, after 300 ms of low confidence → `target = current a` (freeze); after
+the client's pings) and the timers keep running. In ASSIST, after 300 ms of low confidence → `release` (resolved from WP4: never send a `target` at low confidence, so release instead of freezing); after
 1 s → safety `camera_lost` → PAUSED.
 
 **Safety mapping:** glove `evt` `overcurrent` / `stop_button` / `watchdog`, a client disconnect, or `camera_lost` → `safety` event →
