@@ -42,7 +42,7 @@ export const freshDraft = (): Draft => ({
   closed: null,
   pinch: null,
   friction: {},
-  limit: 900,
+  limit: 1500,
 });
 // Keep only calibration values, never a movement command, across route changes.
 let memory = freshDraft();

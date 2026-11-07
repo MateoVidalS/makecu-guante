@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from 'zustand';
 import { useRuntime, useEvaluationView } from '../../runtime';
 import { useGlove } from '../../glove';
+import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
 import { DEFAULT_EVAL_SETTINGS } from '../../contracts/poses';
 import {
   Section,
@@ -28,7 +29,7 @@ interface Point {
   pos: number;
   ma: number;
 }
-const FINGER_ORDER = ['thumb', 'index', 'middle', 'ring', 'pinky'];
+const FINGER_ORDER = GLOVE_FINGERS;
 // Chart geometry (viewBox units). Current is plotted up to 900 mA.
 const CHART = { left: 56, right: 780, top: 32, bottom: 236, maxMa: 900 };
 const px = (pos: number) => CHART.left + pos * (CHART.right - CHART.left);
@@ -188,14 +189,19 @@ export default function Evaluate() {
   const [relaxed, setRelaxed] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
-    [again, setAgain] = useState(false);
+    [again, setAgain] = useState(false),
+    [selected, setSelected] = useState<GloveFinger[]>([...GLOVE_FINGERS]);
+  const selectedFingers = GLOVE_FINGERS.filter((f) => selected.includes(f));
   useSessionLeaveGuard('evaluation');
   const running = ['prepare', 'sweep', 'cooldown'].includes(view.stage);
   async function start() {
     setError('');
     setBusy(true);
     try {
-      await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
+      await runtime.evaluation.start({
+        ...DEFAULT_EVAL_SETTINGS,
+        fingers: selectedFingers,
+      });
       setAgain(false);
     } catch (e) {
       setError((e as Error).message);
@@ -205,7 +211,8 @@ export default function Evaluate() {
   }
   if (running) {
     const sweep =
-      Math.max(0, FINGER_ORDER.indexOf(view.finger ?? 'thumb')) * 2 +
+      Math.max(0, selectedFingers.indexOf(view.finger ?? selectedFingers[0])) *
+        2 +
       (view.speed === 'fast' ? 2 : 1);
     return (
       <div className="hp-page hp-live">
@@ -218,7 +225,7 @@ export default function Evaluate() {
                 : view.stage === 'cooldown'
                   ? 'Relax your hand'
                   : `${title(view.speed ?? 'slow')} movement`}{' '}
-              · Sweep {sweep} of {FINGER_ORDER.length * 2}
+              · Sweep {sweep} of {selectedFingers.length * 2}
             </span>
           }
         />
@@ -229,7 +236,7 @@ export default function Evaluate() {
           max={1}
         />
         <SweepTracker
-          fingers={FINGER_ORDER}
+          fingers={selectedFingers}
           finger={view.finger}
           speed={view.speed}
           progress={view.stage === 'sweep' ? view.progress : 0}
@@ -364,7 +371,8 @@ export default function Evaluate() {
     );
   }
   const calibrated = !!runtime.calibration.current;
-  const blocked = !relaxed || !connected || !calibrated;
+  const blocked =
+    !relaxed || !connected || !calibrated || !selectedFingers.length;
   return (
     <div className="hp-page">
       <PageHeader
@@ -394,6 +402,32 @@ export default function Evaluate() {
               },
             ]}
           />
+          <fieldset className="eval-fingers">
+            <legend>Fingers to measure</legend>
+            <div className="hp-actions">
+              {GLOVE_FINGERS.map((finger) => (
+                <Checkbox
+                  key={finger}
+                  label={title(finger)}
+                  checked={selected.includes(finger)}
+                  onChange={(e) =>
+                    setSelected((current) =>
+                      e.target.checked
+                        ? [...current, finger]
+                        : current.filter((f) => f !== finger),
+                    )
+                  }
+                />
+              ))}
+            </div>
+            <p className="hp-note" aria-live="polite">
+              {selectedFingers.length * 2} sweeps · Slow then fast per finger.
+              {selectedFingers.length === 5 && ' Allow about 2 minutes.'}
+            </p>
+          </fieldset>
+          <p className="hp-note">
+            Rest palm down, fingers beyond the table edge.
+          </p>
           <Checkbox
             label="Hand relaxed in the glove"
             checked={relaxed}
@@ -421,7 +455,9 @@ export default function Evaluate() {
                 ? 'Connect your glove in Setup first.'
                 : !calibrated
                   ? 'Calibrate your comfortable range first.'
-                  : 'Confirm your hand is relaxed to start.'}
+                  : !selectedFingers.length
+                    ? 'Choose at least one finger to measure.'
+                    : 'Confirm your hand is relaxed to start.'}
             </p>
           )}
         </div>
