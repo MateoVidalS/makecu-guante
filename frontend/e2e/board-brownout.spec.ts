@@ -72,6 +72,7 @@ test('serial brown-out cause reaches Setup and runtime status and clears on norm
   await expect(
     page.getByRole('alert', { name: 'Glove board status' }),
   ).toContainText(BROWNOUT_MESSAGE);
+  await expect(page.locator('#safety-banner-slot [role=alert]')).toHaveCount(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,

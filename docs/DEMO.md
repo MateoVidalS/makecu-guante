@@ -69,6 +69,9 @@ run. Neither command seeds automatically.
 - [ ] If using hardware: recorded bench gate, accessible physical STOP and supply
   switch, helper present, fresh calibration for this hand and mounting. Seeded
   model ranges must never substitute for physical calibration.
+- [ ] Without a glove, Setup → **Simulate glove** keeps the real camera
+  tracking your hand. The live **Glove motors** strip labels simulated motors;
+  use both simulators for a fully rehearsed synthetic-patient demo.
 - [ ] Rehearse source recovery: open **Demo recovery** → **Use simulated glove**
   (or **Restart simulated glove** when already connected)
   or **Use simulated camera**. It ends/saves the current run and readies the source

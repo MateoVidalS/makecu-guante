@@ -74,3 +74,23 @@ describe('board reset cause', () => {
     expect(screen.queryByText(BROWNOUT_MESSAGE)).not.toBeInTheDocument();
   });
 });
+
+it('keeps advisory reset guidance outside the hard-stop slot that controls live actions', () => {
+  const top = document.createElement('div');
+  top.className = 'app-top';
+  const hardStop = document.createElement('div');
+  hardStop.id = 'safety-banner-slot';
+  top.appendChild(hardStop);
+  document.body.appendChild(top);
+  glove.events = [{ t: 1, e: 'boot', reset_reason: 9 }];
+  const view = render(<RuntimeBrownoutNotice inline />);
+  try {
+    expect(
+      screen.getByRole('alert', { name: 'Glove board status' }).parentElement,
+    ).toBe(top);
+    expect(hardStop).toBeEmptyDOMElement();
+  } finally {
+    view.unmount();
+    top.remove();
+  }
+});

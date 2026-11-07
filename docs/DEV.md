@@ -22,7 +22,10 @@ Never copy them to hardware. The default plan has fifteen attempts across five
 poses; all five fingers are scored. Pinch scores thumb and index. The shell keeps Home/History/Setup navigation;
 Exercise and Evaluate are available from Home. **Demo recovery** in the header
 is the single simulator menu, including patient preset, rigid-finger selection,
-STOP, hand hiding and source restart. The camera preview starts hidden.
+STOP, hand hiding and source restart. The camera preview starts hidden. If the USB chooser has no glove, Setup’s
+**Simulate glove** replaces only the glove; the selected real camera stays
+active. The live **Glove motors** strip shows all five motor states from
+telemetry and labels simulated motors.
 
 | Command | Behavior |
 | --- | --- |
@@ -90,7 +93,7 @@ Boot events retain optional `reset_reason`. Code 9 shows the exact capacitor/
 supply guidance in Setup and runtime status; normal/unknown boots do not claim a
 brown-out. A new shared line fixture lives at
 `contracts/fixtures/serial_boot_brownout.txt`; older event lines remain valid.
-The status notice uses the banner slot below the header to keep its full message
+The status notice uses its own banner below the header to keep its full message
 readable without widening the status row.
 
 Empty-glove friction runs without camera visibility, off the hand. Any safety

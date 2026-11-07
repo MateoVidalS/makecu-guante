@@ -103,7 +103,8 @@ export function RuntimeBrownoutNotice({
       <Banner tone="warning" title={message} />
     </div>
   );
-  // Keep full power guidance out of the compact header's flex row.
-  const slot = document.getElementById('safety-banner-slot');
+  // Keep advisory power guidance out of the compact header and the hard-stop
+  // slot: that slot's safety styles intentionally hide ordinary live controls.
+  const slot = document.querySelector('.app-top');
   return slot ? createPortal(notice, slot) : notice;
 }
