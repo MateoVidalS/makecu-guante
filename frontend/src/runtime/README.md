@@ -133,4 +133,4 @@ Decisions and feelings use the existing durable persistence queue, ahead of sess
 end. They wait for session creation and receive its real ID when posted to A3's
 `coach_decisions` and `feelings` endpoints. Pending feelings expose `session_id: 0`
 locally until creation succeeds; this placeholder is never sent to the backend.
-Endpoints unavailable before A3 merges leave the queue Offline and retry normally.
+Unavailable audit endpoints leave the queue Offline and retry normally.

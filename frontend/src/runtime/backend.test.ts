@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as api from '../api/client';
+import type { CoachDecision, FeelingEntry } from '../contracts/therapist';
 import { SimWorld } from '../glove/sim';
 import { createGloveController } from '../glove/GloveProvider';
 import { createVisionController } from '../vision/VisionProvider';
@@ -56,16 +57,22 @@ beforeAll(async () => {
       stdio: 'ignore',
     },
   );
-  for (let tries = 0; tries < 100; tries++) {
+  let ready = false;
+  const startupDeadline = performance.now() + 10_000;
+  while (performance.now() < startupDeadline) {
     if (
       await realFetch(`${base}/api/health`)
         .then((r) => r.ok)
         .catch(() => false)
-    )
+    ) {
+      ready = true;
       break;
+    }
     if (process.exitCode !== null) throw new Error('Test backend exited');
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+  if (!ready)
+    throw new Error('Test backend did not become ready within 10 seconds');
   vi.stubGlobal('fetch', (input: string, init?: RequestInit) =>
     realFetch(`${base}${input}`, init),
   );
@@ -81,7 +88,7 @@ afterAll(async () => {
   }
   if (directory) await rm(directory, { recursive: true, force: true });
 });
-it('stores the simulator plan, traces, evaluation and exports in a real temporary SQLite backend', async () => {
+it('stores the simulator plan, traces, evaluation, therapy audit and exports in a real temporary SQLite backend', async () => {
   const calibration = await api.createCalibration({
     servo: fixture.servo,
     camera: {
@@ -155,6 +162,73 @@ it('stores the simulator plan, traces, evaluation and exports in a real temporar
     });
     const exported = await api.exportData('json');
     expect((await exported.text()).length).toBeGreaterThan(1000);
+
+    // Exercise A1's durable queue against A3's actual validation and SQLite storage.
+    await runtime.exercise.start(
+      [{ pose: 'full_fist', reps: 1 }],
+      DEFAULT_EXERCISE_SETTINGS,
+    );
+    for (
+      let ms = 0;
+      ms < 20_000 && runtime.exercise.view().phase !== 'ASSIST';
+      ms += 20
+    )
+      world.advance(20);
+    expect(runtime.exercise.view().phase).toBe('ASSIST');
+    runtime.therapy.adjust(
+      'adjust_help',
+      { finger: 'index', direction: 'less', reason: 'Gentler help.' },
+      'coach',
+    );
+    runtime.therapy.adjust(
+      'set_attempt_time',
+      { seconds: 8, reason: 'More time to try.' },
+      'coach',
+    );
+    runtime.therapy.recordFeeling({
+      pain: 5,
+      fatigue: 7,
+      note: 'My hand hurts.',
+      source: 'ui',
+    });
+    expect(runtime.exercise.view().phase).toBe('PAUSED');
+    expect(world.firmware.mode).toBe('none');
+    runtime.therapy.adjust('get_live_state', {}, 'coach');
+    await runtime.exercise.stop();
+    await runtime.persistence.flush();
+    expect(runtime.persistence.store.getState()).toMatchObject({
+      status: 'Saved',
+      pending: 0,
+    });
+    const id = runtime.exercise.view().sessionId!;
+    const audit = await api.request<{
+      coach_decisions: CoachDecision[];
+      feelings: FeelingEntry[];
+    }>(`/sessions/${id}`);
+    expect(audit.coach_decisions.map((d) => d.tool)).toEqual([
+      'adjust_help',
+      'set_attempt_time',
+      'brake',
+      'record_feeling',
+      'get_live_state',
+    ]);
+    expect(audit.coach_decisions.every((d) => d.session_id === id)).toBe(true);
+    expect(audit.coach_decisions[2]).toMatchObject({
+      source: 'local_rule',
+      applied: { safety_source: 'coach_brake' },
+    });
+    expect(audit.feelings).toEqual([
+      expect.objectContaining({
+        session_id: id,
+        attempt_index: 0,
+        pain: 5,
+        fatigue: 7,
+        source: 'ui',
+      }),
+    ]);
+    expect((await api.getSession(id)).attempts[0].safety_events).toContainEqual(
+      expect.objectContaining({ source: 'coach_brake' }),
+    );
   } finally {
     runtime.dispose();
     vision.stop();
