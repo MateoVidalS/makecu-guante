@@ -26,10 +26,10 @@ export default function Calibrate() {
     [busy, setBusy] = useState(false),
     [capture, setCapture] = useState(false),
     [progress, setProgress] = useState(0),
-    [mirror, setMirror] = useState(true),
     [offHand, setOffHand] = useState(false),
     [ack, setAck] = useState(false),
     [saved, setSaved] = useState(false);
+  const mirror = draft.mirror;
   const current = useGloveTelemetry((t) => t?.ma ?? 0);
   const cancel = useRef<() => void>(() => {}),
     mounted = useRef(true),
@@ -391,7 +391,7 @@ export default function Calibrate() {
             <input
               type="checkbox"
               checked={mirror}
-              onChange={(e) => setMirror(e.target.checked)}
+              onChange={(e) => update({ mirror: e.target.checked })}
             />
             Mirror preview
           </label>

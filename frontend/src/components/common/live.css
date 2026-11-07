@@ -291,3 +291,14 @@ summary {
 .preview-mirrored canvas {
   transform: scaleX(-1);
 }
+@media (max-width: 1280px) {
+  .live-hero .hand-view {
+    height: var(--placeholder-height);
+  }
+  .live-details .finger-track {
+    height: var(--space-48);
+  }
+  .shortcut-help {
+    display: none;
+  }
+}

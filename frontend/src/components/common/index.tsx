@@ -41,7 +41,7 @@ export function StatusChip({ children }: { children: ReactNode }) {
   return <span className="chip">{children}</span>;
 }
 export function GloveChip() {
-  const { store } = useGlove();
+  const { store, client } = useGlove();
   const connection = useStore(store, (s) => s.connection);
   const state = useGloveTelemetry((t) => t?.st);
   const mode = useGloveTelemetry((t) => t?.md);
@@ -70,6 +70,7 @@ export function GloveChip() {
         ●
       </span>{' '}
       Glove: {label}
+      {client.kind === 'sim' && ' · Simulator'}
     </StatusChip>
   );
 }

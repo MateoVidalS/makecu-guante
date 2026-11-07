@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useStore } from 'zustand';
 import { useRuntime, useExerciseView } from '../../runtime';
@@ -15,10 +15,11 @@ import type {
 } from '../../contracts/engine';
 import { CoachPanel, useVoice } from '../../voice';
 import { VirtualHand } from '../../hand3d/VirtualHand';
+import { jointsFromClosure, type JointMap } from '../../hand3d/rig';
 import { useVision, useVisionFrame } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
 import { useGlove } from '../../glove';
-import type { FingerId } from '../../contracts/vision';
+import type { FingerId, VisionFrame } from '../../contracts/vision';
 import {
   BigButton,
   PhaseRing,
@@ -34,10 +35,31 @@ const Hand = memo(function Hand() {
   const runtime = useRuntime(),
     vision = useVision();
   const pose = useExerciseView((v) => v.pose);
-  const actual = useCallback(
-    () => vision.source.latest()?.joints ?? null,
-    [vision.source],
+  const [compact, setCompact] = useState(
+    () => window.matchMedia?.('(max-width: 1280px)').matches ?? false,
   );
+  useEffect(() => {
+    const media = window.matchMedia?.('(max-width: 1280px)');
+    if (!media) return;
+    const update = () => setCompact(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  const actualJoints = useRef<JointMap | null>(null);
+  useEffect(() => {
+    const update = (frame: VisionFrame | null) => {
+      actualJoints.current =
+        frame?.detected && frame.confidence >= 0.6
+          ? (frame.joints ??
+            (frame.closure
+              ? jointsFromClosure(frame.closure, runtime.exercise.view().pose)
+              : null))
+          : null;
+    };
+    update(vision.source.latest());
+    return vision.source.onFrame(update);
+  }, [vision.source, runtime]);
+  const actual = useCallback(() => actualJoints.current, []);
   const state = useCallback(
     (finger: string) => {
       const v = runtime.exercise.view();
@@ -58,7 +80,16 @@ const Hand = memo(function Hand() {
   );
   return (
     <div role="img" aria-label={`Target pose: ${pose.name}`}>
-      <VirtualHand target={pose.render} actual={actual} state={state} />
+      <VirtualHand
+        target={pose.render}
+        actual={actual}
+        state={state}
+        pose={pose.id}
+        zoom={compact ? 42.5 : 85}
+        handedness={
+          runtime.calibration.current?.camera.affected_hand ?? 'right'
+        }
+      />
     </div>
   );
 });
@@ -353,7 +384,7 @@ export default function Exercise() {
         <BigButton onClick={runtime.exercise.skip}>Skip pose</BigButton>
         <BigButton onClick={() => setConfirm(true)}>End practice</BigButton>
       </div>
-      <p className="muted">Space: pause · S: skip · Esc: end</p>
+      <p className="muted shortcut-help">Space: pause · S: skip · Esc: end</p>
       <AttemptResultToast />
       {confirm && (
         <ConfirmDialog

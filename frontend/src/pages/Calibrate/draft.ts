@@ -20,6 +20,7 @@ export interface Draft {
     Record<'thumb' | 'index' | 'middle', Partial<ServoCalibration>>
   >;
   hand: 'left' | 'right';
+  mirror: boolean;
   open: Capture | null;
   closed: Capture | null;
   pinch: Capture | null;
@@ -32,6 +33,7 @@ export const freshDraft = (): Draft => ({
   angle: 90,
   servo: {},
   hand: 'right',
+  mirror: true,
   open: null,
   closed: null,
   pinch: null,

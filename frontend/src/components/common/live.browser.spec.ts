@@ -18,6 +18,12 @@ test('mock flows run end to end and remain readable in both themes', async ({
   await expect(
     page.getByText('Camera sees your hand', { exact: false }),
   ).toBeVisible();
+  await page.keyboard.press('Tab');
+  expect(
+    await page.evaluate(() =>
+      parseFloat(getComputedStyle(document.activeElement!).outlineWidth),
+    ),
+  ).toBeGreaterThanOrEqual(3);
   // Home starts the default short plan; the route guard must survive StrictMode.
   await page.getByLabel('Short session (1 rep each)').check();
   await page.getByRole('button', { name: "Start today's practice" }).click();

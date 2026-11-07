@@ -9,6 +9,12 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:5277',
     browserName: 'chromium',
     headless: true,
+    launchOptions: {
+      args:
+        process.platform === 'darwin'
+          ? ['--use-gl=angle', '--use-angle=metal']
+          : [],
+    },
   },
   webServer: {
     command: 'VITE_MOCK_API=1 VITE_SIM=1 pnpm dev --port 5277 --strictPort',
