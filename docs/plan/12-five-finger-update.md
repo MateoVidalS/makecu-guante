@@ -18,6 +18,7 @@ change and what it means for the software**, then the plan to update the whole p
 | H9 | **Camera placement** | "Above and to the side" | **In front, on the thumb side, diagonal, 30–40 cm from the fingers, higher than the hand** (Logitech on a small tripod) |
 | H10 | **Glove** | Not specified | **Light, thin glove**; MediaPipe is trained on bare hands, so a dark glove may break detection. "Test it on day 1" |
 | H11 | **Guides and anchors** | Tubes or straws | Printed guides (13 + 3 spare, already printed) and fingertip anchors (5 + 1); the module, lid and spools are still to be printed |
+| H13 | **Bulk capacitor** | – | **470–1000 µF across 5 V/GND on the servo line**: several servos starting at once can brown out and reset the ESP32 |
 | H12 | **Left hand** | – | Mirror the module and lid in the slicer |
 
 ## 2. Impact on the software
