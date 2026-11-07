@@ -1,0 +1,145 @@
+.doctor > header {
+  display: none;
+}
+.doctor .doctor-banner {
+  color: var(--text);
+  border-bottom: var(--control-border) solid var(--border);
+}
+.doctor-report .profile-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-8) var(--space-24);
+}
+.doctor-report dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.doctor-report dt {
+  color: var(--muted);
+}
+.summary-copy {
+  white-space: pre-wrap;
+}
+@page {
+  size: auto;
+  margin: 12mm;
+}
+@media print {
+  :root:has(.doctor) {
+    --bg: #fff !important;
+    --surface: #fff !important;
+    color-scheme: light !important;
+    background: var(--surface) !important;
+  }
+  body:has(.doctor) {
+    background: var(--surface);
+  }
+  .doctor {
+    --bg: #fff;
+    --surface: #fff;
+    --surface-2: #fff;
+    --text: #1d1f22;
+    --muted: #5c6168;
+    --border: #dad7d0;
+    --finger-thumb: #7b61ff;
+    --finger-index: #00a3bf;
+    --finger-middle: #c2185b;
+    --demo: #7b61ff;
+    color-scheme: light;
+    background: var(--surface);
+    color: var(--text);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .doctor main {
+    padding: 0;
+    max-width: 100%;
+    width: 186mm;
+    margin-inline: auto;
+  }
+  .doctor-banner,
+  .doctor header,
+  .doctor nav,
+  .doctor .no-print,
+  .doctor .chart-card details,
+  .doctor .skip-link {
+    display: none !important;
+  }
+  .doctor-report {
+    display: block;
+    font-size: var(--small);
+  }
+  .doctor-report .report-page {
+    display: block;
+    break-before: page;
+  }
+  .doctor-report .report-page:first-child {
+    break-before: auto;
+  }
+  .doctor-report h1 {
+    font-size: var(--h2);
+  }
+  .doctor-report h2 {
+    font-size: var(--h3);
+  }
+  .doctor-report h3 {
+    font-size: var(--body);
+  }
+  .doctor-report .report-page > .demo-badge {
+    display: none;
+  }
+  .doctor-report p {
+    max-width: none;
+    margin-block: var(--space-8);
+  }
+  .doctor-report .card {
+    margin-block: var(--space-12);
+    padding: var(--space-12);
+    box-shadow: none;
+  }
+  .doctor-report .kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-8);
+  }
+  .doctor-report .kpi-tile {
+    padding: var(--space-8);
+  }
+  .doctor-report .kpi-value {
+    font-size: var(--h2);
+  }
+  .doctor-report .chart-grid {
+    display: block;
+  }
+  .doctor-report .chart-card {
+    margin-block: var(--space-8);
+    padding: var(--space-8);
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .doctor-report .chart-canvas,
+  .doctor-report .compact .chart-canvas {
+    height: calc(var(--placeholder-height) - var(--space-64) - var(--space-32));
+  }
+  .doctor-report .chart-legend {
+    gap: var(--space-8);
+    margin-block: var(--space-4);
+  }
+  .doctor-report .chart-hint {
+    margin-block: var(--space-4);
+  }
+  .doctor-report .therapist-summary {
+    break-inside: avoid;
+  }
+}
+
+@media print {
+  .doctor-report .recharts-responsive-container > div,
+  .doctor-report .recharts-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .doctor-report .recharts-surface {
+    width: 100%;
+    height: 100%;
+  }
+}

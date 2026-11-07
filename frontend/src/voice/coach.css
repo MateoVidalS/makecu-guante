@@ -1,0 +1,83 @@
+.coach-panel {
+  display: grid;
+  gap: var(--space-12);
+}
+.coach-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+}
+.coach-controls label {
+  display: grid;
+  gap: var(--space-4);
+}
+.coach-controls select {
+  min-height: var(--button-min-height);
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-input);
+  padding: var(--space-8);
+}
+.coach-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  width: var(--space-48);
+  height: var(--space-48);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+}
+.coach-avatar i {
+  width: var(--space-4);
+  height: var(--space-12);
+  background: var(--accent);
+  border-radius: var(--radius-pill);
+}
+.coach-speaking i {
+  animation: coach-bars var(--dur-slow) var(--ease) infinite alternate;
+}
+.coach-speaking i:nth-child(2) {
+  animation-delay: var(--dur-fast);
+}
+.coach-speaking i:nth-child(3) {
+  animation-delay: var(--dur);
+}
+.coach-caption {
+  font-size: var(--h3);
+  margin: 0;
+  animation: coach-caption-fade 8s linear forwards;
+}
+.coach-patient {
+  color: var(--muted);
+  margin: 0;
+}
+.coach-notice {
+  color: var(--text);
+  border-inline-start: var(--focus-width) solid var(--assist);
+  padding-inline-start: var(--space-12);
+  margin: 0;
+}
+@keyframes coach-bars {
+  to {
+    transform: scaleY(1.8);
+  }
+}
+@keyframes coach-caption-fade {
+  0%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .coach-speaking i,
+  .coach-caption {
+    animation: none;
+  }
+}
