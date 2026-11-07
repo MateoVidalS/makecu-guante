@@ -117,6 +117,23 @@ Rejected calibration arguments invalidate that finger's existing range in idle.
 After a jog outside a calibrated range, assistance waits for release to unwind
 back into the range, preserving the ramp speed cap on the transition.
 
+## How the app drives the board
+
+The browser (`frontend/src/glove/webSerialGlove.ts`, runtime and engine) is the
+only host. On every connect it sends `hello`, `release`, the five `calib`
+ranges and `limit`. During an attempt it streams `follow` at up to 30 Hz (the
+servos only take up slack); assistance is a `target` at 0.3 range/s, sent once
+per stagger stage (fingers start 150 ms apart, waiting fingers hold position).
+The calibration wizard sets `limit 400`, jogs one finger at a time, sends
+`release`, then the ranges. The client pings only after 300 ms without any
+other write, so follow lines alone keep the watchdog fed. Native tests replay
+these exact sequences (`app_*` in `test/test_native/test_main.cpp`): every
+command is accepted and no safety event fires on a healthy run, while 1005 ms
+of silence still trips the watchdog.
+
+Link budget: a typical five-finger `tel` line is about 123 bytes at 50 Hz, roughly 53%
+of 115200 baud; host lines travel on the other UART direction.
+
 ## Servo profiles and power limits
 
 `include/config.h` defines `SERVO_PROFILES` in wire order: unidentified thumb,
@@ -133,6 +150,11 @@ simultaneous motion. The total-current cut-off remains the hard rule even if a
 profile's estimated stall current would suggest otherwise. Five simultaneous
 stalls can exceed the supply; normal assist is staggered by the app, and the
 firmware still enforces its own total limit if all five are commanded together.
+**Known limitation (team decision):** one stalled micro servo draws roughly
+650–800 mA (estimated), below the 1500 mA default. A single rigid finger is
+therefore stopped by the app's resistance detection (camera + current), by the
+micro servo's limited torque, and by the supply's current limit, not by this
+board's cut-off. Lowering the default after bench measurement narrows the gap.
 
 The default threshold is **1500 mA**, clamped to **100–2200 mA**, below the 2.5 A
 supply limit, with the existing continuous **100 ms** trip rule. Per-build flags
