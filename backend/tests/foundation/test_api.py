@@ -15,7 +15,7 @@ def fixture(name):
 
 @pytest.fixture
 def client():
-    # These foundation checks cover health, schemas, validation, and the voice stub.
+    # These foundation checks cover health, schemas, validation, and voice availability.
     return TestClient(app)
 
 
@@ -78,10 +78,13 @@ CASES = [
 ]
 
 
-def test_voice_stub_returns_contract_error(client):
+def test_voice_unavailable_returns_contract_error(client, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "gemini_api_key", "")
     response = client.post("/api/voice/token", json={"session_id": None})
-    assert response.status_code == 501, response.text
-    assert response.json()["error"]["code"] == "not_implemented"
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["code"] == "voice_unavailable"
     assert isinstance(response.json()["error"]["message"], str)
 
 
@@ -102,6 +105,8 @@ def test_all_documented_operations_have_a_test_case(client):
             if path != "/api/health":
                 assert (method, path.removeprefix("/api")) in operations
                 assert "200" in item[method]["responses"] or "204" in item[method]["responses"]
+                if path == "/api/voice/token":
+                    assert "503" in item[method]["responses"]
 
 
 def test_errors_and_spa_fallback(client, tmp_path, monkeypatch):
