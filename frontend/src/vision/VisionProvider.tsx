@@ -7,44 +7,143 @@ import {
 } from 'react';
 import { createStore } from 'zustand/vanilla';
 import { useStore } from 'zustand';
-import type { VisionFrame, VisionSource } from '../contracts/vision';
-import { StubVision } from './StubVision';
-const makeVision = () => {
-  const source: VisionSource = new StubVision();
-  const store = createStore<{ latest: VisionFrame | null }>(() => ({
+import type {
+  VisionFrame,
+  VisionSource,
+  Handedness,
+} from '../contracts/vision';
+import type { CameraCalibration } from '../contracts/calibration';
+import { createSimWorld } from '../glove/sim';
+import { CameraVision } from './cameraVision';
+import { missingFrame } from './frameProcessor';
+
+type StartOptions = { deviceId?: string; affectedHand: Handedness };
+/** Accept a shared SimWorld.vision from the runtime; WP0's factory returns its stub until WP2 lands. */
+export function createVisionController(
+  options: {
+    simSource?: VisionSource;
+    cameraSource?: VisionSource;
+    initialKind?: 'camera' | 'sim';
+  } = {},
+) {
+  const sim = options.simSource ?? createSimWorld().vision;
+  const camera = options.cameraSource ?? new CameraVision();
+  const initial =
+    options.initialKind ??
+    (import.meta.env.VITE_SIM === '1' ? 'sim' : 'camera');
+  const store = createStore<{
+    source: VisionSource;
+    latest: VisionFrame | null;
+    error: string | null;
+  }>(() => ({
+    source: initial === 'camera' ? camera : sim,
     latest: null,
+    error: null,
   }));
-  return {
-    source,
+  const listeners = new Set<(frame: VisionFrame) => void>();
+  let settings: StartOptions = { affectedHand: 'right' };
+  let calibration: CameraCalibration | null = null;
+  let detach: (() => void) | null = null;
+  let generation = 0;
+  const controller = {
     store,
-    get latest() {
-      return source.latest();
+    get source() {
+      return store.getState().source;
     },
-    subscribe: (callback: (frame: VisionFrame) => void) =>
-      source.onFrame(callback),
-    setKind: async (kind: 'camera' | 'sim') => {
-      if (kind === 'camera') throw new Error('Camera comes in WP3');
+    get latest() {
+      return store.getState().latest;
+    },
+    get error() {
+      return store.getState().error;
+    },
+    subscribe(callback: (frame: VisionFrame) => void) {
+      listeners.add(callback);
+      return () => {
+        listeners.delete(callback);
+      };
+    },
+    async start(opts: StartOptions = settings) {
+      const request = ++generation;
+      settings = opts;
+      detach?.();
+      detach = null;
+      const source = controller.source;
+      source.stop();
+      store.setState({ latest: null, error: null });
+      source.setCalibration(calibration);
+      detach = source.onFrame((latest) => {
+        if (request !== generation) return;
+        store.setState({ latest });
+        listeners.forEach((cb) => cb(latest));
+      });
+      try {
+        await source.start(settings);
+      } catch (error) {
+        if (request !== generation) return;
+        store.setState({
+          latest: null,
+          error: error instanceof Error ? error.message : 'Camera unavailable',
+        });
+        throw error;
+      }
+    },
+    async setKind(kind: 'camera' | 'sim', opts?: StartOptions) {
+      if (controller.source.kind === kind && !opts) return;
+      controller.stop();
+      store.setState({
+        source: kind === 'camera' ? camera : sim,
+        latest: null,
+        error: null,
+      });
+      await controller.start(opts ?? settings);
+    },
+    setCalibration(value: CameraCalibration | null) {
+      calibration = value;
+      camera.setCalibration(value);
+      sim.setCalibration(value);
+      if (value) settings = { ...settings, affectedHand: value.affected_hand };
+    },
+    stop() {
+      generation++;
+      detach?.();
+      detach = null;
+      controller.source.stop();
+      store.setState({ latest: null });
+      const missing = missingFrame(performance.now());
+      listeners.forEach((cb) => cb(missing));
     },
   };
-};
-const Context = createContext<ReturnType<typeof makeVision> | null>(null);
-export function VisionProvider({ children }: { children: ReactNode }) {
-  const value = useMemo(makeVision, []);
+  return controller;
+}
+const Context = createContext<ReturnType<typeof createVisionController> | null>(
+  null,
+);
+export function VisionProvider({
+  children,
+  simSource,
+  initialKind,
+}: {
+  children: ReactNode;
+  simSource?: VisionSource;
+  initialKind?: 'camera' | 'sim';
+}) {
+  const value = useMemo(
+    () => createVisionController({ simSource, initialKind }),
+    [simSource, initialKind],
+  );
   useEffect(() => {
-    const unsub = value.source.onFrame((latest) =>
-      value.store.setState({ latest }),
-    );
-    void value.source.start({ affectedHand: 'right' });
-    return () => {
-      unsub();
-      value.source.stop();
-    };
+    void value.start().catch(() => {
+      /* Exposed as useVision().error for Setup. */
+    });
+    return () => value.stop();
   }, [value]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 export function useVision() {
   const value = useContext(Context);
   if (!value) throw new Error('VisionProvider is missing');
+  useStore(value.store, (s) => s.source);
+  useStore(value.store, (s) => s.error);
   return value;
 }
 export function useVisionFrame<T>(selector: (frame: VisionFrame | null) => T) {
