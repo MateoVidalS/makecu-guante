@@ -1,0 +1,406 @@
+/*
+ * Helper pages (Home, Setup, Calibrate, Evaluate): quiet, document-like layouts.
+ * Content sits on the page background in sections separated by whitespace and hairlines,
+ * not in cards. Tokens only; no hard-coded colors.
+ */
+.hp-page {
+  display: grid;
+  gap: var(--space-32);
+  min-width: 0;
+  text-align: start;
+}
+.hp-live {
+  gap: var(--space-24);
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+.hp-page > * {
+  margin: 0;
+}
+
+.hp-stack {
+  display: grid;
+  gap: var(--space-16);
+  min-width: 0;
+}
+.hp-stack > * {
+  margin: 0;
+}
+
+/* ---------- Sections ---------- */
+.hp-section {
+  display: grid;
+  align-content: start;
+  gap: var(--space-16);
+  min-width: 0;
+  padding-block-start: var(--space-24);
+  border-block-start: var(--control-border) solid var(--border);
+}
+.hp-section--flush {
+  padding-block-start: 0;
+  border-block-start: 0;
+}
+.hp-section > :is(h2, h3, p, ul, ol, dl, table) {
+  margin: 0;
+}
+.hp-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-16);
+}
+.hp-section__heading {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.hp-section__heading > * {
+  margin: 0;
+}
+.hp-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--h3);
+  line-height: var(--leading-snug);
+}
+.hp-section__desc {
+  color: var(--muted);
+}
+.hp-label {
+  color: var(--muted);
+  font-size: var(--small);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+}
+.hp-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
+}
+
+/* ---------- Two-column layout (Setup, Home) ---------- */
+.hp-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-48);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .hp-columns {
+    grid-template-columns: 1fr;
+    gap: var(--space-32);
+  }
+}
+
+/* ---------- Actions ---------- */
+.hp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+}
+.hp-actions--end {
+  justify-content: flex-end;
+}
+.hp-actions--between {
+  justify-content: space-between;
+}
+
+/* ---------- Status checklist: dot + word + fix-it link ---------- */
+.hp-status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-block-start: var(--control-border) solid var(--border);
+}
+.hp-status-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  min-height: var(--control-md);
+  border-block-end: var(--control-border) solid var(--border);
+}
+/* The status chip reads as plain text inside a list row. */
+.hp-status-list .ds-status-chip {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: var(--body);
+}
+.hp-status-list .ds-status-chip__value {
+  font-weight: var(--weight-regular);
+  color: var(--muted);
+}
+.hp-status-list a {
+  font-size: var(--small);
+}
+
+/* ---------- Readouts: label over a tabular number with a unit ---------- */
+.hp-readouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-32);
+  margin: 0;
+}
+.hp-readout {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.hp-readout dt {
+  color: var(--muted);
+  font-size: var(--small);
+}
+.hp-readout dd {
+  margin: 0;
+  font-size: var(--h3);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-snug);
+}
+.hp-unit {
+  margin-inline-start: var(--space-4);
+  color: var(--muted);
+  font-size: var(--small);
+}
+
+/* ---------- Tables ---------- */
+.hp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.hp-table caption {
+  padding-block-end: var(--space-8);
+  color: var(--muted);
+  font-size: var(--small);
+  font-weight: var(--weight-bold);
+  text-align: start;
+}
+.hp-table :is(th, td) {
+  padding: var(--space-8) var(--space-12);
+  border-block-end: var(--control-border) solid var(--border);
+  text-align: start;
+  font-weight: var(--weight-regular);
+}
+.hp-table :is(th, td):first-child {
+  padding-inline-start: 0;
+}
+.hp-table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+.hp-table thead th {
+  color: var(--muted);
+  font-size: var(--small);
+  font-weight: var(--weight-bold);
+}
+.hp-table tbody th {
+  font-weight: var(--weight-bold);
+}
+.hp-table .hp-num {
+  text-align: end;
+}
+
+/* ---------- Disclosures (diagnostics, helper details) ---------- */
+.hp-disclosure {
+  min-width: 0;
+}
+.hp-disclosure > summary {
+  width: fit-content;
+  color: var(--muted);
+  font-size: var(--small);
+  font-weight: var(--weight-bold);
+}
+.hp-disclosure[open] > summary {
+  margin-block-end: var(--space-12);
+}
+.hp-disclosure > :not(summary) {
+  margin-block: 0 var(--space-8);
+  font-size: var(--small);
+}
+.hp-disclosure :is(h2, h3) {
+  margin: 0 0 var(--space-8);
+  font-size: var(--body);
+}
+.hp-disclosure dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-4) var(--space-16);
+}
+.hp-disclosure dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.hp-disclosure ul {
+  margin: 0;
+  padding-inline-start: var(--space-16);
+}
+.hp-disclosure svg {
+  display: block;
+  width: 100%;
+  max-width: 32rem;
+  height: auto;
+}
+
+/*
+ * Runtime-owned panels (simulator calibration, latency diagnostics) render legacy `.card`
+ * markup. Inside helper pages they read as plain content, not as a floating card.
+ */
+.hp-plain.hp-plain :is(.card, section) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.hp-plain.hp-plain :is(.card, section) > :is(h2, h3) {
+  margin: 0 0 var(--space-4);
+  font-size: var(--body);
+}
+.hp-plain.hp-plain :is(.card, section) > p {
+  margin: 0 0 var(--space-12);
+  color: var(--muted);
+}
+
+/* ---------- Home: recent-sessions sparkline ---------- */
+.hp-sparkline {
+  display: block;
+  width: 100%;
+  max-width: 20rem;
+  height: auto;
+}
+
+/* ---------- Calibration ---------- */
+.hp-wizard {
+  display: grid;
+  gap: var(--space-24);
+  max-width: 48rem;
+  min-width: 0;
+}
+.hp-wizard > * {
+  margin: 0;
+}
+.hp-wizard__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding-block-start: var(--space-24);
+  border-block-start: var(--control-border) solid var(--border);
+}
+.hp-safety-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+}
+.hp-safety-line > p {
+  margin: 0;
+}
+.hp-finger-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+.hp-set-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-16);
+  padding-block: var(--space-12);
+  border-block-end: var(--control-border) solid var(--border);
+}
+.hp-set-row:first-of-type {
+  border-block-start: var(--control-border) solid var(--border);
+}
+.hp-set-row p {
+  margin: 0;
+}
+.hp-set-row__value {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.hp-capture-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  color: var(--muted);
+}
+.hp-camera {
+  width: 100%;
+  max-width: 32rem;
+}
+.hp-alert {
+  margin: 0;
+  color: var(--danger-text);
+}
+
+/* ---------- Evaluate ---------- */
+.hp-progress {
+  width: 100%;
+  height: var(--space-4);
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.hp-progress::-webkit-progress-bar {
+  background: var(--surface-3);
+}
+.hp-progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.hp-progress::-moz-progress-bar {
+  background: var(--accent);
+}
+.hp-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-block: var(--control-border) solid var(--border);
+}
+.hp-chart text {
+  fill: var(--muted);
+  font: inherit;
+  font-size: var(--caption);
+}
+.hp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
+}
+.hp-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.hp-legend i {
+  display: inline-block;
+  width: var(--space-16);
+  height: 2px;
+  background: currentColor;
+}
+.hp-legend .hp-legend--measured {
+  color: var(--accent);
+}
+.hp-legend .hp-legend--friction {
+  color: var(--target);
+}
+.hp-legend .hp-legend__text {
+  color: var(--muted);
+}

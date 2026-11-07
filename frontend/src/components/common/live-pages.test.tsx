@@ -184,7 +184,7 @@ describe('Home and Setup', () => {
       'Use Chrome or Edge for the glove',
     );
     fireEvent.click(screen.getByText('Glove diagnostics'));
-    expect(screen.getByText(/State:/)).toBeVisible();
+    expect(screen.getByText('Telemetry age')).toBeVisible();
   });
 });
 describe('Exercise', () => {
@@ -424,10 +424,8 @@ describe('Calibration wizard', () => {
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeEnabled();
     first.unmount();
     mount(<Calibrate />);
-    expect(screen.getByRole('button', { name: /Set open ✓ 90/ })).toBeVisible();
-    expect(
-      screen.getByRole('button', { name: /Set closed ✓ 120/ }),
-    ).toBeVisible();
+    expect(screen.getByText('Open at 90°')).toBeVisible();
+    expect(screen.getByText('Closed at 120°')).toBeVisible();
   });
   it('completes three fingers, example camera, friction skip, review and save', async () => {
     mount(<Calibrate />);

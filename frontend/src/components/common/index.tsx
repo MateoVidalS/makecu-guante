@@ -34,8 +34,10 @@ import {
   ConfirmDialog as DSConfirmDialog,
   KpiTile,
   Grid,
+  type StatusTone,
 } from '../../design-system';
 import './live.css';
+import './helper.css';
 export const percent = (v: number | null | undefined) =>
   v == null ? '—' : `${Math.round(v * 100)}%`;
 export const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -459,4 +461,102 @@ export function useSessionLeaveGuard(kind: 'exercise' | 'evaluation') {
       });
     };
   }, [runtime, client, kind]);
+}
+
+/* ---------- Helper-page layout pieces (Home, Setup, Calibrate, Evaluate) ---------- */
+
+/** A titled block of a helper page, separated from its neighbours by a hairline, not a card. */
+export function Section({
+  title: heading,
+  description,
+  actions,
+  flush = false,
+  className = '',
+  labelledBy,
+  children,
+}: {
+  title?: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  /** Drop the top hairline (first section on a page, or inside a column). */
+  flush?: boolean;
+  className?: string;
+  labelledBy?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section
+      className={`hp-section${flush ? ' hp-section--flush' : ''} ${className}`.trim()}
+      aria-labelledby={labelledBy}
+    >
+      {(heading || description || actions) && (
+        <div className="hp-section__head">
+          <div className="hp-section__heading">
+            {heading && (
+              <h2 className="hp-section__title" id={labelledBy}>
+                {heading}
+              </h2>
+            )}
+            {description && <p className="hp-section__desc">{description}</p>}
+          </div>
+          {actions && <div className="hp-actions">{actions}</div>}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+export interface StatusRowItem {
+  label: string;
+  value: string;
+  tone: StatusTone;
+  /** Fix-it link shown on the right. */
+  action?: ReactNode;
+}
+/** Readiness checklist: one row per system with a status dot, a word, and a fix-it link. */
+export function StatusList({
+  items,
+  label,
+}: {
+  items: StatusRowItem[];
+  label?: string;
+}) {
+  return (
+    <ul className="hp-status-list" aria-label={label}>
+      {items.map((item) => (
+        <li key={item.label}>
+          <DSStatusChip
+            label={item.label}
+            value={item.value}
+            tone={item.tone}
+          />
+          {item.action}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Compact live numbers: a muted label over a tabular value with its unit. */
+export function Readouts({
+  items,
+  label,
+}: {
+  items: { label: string; value: ReactNode; unit?: string }[];
+  label?: string;
+}) {
+  return (
+    <dl className="hp-readouts" aria-label={label}>
+      {items.map((item) => (
+        <div className="hp-readout" key={item.label}>
+          <dt>{item.label}</dt>
+          <dd>
+            {item.value}
+            {item.unit && <span className="hp-unit">{item.unit}</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
