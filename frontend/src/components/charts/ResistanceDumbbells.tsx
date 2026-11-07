@@ -75,8 +75,9 @@ export function ResistanceDumbbells({
   /** Only the first and the highlighted evaluation per finger, in tighter rows. */
   compact?: boolean;
 }) {
-  const ROW = compact ? 20 : 24;
-  const GROUP_HEAD = compact ? 18 : 22;
+  const ROW = compact ? 16 : 24;
+  const GROUP_HEAD = compact ? 16 : 22;
+  const groupGap = compact ? 6 : GROUP_GAP;
   const [ref, width] = useWidth<HTMLDivElement>(480);
   const visible = points.filter(
     (p) => upTo == null || Date.parse(p.started_at) <= upTo,
@@ -108,10 +109,10 @@ export function ResistanceDumbbells({
   let cursor = M.top;
   const layout = GLOVE_FINGERS.filter((f) => groups[f].length).map((f) => {
     const top = cursor;
-    cursor += GROUP_HEAD + groups[f].length * ROW + GROUP_GAP;
+    cursor += GROUP_HEAD + groups[f].length * ROW + groupGap;
     return { finger: f, top, rows: groups[f] };
   });
-  const plotBottom = cursor - GROUP_GAP + 4;
+  const plotBottom = cursor - groupGap + 4;
   const height = plotBottom + M.axis;
   const row = (f: string, r: DumbbellRow, cy: number) => {
     const on = r.evaluationId === focus;
