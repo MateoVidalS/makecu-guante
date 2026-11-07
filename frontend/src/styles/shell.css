@@ -28,9 +28,6 @@
 
 /* ---------- Header ---------- */
 .app-header {
-  position: sticky;
-  inset-block-start: 0;
-  z-index: var(--z-header);
   display: flex;
   align-items: center;
   gap: var(--space-12) var(--space-24);
@@ -168,14 +165,14 @@
   background: var(--surface);
 }
 
-/* ---------- Safety slot + main ---------- */
+/* ---------- Sticky top: header + safety banner slot travel together ---------- */
+.app-top {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: var(--z-header);
+}
 #safety-banner-slot:empty {
   display: none;
-}
-#safety-banner-slot {
-  position: sticky;
-  inset-block-start: var(--header-height);
-  z-index: var(--z-header);
 }
 main {
   flex: 1;

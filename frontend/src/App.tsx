@@ -84,71 +84,82 @@ function Shell() {
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <header className="app-header">
-          {focus ? (
-            <>
-              <Button
-                icon="x"
-                onClick={() => {
-                  void runtime.exercise.stop();
-                  void runtime.evaluation.stop();
-                }}
-              >
-                End session
-              </Button>
-              <span className="app-progress">
-                Pose {index + 1} of {total} · Rep {rep}
-              </span>
-            </>
-          ) : doctor ? (
-            <>
-              <Brand />
-              <span className="doctor-label">
-                <Icon name="doctor" size="1.1em" />
-                Doctor view · read-only
-              </span>
-              <div className="app-tools">
-                <ButtonLink to="/" size="sm" icon="arrow-left">
-                  Exit doctor view
-                </ButtonLink>
-              </div>
-            </>
-          ) : (
-            <>
-              <Brand />
-              <nav className="app-nav" aria-label="Main navigation">
-                {NAV.map(([to, label, icon]) => (
-                  <NavLink key={to} to={to} end={to === '/'}>
-                    <Icon name={icon} />
-                    {label}
-                  </NavLink>
-                ))}
-              </nav>
-            </>
-          )}
-          <div className="statuses">
-            <StatusChip>● Glove: Simulator</StatusChip>
-            <StatusChip>● Camera: Simulated hand</StatusChip>
-          </div>
-          {!focus && !doctor && (
-            <div className="app-tools">
-              <span className="app-divider" aria-hidden="true" />
-              <ButtonLink to="/doctor" variant="quiet" size="sm" icon="doctor">
-                <span className="doctor-link__label">Doctor view</span>
-              </ButtonLink>
-              <NavLink
-                to="/profile"
-                className="ds-button ds-icon-button ds-button--quiet ds-button--sm"
-                aria-label="Profile"
-                title="Profile"
-              >
-                <Icon name="user" />
-              </NavLink>
-              <ThemeToggle />
+        <div className="app-top">
+          <header className="app-header">
+            {focus ? (
+              <>
+                <Button
+                  icon="x"
+                  onClick={() => {
+                    void runtime.exercise.stop();
+                    void runtime.evaluation.stop();
+                  }}
+                >
+                  End session
+                </Button>
+                <span className="app-progress">
+                  Pose {index + 1} of {total} · Rep {rep}
+                </span>
+              </>
+            ) : doctor ? (
+              <>
+                <Brand />
+                <span className="doctor-label">
+                  <Icon name="doctor" size="1.1em" />
+                  Doctor view · read-only
+                </span>
+                <div className="app-tools">
+                  <ButtonLink to="/" size="sm" icon="arrow-left">
+                    Exit doctor view
+                  </ButtonLink>
+                </div>
+              </>
+            ) : (
+              <>
+                <Brand />
+                <nav className="app-nav" aria-label="Main navigation">
+                  {NAV.map(([to, label, icon]) => (
+                    <NavLink key={to} to={to} end={to === '/'}>
+                      <Icon name={icon} />
+                      {label}
+                    </NavLink>
+                  ))}
+                </nav>
+              </>
+            )}
+            <div className="statuses">
+              <StatusChip>● Glove: Simulator</StatusChip>
+              <StatusChip>● Camera: Simulated hand</StatusChip>
             </div>
-          )}
-        </header>
-        <div id="safety-banner-slot" aria-live="assertive" aria-atomic="true" />
+            {!focus && !doctor && (
+              <div className="app-tools">
+                <span className="app-divider" aria-hidden="true" />
+                <ButtonLink
+                  to="/doctor"
+                  variant="quiet"
+                  size="sm"
+                  icon="doctor"
+                >
+                  <span className="doctor-link__label">Doctor view</span>
+                </ButtonLink>
+                <NavLink
+                  to="/profile"
+                  className="ds-button ds-icon-button ds-button--quiet ds-button--sm"
+                  aria-label="Profile"
+                  title="Profile"
+                >
+                  <Icon name="user" />
+                </NavLink>
+                <ThemeToggle />
+              </div>
+            )}
+          </header>
+          <div
+            id="safety-banner-slot"
+            aria-live="assertive"
+            aria-atomic="true"
+          />
+        </div>
         <main id="main" tabIndex={-1}>
           <PageErrorBoundary resetKey={location.pathname}>
             <Routes>
