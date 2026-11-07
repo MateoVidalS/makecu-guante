@@ -118,3 +118,16 @@ owned backend prompt/schema tests with
 `cd backend && uv run pytest -q app/voice/test_prompt.py app/voice/test_tools.py`.
 A keyed live conversation and hardware validation remain team checks; no API key
 or physical glove was used by A2.
+
+The A2 headed Chrome check is saved in
+[evidence/a2-browser-check.json](evidence/a2-browser-check.json) and
+[evidence/a2-browser-check.png](evidence/a2-browser-check.png). On this run the
+safety earcon was scheduled in 1.2 ms, platform speech started in 25.6 ms, and an
+injected Spanish patient transcription (`me duele`) reached the fallback runtime
+brake in 1.8 ms with the browser offline. This validates the recognized-text path;
+it does not claim offline speech-to-text support. The Simple voice microphone
+switch remains available so the patient can mute recognition.
+
+Every executed Live tool request and result is also saved as a system transcript
+line, including read/legacy tools and voice-level rejections; mutation responses
+carry the runtime decision's requested/applied values and reason.
