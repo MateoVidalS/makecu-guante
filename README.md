@@ -111,6 +111,68 @@ El tirón en el hilo es `torque / radio del carrete`. Con un carrete de 10 mm de
 - **Límite de corriente de la fuente** como última barrera.
 - Extensión pasiva: el guante solo tira para cerrar.
 
+### Disposición física
+
+```
+   Vista desde arriba (mano derecha, palma hacia abajo)
+
+                                               ┌──────────── antebrazo ────────────┐
+   dedos ── guías ── palma ── muñequera ── fundas ──> [ peine | servos + carretes ] ══ cables ══> caja de electrónica
+                               (rígida)    (tubitos)  [   plataforma con velcro    ]               (sobre la mesa)
+
+   Sobre la mesa: caja de electrónica, fuente, botón STOP (al alcance del terapeuta o de la otra mano),
+   anillo NeoPixel frente al paciente, laptop con webcam arriba y de costado.
+```
+
+| Parte | Dónde va | Qué lleva |
+|---|---|---|
+| **Guante** | Mano afectada | Anclajes en la punta de pulgar, índice y medio; guías en cada falange y una en la palma; elásticos en el dorso |
+| **Muñequera rígida** | Muñeca | Mantiene la muñeca recta y tiene una guía por hilo |
+| **Fundas** | De la muñequera a la plataforma | Un tubito por hilo, tipo cable de freno de bici |
+| **Plataforma de servos** | Antebrazo, cerca del codo, con 2 tiras de velcro | 3 servos con carrete y un peine de salida para los hilos |
+| **Caja de electrónica** | Sobre la mesa | ESP32, INA219, level shifter y bornera de 5 V en la media breadboard |
+| **Botón STOP** | Sobre la mesa | Cable largo hasta la caja |
+| **Anillo NeoPixel** | Sobre la mesa, frente al paciente | Feedback de color |
+
+**Por qué la electrónica va en la mesa y no en el brazo:** la fuente de laboratorio ya obliga a tener cables a la mesa, y así el brazo lleva solo los servos (unos 40–60 g en total más la plataforma). En una versión con batería, todo pasaría al brazo.
+
+### Recorrido de los hilos
+
+- **Dedos largos (índice, medio):** anclaje en la punta, guías en la falange distal, media y proximal, una guía en la palma a la altura de los nudillos y otra en la muñequera. Es el mismo recorrido que el tendón flexor real.
+- **Pulgar:** anclaje en la punta, guías en sus dos falanges y una en la base del pulgar (eminencia tenar). Desde ahí el hilo cruza en diagonal hasta la muñequera. Tirar del pulgar lo flexiona hacia la palma: sirve para el puño y para la pinza.
+- **Muñeca:** si la muñeca se dobla, cambia el largo del recorrido y el dedo se abre o se cierra solo. Por eso la muñequera es rígida y, desde ahí hasta los servos, cada hilo va dentro de una funda: el largo de la funda no cambia aunque el antebrazo gire.
+- **Recorrido necesario:** cerrar un dedo completo requiere unos 25–35 mm de hilo (hay que medirlo en el guante). Un carrete de 10 mm de radio da unos 31 mm en 180°.
+- **Elásticos del dorso:** uno por dedo, de la punta a la muñequera por el lado del dorso. Tienen que abrir el dedo sin ofrecer tanta resistencia que el servo no pueda cerrarlo.
+
+### Cableado
+
+| Desde | Hasta | Cable |
+|---|---|---|
+| Fuente 5 V (+) | INA219 VIN+ | Rojo, grueso |
+| INA219 VIN− | Bornera (+) de los servos y del NeoPixel | Rojo, grueso |
+| Fuente (−) | Bornera (−), GND de la ESP32 y del level shifter | Negro, grueso: **GND común** |
+| ESP32 GPIO 25 / 26 / 27 | Señal de los servos | Amarillo o naranja, ~1 m hasta el brazo |
+| ESP32 GPIO 33 | Level shifter LV1 → HV1 → resistencia ~330 Ω → NeoPixel DIN | |
+| ESP32 3V3 / 5V | Level shifter LV / HV | |
+| ESP32 GPIO 21 / 22 | INA219 SDA / SCL | |
+| ESP32 GPIO 32 | Botón STOP → GND | Cable largo |
+| ESP32 USB | Laptop | Micro-USB |
+
+Hacia el brazo van 3 cables de servo prolongados (5 V, GND y señal de cada uno). Conviene juntarlos en un solo mazo con cinta y sujetarlos a la plataforma, así un tirón no arranca el servo.
+
+### Requisitos para el CAD
+
+Lo que el diseño 3D tiene que cumplir. El plan del CAD está aparte.
+
+| Pieza | Requisitos |
+|---|---|
+| **Plataforma de servos** | 3 micro servos (9g / SG90 / MG90S); ancho máximo ~80 mm (lo que entra arriba de un antebrazo); 2 ranuras para velcro de 25 mm; peine de salida a la altura del carrete; sin bordes que se claven en el brazo |
+| **Carrete** | Radio de enrollado 10 mm; se atornilla al brazo en cruz que viene con el servo; un agujero para anudar el hilo; alas para que el hilo no se salga |
+| **Guías y anclajes** | Chicos (~12 × 9 mm), con agujeros para coser al guante; canal de ~2 mm para el hilo, con bordes redondeados (el hilo no tiene que rozar contra una arista) |
+| **Muñequera** | Mantiene la muñeca recta; 3 salidas para las fundas; se cierra con velcro |
+| **Caja de electrónica** (opcional) | Media breadboard + bornera; acceso al USB de la ESP32; botón STOP afuera |
+| **Todo** | Imprimible en PLA sin soportes o con pocos; cada impresión en menos de 4 h (límite del Makerspace); medidas verificadas con los servos reales antes de imprimir |
+
 ---
 
 ## 4. Software
