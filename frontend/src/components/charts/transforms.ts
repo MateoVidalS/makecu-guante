@@ -4,7 +4,8 @@ import type {
   RomPoint,
 } from '../../contracts/api';
 import type { AttemptTrace, ExercisePhase } from '../../contracts/engine';
-import type { GloveFinger } from '../../contracts/glove';
+import type { EvalSweep } from '../../contracts/evaluation';
+import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
 
 export interface TimelineEntry {
   id: number;
@@ -175,4 +176,55 @@ export function decimate<T>(
     }
   }
   return [...selected].sort((a, b) => a - b).map((i) => points[i]);
+}
+
+// One row per trace sample: camera closure and commanded servo per finger (in %), plus total current.
+export function replayRows(trace: AttemptTrace | undefined, isDemo = false) {
+  return (
+    trace?.t.map((t, i): ChartRow => ({
+      x: t,
+      demo: isDemo,
+      phase: trace.phase[i],
+      current: trace.ma[i] ?? null,
+      ...Object.fromEntries(
+        GLOVE_FINGERS.flatMap((f) => [
+          [`${f}Closure`, percent(trace.closure[f][i])],
+          [`${f}Servo`, percent(trace.servo[f][i])],
+        ]),
+      ),
+    })) ?? []
+  );
+}
+
+// Each speed has its own position samples; combine only matching positions.
+export function sweepRows(
+  sweeps: EvalSweep[],
+  finger: GloveFinger,
+  isDemo = false,
+): ChartRow[] {
+  const relevant = sweeps.filter((s) => s.finger === finger);
+  const positions = [
+    ...new Set(relevant.flatMap((s) => s.points.map((p) => p.pos))),
+  ].sort((a, b) => a - b);
+  return positions.map((pos): ChartRow => ({
+    x: pos * 100,
+    demo: isDemo,
+    ...Object.fromEntries(
+      relevant.flatMap((s) => {
+        const p = s.points.find((p) => p.pos === pos);
+        return [
+          [s.speed, p?.ma ?? null],
+          [`${s.speed}Friction`, p ? p.ma - p.excess_ma : null],
+        ];
+      }),
+    ),
+  }));
+}
+
+/** True when any sweep repeats one value at every position (placeholder demo records). */
+export function sweepsAreConstant(sweeps: EvalSweep[]) {
+  return sweeps.some(
+    (s) =>
+      s.points.length > 1 && s.points.every((p) => p.ma === s.points[0].ma),
+  );
 }

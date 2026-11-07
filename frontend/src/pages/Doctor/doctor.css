@@ -1,18 +1,54 @@
-.doctor-report .profile-details {
+/* Doctor view: a quiet clinical report. */
+.doctor-report .report-page {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: var(--space-8) var(--space-24);
+  gap: var(--space-32);
+  min-width: 0;
+}
+.doctor-report > .report-page + .report-page {
+  padding-block-start: var(--space-32);
+  border-block-start: var(--control-border) solid var(--border);
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+.report-actions > .no-print {
+  display: grid;
+  gap: var(--space-4);
+}
+.report-actions [role='status'] {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
+}
+
+/* Patient summary: label/value pairs in two columns at desktop widths. */
+.report-dl {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  column-gap: var(--space-48);
+  border-block-start: var(--control-border) solid var(--border);
+}
+.report-dl .ds-dl__row,
+.report-dl .ds-dl__row:last-child {
+  grid-template-columns: minmax(7rem, 1fr) 2fr;
+  border-block-end: var(--control-border) solid var(--border);
+  font-size: var(--small);
 }
 .doctor-report dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
-.doctor-report dt {
-  color: var(--muted);
-}
+
 .summary-copy {
+  margin: 0;
+  max-width: var(--text-max);
   white-space: pre-wrap;
+  line-height: var(--line-height);
 }
+
 @page {
   size: auto;
   margin: 12mm;
@@ -61,12 +97,18 @@
     display: block;
     font-size: var(--small);
   }
-  .doctor-report .report-page {
+  .doctor-report .report-page,
+  .doctor-report > .report-page + .report-page {
     display: block;
+    padding: 0;
+    border: 0;
     break-before: page;
   }
   .doctor-report .report-page:first-child {
     break-before: auto;
+  }
+  .doctor-report .report-page > * + * {
+    margin-block-start: var(--space-16);
   }
   .doctor-report h1 {
     font-size: var(--h2);
@@ -77,54 +119,36 @@
   .doctor-report h3 {
     font-size: var(--body);
   }
-  .doctor-report .report-page > .demo-badge {
-    display: none;
-  }
   .doctor-report p {
     max-width: none;
-    margin-block: var(--space-8);
   }
-  .doctor-report .ds-card {
-    margin-block: var(--space-12);
-    padding: var(--space-12);
-    box-shadow: none;
+  .doctor-report .kpi-row .ds-kpi__value {
+    font-size: var(--h3);
   }
-  .doctor-report .kpi-grid {
+  .doctor-report .kpi-row {
     grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-8);
-  }
-  .doctor-report .ds-kpi {
-    padding: var(--space-8);
-  }
-  .doctor-report .ds-kpi__value {
-    font-size: var(--h2);
+    padding-block: var(--space-8);
   }
   .doctor-report .chart-grid {
     display: block;
   }
   .doctor-report .chart-card {
+    display: block;
     margin-block: var(--space-8);
     padding: var(--space-8);
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  .doctor-report .chart-card > * + * {
+    margin-block-start: var(--space-4);
+  }
   .doctor-report .chart-canvas,
   .doctor-report .compact .chart-canvas {
-    height: calc(var(--placeholder-height) - var(--space-64) - var(--space-32));
-  }
-  .doctor-report .chart-legend {
-    gap: var(--space-8);
-    margin-block: var(--space-4);
-  }
-  .doctor-report .chart-hint {
-    margin-block: var(--space-4);
+    height: calc(var(--placeholder-height) - var(--space-64) - var(--space-48));
   }
   .doctor-report .therapist-summary {
     break-inside: avoid;
   }
-}
-
-@media print {
   .doctor-report .recharts-responsive-container > div,
   .doctor-report .recharts-wrapper {
     width: 100% !important;
@@ -133,30 +157,5 @@
   .doctor-report .recharts-surface {
     width: 100%;
     height: 100%;
-  }
-}
-@media print {
-  .doctor-report .ds-card {
-    gap: var(--space-4);
-  }
-  .doctor-report .report-page > .ds-badge {
-    display: none;
-  }
-  .doctor-report .chart-card {
-    display: block;
-  }
-  .doctor-report .chart-card > .ds-card__header {
-    float: right;
-    margin: 0 0 var(--space-4) var(--space-8);
-  }
-  .doctor-report .chart-card h3 {
-    margin: 0;
-  }
-  .doctor-report .chart-hint {
-    line-height: var(--leading-snug);
-  }
-  .doctor-report .chart-canvas,
-  .doctor-report .compact .chart-canvas {
-    height: calc(var(--placeholder-height) - var(--space-64) - var(--space-48));
   }
 }

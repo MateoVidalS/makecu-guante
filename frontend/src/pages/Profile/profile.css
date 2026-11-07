@@ -1,11 +1,48 @@
 .profile-form {
   display: grid;
-  gap: var(--space-16);
-  max-width: var(--instruction-max);
+  gap: var(--space-32);
+  max-width: 40rem;
+}
+.profile-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-16) var(--space-24);
+  margin: 0;
+  padding: var(--space-24) 0 0;
+  border: 0;
+  border-block-start: var(--control-border) solid var(--border);
+}
+.profile-group legend {
+  float: left;
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-block-end: var(--space-16);
+  padding: 0;
+  font-weight: var(--weight-bold);
+}
+.profile-group > .ds-field:has(textarea),
+.profile-group > .ds-field:first-of-type:has(input[autocomplete='nickname']) {
+  grid-column: 1 / -1;
 }
 .profile-form textarea {
   resize: vertical;
 }
-.profile-form > .ds-button {
-  justify-self: start;
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+}
+.profile-actions [role='status'] {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
+}
+.profile-note a {
+  color: inherit;
+}
+@media (max-width: 720px) {
+  .profile-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
