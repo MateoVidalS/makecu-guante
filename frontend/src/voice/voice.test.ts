@@ -96,7 +96,10 @@ it.each([
     expect(marks).toEqual([0, 0]);
     expect(marks[0]).toBeLessThan(50);
     expect(marks[1]).toBeLessThan(300);
-    expect(s.deps.local.speak).toHaveBeenCalledWith(phrase);
+    expect(s.deps.local.speak).toHaveBeenCalledWith(
+      phrase,
+      expect.any(Function),
+    );
     expect(s.deps.audio.flush).toHaveBeenCalled();
     expect(s.controller.state.lastCoachLine).toBe(phrase);
     s.controller.dispose();
@@ -107,6 +110,7 @@ it('announces resistance without a network call', () => {
   s.emit({ kind: 'resistance', finger: 'middle', ma: 950 });
   expect(s.deps.local.speak).toHaveBeenCalledWith(
     'Stopping. I felt resistance in your middle.',
+    expect.any(Function),
   );
   expect(s.deps.token).not.toHaveBeenCalled();
   s.controller.dispose();
@@ -408,11 +412,19 @@ it.each([44100, 48000])(
     player.port.onmessage({ data: 'flush' });
     player.process([], [[out]]);
     expect(out.every((v) => v === 0)).toBe(true);
+    player.port.onmessage({ data: new Uint8Array(640).fill(63).buffer });
+    for (let i = 0; i < Math.ceil((sampleRate * 0.04) / 128); i++)
+      player.process([], [[out]]);
+    expect(out.some((v) => v > 0)).toBe(true);
   },
 );
 it('uses browser speech synthesis synchronously', () => {
   const speak = vi.fn();
-  vi.stubGlobal('speechSynthesis', { speak, cancel: vi.fn() });
+  vi.stubGlobal('speechSynthesis', {
+    speak,
+    cancel: vi.fn(),
+    getVoices: () => [],
+  });
   vi.stubGlobal(
     'SpeechSynthesisUtterance',
     class {
@@ -433,4 +445,61 @@ it('uses browser speech synthesis synchronously', () => {
     expect.objectContaining({ text: safetyPhrase(event) }),
   );
   vi.unstubAllGlobals();
+});
+
+it('keeps the local safety announcement through the following PAUSED event', async () => {
+  const s = setup();
+  await s.controller.start(null);
+  s.emit({ kind: 'safety', source: 'overcurrent', finger: 'index', ma: 950 });
+  const cancellations = vi.mocked(s.deps.local.cancel).mock.calls.length;
+  s.emit({ kind: 'phase', phase: 'PAUSED', pose: 'hook', index: 0, rep: 1 });
+  s.transports[0].emit({
+    type: 'transcript',
+    role: 'coach',
+    text: 'Stale encouragement',
+  });
+  expect(s.deps.local.cancel).toHaveBeenCalledTimes(cancellations);
+  expect(s.controller.state.lastCoachLine).toBe(
+    'Stopping. I felt resistance in your index.',
+  );
+  s.controller.dispose();
+});
+it('retries a failed end-of-session transcript after stop', async () => {
+  const save = vi
+    .fn()
+    .mockRejectedValueOnce(new Error())
+    .mockResolvedValue(undefined);
+  const batch = new TranscriptBatcher(save);
+  batch.start();
+  batch.add('system', 'Stopped.');
+  await batch.stop();
+  await vi.advanceTimersByTimeAsync(10000);
+  expect(save).toHaveBeenCalledTimes(2);
+  expect(save.mock.calls[1][0][0].text).toBe('Stopped.');
+  batch.dispose();
+});
+
+it('times out stalled token requests and reaches fallback', async () => {
+  const s = setup();
+  vi.mocked(s.deps.token).mockImplementation(() => new Promise(() => {}));
+  const start = s.controller.start(null);
+  await vi.advanceTimersByTimeAsync(75000);
+  await start;
+  expect(s.deps.token).toHaveBeenCalledTimes(4);
+  expect(s.controller.state.mode).toBe('simple');
+  s.controller.dispose();
+});
+it('protects pending PRESENT instructions from progress pushes', async () => {
+  const send = vi.fn();
+  const scheduler = new CueScheduler(send);
+  scheduler.push({ text: 'previous coach line', speak: true });
+  scheduler.push({ text: 'instruction', speak: true, present: true });
+  scheduler.push({ text: 'noncritical progress', speak: true });
+  await vi.advanceTimersByTimeAsync(2500);
+  expect(send).toHaveBeenLastCalledWith({
+    text: 'instruction',
+    speak: true,
+    present: true,
+  });
+  scheduler.clear();
 });

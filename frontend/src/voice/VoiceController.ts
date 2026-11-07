@@ -34,6 +34,22 @@ export interface VoiceDependencies {
   audio: VoiceAudio;
   local: LocalVoice;
 }
+async function withDeadline<T>(operation: Promise<T>, ms = 15000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('Voice connection timed out')),
+          ms,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 export class VoiceController {
   state: VoiceState = {
     mode: 'live',
@@ -56,6 +72,8 @@ export class VoiceController {
   private reconnecting = false;
   private connected = false;
   private safetyUntil = 0;
+  private safetySpeaking = false;
+  private batches = new Set<TranscriptBatcher>();
   private batch?: TranscriptBatcher;
   private partial = { coach: '', patient: '' };
   private previous: SessionSummary | null = null;
@@ -76,12 +94,19 @@ export class VoiceController {
     this.safety = new SafetyNet(
       deps.local,
       () => {
+        this.safetySpeaking = true;
         this.safetyUntil = performance.now() + 5000;
         this.scheduler.clear();
         clearTimeout(this.fallbackTimer);
         deps.audio.flush();
+        if (this.partial.coach) this.batch?.add('coach', this.partial.coach);
+        this.partial.coach = '';
       },
       (text) => this.caption(text, 'system'),
+      () => {
+        this.safetySpeaking = false;
+        this.safetyUntil = performance.now() + 500;
+      },
     );
     this.unsubscribe = runtime.exercise.onEvent((event) => this.onEvent(event));
   }
@@ -122,6 +147,7 @@ export class VoiceController {
     this.id = id;
     this.failures = 0;
     this.safetyUntil = 0;
+    this.safetySpeaking = false;
     this.previous = null;
     this.lastAttempt = null;
     this.partial = { coach: '', patient: '' };
@@ -135,6 +161,7 @@ export class VoiceController {
         (lines) => this.deps.save(id, lines),
         () => this.update({ transcriptError: true }),
       );
+      this.batches.add(this.batch);
       this.batch.start();
     }
     const generation = this.generation;
@@ -170,12 +197,14 @@ export class VoiceController {
     const transport = this.deps.transport();
     this.transport = transport;
     try {
-      const token = await this.deps.token(this.id);
+      const token = await withDeadline(this.deps.token(this.id));
       if (generation !== this.generation) return;
-      await transport.connect(token, (event) => {
-        if (generation === this.generation && this.transport === transport)
-          this.receive(event);
-      });
+      await withDeadline(
+        transport.connect(token, (event) => {
+          if (generation === this.generation && this.transport === transport)
+            this.receive(event);
+        }),
+      );
       if (generation !== this.generation || this.transport !== transport) {
         transport.close();
         return;
@@ -184,6 +213,7 @@ export class VoiceController {
         if (
           this.connected &&
           !this.state.muted &&
+          !this.safetySpeaking &&
           performance.now() >= this.safetyUntil
         )
           transport.sendAudio(data);
@@ -205,7 +235,11 @@ export class VoiceController {
     } catch (error) {
       if (generation !== this.generation || this.transport !== transport)
         return;
-      if (error instanceof ApiRequestError && error.status === 503) {
+      if (
+        (error instanceof ApiRequestError && error.status === 503) ||
+        (error instanceof DOMException &&
+          ['NotAllowedError', 'NotFoundError'].includes(error.name))
+      ) {
         this.simple(true);
         return;
       }
@@ -235,7 +269,7 @@ export class VoiceController {
   private simple(unavailable: boolean) {
     this.disconnect();
     this.update({ mode: 'simple', status: 'fallback', unavailable });
-    if (this.active)
+    if (this.active && !this.safetySpeaking)
       this.speak(
         `Let's practice together. ${this.runtime.exercise.view().pose.instruction}`,
       );
@@ -246,7 +280,7 @@ export class VoiceController {
         this.retry();
         break;
       case 'audio':
-        if (performance.now() >= this.safetyUntil) {
+        if (!this.safetySpeaking && performance.now() >= this.safetyUntil) {
           this.deps.audio.play(event.data);
           this.scheduler.noteCoachSpeech();
           this.update({ status: 'speaking' });
@@ -254,12 +288,18 @@ export class VoiceController {
         break;
       case 'interrupt':
         this.deps.audio.flush();
-        this.partial.coach = '';
+        this.finishTranscript('coach');
         break;
       case 'activity':
         this.scheduler.setTalking(event.talking);
         break;
       case 'transcript':
+        if (
+          event.role === 'coach' &&
+          (this.safetySpeaking || performance.now() < this.safetyUntil)
+        )
+          break;
+        if (event.role === 'coach') clearTimeout(this.captionTimer);
         if (event.role === 'patient')
           this.scheduler.setTalking(!event.finished);
         this.partial[event.role] += event.text;
@@ -322,11 +362,12 @@ export class VoiceController {
     if (event.kind === 'phase' && event.phase === 'PAUSED') {
       this.scheduler.clear();
       this.deps.audio.flush();
-      this.deps.local.cancel();
+      if (!this.safetySpeaking) this.deps.local.cancel();
       this.update({ status: 'paused' });
       return;
     }
-    if (view.paused && event.kind !== 'session_done') return;
+    if ((view.paused || this.safetySpeaking) && event.kind !== 'session_done')
+      return;
     if (event.kind === 'phase' && event.phase === 'ATTEMPT')
       this.deps.local.tone('cue');
     if (event.kind === 'reached') this.deps.local.tone('reached');
@@ -340,7 +381,7 @@ export class VoiceController {
       performance.now() >= this.safetyUntil
     )
       this.scheduler.push(cue, event);
-    if (this.state.mode === 'simple') {
+    if (this.state.mode === 'simple' && !this.safetySpeaking) {
       const phrase = fallbackPhrase(event);
       if (phrase) {
         clearTimeout(this.fallbackTimer);
@@ -380,7 +421,7 @@ export class VoiceController {
     this.transport?.close();
     this.transport = undefined;
     this.deps.audio.close();
-    this.deps.local.cancel();
+    if (!this.safetySpeaking) this.deps.local.cancel();
     this.scheduler.clear();
     this.scheduler.setTalking(false);
   }
@@ -398,6 +439,8 @@ export class VoiceController {
     this.stop();
     this.unsubscribe();
     clearTimeout(this.captionTimer);
+    this.batches.forEach((batch) => batch.dispose());
+    this.batches.clear();
     this.deps.local.dispose();
     this.listeners.clear();
   }

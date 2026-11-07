@@ -52,7 +52,9 @@ export function CoachPanel() {
         </p>
       )}
       {voice.lastCoachLine && (
-        <h3 className="coach-caption">{voice.lastCoachLine}</h3>
+        <h3 key={voice.lastCoachLine} className="coach-caption">
+          {voice.lastCoachLine}
+        </h3>
       )}
       {voice.lastPatientLine && (
         <p className="coach-patient">You said: {voice.lastPatientLine}</p>

@@ -23,6 +23,7 @@ export class BrowserLocalVoice implements LocalVoice {
   unlock() {
     try {
       this.context ??= new AudioContext();
+      globalThis.speechSynthesis?.getVoices();
       void this.context.resume().catch(() => {});
     } catch {
       /* Captions remain available. */
@@ -55,6 +56,10 @@ export class BrowserLocalVoice implements LocalVoice {
     }
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
+    const localVoice = speechSynthesis
+      .getVoices()
+      .find((voice) => voice.localService && voice.lang.startsWith('en'));
+    if (localVoice) utterance.voice = localVoice;
     utterance.rate = 0.95;
     utterance.onend = () => done?.();
     utterance.onerror = () => done?.();
@@ -70,19 +75,28 @@ export class BrowserLocalVoice implements LocalVoice {
   }
 }
 export class SafetyNet {
+  private generation = 0;
   constructor(
     private local: LocalVoice,
     private interrupt: () => void,
     private caption: (text: string) => void,
+    private finished?: () => void,
   ) {}
   handle(event: EngineEvent): boolean {
     if (event.kind !== 'safety' && event.kind !== 'resistance') return false;
     // No promises, timers, React effects, or network on this path.
+    const generation = ++this.generation;
     this.interrupt();
-    this.local.tone('safety');
+    try {
+      this.local.tone('safety');
+    } catch {
+      /* Speech and captions must survive audio failures. */
+    }
     this.local.cancel();
     const phrase = safetyPhrase(event);
-    this.local.speak(phrase);
+    this.local.speak(phrase, () => {
+      if (generation === this.generation) this.finished?.();
+    });
     this.caption(phrase);
     return true;
   }

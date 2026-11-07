@@ -18,7 +18,7 @@ export function eventCue(
     case 'phase':
       if (event.phase === 'PRESENT')
         return {
-          text: `[session] PRESENT: Pose ${event.index + 1} of ${view.total}, ${event.pose}, rep ${event.rep}. Instruction: ${POSES[event.pose].instruction}`,
+          text: `[session] PRESENT: ${event.pose}, rep ${event.rep}. Attempt ${event.index + 1} of ${view.total}. Instruction: ${POSES[event.pose].instruction}`,
           speak: true,
           present: true,
         };
@@ -113,6 +113,10 @@ export class CueScheduler {
     }
     if (!cue.speak) {
       this.send(cue);
+      return;
+    }
+    if (this.pending?.present && !cue.present) {
+      this.send({ ...cue, speak: false });
       return;
     }
     this.pending = cue;

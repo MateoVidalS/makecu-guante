@@ -9,7 +9,17 @@ import type { LiveTransport, ToolCall, TransportEvent } from './transport';
 export class GeminiLiveTransport implements LiveTransport {
   private session?: Session;
   private intentionalClose = false;
+  private receive: (event: TransportEvent) => void = () => {};
+  private send(action: (session: Session) => void) {
+    if (!this.session || this.intentionalClose) return;
+    try {
+      action(this.session);
+    } catch {
+      this.receive({ type: 'closed' });
+    }
+  }
   async connect(token: VoiceToken, receive: (event: TransportEvent) => void) {
+    this.receive = receive;
     const ai = new GoogleGenAI({
       apiKey: token.token,
       httpOptions: { apiVersion: 'v1beta' },
@@ -76,23 +86,29 @@ export class GeminiLiveTransport implements LiveTransport {
     if (this.intentionalClose) this.session.close();
   }
   sendText(text: string, speak: boolean) {
-    this.session?.sendClientContent({
-      turns: [{ role: 'user', parts: [{ text }] }],
-      turnComplete: speak,
-    });
+    this.send((session) =>
+      session.sendClientContent({
+        turns: [{ role: 'user', parts: [{ text }] }],
+        turnComplete: speak,
+      }),
+    );
   }
   sendAudio(data: string) {
-    this.session?.sendRealtimeInput({
-      audio: { data, mimeType: 'audio/pcm;rate=16000' },
-    });
+    this.send((session) =>
+      session.sendRealtimeInput({
+        audio: { data, mimeType: 'audio/pcm;rate=16000' },
+      }),
+    );
   }
   endAudio() {
-    this.session?.sendRealtimeInput({ audioStreamEnd: true });
+    this.send((session) => session.sendRealtimeInput({ audioStreamEnd: true }));
   }
   respond(call: ToolCall, response: Record<string, unknown>) {
-    this.session?.sendToolResponse({
-      functionResponses: [{ id: call.id, name: call.name, response }],
-    });
+    this.send((session) =>
+      session.sendToolResponse({
+        functionResponses: [{ id: call.id, name: call.name, response }],
+      }),
+    );
   }
   close() {
     this.intentionalClose = true;

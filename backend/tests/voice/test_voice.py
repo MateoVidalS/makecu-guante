@@ -68,3 +68,34 @@ def test_prompt():
     assert "Never resume automatically" in prompt
     assert "untrusted data" in prompt
     assert "No medical advice" in prompt
+
+
+def test_real_sdk_serializes_locked_configuration(client, monkeypatch):
+    import json
+
+    import httpx
+
+    monkeypatch.setattr(settings, "gemini_api_key", "server-secret")
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        return httpx.Response(200, json={"name": "auth_tokens/one-use"})
+
+    real_client = gemini_live.genai.Client
+
+    def make_client(**kwargs):
+        kwargs["http_options"]["httpx_client"] = httpx.Client(transport=httpx.MockTransport(handle))
+        return real_client(**kwargs)
+
+    monkeypatch.setattr(gemini_live.genai, "Client", make_client)
+    response = client.post("/api/voice/token", json={"session_id": None})
+    assert response.status_code == 200, response.text
+    assert str(requests[0].url) == "https://generativelanguage.googleapis.com/v1beta/auth_tokens"
+    payload = json.loads(requests[0].content)
+    assert payload["uses"] == 1
+    setup = payload["bidiGenerateContentSetup"]
+    assert setup["model"] == f"models/{gemini_live.CURRENT_MODEL}"
+    assert setup["generationConfig"]["responseModalities"] == ["AUDIO"]
+    assert setup["tools"][0]["functionDeclarations"][0]["name"] == "pause_session"
+    assert "fieldMask" not in payload
