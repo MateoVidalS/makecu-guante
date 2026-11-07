@@ -161,7 +161,14 @@ export class RehabRuntime implements TherapyRuntime {
     );
     try {
       const saved = options.storage?.getItem(calibrationKey);
-      if (saved) this.calibration.current = JSON.parse(saved) as Calibration;
+      if (saved) {
+        const cached = JSON.parse(saved) as Calibration;
+        // Same five-finger rule as setCalibration: an old 3-finger cache means "calibrate again".
+        if (
+          GLOVE_FINGERS.every((f) => cached.servo?.some((s) => s.finger === f))
+        )
+          this.calibration.current = cached;
+      }
     } catch {
       /* A missing cache must never supply invented hardware calibration. */
     }
@@ -207,6 +214,11 @@ export class RehabRuntime implements TherapyRuntime {
     },
   };
   private setCalibration(value: Calibration | null) {
+    // A calibration saved before the five-finger glove (servo ranges for 3 fingers) cannot drive
+    // all five servos: treat it as "calibration needed" instead of failing later on connect.
+    const servo = value?.servo ?? [];
+    if (value && !GLOVE_FINGERS.every((f) => servo.some((s) => s.finger === f)))
+      value = null;
     this.calibration.current = value;
     this.options.vision.setCalibration(value?.camera ?? null);
     try {

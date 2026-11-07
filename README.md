@@ -237,7 +237,7 @@ Una app web local (**Rehab Hub**) que corre en la laptop:
 | `/doctor` | Vista del terapeuta (solo lectura): tendencias, resumen de Gemini a pedido, exportar JSON/CSV, imprimir |
 | `/profile` | Perfil opcional del paciente |
 
-En el encabezado hay un menú **Demo recovery** para pasar a guante o cámara simulados en medio de la demo sin recargar.
+En el encabezado hay un menú **Demo tools** para pasar a guante o cámara simulados en medio de la demo sin recargar.
 
 ### 4.4 Protocolo serie (laptop ↔ ESP32)
 

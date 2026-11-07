@@ -43,7 +43,7 @@ contract extension for idempotency is requested in the WP10 PR.
 ## Simulator and diagnostics
 
 The calibration page offers known model ranges only when both sources are
-simulated. It never substitutes those values for a real glove or camera. The header’s Demo recovery menu includes simulator-only rigid-finger selection
+simulated. It never substitutes those values for a real glove or camera. The header’s Demo tools menu includes simulator-only rigid-finger selection
 and toggles for the resistance demo.
 `VITE_SIM_SPEED` defaults to 1; Playwright sets it to 3.
 
@@ -95,7 +95,7 @@ React pages. The driver samples retained JavaScript heap after explicit GC every
 `REHAB_SOAK_URL` for another server; `REHAB_SOAK_MS` is only for runner diagnostics,
 not the acceptance run.
 
-The header’s **Demo recovery** menu is available during focus mode. Glove/camera
+The header’s **Demo tools** menu is available during focus mode. Glove/camera
 fallback ends the run before replacing a source, preserving demo provenance. It
 can also reconnect an unplugged simulator or restart simulated vision. Simple
 voice switches immediately without ending practice. See `docs/DEMO.md`.
