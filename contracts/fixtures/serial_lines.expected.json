@@ -1,0 +1,233 @@
+[
+  {
+    "line": 1,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "target",
+    "why": null
+  },
+  {
+    "line": 2,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "follow",
+    "why": null
+  },
+  {
+    "line": 3,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "release",
+    "why": null
+  },
+  {
+    "line": 4,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "calib",
+    "why": null
+  },
+  {
+    "line": 5,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "limit",
+    "why": null
+  },
+  {
+    "line": 6,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "ping",
+    "why": null
+  },
+  {
+    "line": 7,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "jog",
+    "why": null
+  },
+  {
+    "line": 8,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "hello",
+    "why": null
+  },
+  {
+    "line": 9,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "tel",
+    "why": null
+  },
+  {
+    "line": 10,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "evt",
+    "why": null
+  },
+  {
+    "line": 11,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "evt",
+    "why": null
+  },
+  {
+    "line": 12,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "evt",
+    "why": null
+  },
+  {
+    "line": 13,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "evt",
+    "why": null
+  },
+  {
+    "line": 14,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "evt",
+    "why": null
+  },
+  {
+    "line": 15,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "evt",
+    "why": null
+  },
+  {
+    "line": 16,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "evt",
+    "why": null
+  },
+  {
+    "line": 17,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "info",
+    "why": null
+  },
+  {
+    "line": 18,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "err",
+    "why": null
+  },
+  {
+    "line": 19,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "err",
+    "why": null
+  },
+  {
+    "line": 20,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "err",
+    "why": null
+  },
+  {
+    "line": 21,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "err",
+    "why": null
+  },
+  {
+    "line": 22,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "err",
+    "why": null
+  },
+  {
+    "line": 23,
+    "direction": "device_to_host",
+    "valid": true,
+    "type": "err",
+    "why": null
+  },
+  {
+    "line": 24,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": null,
+    "why": "bad_json"
+  },
+  {
+    "line": 25,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": null,
+    "why": "bad_json"
+  },
+  {
+    "line": 26,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": null,
+    "why": "bad_json"
+  },
+  {
+    "line": 27,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": "unknown",
+    "why": "unknown_type"
+  },
+  {
+    "line": 28,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": "target",
+    "why": "bad_args"
+  },
+  {
+    "line": 29,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": "target",
+    "why": "bad_args"
+  },
+  {
+    "line": 30,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": "target",
+    "why": "bad_args"
+  },
+  {
+    "line": 31,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": "calib",
+    "why": "bad_args"
+  },
+  {
+    "line": 32,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": "calib",
+    "why": "bad_args"
+  },
+  {
+    "line": 33,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": "jog",
+    "why": "bad_args"
+  }
+]

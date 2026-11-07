@@ -1,0 +1,205 @@
+@import './tokens.css';
+* {
+  box-sizing: border-box;
+}
+html {
+  font-size: var(--root);
+}
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: var(--line-height);
+  font-size: var(--body);
+  font-variant-numeric: tabular-nums;
+}
+a {
+  color: var(--accent);
+  text-underline-offset: var(--space-4);
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-height: var(--button-min-height);
+  padding: var(--space-12) var(--space-24);
+  border: var(--control-border) solid var(--accent);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: var(--button-label);
+  cursor: pointer;
+  text-decoration: none;
+}
+button.primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+h1 {
+  font-size: var(--h1);
+  line-height: 1.15;
+}
+h2 {
+  font-size: var(--h2);
+}
+h3 {
+  font-size: var(--h3);
+}
+p {
+  max-width: var(--instruction-max);
+}
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-24);
+  padding: var(--space-16) var(--space-32);
+  background: var(--surface);
+  border-bottom: var(--control-border) solid var(--border);
+}
+nav,
+.statuses,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+}
+nav a {
+  padding: var(--space-12) var(--space-4);
+}
+nav a[aria-current='page'] {
+  font-weight: bold;
+  text-decoration-thickness: var(--focus-width);
+}
+.statuses {
+  margin-inline-start: auto;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  font-size: var(--small);
+}
+main {
+  max-width: var(--content-max);
+  margin: auto;
+  padding: var(--space-32);
+}
+.card {
+  margin-block: var(--space-24);
+  padding: var(--space-24);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--elevation-card);
+  background: var(--surface);
+}
+.muted {
+  color: var(--muted);
+}
+.doctor-banner {
+  padding: var(--space-16) var(--space-32);
+  background: var(--surface-2);
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.focus main {
+  text-align: center;
+}
+.focus .actions {
+  justify-content: center;
+}
+.focus .instruction {
+  font-size: var(--display);
+  max-width: var(--instruction-max);
+  margin-inline: auto;
+}
+.phase {
+  font-size: var(--h2);
+}
+pre {
+  text-align: start;
+  overflow: auto;
+  max-height: var(--placeholder-height);
+  padding: var(--space-16);
+  background: var(--surface-2);
+  border-radius: var(--radius-input);
+  font-size: var(--small);
+}
+.virtual-hand {
+  min-height: var(--placeholder-height);
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  border-radius: var(--radius-card);
+}
+.skip-link {
+  position: absolute;
+  inset-block-start: var(--space-8);
+  inset-inline-start: var(--space-8);
+  transform: translateY(-200%);
+  background: var(--surface);
+  padding: var(--space-16);
+  z-index: 10;
+}
+.skip-link:focus {
+  transform: none;
+}
+.sr-only {
+  position: absolute;
+  width: var(--control-border);
+  height: var(--control-border);
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 1280px) {
+  header {
+    gap: var(--space-12);
+  }
+  .statuses {
+    margin-inline-start: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media print {
+  header,
+  nav,
+  button,
+  .skip-link {
+    display: none;
+  }
+  main {
+    max-width: none;
+  }
+}

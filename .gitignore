@@ -1,1 +1,25 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+# Node and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+# PlatformIO
+.pio/
+# Local storage and generated frontend
+backend/data/
+backend/static/
+# Browser output
+playwright-report/
+test-results/
 .playwright-mcp/
+.DS_Store
