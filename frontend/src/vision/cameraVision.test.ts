@@ -253,4 +253,37 @@ describe('CameraVision lifecycle', () => {
     expect(callbacks.size).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
   });
+  it('skips frames during pending fallback and closes a late CPU model after stop', async () => {
+    await source.start({ affectedHand: 'right' });
+    let resolveCPU!: (model: HandLandmarker) => void;
+    mp.create.mockReturnValueOnce(
+      new Promise<HandLandmarker>((resolve) => {
+        resolveCPU = resolve;
+      }),
+    );
+    detect.mockImplementationOnce(() => {
+      throw new Error('GPU context lost');
+    });
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(34);
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(68);
+    expect(detect).toHaveBeenCalledTimes(1);
+    expect(source.stats().skipped).toBe(1);
+    source.stop();
+    resolveCPU(model);
+    await flush();
+    expect(close).toHaveBeenCalledTimes(2);
+    expect(callbacks.size).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('reports unavailable camera APIs as a recoverable start error', async () => {
+    vi.stubGlobal('navigator', {});
+    await expect(source.start({ affectedHand: 'right' })).rejects.toThrow(
+      'HTTPS or localhost',
+    );
+    expect(source.stats().error).toContain('HTTPS or localhost');
+    expect(source.latest()?.detected).toBe(false);
+    expect(await CameraVision.devices()).toEqual([]);
+  });
 });

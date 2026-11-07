@@ -114,13 +114,13 @@ export class CameraVision implements VisionSource {
     this.frames = 0;
     this.skipped = 0;
     this.error = null;
-    if (!navigator.mediaDevices?.getUserMedia)
-      throw new Error(
-        'Use Chrome or Edge with camera access on HTTPS or localhost',
-      );
     let stream: MediaStream | null = null;
     let model: HandLandmarker | null = null;
     try {
+      if (!navigator.mediaDevices?.getUserMedia)
+        throw new Error(
+          'Use Chrome or Edge with camera access on HTTPS or localhost',
+        );
       stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
