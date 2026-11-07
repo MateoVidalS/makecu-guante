@@ -18,7 +18,10 @@ import { GLOVE_FINGERS } from '../../contracts/glove';
 import { POSES } from '../../contracts/poses';
 import './replay.css';
 import { CoachTimeline } from '../../components/therapy/CoachTimeline';
-import type { TherapySession } from '../../components/therapy/data';
+import {
+  attemptTherapyMarkers,
+  type TherapySession,
+} from '../../components/therapy/data';
 import {
   DataSection,
   DataStatus,
@@ -41,7 +44,15 @@ const meanAssist = (attempt: Attempt) => {
     : null;
 };
 
-function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
+function AttemptReplay({
+  attempt,
+  demo,
+  detail,
+}: {
+  attempt: Attempt;
+  demo: boolean;
+  detail: TherapySession;
+}) {
   const trace = useAttemptTrace(attempt.id);
   return (
     <DataSection
@@ -89,6 +100,12 @@ function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
           loading={trace.isPending}
           isDemo={demo}
           safety={attempt.safety_events}
+          therapyMarkers={attemptTherapyMarkers(
+            attempt.started_at,
+            attempt.ended_at,
+            detail.coach_decisions,
+            detail.feelings,
+          )}
         />
       </DataStatus>
       <div className="data-table-wrap">
@@ -210,6 +227,7 @@ export default function SessionReplay() {
                   key={attempts[selected].id}
                   attempt={attempts[selected]}
                   demo={detail.is_demo}
+                  detail={detail}
                 />
               </>
             )}

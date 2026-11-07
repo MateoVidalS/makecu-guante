@@ -101,6 +101,7 @@ export function CoachDecisions({
       </section>
       <Dialog
         open={history}
+        className="therapy-history"
         onClose={() => setHistory(false)}
         title="Coach decisions"
         size="lg"

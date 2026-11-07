@@ -9,7 +9,7 @@ import {
 import '@testing-library/jest-dom/vitest';
 import { CoachTimeline } from './CoachTimeline';
 import { FakeTherapy } from './testing/FakeTherapy';
-import { canUndo } from './data';
+import { attemptTherapyMarkers, canUndo } from './data';
 afterEach(cleanup);
 describe('therapy audit timeline', () => {
   it('interleaves decisions and feelings with elapsed time, result, source and requested/applied values', () => {
@@ -68,6 +68,25 @@ describe('therapy audit timeline', () => {
     expect(canUndo(therapy.decisions())).toBe(true);
     therapy.undo();
     expect(canUndo(therapy.decisions())).toBe(false);
+  });
+  it('aligns only events within the selected attempt to its seconds axis', () => {
+    const therapy = new FakeTherapy();
+    therapy.emit('add_rest', {});
+    therapy.emit('set_attempt_time', {});
+    therapy.emit('adjust_help', {});
+    expect(
+      attemptTherapyMarkers(
+        '2026-11-07T12:00:03Z',
+        '2026-11-07T12:00:08Z',
+        therapy.decisions(),
+      ),
+    ).toMatchObject([
+      {
+        t: 2,
+        kind: 'decision',
+        label: expect.stringContaining('Try time adjusted'),
+      },
+    ]);
   });
   it('shows a clear empty state for older sessions', () => {
     render(<CoachTimeline startedAt="2026-11-07T12:00:00Z" />);

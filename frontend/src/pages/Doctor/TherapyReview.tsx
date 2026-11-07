@@ -117,24 +117,33 @@ export function TherapyReview({ sessions }: { sessions: Session[] }) {
                       strokeDasharray={key === 'fatigue' ? '5 4' : undefined}
                       connectNulls={false}
                       isAnimationActive={false}
-                      dot={({ cx, cy, payload }) => (
-                        <circle
-                          key={payload.id}
-                          cx={cx}
-                          cy={cy}
-                          r={4}
-                          stroke={
-                            key === 'pain' ? 'var(--accent)' : 'var(--muted)'
-                          }
-                          fill={
-                            payload.demo
-                              ? 'var(--surface)'
-                              : key === 'pain'
-                                ? 'var(--accent)'
-                                : 'var(--muted)'
-                          }
-                        />
-                      )}
+                      dot={({ cx, cy, payload }) =>
+                        payload[key] == null ||
+                        !Number.isFinite(cx) ||
+                        !Number.isFinite(cy) ? (
+                          <g key={payload.id} />
+                        ) : (
+                          <circle
+                            className="therapy-feeling-dot"
+                            key={payload.id}
+                            cx={cx}
+                            cy={cy}
+                            r={4}
+                            stroke={
+                              key === 'pain' ? 'var(--accent)' : 'var(--muted)'
+                            }
+                            fill={
+                              payload.demo
+                                ? 'var(--surface)'
+                                : key === 'pain'
+                                  ? 'var(--accent)'
+                                  : 'var(--muted)'
+                            }
+                          >
+                            <title>{`${key}: ${payload[key].toFixed(1)}/10${payload.demo ? ' · Demo data' : ''}`}</title>
+                          </circle>
+                        )
+                      }
                     />
                   ))}
                 </LineChart>
@@ -145,34 +154,32 @@ export function TherapyReview({ sessions }: { sessions: Session[] }) {
             </p>
             <details className="therapy-review-table">
               <summary>Show feelings as table</summary>
-              {
-                <div className="data-table-wrap">
-                  <table className="data-table">
-                    <caption>Session mean patient reports (0–10)</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Session</th>
-                        <th scope="col">Pain</th>
-                        <th scope="col">Fatigue</th>
-                        <th scope="col">Check-ins</th>
+              <div className="data-table-wrap">
+                <table className="data-table">
+                  <caption>Session mean patient reports (0–10)</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Session</th>
+                      <th scope="col">Pain</th>
+                      <th scope="col">Fatigue</th>
+                      <th scope="col">Check-ins</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trend.map((p) => (
+                      <tr key={p.id}>
+                        <th scope="row">
+                          {formatDate(p.t)} · #{p.id}
+                          {p.demo ? ' · Demo data' : ''}
+                        </th>
+                        <td>{p.pain?.toFixed(1) ?? '—'}</td>
+                        <td>{p.fatigue?.toFixed(1) ?? '—'}</td>
+                        <td>{p.count}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {trend.map((p) => (
-                        <tr key={p.id}>
-                          <th scope="row">
-                            {formatDate(p.t)} · #{p.id}
-                            {p.demo ? ' · Demo data' : ''}
-                          </th>
-                          <td>{p.pain?.toFixed(1) ?? '—'}</td>
-                          <td>{p.fatigue?.toFixed(1) ?? '—'}</td>
-                          <td>{p.count}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              }
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </details>
           </>
         ) : (

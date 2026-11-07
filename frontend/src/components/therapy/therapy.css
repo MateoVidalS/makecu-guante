@@ -76,3 +76,13 @@
     flex-basis: 100%;
   }
 }
+
+/* Long audits scroll within the modal; Brake remains in its fixed footer. */
+.therapy-history .ds-dialog__body {
+  max-block-size: calc(100dvh - var(--space-64));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.therapy-history .therapy-timeline {
+  overflow: auto;
+  min-block-size: 0;
+}

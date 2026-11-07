@@ -41,7 +41,9 @@ export function decisionLabel(decision: CoachDecision) {
     case 'record_feeling':
       return 'Feeling recorded';
     case 'brake':
-      return 'Brake · glove released';
+      return decision.result === 'rejected'
+        ? 'Brake request'
+        : 'Brake · glove released';
     case 'undo_last_adjustment':
       return 'Adjustment undone';
     case 'get_live_state':
@@ -58,4 +60,37 @@ export function elapsedTime(t: string, start: string) {
   );
   if (!Number.isFinite(seconds)) return '—';
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+export interface TherapyMarker {
+  t: number;
+  kind: 'decision' | 'feeling';
+  label: string;
+}
+
+export function attemptTherapyMarkers(
+  start: string,
+  end: string,
+  decisions: CoachDecision[] = [],
+  feelings: FeelingEntry[] = [],
+): TherapyMarker[] {
+  const beginning = Date.parse(start),
+    ending = Date.parse(end);
+  const events: (TherapyMarker & { absolute: number })[] = [
+    ...decisions.map((d) => ({
+      absolute: Date.parse(d.t),
+      t: (Date.parse(d.t) - beginning) / 1000,
+      kind: 'decision' as const,
+      label: `${decisionLabel(d)} · ${d.result}: ${d.reason}`,
+    })),
+    ...feelings.map((f) => ({
+      absolute: Date.parse(f.t),
+      t: (Date.parse(f.t) - beginning) / 1000,
+      kind: 'feeling' as const,
+      label: `Pain ${f.pain}/10 · Fatigue ${f.fatigue}/10`,
+    })),
+  ];
+  return events
+    .filter((e) => e.absolute >= beginning && e.absolute <= ending)
+    .sort((a, b) => a.t - b.t);
 }

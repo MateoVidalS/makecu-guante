@@ -542,6 +542,16 @@ export default function Exercise() {
           }}
         >
           Your practice so far will be saved.
+          <Button
+            size="lg"
+            variant="danger"
+            onClick={() => {
+              brake();
+              setConfirm(false);
+            }}
+          >
+            Brake
+          </Button>
         </ConfirmDialog>
       )}
     </section>
