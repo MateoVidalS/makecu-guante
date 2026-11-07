@@ -4,7 +4,7 @@ import { useStore } from 'zustand';
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision, useVisionFrame } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
-import { useRuntime } from '../../runtime';
+import { useRuntime, RuntimeDiagnostics } from '../../runtime';
 import {
   BigButton,
   BrowserSupportBanner,
@@ -291,6 +291,7 @@ export default function Setup() {
           </div>
         )}
       </section>
+      <RuntimeDiagnostics />
       <Link className="button" to="/calibrate">
         Continue to calibration
       </Link>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useRuntime } from '../../runtime';
+import { useRuntime, RuntimeSimulatorCalibration } from '../../runtime';
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
@@ -232,6 +232,7 @@ export default function Calibrate() {
   return (
     <section className="live-stack">
       <h1>Find your comfortable range</h1>
+      <RuntimeSimulatorCalibration />
       <p>Your progress stays here if you leave.</p>
       <Stepper
         labels={['Glove range', 'Camera range', 'Glove friction', 'Review']}

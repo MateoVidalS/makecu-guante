@@ -1,7 +1,12 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useStore } from 'zustand';
-import { useRuntime, useExerciseView } from '../../runtime';
+import {
+  useRuntime,
+  useExerciseView,
+  useSavingStatus,
+  RuntimeSimulatorControls,
+} from '../../runtime';
 import {
   DEFAULT_PLAN,
   PINCH_PLAN,
@@ -150,16 +155,18 @@ function LiveDetails() {
         <CameraOverlay compact />
       </div>
       <CoachArea />
+      <RuntimeSimulatorControls />
     </aside>
   );
 }
 function Summary({ onAgain }: { onAgain: () => void }) {
   const view = useExerciseView();
+  const saving = useSavingStatus();
   const summary = useQuery({
     queryKey: ['patient-summary', view.sessionId],
     queryFn: () =>
       createSummary({ kind: 'session', session_id: view.sessionId! }),
-    enabled: view.sessionId != null,
+    enabled: view.sessionId != null && saving === 'Saved',
     retry: false,
   });
   return (
@@ -169,6 +176,10 @@ function Summary({ onAgain }: { onAgain: () => void }) {
         <p role="status">Preparing your recap…</p>
       ) : summary.data?.text ? (
         <p>{summary.data.text}</p>
+      ) : saving !== 'Saved' ? (
+        <p role="status">Your recap will be available after saving.</p>
+      ) : summary.isError ? (
+        <p role="status">Summary unavailable. Your session is saved.</p>
       ) : null}
       <div className="actions">
         <BigButton variant="primary" onClick={onAgain}>
