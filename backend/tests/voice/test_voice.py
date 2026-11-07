@@ -113,3 +113,52 @@ def test_real_sdk_serializes_locked_configuration(client, monkeypatch):
     assert setup["generationConfig"]["responseModalities"] == ["AUDIO"]
     assert setup["tools"][0]["functionDeclarations"][0]["name"] == "pause_session"
     assert "fieldMask" not in payload
+
+
+def test_profile_previous_session_and_transcript_with_merged_storage(client, monkeypatch):
+    import json
+    from pathlib import Path
+
+    fixtures = Path(__file__).resolve().parents[3] / "contracts" / "fixtures"
+    calibration = json.loads((fixtures / "calibration.json").read_text())
+    response = client.post(
+        "/api/calibrations",
+        json={k: v for k, v in calibration.items() if k not in ("id", "created_at")},
+    )
+    assert response.status_code == 200
+    calibration_id = response.json()["id"]
+    profile = json.loads((fixtures / "profile.json").read_text())
+    profile["pseudonym"] = "Sam"
+    profile["goals"] = "Practice a pinch"
+    assert client.put("/api/profile", json=profile).status_code == 200
+    fixture_session = json.loads((fixtures / "sessions.json").read_text())[0]
+    body = {
+        **{k: fixture_session[k] for k in ("mode", "plan", "settings")},
+        "calibration_id": calibration_id,
+        "is_demo": False,
+    }
+    previous = client.post("/api/sessions", json=body).json()
+    assert (
+        client.post(
+            f"/api/sessions/{previous['id']}/end", json={"summary": fixture_session["summary"]}
+        ).status_code
+        == 200
+    )
+    current = client.post("/api/sessions", json=body).json()
+    sdk = MagicMock()
+    sdk.__enter__.return_value = sdk
+    sdk.auth_tokens.create.return_value = SimpleNamespace(name="auth_tokens/with-context")
+    monkeypatch.setattr(gemini_live.genai, "Client", MagicMock(return_value=sdk))
+    monkeypatch.setattr(settings, "gemini_api_key", "server-secret")
+    response = client.post("/api/voice/token", json={"session_id": current["id"]})
+    assert response.status_code == 200
+    prompt = response.json()["system_instruction"]
+    assert '"pseudonym": "Sam"' in prompt
+    assert '"goals": "Practice a pinch"' in prompt
+    assert '"previous_session": {' in prompt
+    lines = [{"t": "2026-11-07T12:00:00Z", "role": "system", "text": "Stopping."}]
+    assert (
+        client.post(f"/api/sessions/{current['id']}/transcript", json={"lines": lines}).status_code
+        == 204
+    )
+    assert client.get(f"/api/sessions/{current['id']}").json()["transcript"] == lines

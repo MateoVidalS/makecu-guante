@@ -94,10 +94,10 @@ export class SafetyNet {
     }
     this.local.cancel();
     const phrase = safetyPhrase(event);
+    this.caption(phrase);
     this.local.speak(phrase, () => {
       if (generation === this.generation) this.finished?.();
     });
-    this.caption(phrase);
     return true;
   }
 }

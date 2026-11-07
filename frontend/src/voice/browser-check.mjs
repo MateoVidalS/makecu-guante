@@ -130,7 +130,10 @@ try {
   if (process.env.CHROME === '1')
     assert.ok(timing.phraseStarted !== null && timing.phraseStarted < 300);
   timing.caption = await page.evaluate(() => window.check.voice.lastCoachLine);
-  await page.screenshot({ path: '/tmp/wp8-browser-check.png', fullPage: true });
+  await page
+    .getByRole('complementary', { name: 'Voice coach' })
+    .first()
+    .screenshot({ path: '/tmp/wp8-browser-check.png' });
   console.log(
     JSON.stringify(
       {

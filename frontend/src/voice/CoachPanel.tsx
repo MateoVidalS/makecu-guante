@@ -27,10 +27,10 @@ export function CoachPanel() {
         <button
           type="button"
           onClick={() => voice.setMuted(!voice.muted)}
-          aria-pressed={!voice.muted}
+          aria-pressed={voice.mode === 'live' && !voice.muted}
           disabled={voice.mode !== 'live'}
         >
-          Mic {voice.muted ? 'off' : 'on'}
+          Mic {voice.mode === 'live' && !voice.muted ? 'on' : 'off'}
         </button>
         <label>
           Voice mode

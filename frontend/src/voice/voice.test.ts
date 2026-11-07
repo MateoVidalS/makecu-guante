@@ -503,3 +503,16 @@ it('protects pending PRESENT instructions from progress pushes', async () => {
   });
   scheduler.clear();
 });
+
+it('does not count successful periodic reconnects as failures', async () => {
+  const s = setup();
+  await s.controller.start(null);
+  for (let i = 0; i < 4; i++) {
+    s.transports.at(-1)!.emit({ type: 'closed' });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(s.controller.state.mode).toBe('live');
+    expect(s.transports.at(-1)!.texts[0].text).toContain('Reconnected');
+  }
+  expect(s.deps.token).toHaveBeenCalledTimes(5);
+  s.controller.dispose();
+});

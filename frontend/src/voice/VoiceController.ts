@@ -69,6 +69,7 @@ export class VoiceController {
   private fallbackTimer?: ReturnType<typeof setTimeout>;
   private captionTimer?: ReturnType<typeof setTimeout>;
   private failures = 0;
+  private greeted = false;
   private reconnecting = false;
   private connected = false;
   private safetyUntil = 0;
@@ -102,10 +103,24 @@ export class VoiceController {
         if (this.partial.coach) this.batch?.add('coach', this.partial.coach);
         this.partial.coach = '';
       },
-      (text) => this.caption(text, 'system'),
+      (text) => {
+        this.caption(text, 'system');
+        this.update({ status: 'speaking' });
+      },
       () => {
         this.safetySpeaking = false;
         this.safetyUntil = performance.now() + 500;
+        this.update({
+          status: this.active
+            ? this.runtime.exercise.view().paused
+              ? 'paused'
+              : this.state.mode === 'simple'
+                ? 'fallback'
+                : this.state.mode === 'off'
+                  ? 'off'
+                  : 'listening'
+            : 'off',
+        });
       },
     );
     this.unsubscribe = runtime.exercise.onEvent((event) => this.onEvent(event));
@@ -146,6 +161,7 @@ export class VoiceController {
     this.active = true;
     this.id = id;
     this.failures = 0;
+    this.greeted = false;
     this.safetyUntil = 0;
     this.safetySpeaking = false;
     this.previous = null;
@@ -195,6 +211,8 @@ export class VoiceController {
       return;
     this.update({ status: 'connecting' });
     const transport = this.deps.transport();
+    this.cancelled.clear();
+    this.handled.clear();
     this.transport = transport;
     try {
       const token = await withDeadline(this.deps.token(this.id));
@@ -229,9 +247,11 @@ export class VoiceController {
       this.update({ status: 'listening' });
       const view = this.runtime.exercise.view();
       transport.sendText(
-        `[session] ${this.failures ? 'Reconnected' : 'Starting'}: ${view.total} attempts. Current pose ${view.pose.name}, rep ${view.rep}, phase ${view.phase}. Instruction: ${view.pose.instruction}. Previous session: ${JSON.stringify(this.previous)}. Recent context: ${this.recent || 'none'}. Greet briefly and give the current instruction if PRESENT.`,
+        `[session] ${this.greeted || this.failures ? 'Reconnected' : 'Starting'}: ${view.total} attempts. Current pose ${view.pose.name}, rep ${view.rep}, phase ${view.phase}. Instruction: ${view.pose.instruction}. Previous session: ${JSON.stringify(this.previous)}. Active movement: ${JSON.stringify(view.activeMax)}. Recent context: ${this.recent || 'none'}. Greet briefly and give the current instruction if PRESENT.`,
         true,
       );
+      this.greeted = true;
+      this.failures = 0;
     } catch (error) {
       if (generation !== this.generation || this.transport !== transport)
         return;
@@ -363,7 +383,7 @@ export class VoiceController {
       this.scheduler.clear();
       this.deps.audio.flush();
       if (!this.safetySpeaking) this.deps.local.cancel();
-      this.update({ status: 'paused' });
+      this.update({ status: this.safetySpeaking ? 'speaking' : 'paused' });
       return;
     }
     if ((view.paused || this.safetySpeaking) && event.kind !== 'session_done')
