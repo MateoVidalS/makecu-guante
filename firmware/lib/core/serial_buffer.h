@@ -11,8 +11,10 @@ class LineReader {
   enum class Result { None, Line, TooLong };
   Result feed(char byte) {
     if (byte != '\n') {
-      if (used_ < config::MAX_LINE_BYTES + 1) buffer_[used_++] = byte;
-      else overflow_ = true;
+      if (used_ < config::MAX_LINE_BYTES + 1)
+        buffer_[used_++] = byte;
+      else
+        overflow_ = true;
       return Result::None;
     }
     if (used_ && buffer_[used_ - 1] == '\r') --used_;
@@ -25,6 +27,7 @@ class LineReader {
   }
   const char* data() const { return buffer_.data(); }
   std::size_t size() const { return size_; }
+
  private:
   std::array<char, config::LINE_BUFFER_BYTES> buffer_{};
   std::size_t used_ = 0;
@@ -57,8 +60,12 @@ class TxQueue {
       offset_ = 0;
     }
   }
+
  private:
-  struct Line { std::array<char, config::MAX_LINE_BYTES + 2> data{}; std::size_t size = 0; };
+  struct Line {
+    std::array<char, config::MAX_LINE_BYTES + 2> data{};
+    std::size_t size = 0;
+  };
   std::array<Line, CAPACITY> lines_{};
   std::size_t head_ = 0;
   std::size_t count_ = 0;

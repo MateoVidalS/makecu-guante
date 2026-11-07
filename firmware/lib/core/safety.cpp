@@ -27,7 +27,8 @@ void SafetyController::begin(bool sensorAvailable, uint32_t now) {
   if (!sensorAvailable_) emit(EventKind::InaMissing);
 }
 bool SafetyController::calibrated() const {
-  return std::all_of(calibration_.begin(), calibration_.end(), [](const Calibration& c) { return c.valid; });
+  return std::all_of(calibration_.begin(), calibration_.end(),
+                     [](const Calibration& c) { return c.valid; });
 }
 float SafetyController::angle(std::size_t i) const {
   return i < 3 ? calib::clampAngle(angles_[i]) : config::HARD_MIN;
@@ -67,8 +68,10 @@ void SafetyController::stopReleased() {
 void SafetyController::sensorMissing(uint32_t now) {
   if (!sensorAvailable_) return;
   sensorAvailable_ = false;
-  if (state_ == State::Run || state_ == State::Calib) fault(EventKind::InaMissing, now);
-  else emit(EventKind::InaMissing);
+  if (state_ == State::Run || state_ == State::Calib)
+    fault(EventKind::InaMissing, now);
+  else
+    emit(EventKind::InaMissing);
 }
 
 ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
@@ -77,7 +80,8 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
   lastMessage_ = now;  // Syntactically valid messages also feed the watchdog when refused.
   if ((state_ == State::Fault || stopHeld_) &&
       (c.type == CommandType::Target || c.type == CommandType::Follow ||
-       c.type == CommandType::Jog || c.type == CommandType::Calib)) return ErrorCode::Fault;
+       c.type == CommandType::Jog || c.type == CommandType::Calib))
+    return ErrorCode::Fault;
   switch (c.type) {
     case CommandType::Target:
     case CommandType::Follow:
@@ -89,7 +93,8 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
       mode_ = c.type == CommandType::Follow ? Mode::Follow : Mode::Target;
       speed_ = mode_ == Mode::Follow ? config::V_FOLLOW : std::min(c.v, config::V_MAX);
       for (std::size_t i = 0; i < 3; ++i) {
-        goals_[i] = calib::clampClosure(c.f[i] - (mode_ == Mode::Follow ? config::FOLLOW_SLACK : 0));
+        goals_[i] =
+            calib::clampClosure(c.f[i] - (mode_ == Mode::Follow ? config::FOLLOW_SLACK : 0));
         // A detached actuator has no feedback; the first commanded position is open.
         if (!attached_[i]) angles_[i] = calib::toAngle(0, calibration_[i]);
         attached_[i] = true;
@@ -97,7 +102,10 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
       return ErrorCode::None;
     case CommandType::Release:
       release(now);
-      if (stopHeld_) { state_ = State::Fault; return ErrorCode::Fault; }
+      if (stopHeld_) {
+        state_ = State::Fault;
+        return ErrorCode::Fault;
+      }
       state_ = State::Idle;
       over_ = false;
       return ErrorCode::None;
@@ -140,11 +148,23 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
   }
 }
 void SafetyController::current(float ma, uint32_t now) {
-  if (!std::isfinite(ma)) { sensorMissing(now); return; }
+  if (!std::isfinite(ma)) {
+    sensorMissing(now);
+    return;
+  }
   ma_ = std::max(0.0F, ma);
-  const bool powered = std::any_of(attached_.begin(), attached_.end(), [](bool value) { return value; });
-  if (!powered || state_ == State::Fault || ma_ <= limit_) { over_ = false; peak_ = 0; return; }
-  if (!over_) { over_ = true; overSince_ = now; peak_ = ma_; }
+  const bool powered =
+      std::any_of(attached_.begin(), attached_.end(), [](bool value) { return value; });
+  if (!powered || state_ == State::Fault || ma_ <= limit_) {
+    over_ = false;
+    peak_ = 0;
+    return;
+  }
+  if (!over_) {
+    over_ = true;
+    overSince_ = now;
+    peak_ = ma_;
+  }
   peak_ = std::max(peak_, ma_);
   if (static_cast<uint32_t>(now - overSince_) >= config::OVERCURRENT_MS) {
     fault(EventKind::Overcurrent, now, peak_);
@@ -153,7 +173,8 @@ void SafetyController::current(float ma, uint32_t now) {
 }
 void SafetyController::tick(uint32_t now) {
   if ((state_ == State::Run || state_ == State::Calib) &&
-      static_cast<uint32_t>(now - lastMessage_) >= config::WATCHDOG_MS) fault(EventKind::Watchdog, now);
+      static_cast<uint32_t>(now - lastMessage_) >= config::WATCHDOG_MS)
+    fault(EventKind::Watchdog, now);
   // Missed deadlines never create a large catch-up jump.
   const auto elapsed = std::min(static_cast<uint32_t>(now - lastRamp_), config::CONTROL_MS);
   lastRamp_ = now;
@@ -163,19 +184,26 @@ void SafetyController::tick(uint32_t now) {
     if (!attached_[i]) continue;
     const auto& c = calibration_[i];
     if (releasing_) {
-      if (!c.valid) { attached_[i] = false; continue; }
+      if (!c.valid) {
+        attached_[i] = false;
+        continue;
+      }
       const float rate = config::V_RELEASE * std::fabs(c.max - c.min);
       angles_[i] = calib::clampAngle(ramp::advance(angle(i), c.min, rate, seconds));
       opened = opened && angles_[i] == c.min;
     } else if (mode_ == Mode::Jog) {
-      angles_[i] = calib::clampAngle(ramp::advance(angle(i), goals_[i], config::V_JOG_DEG, seconds));
+      angles_[i] =
+          calib::clampAngle(ramp::advance(angle(i), goals_[i], config::V_JOG_DEG, seconds));
     } else if (state_ == State::Run && c.valid) {
       const float pos = ramp::advance(calib::toClosure(angle(i), c), goals_[i], speed_, seconds);
       angles_[i] = calib::toAngle(pos, c);
     }
   }
   if (releasing_ && opened) {
-    if (!releaseComplete_) { releaseComplete_ = true; releasedAt_ = now; }
+    if (!releaseComplete_) {
+      releaseComplete_ = true;
+      releasedAt_ = now;
+    }
     if (static_cast<uint32_t>(now - releasedAt_) >= config::DETACH_MS) {
       attached_ = {};
       releasing_ = false;
