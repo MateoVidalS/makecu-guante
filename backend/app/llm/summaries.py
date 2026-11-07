@@ -36,25 +36,51 @@ dependence, and safety events. Clearly state when data is insufficient for a com
 )
 
 
+def _models() -> list[str]:
+    fallbacks = [m.strip() for m in settings.gemini_text_fallback_models.split(",") if m.strip()]
+    return [settings.gemini_text_model, *[m for m in fallbacks if m != settings.gemini_text_model]]
+
+
+def _transient(error: Exception) -> bool:
+    code = getattr(error, "code", None) or getattr(error, "status_code", None)
+    return code in (429, 500, 503, 504) or isinstance(error, TimeoutError)
+
+
 def generate_summary(kind: str, context: dict) -> Summary:
     if not settings.gemini_api_key:
         _unavailable()
     prompt = SESSION_PROMPT if kind == "session" else THERAPIST_PROMPT
+    contents = json.dumps(context, allow_nan=False)
+    text, used = "", None
     try:
-        # SDK timeouts are milliseconds. Disable retries to keep the request within 30 seconds.
+        # SDK timeouts are milliseconds. SDK retries are off; we fall back across models instead,
+        # because a busy model (503) or a slow thinking model (504) usually recovers on another one.
         with genai.Client(
             api_key=settings.gemini_api_key,
             http_options=types.HttpOptions(
-                timeout=30_000, retry_options=types.HttpRetryOptions(attempts=1)
+                timeout=60_000, retry_options=types.HttpRetryOptions(attempts=1)
             ),
         ) as client:
-            response = client.models.generate_content(
-                model=settings.gemini_text_model,
-                contents=json.dumps(context, allow_nan=False),
-                config=types.GenerateContentConfig(system_instruction=prompt, temperature=0.2),
-            )
-            text = (response.text or "").strip()
-        if not text or settings.gemini_api_key in text:
+            for model in _models():
+                try:
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=contents,
+                        config=types.GenerateContentConfig(
+                            system_instruction=prompt,
+                            temperature=0.2,
+                            # Summaries are short; low thinking keeps them well inside the deadline.
+                            thinking_config=types.ThinkingConfig(thinking_level="low"),
+                        ),
+                    )
+                except Exception as error:  # noqa: BLE001 - redacted below, never surfaced
+                    if _transient(error):
+                        continue
+                    raise
+                text = (response.text or "").strip()
+                used = model
+                break
+        if not text or used is None or settings.gemini_api_key in text:
             _unavailable()
     except Exception:
         # Never return or log provider exception text: it can contain credentials/request URLs.
@@ -65,7 +91,7 @@ def generate_summary(kind: str, context: dict) -> Summary:
         created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         session_id=None,
         days=None,
-        model=settings.gemini_text_model,
+        model=used,
         text=text,
     )
 
