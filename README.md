@@ -33,74 +33,86 @@ Se trabaja **solo con la mano afectada**. El objetivo lo pone la mano virtual.
 
 ## 3. Hardware
 
-### El guante
+Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piezas y CAD en `hardware/`.
+
+### Resumen
 
 ```
-   Vista lateral de un dedo (palma hacia abajo)
+   Vista de costado (palma hacia abajo)
 
-   punta                                      muñeca / antebrazo
-    ●═══○═══════○═══════○═════════════════════[ SERVO + carrete ]
-    ↑   ↑       ↑       ↑                         ↻
- anclaje guías (tubitos cosidos en cada falange,  enrolla el hilo
- del hilo  del lado de la palma)
-
-   Del lado del dorso: una banda elástica que devuelve el dedo a abierto
+        correa      correa
+   ═════[══]═════════[══]══╗ mano ═══ guías ═══ ● punta
+   antebrazo  ┌─────────────┐ ╲ hilos pegados a la palma
+              │ MÓDULO DE   │──╲───────────────────────────
+              │ MUÑECA      │ salen por arriba del frente, ~10° hacia la palma
+              │ 5 servos    │
+   ───────────┴─────────────┴──── borde de la mesa
 ```
 
-- **Hilo** (tanza o hilo encerado) cosido a la punta de cada dedo del guante, que corre por la palma pasando por guías.
-- **Servo + carrete:** al girar, el carrete enrolla el hilo y el dedo se cierra, como el tendón flexor real.
-- **Elástico en el dorso:** abre el dedo cuando el servo afloja. El guante **nunca empuja**: solo tira o suelta.
-- **Soporte de servos** sobre el antebrazo, sujeto con velcro.
-- **Dedos:** pulgar, índice y medio (los que se usan para agarrar). Anular y meñique quedan para después.
+- **Módulo de muñeca** impreso (80,5 × 80 × 47 mm con la tapa) debajo de la muñeca y el antebrazo, sujeto con **dos correas de velcro**: una alrededor de la mano y otra del antebrazo.
+- **Fija la muñeca:** el módulo es rígido y abarca la muñeca. Si la muñeca no se dobla, el largo de cada hilo no cambia. Por eso no hacen falta fundas ni tubos.
+- **5 servos adentro, uno por dedo**, cada uno en su propio soporte.
+- **Hilos pegados a la piel:** salen por arriba del frente del módulo y corren por la palma, por guías cosidas al guante, hasta la punta de cada dedo.
+- **Elásticos en el dorso:** abren el dedo cuando el servo afloja. El guante solo tira para cerrar.
 
-### Servos: micro servos, no los más fuertes
+### Física del enrollado (por qué el módulo es así)
 
-El tirón en el hilo es `torque / radio del carrete`. Con un carrete de 10 mm de radio:
+- **El hilo tiene que salir del carrete en su plano** (desvío ≤ 2–4°). Si sale inclinado se sube al ala del carrete, enrolla desparejo, se puede salir y carga de costado el eje del servo. Por eso:
+  - los **5 carretes están a la misma altura**, justo debajo de la tapa;
+  - cada hilo sale **horizontal y tangente** a su carrete, por una salida abocinada del frente;
+  - desde ahí sube **unos 10°** hasta la guía de la palma (la única curva del módulo, ~4% de fricción extra).
+- **Zigzag:** 5 carretes de Ø22 no entran en 80 mm en una fila. Van 3 adelante (pulgar, medio, meñique) y 2 atrás (índice, anular); los hilos de atrás pasan por el **hueco de 1,5 mm** entre los carretes de adelante.
+- **Fricción total estimada:** el servo tira ~2–2,7× lo que llega a la punta (las curvas de las articulaciones son inevitables). Un diseño anterior con hilos saliendo a 45° por la tapa daba ~4–5× y no habría cerrado la mano.
+- **Carrete:** radio de enrollado 10 mm → brazo de palanca constante y ~31 mm de hilo por 180°. Cerrar un dedo del todo pediría ~40–45 mm (estimado): con 31 mm se llega a ~70% de un puño. **Medir** en el guante; si falta, subir el radio (más recorrido, menos fuerza).
 
-| Servo | Torque (aprox.) | Tirón en el hilo | Recorrido con 180° |
+### Servos (los que tenemos)
+
+| Dedo | Servo | Torque aprox. (4,8 V) | Por qué |
 |---|---|---|---|
-| **9g micro / SG90** | ~1,8 kg·cm | ~18 N | ~31 mm |
-| **MG90S** (engranajes de metal) | ~2,2 kg·cm | ~22 N | ~31 mm |
-| SF3218MG | ~20 kg·cm | ~200 N | ~31 mm |
+| Índice | TowerPro SG92R | ~2,5 kg·cm | El más fuerte: el dedo que más trabaja en la pinza |
+| Medio | Miuzei MG90S | ~1,8–2,2 kg·cm | Engranajes de metal |
+| Anular | Smraza S51 | ~1,6–1,8 kg·cm | Alcanza para un dedo que hace menos fuerza |
+| Meñique | Smraza S51 | ~1,6–1,8 kg·cm | Ídem |
+| Pulgar | Negro sin identificar | **medir** | Su alojamiento es 1,5 mm más grande |
 
-- Cerrar un dedo relajado con el guante debería necesitar menos de lo que da un micro servo. **Hay que medirlo** con el guante real.
-- Los servos grandes son un riesgo: si el software falla o el dedo se traba, pueden lastimar. Con un micro servo, en el peor caso, el servo se frena.
-- Preferimos el **MG90S**: los engranajes de plástico del 9g se pueden romper cuando el dedo se resiste.
-- Una mano muy rígida necesitaría más fuerza: se presenta como siguiente paso, con actuadores diseñados para eso.
+- Torques de fichas de tiendas y fabricantes; varían entre fuentes.
+- **Alojamientos universales:** hueco de 23,6 × 13,2 mm (los cuerpos miden 22,2–23 × 11,8–12,6) y agujeros alargados (±0,8 mm), porque la distancia entre agujeros cambia entre marcas.
+- **Micro servos a propósito:** un servo grande (p. ej. 20 kg·cm) podría lastimar si el software falla o el dedo se traba. Con un micro servo, en el peor caso, el servo se frena.
+- La altura del eje cambia 1–2 mm entre modelos: las salidas del frente tienen margen para eso.
 
 ### Electrónica
 
 ```
-  Fuente 5 V (límite 1,5 A) ──> [INA219] ──> (+) servos pulgar / índice / medio
-                                   │ I2C                    ▲ señal PWM
-                                   ▼                        │
-  Botón STOP ───────────────────> [ESP32-WROOM-32] ─────────┘
-                                   │        │
+  Fuente 5 V (límite 2,5 A) ──> [INA219] ──> (+) 5 servos
+                                   │ I2C              ▲ PWM
+                                   ▼                  │
+  Botón STOP ───────────────────> [ESP32-WROOM-32] ───┘
                                    │        └──> level shifter ──> NeoPixel Ring
                                    └── USB ──> laptop (cámara, mano virtual, voz, dashboard)
 ```
 
-**Los servos los controla directamente la ESP32-WROOM-32**, con PWM por hardware (periférico LEDC, 50 Hz, pulsos de 500–2500 µs) usando la librería `ESP32Servo`. No hace falta driver de servos: el PCA9685 está agotado y la ESP32 tiene 16 canales PWM.
+**Los servos los controla directamente la ESP32-WROOM-32** con PWM por hardware (LEDC, 50 Hz, pulsos de 500–2500 µs) y la librería `ESP32Servo`. No hace falta driver (el PCA9685 está agotado y la ESP32 tiene 16 canales PWM).
 
 | Función | Pin ESP32 | Notas |
 |---|---|---|
 | Servo pulgar | GPIO 25 | |
 | Servo índice | GPIO 26 | |
 | Servo medio | GPIO 27 | |
-| NeoPixel (datos) | GPIO 33 | Pasa por el level shifter (3,3 V → 5 V) y una resistencia de ~330 Ω |
+| Servo anular | GPIO 13 | |
+| Servo meñique | GPIO 4 | |
+| NeoPixel (datos) | GPIO 33 | Level shifter (3,3 → 5 V) + resistencia de ~330 Ω |
 | INA219 SDA / SCL | GPIO 21 / 22 | I2C |
 | Botón STOP | GPIO 32 | `INPUT_PULLUP`, el botón va a GND |
 
 - **Pines evitados:** 0, 2, 5, 12 y 15 (definen cómo arranca la placa) y 14 (saca pulsos al arrancar y haría saltar un servo).
-- La señal de 3,3 V suele alcanzar para los micro servos. Si tiemblan, se pasan por los canales libres del level shifter.
-- **Comunicación con la laptop por USB** (Web Serial desde Chrome). La placa ya está cableada a la fuente, así que WiFi no aporta nada y agrega latencia y fallas.
+- **Comunicación con la laptop por USB** (Web Serial desde Chrome).
+- La ESP32, el INA219 y el level shifter van en la breadboard, **sobre la mesa** detrás del módulo. Los cables de los servos salen por la ranura de atrás del módulo.
 
 ### Alimentación
 
-- **Fuente de laboratorio Facmogu en 5 V con límite de 1,5 A.** Los servos **no** se alimentan desde la ESP32.
+- **Fuente de laboratorio Facmogu en 5 V con límite de 2,5 A** (5 servos). Los servos **no** se alimentan desde la ESP32.
 - El límite de corriente es un **corte físico**: aunque el software falle, la fuente no deja pasar más.
-- **GND común** entre la fuente, los servos y la ESP32. Si no, la señal PWM no funciona.
-- El NeoPixel se alimenta de la misma fuente de 5 V.
+- **GND común** entre la fuente, los servos y la ESP32.
 - Verificar los 5 V con el multímetro **antes** de conectar los servos.
 
 ### Seguridad
@@ -111,67 +123,27 @@ El tirón en el hilo es `torque / radio del carrete`. Con un carrete de 10 mm de
 - **Límite de corriente de la fuente** como última barrera.
 - Extensión pasiva: el guante solo tira para cerrar.
 
-### Disposición física
+### Puesta en la mesa
 
-```
-   Vista desde arriba (mano derecha, palma hacia abajo)
+- **Palma hacia abajo**, con el frente del módulo en el borde de la mesa: la mano queda afuera y los dedos se cierran en el aire.
+- **Antebrazo sobre una toalla doblada** (~4 cm), desde el codo hasta justo antes del módulo.
+- **Webcam** adelante y del lado del pulgar (rincón de la mesa), a 30–40 cm de los dedos y más alta que la mano, en diagonal: ve los dedos de costado sin que se tapen. Logitech del desk de MLH en un trípode chico.
+- **Laptop** adelante del paciente, del lado del pulgar, con la pantalla hacia él.
+- **Guante claro y fino:** MediaPipe se entrena con manos sin guante; un guante oscuro puede hacer que no detecte los dedos. Probarlo el primer día.
 
-                                               ┌──────────── antebrazo ────────────┐
-   dedos ── guías ── palma ── muñequera ── fundas ──> [ peine | servos + carretes ] ══ cables ══> caja de electrónica
-                               (rígida)    (tubitos)  [   plataforma con velcro    ]               (sobre la mesa)
+### Piezas impresas
 
-   Sobre la mesa: caja de electrónica, fuente, botón STOP (al alcance del terapeuta o de la otra mano),
-   anillo NeoPixel frente al paciente, laptop con webcam arriba y de costado.
-```
+| Pieza | Estado | Medidas | Cant. |
+|---|---|---|---|
+| Guía de tendón | **Definitiva** (`hardware/definitivas/`) | 12 × 9 × 5,6 mm, base cóncava | 13 (+3) |
+| Anclaje de punta | **Definitiva** | 12 × 9 × 5,8 mm | 5 (+1) |
+| Módulo de muñeca | Primera prueba | 80,5 × 80 × 41 mm | 1 |
+| Tapa (cóncava, con orejas para correas) | Primera prueba | 80,5 × 102 × 6 mm | 1 |
+| Carrete | Radio a confirmar | Ø 22 × 8,2 mm | 5 |
 
-| Parte | Dónde va | Qué lleva |
-|---|---|---|
-| **Guante** | Mano afectada | Anclajes en la punta de pulgar, índice y medio; guías en cada falange y una en la palma; elásticos en el dorso |
-| **Muñequera rígida** | Muñeca | Mantiene la muñeca recta y tiene una guía por hilo |
-| **Fundas** | De la muñequera a la plataforma | Un tubito por hilo, tipo cable de freno de bici |
-| **Plataforma de servos** | Antebrazo, cerca del codo, con 2 tiras de velcro | 3 servos con carrete y un peine de salida para los hilos |
-| **Caja de electrónica** | Sobre la mesa | ESP32, INA219, level shifter y bornera de 5 V en la media breadboard |
-| **Botón STOP** | Sobre la mesa | Cable largo hasta la caja |
-| **Anillo NeoPixel** | Sobre la mesa, frente al paciente | Feedback de color |
-
-**Por qué la electrónica va en la mesa y no en el brazo:** la fuente de laboratorio ya obliga a tener cables a la mesa, y así el brazo lleva solo los servos (unos 40–60 g en total más la plataforma). En una versión con batería, todo pasaría al brazo.
-
-### Recorrido de los hilos
-
-- **Dedos largos (índice, medio):** anclaje en la punta, guías en la falange distal, media y proximal, una guía en la palma a la altura de los nudillos y otra en la muñequera. Es el mismo recorrido que el tendón flexor real.
-- **Pulgar:** anclaje en la punta, guías en sus dos falanges y una en la base del pulgar (eminencia tenar). Desde ahí el hilo cruza en diagonal hasta la muñequera. Tirar del pulgar lo flexiona hacia la palma: sirve para el puño y para la pinza.
-- **Muñeca:** si la muñeca se dobla, cambia el largo del recorrido y el dedo se abre o se cierra solo. Por eso la muñequera es rígida y, desde ahí hasta los servos, cada hilo va dentro de una funda: el largo de la funda no cambia aunque el antebrazo gire.
-- **Recorrido necesario:** cerrar un dedo completo requiere unos 25–35 mm de hilo (hay que medirlo en el guante). Un carrete de 10 mm de radio da unos 31 mm en 180°.
-- **Elásticos del dorso:** uno por dedo, de la punta a la muñequera por el lado del dorso. Tienen que abrir el dedo sin ofrecer tanta resistencia que el servo no pueda cerrarlo.
-
-### Cableado
-
-| Desde | Hasta | Cable |
-|---|---|---|
-| Fuente 5 V (+) | INA219 VIN+ | Rojo, grueso |
-| INA219 VIN− | Bornera (+) de los servos y del NeoPixel | Rojo, grueso |
-| Fuente (−) | Bornera (−), GND de la ESP32 y del level shifter | Negro, grueso: **GND común** |
-| ESP32 GPIO 25 / 26 / 27 | Señal de los servos | Amarillo o naranja, ~1 m hasta el brazo |
-| ESP32 GPIO 33 | Level shifter LV1 → HV1 → resistencia ~330 Ω → NeoPixel DIN | |
-| ESP32 3V3 / 5V | Level shifter LV / HV | |
-| ESP32 GPIO 21 / 22 | INA219 SDA / SCL | |
-| ESP32 GPIO 32 | Botón STOP → GND | Cable largo |
-| ESP32 USB | Laptop | Micro-USB |
-
-Hacia el brazo van 3 cables de servo prolongados (5 V, GND y señal de cada uno). Conviene juntarlos en un solo mazo con cinta y sujetarlos a la plataforma, así un tirón no arranca el servo.
-
-### Requisitos para el CAD
-
-Lo que el diseño 3D tiene que cumplir. El plan del CAD está aparte.
-
-| Pieza | Requisitos |
-|---|---|
-| **Plataforma de servos** | 3 micro servos (9g / SG90 / MG90S); ancho máximo ~80 mm (lo que entra arriba de un antebrazo); 2 ranuras para velcro de 25 mm; peine de salida a la altura del carrete; sin bordes que se claven en el brazo |
-| **Carrete** | Radio de enrollado 10 mm; se atornilla al brazo en cruz que viene con el servo; un agujero para anudar el hilo; alas para que el hilo no se salga |
-| **Guías y anclajes** | Chicos (~12 × 9 mm), con agujeros para coser al guante; canal de ~2 mm para el hilo, con bordes redondeados (el hilo no tiene que rozar contra una arista) |
-| **Muñequera** | Mantiene la muñeca recta; 3 salidas para las fundas; se cierra con velcro |
-| **Caja de electrónica** (opcional) | Media breadboard + bornera; acceso al USB de la ESP32; botón STOP afuera |
-| **Todo** | Imprimible en PLA sin soportes o con pocos; cada impresión en menos de 4 h (límite del Makerspace); medidas verificadas con los servos reales antes de imprimir |
+- Todo sale de `hardware/cad/piezas.py` (FreeCAD, paramétrico): `freecadcmd hardware/cad/piezas.py` regenera los STL en `hardware/stl/`.
+- Para la mano izquierda: espejar módulo y tapa en el slicer.
+- **Antes de imprimir el módulo:** medir el servo negro y comprobar el paso de 1,5 mm con los servos reales.
 
 ---
 
@@ -222,8 +194,8 @@ USB a **115200 baud**, líneas de texto terminadas en `\n`, una por mensaje (JSO
 
 | Mensaje | Ejemplo | Significado |
 |---|---|---|
-| `target` | `{"t":"target","f":[0.8,0.6,0.0],"v":0.5}` | Objetivo de cierre (0–1) para pulgar, índice, medio; `v` = velocidad máxima (fracción del recorrido por segundo) |
-| `follow` | `{"t":"follow","f":[0.3,0.4,0.1]}` | Posición actual de los dedos según la cámara: el servo enrolla el hilo flojo hasta ahí sin tirar |
+| `target` | `{"t":"target","f":[0.8,0.6,0.6,0.5,0.5],"v":0.5}` | Objetivo de cierre (0–1) para pulgar, índice, medio, anular, meñique; `v` = velocidad máxima (fracción del recorrido por segundo) |
+| `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | Posición actual de los dedos según la cámara: el servo enrolla el hilo flojo hasta ahí sin tirar |
 | `release` | `{"t":"release"}` | Aflojar todo (volver a 0) |
 | `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | Ángulos de servo para 0% y 100% del dedo `i` |
 | `limit` | `{"t":"limit","ma":900}` | Umbral de corriente para el corte |
@@ -233,7 +205,7 @@ USB a **115200 baud**, líneas de texto terminadas en `\n`, una por mensaje (JSO
 
 | Mensaje | Ejemplo | Significado |
 |---|---|---|
-| `tel` | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.0],"ma":312,"st":"run"}` | Posición actual de cada servo (0–1), corriente total en mA, estado |
+| `tel` | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.35,0.3,0.3],"ma":312,"st":"run"}` | Posición actual de cada servo (0–1), corriente total en mA, estado |
 | `evt` | `{"t":"evt","e":"overcurrent","ma":950}` | Evento: `overcurrent`, `stop_button`, `watchdog`, `boot` |
 
 **Reglas de seguridad que el firmware aplica siempre, aunque la laptop diga otra cosa:**
@@ -407,7 +379,6 @@ Touchtronix ya no aplica: no usamos el SensX25.
 | O-00036 | Alligator Clip Test Lead | 2 |
 | O-00014 | Audio Amplifier + Dweii Mini Speaker | 1 + 1 (opcional: alcanza con el parlante de la laptop) |
 | O-00014 | Solderless Breadboard full + half | 1 + 1 |
-| En persona | **MG90S** ("Protected stock only") | hasta 3 |
 
 Pedir que saquen de la O-00014: ESP32-CAM, Raspberry Pi AI Camera, USB 3.1 breakout y micrófono electret.
 
@@ -415,7 +386,6 @@ Pedir que saquen de la O-00014: ESP32-CAM, Raspberry Pi AI Camera, USB 3.1 break
 
 | Ítem | Cant. |
 |---|---|
-| **9g Micro Servo** | 4 (3 dedos + 1 repuesto) |
 | Resistor Kit | 1 |
 | Wire Spool | 1 |
 | DMM, Wire Strippers, Flush Cutters | 1 c/u |
@@ -433,7 +403,7 @@ Pedir que saquen de la O-00014: ESP32-CAM, Raspberry Pi AI Camera, USB 3.1 break
 
 ### Impresión 3D (Makerspace, Mudd 254)
 
-Piezas en `hardware/`: soporte de servos para el antebrazo, carretes y anclajes. Hacer la **capacitación del Makerspace temprano**. Máximo 4 h por impresión, 1 impresora por equipo.
+Piezas en `hardware/`: módulo de muñeca, tapa, carretes, guías y anclajes (ver sección 3). Hacer la **capacitación del Makerspace temprano**. Máximo 4 h por impresión, 1 impresora por equipo.
 
 ---
 
@@ -446,11 +416,12 @@ Piezas en `hardware/`: soporte de servos para el antebrazo, carretes y anclajes.
 | Visión | MediaPipe, % de cierre por dedo, mano virtual | Mano virtual siguiendo la mano real |
 | Voz y pitch | Gemini, dashboard, video | Resumen de sesión generado con datos reales |
 
-**Orden:** primero **un dedo + un servo + la cámara de punta a punta**. Después escalar a tres dedos.
+**Orden:** primero **un dedo + un servo + la cámara de punta a punta**. Después escalar a los cinco dedos.
 
 ### Riesgos
 
 - **La mecánica es lo más difícil:** fricción del hilo, anclajes que se sueltan, guante que se corre. Probar con un solo dedo lo antes posible.
-- **Servos:** dependen de lo que haya en MLH y de que den el MG90S. El SF3218MG (1 unidad en el sitio) es el último recurso, con carrete chico y límite de corriente bajo.
+- **Servos:** ya los tenemos (SG92R, MG90S, 2× S51 y uno negro sin identificar). Falta medir el negro y confirmar que los 5 entran en sus alojamientos.
+- **Recorrido del hilo:** 31 mm por media vuelta puede no alcanzar para un puño completo. Medir con un dedo antes de imprimir los carretes definitivos.
 - **Cámara con dedos tapados:** probar la posición de la webcam temprano.
 - Si la mecánica falla, la mano virtual con la cámara sigue siendo una demo que funciona sola.
