@@ -1,13 +1,12 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import {
+  Button,
   ButtonLink,
-  Card,
-  Grid,
-  Stack,
-  Inline,
   PageHeader,
   Select,
   Checkbox,
+  StatusDot,
+  type StatusTone,
 } from '../../design-system';
 import { useStore } from 'zustand';
 import { useGlove, useGloveTelemetry } from '../../glove';
@@ -15,10 +14,9 @@ import { useVision, useVisionFrame } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
 import { useRuntime, RuntimeDiagnostics } from '../../runtime';
 import {
-  BigButton,
   BrowserSupportBanner,
-  GloveChip,
-  CameraChip,
+  Readouts,
+  Section,
   percent,
   title,
 } from '../../components/common';
@@ -35,6 +33,7 @@ export default function Setup() {
   const confidence = useVisionFrame((f) =>
     f ? Math.round(f.confidence * 100) : null,
   );
+  const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
   const handedness = useVisionFrame((f) => f?.handedness);
   const [info, setInfo] = useState<GloveInfo | null>(null),
     [error, setError] = useState(''),
@@ -83,37 +82,74 @@ export default function Setup() {
     });
     setDevices(await navigator.mediaDevices.enumerateDevices());
   }
+  const connected = connection === 'connected';
+  const fault = connected && tel?.st === 'fault';
+  const gloveTone: StatusTone = fault
+    ? 'danger'
+    : connected
+      ? 'reached'
+      : connection === 'connecting'
+        ? 'neutral'
+        : 'off';
+  const cameraTone: StatusTone = !cameraRunning
+    ? 'off'
+    : seen
+      ? 'reached'
+      : 'caution';
+  const limit =
+    info?.limit ?? runtime.calibration.current?.current_limit_ma ?? 900;
+  const simulated = glove.client.kind === 'sim';
   return (
-    <Stack as="section" gap={24}>
+    <div className="hp-page">
       <PageHeader
         title="Connect glove and camera"
-        lead="Set up your glove and camera before practice."
+        lead="Both need to be ready before calibration and practice."
       />
       <BrowserSupportBanner />
-      {error && <p role="alert">{error}</p>}
-      <Grid columns={2}>
-        <Card className="live-stack">
-          <h2>
-            {connection === 'connected'
-              ? tel?.st === 'fault'
-                ? 'Glove stopped'
-                : 'Glove ready'
-              : connection === 'connecting'
-                ? 'Connecting glove…'
-                : 'Glove not connected'}
-          </h2>
-          <GloveChip />
-          <p>
-            {connection === 'connected'
-              ? tel?.st === 'fault'
+      {error && (
+        <p role="alert" className="hp-alert">
+          {error}
+        </p>
+      )}
+      <div className="hp-columns">
+        <Section
+          labelledBy="setup-glove"
+          title={
+            <>
+              <StatusDot tone={gloveTone} />
+              {connected
+                ? fault
+                  ? 'Glove stopped'
+                  : 'Glove ready'
+                : connection === 'connecting'
+                  ? 'Connecting glove…'
+                  : 'Glove not connected'}
+            </>
+          }
+          description={
+            connected
+              ? fault
                 ? 'Release the glove and check it before continuing.'
-                : 'Your glove is connected and ready for setup.'
+                : `Connected${simulated ? ' to the simulator' : ' over USB'}.`
               : connection === 'connecting'
-                ? 'Connecting to your glove…'
-                : 'Click Connect and pick the USB device.'}
-          </p>
-          <Inline>
-            <BigButton
+                ? 'Waiting for the glove to answer.'
+                : 'Plug in the glove, choose Connect, then pick the USB device.'
+          }
+        >
+          <Readouts
+            label="Glove readings"
+            items={[
+              {
+                label: 'Current',
+                value: tel ? Math.round(tel.ma) : '—',
+                unit: 'mA',
+              },
+              { label: 'Limit', value: limit, unit: 'mA' },
+              { label: 'State', value: tel?.st ? title(tel.st) : '—' },
+            ]}
+          />
+          <div className="hp-actions">
+            <Button
               disabled={busy}
               onClick={() =>
                 void action(async () => {
@@ -127,58 +163,56 @@ export default function Setup() {
                 })
               }
             >
-              {connection === 'connected' ? 'Reconnect glove' : 'Connect glove'}
-            </BigButton>
-            <BigButton
-              onClick={() => void action(() => glove.client.disconnect())}
-            >
-              Disconnect
-            </BigButton>
-            <BigButton onClick={() => glove.client.release()}>
-              Release glove
-            </BigButton>
-            <BigButton
-              disabled={
-                !runtime.calibration.current || connection !== 'connected'
-              }
-              onClick={() =>
-                void action(() => runtime.calibration.sendToGlove())
-              }
-            >
-              Send calibration
-            </BigButton>
-          </Inline>
-          <details>
-            <summary>Glove diagnostics</summary>
-            <p>
-              State: {tel?.st ?? 'Waiting'} · Mode: {tel?.md ?? '—'}
-            </p>
-            {info && (
-              <p>
-                Firmware: {info.fw} · Limit: {info.limit} mA ·{' '}
-                {info.calib.filter(Boolean).length} calibrated fingers
-              </p>
+              {connected ? 'Reconnect glove' : 'Connect glove'}
+            </Button>
+            {connected && (
+              <Button
+                variant="quiet"
+                onClick={() => void action(() => glove.client.disconnect())}
+              >
+                Disconnect
+              </Button>
             )}
-            {['thumb', 'index', 'middle'].map((f, i) => (
-              <p key={f}>
-                {title(f)}: {percent(tel?.a[i])} / target{' '}
-                {percent(tel?.tg?.[i])}
-              </p>
-            ))}
-            <p>
-              Current: {tel ? Math.round(tel.ma) : '—'} mA · Limit:{' '}
-              {info?.limit ??
-                runtime.calibration.current?.current_limit_ma ??
-                900}{' '}
-              mA
-            </p>
+            <Button variant="quiet" onClick={() => glove.client.release()}>
+              Release glove
+            </Button>
+          </div>
+          <details className="hp-disclosure">
+            <summary>Glove diagnostics</summary>
+            <dl>
+              <dt>Mode</dt>
+              <dd>{tel?.md ?? '—'}</dd>
+              {info && (
+                <>
+                  <dt>Firmware</dt>
+                  <dd>
+                    {info.fw} · {info.calib.filter(Boolean).length} calibrated
+                    fingers
+                  </dd>
+                </>
+              )}
+              {['thumb', 'index', 'middle'].map((f, i) => (
+                <Fragment key={f}>
+                  <dt>{title(f)}</dt>
+                  <dd>
+                    {percent(tel?.a[i])} · target {percent(tel?.tg?.[i])}
+                  </dd>
+                </Fragment>
+              ))}
+              <dt>Telemetry age</dt>
+              <dd>
+                {tel
+                  ? `${Math.round(Math.max(0, performance.now() - tel.t))} ms`
+                  : '—'}
+              </dd>
+            </dl>
             <svg
               viewBox="0 0 500 100"
               role="img"
               aria-label="Current over the last ten seconds"
             >
               <path
-                d={`M0 ${100 - (info?.limit ?? runtime.calibration.current?.current_limit_ma ?? 900) / 14}H500`}
+                d={`M0 ${100 - limit / 14}H500`}
                 stroke="var(--target)"
                 strokeDasharray="4 4"
               />
@@ -190,28 +224,58 @@ export default function Setup() {
                 stroke="var(--text)"
               />
             </svg>
-            <p>
-              Telemetry age:{' '}
-              {tel
-                ? `${Math.round(Math.max(0, performance.now() - tel.t))} ms`
-                : '—'}
-            </p>
-            <ul>
-              {events.slice(-10).map((e, i) => (
-                <li key={i}>
-                  {e.e} {e.ma != null ? `${Math.round(e.ma)} mA` : ''}
-                </li>
-              ))}
-            </ul>
+            {events.length > 0 && (
+              <ul aria-label="Recent glove events">
+                {events.slice(-10).map((e, i) => (
+                  <li key={i}>
+                    {e.e} {e.ma != null ? `${Math.round(e.ma)} mA` : ''}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Button
+              size="sm"
+              disabled={!runtime.calibration.current || !connected}
+              onClick={() =>
+                void action(() => runtime.calibration.sendToGlove())
+              }
+            >
+              Send calibration
+            </Button>
           </details>
-        </Card>
-        <Card className="live-stack">
-          <h2>Camera</h2>
-          <CameraChip />
-          <p>
-            Confidence: {confidence == null ? '—' : `${confidence}%`} · Hand:{' '}
-            {handedness ?? 'Not seen'}
-          </p>
+        </Section>
+        <Section
+          labelledBy="setup-camera"
+          title={
+            <>
+              <StatusDot tone={cameraTone} />
+              {!cameraRunning
+                ? 'Camera off'
+                : seen
+                  ? 'Camera sees the hand'
+                  : "Camera can't see the hand"}
+            </>
+          }
+          description={
+            cameraRunning
+              ? 'Keep the whole hand inside the frame.'
+              : 'Choose a camera, then connect it.'
+          }
+        >
+          <Readouts
+            label="Camera readings"
+            items={[
+              {
+                label: 'Confidence',
+                value: confidence ?? '—',
+                unit: confidence == null ? undefined : '%',
+              },
+              {
+                label: 'Hand',
+                value: handedness ? title(handedness) : 'Not seen',
+              },
+            ]}
+          />
           <Select
             label="Camera device"
             value={deviceId}
@@ -226,95 +290,118 @@ export default function Setup() {
                 </option>
               ))}
           </Select>
-          {!cameraRunning && (
-            <BigButton disabled={busy} onClick={() => void action(camera)}>
-              Connect camera
-            </BigButton>
-          )}
-          <Checkbox
-            label="Mirror preview"
-            checked={mirror}
-            onChange={(e) => setMirror(e.target.checked)}
-          />
           <CameraOverlay mirrored={mirror} />
-          {cameraRunning && (
-            <BigButton onClick={() => vision.stop()}>Stop camera</BigButton>
-          )}
-        </Card>
-      </Grid>
-      <Card tone="demo" title="Simulator" className="live-stack">
-        <p>Practice without hardware. Simulated readings are estimates.</p>
-        <BigButton
-          disabled={busy}
-          onClick={() =>
-            void action(async () => {
-              await runtime.sources.setGlove('sim');
-              await glove.setKind('sim');
-              await runtime.sources.setVision('sim');
-              await vision.setKind('sim');
-              vision.setCalibration(
-                runtime.calibration.current?.camera ?? null,
-              );
-              setInfo(await glove.client.connect());
-              await vision.start({ affectedHand: 'right' });
-            })
-          }
-        >
-          Use simulator
-        </BigButton>
-        {glove.client.kind === 'sim' && (
-          <div className="live-stack">
-            <Select
-              label="Patient preset"
-              value={glove.world.patient.preset}
-              onChange={(e) => {
-                glove.world.controls.setPreset(e.target.value as PatientPreset);
-                refreshControls((n) => n + 1);
-              }}
-            >
-              <option value="mild">Mild</option>
-              <option value="moderate">Moderate</option>
-              <option value="severe">Severe</option>
-            </Select>
-            <Checkbox
-              label="Rigid index"
-              checked={glove.world.patient.rigid.index}
-              onChange={(e) => {
-                glove.world.controls.setRigid('index', e.target.checked);
-                refreshControls((n) => n + 1);
-              }}
-            />
-            <Inline>
-              <BigButton onClick={() => glove.world.controls.pressStop()}>
-                Press STOP
-              </BigButton>
-              <BigButton onClick={() => glove.world.controls.releaseStop()}>
-                Release STOP
-              </BigButton>
-              <BigButton onClick={() => glove.world.controls.unplug()}>
-                Unplug USB
-              </BigButton>
-              <BigButton
-                disabled={vision.source !== glove.world.vision}
-                onClick={() => glove.world.controls.handOutOfFrame(5000)}
-              >
-                Hand out of frame
-              </BigButton>
-            </Inline>
-            {vision.source !== glove.world.vision && (
-              <p className="muted">
-                Camera fault controls need the shared simulator connection.
-              </p>
+          <div className="hp-actions hp-actions--between">
+            {cameraRunning ? (
+              <Button variant="quiet" onClick={() => vision.stop()}>
+                Stop camera
+              </Button>
+            ) : (
+              <Button disabled={busy} onClick={() => void action(camera)}>
+                Connect camera
+              </Button>
             )}
+            <Checkbox
+              label="Mirror preview"
+              checked={mirror}
+              onChange={(e) => setMirror(e.target.checked)}
+            />
           </div>
+        </Section>
+      </div>
+      <Section
+        title={<span className="hp-label">Simulator</span>}
+        description="Practice without hardware. Simulated readings are estimates."
+        actions={
+          <Button
+            variant="quiet"
+            disabled={busy}
+            onClick={() =>
+              void action(async () => {
+                await runtime.sources.setGlove('sim');
+                await glove.setKind('sim');
+                await runtime.sources.setVision('sim');
+                await vision.setKind('sim');
+                vision.setCalibration(
+                  runtime.calibration.current?.camera ?? null,
+                );
+                setInfo(await glove.client.connect());
+                await vision.start({ affectedHand: 'right' });
+              })
+            }
+          >
+            Use simulator
+          </Button>
+        }
+      >
+        {simulated && (
+          <details className="hp-disclosure">
+            <summary>Simulated patient and faults</summary>
+            <div className="hp-stack">
+              <Select
+                label="Patient preset"
+                value={glove.world.patient.preset}
+                onChange={(e) => {
+                  glove.world.controls.setPreset(
+                    e.target.value as PatientPreset,
+                  );
+                  refreshControls((n) => n + 1);
+                }}
+              >
+                <option value="mild">Mild</option>
+                <option value="moderate">Moderate</option>
+                <option value="severe">Severe</option>
+              </Select>
+              <Checkbox
+                label="Rigid index"
+                checked={glove.world.patient.rigid.index}
+                onChange={(e) => {
+                  glove.world.controls.setRigid('index', e.target.checked);
+                  refreshControls((n) => n + 1);
+                }}
+              />
+              <div className="hp-actions">
+                <Button
+                  size="sm"
+                  onClick={() => glove.world.controls.pressStop()}
+                >
+                  Press STOP
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => glove.world.controls.releaseStop()}
+                >
+                  Release STOP
+                </Button>
+                <Button size="sm" onClick={() => glove.world.controls.unplug()}>
+                  Unplug USB
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={vision.source !== glove.world.vision}
+                  onClick={() => glove.world.controls.handOutOfFrame(5000)}
+                >
+                  Hand out of frame
+                </Button>
+              </div>
+              {vision.source !== glove.world.vision && (
+                <p className="hp-note">
+                  Camera fault controls need the shared simulator connection.
+                </p>
+              )}
+            </div>
+          </details>
         )}
-      </Card>
-      <RuntimeDiagnostics />
-      <Inline justify="end">
+        <details className="hp-disclosure hp-plain">
+          <summary>System diagnostics</summary>
+          <RuntimeDiagnostics />
+        </details>
+      </Section>
+      <div className="hp-actions hp-actions--end">
         <ButtonLink variant="primary" to="/calibrate">
           Continue to calibration
         </ButtonLink>
-      </Inline>
-    </Stack>
+      </div>
+    </div>
   );
 }
