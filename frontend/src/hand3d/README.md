@@ -18,13 +18,23 @@ or unreliable. Do not put vision frames in React state for this component.
 recognized from their angles for the accessible name. The camera shows the back
 of the palm-down hand from a front diagonal on the thumb side, mirrored for
 the left hand (`view.ts`).
-Custom targets receive a generic accessible name. `reducedMotion` can additionally
+Framing fits the canvas to 80% of the projected motion envelope for the pose
+family. It includes open-to-target intermediate positions, both actual and ghost
+mesh bounds, and the outline. A family keeps one center and scale across poses;
+closed poses therefore naturally occupy less height than an open hand. Width
+limits the fit in narrow canvases. Resizing reframes outside the animation loop.
+Existing `zoom` callers remain valid; automatic fitting takes precedence unless
+`fit={false}` selects manual zoom. `keepTargetOnReach` defaults to false and lets
+the developer comparison retain the ghost beside reached fingers.
+
+Custom targets receive a generic accessible name; their framing uses the tendon
+family envelope. Custom poses beyond that envelope can use manual zoom. `reducedMotion` can additionally
 disable animation; it cannot override an OS reduced-motion preference.
 `onFps` receives a rolling one-second frame-rate measurement for diagnostics.
 
 `createHandRig` builds transforms without GPU resources. `applyJoints` accepts
 that rig, a joint map in degrees, and an optional interpolation alpha (default 1).
-Live rendering uses quaternion slerp with alpha 0.5. +Y points toward fingertips;
+Live rendering uses a frame-rate-independent smoother and quaternion slerp. +Y points toward fingertips;
 +Z is the palm side. Left hands reflect X at the root, preserving joint axes.
 The thumb has a metacarpal opposition transform, MCP, and IP; the contract's
 `thumb.pip` drives IP and `thumb.dip` is ignored. Palm and segment dimensions live
@@ -35,8 +45,9 @@ scored target, its render angles are scaled to reproduce that shape at the targe
 closure. Free fingers and open targets use the generic closing shape. This is a
 visual estimate, not measured per-joint motion or an actuator command.
 
-The target is a 1.03× translucent matte shell with a contour; the actual hand is
-solid clay. All five fingers receive individual state tint. Entering reached
+The target is a 1.03× unlit shell at 35% opacity with a soft contour; the
+actual hand is shaded clay. Target meshes draw first, so overlapping ghost
+fill never washes out actual state colors (90% tint). All five fingers receive individual state tint. Entering reached
 starts one 400 ms rim-light pulse and fades the ghost for the hold. Returning to a
 non-reached state restores the ghost. Missing tracking retains the last joint
 pose and fades the actual hand to 30%. OS reduced motion makes all state and
@@ -64,6 +75,20 @@ React internals and caller-supplied getters are outside this allocation review.
 The opt-in performance test uses a live synthetic Chromium camera capture and a
 30 Hz stub, a fixed 10-second warm-up, then ten one-second FPS samples. It records
 its renderer, capture settings, actual stub rate, and samples in the gallery's
-`evidence/performance.json`. It does not run MediaPipe inference. A physical
+`docs/design/screenshots/ux-u2/performance.json`. It does not run MediaPipe inference. A physical
 camera check on the integration laptop remains necessary; the software-rendered
 browser environment is not a substitute for that hardware check.
+
+## U2 review gallery
+
+At `/_dev/hand`, enable **Compare states** to see idle, active, assist and
+reached side by side for any of the six pose buttons. **Grayscale** applies to
+the hand views, leaving readable state labels. Only four comparison canvases are
+mounted at once to avoid exhausting browser WebGL contexts. Reached previews
+retain their targets for comparison; the live view still fades the target on hold.
+
+U2 color/grayscale screenshots at 1280×720 and 1440×900, live before/after,
+and the latest performance report are in `docs/design/screenshots/ux-u2/`.
+Use `REHAB_FRONTEND_PORT=5192` with the gallery Playwright config when another
+worker is using port 5173. Performance evidence uses a synthetic camera;
+physical camera + MediaPipe verification remains an integration check.
