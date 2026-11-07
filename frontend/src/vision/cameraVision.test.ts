@@ -154,6 +154,66 @@ describe('CameraVision lifecycle', () => {
     expect(callbacks.size).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
   });
+  it('offers raw landmarks for recordings, including empty results, without changing normal frames', async () => {
+    const listener = vi.fn();
+    const unsubscribe = source.onLandmarks(listener);
+    await source.start({ affectedHand: 'left' });
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(34);
+    expect(listener).toHaveBeenLastCalledWith({
+      t: expect.any(Number),
+      result,
+    });
+    expect(source.latest()?.handedness).toBe('left');
+    const empty = {
+      landmarks: [],
+      worldLandmarks: [],
+      handedness: [],
+      handednesses: [],
+    };
+    detect.mockReturnValueOnce(empty);
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(68);
+    expect(listener).toHaveBeenLastCalledWith({
+      t: expect.any(Number),
+      result: empty,
+    });
+    expect(source.latest()?.detected).toBe(false);
+    unsubscribe();
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(102);
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+  it('applies a newly loaded affected-hand calibration to an already running camera', async () => {
+    await source.start({ affectedHand: 'right' });
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(34);
+    expect(source.latest()?.handedness).toBe('right');
+    source.setCalibration({
+      affected_hand: 'left',
+      open_flex: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
+      closed_flex: {
+        thumb: 100,
+        index: 200,
+        middle: 200,
+        ring: 200,
+        pinky: 200,
+      },
+      pinch_open: 1,
+      pinch_closed: 0.1,
+    });
+    expect(source.latest()?.detected).toBe(false);
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(68);
+    expect(source.latest()?.handedness).toBe('left');
+    expect(Object.keys(source.latest()!.closure!)).toEqual([
+      'thumb',
+      'index',
+      'middle',
+      'ring',
+      'pinky',
+    ]);
+  });
   it('falls back to CPU if GPU initialization fails', async () => {
     mp.create.mockRejectedValueOnce(new Error('No WebGL'));
     await source.start({ affectedHand: 'left' });

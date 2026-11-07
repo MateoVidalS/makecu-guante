@@ -4,7 +4,9 @@ export interface HandCategory {
   categoryName: string;
   score: number;
 }
-/** Mirror changes labels only, not geometry or the preview. Never borrow the other hand when two are visible. */
+/** A lone hand is the configured affected hand in the non-selfie, thumb-side view.
+ * Mirror only disambiguates labels when multiple hands are visible.
+ */
 export function selectHand(
   hands: HandCategory[][],
   affected: Handedness,
@@ -15,11 +17,18 @@ export function selectHand(
       const category = [...categories].sort((a, b) => b.score - a.score)[0];
       const label = category?.categoryName.toLowerCase();
       if (
-        (label !== 'left' && label !== 'right') ||
+        !category ||
         !Number.isFinite(category.score) ||
         category.score < VISION_LOW_CONFIDENCE
       )
         return null;
+      if (hands.length === 1)
+        return {
+          index,
+          handedness: affected,
+          score: Math.min(1, category.score),
+        };
+      if (label !== 'left' && label !== 'right') return null;
       const handedness: Handedness = mirror
         ? label === 'left'
           ? 'right'
@@ -30,7 +39,7 @@ export function selectHand(
     .filter((candidate) => candidate !== null);
   return (
     candidates
-      .filter((c) => hands.length === 1 || c.handedness === affected)
+      .filter((c) => c.handedness === affected)
       .sort((a, b) => b.score - a.score)[0] ?? null
   );
 }
