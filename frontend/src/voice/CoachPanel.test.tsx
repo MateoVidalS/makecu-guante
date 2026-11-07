@@ -25,7 +25,6 @@ it.each([
     render(<CoachPanel />);
     const microphone = screen.getByRole('switch', {
       name: 'Microphone',
-      exact: true,
     });
     expect(microphone.getAttribute('aria-checked')).toBe(String(checked));
     expect((microphone as HTMLButtonElement).disabled).toBe(disabled);
