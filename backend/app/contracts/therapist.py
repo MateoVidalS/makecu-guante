@@ -27,12 +27,16 @@ Finite = Annotated[float, Field(allow_inf_nan=False)]
 
 
 class TherapyLimits(ContractModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
     assist_speed: tuple[Literal[0.1], Literal[0.3]] = (0.1, 0.3)
     assist_step: Literal[0.05] = 0.05
     attempt_s: tuple[Literal[4], Literal[9]] = (4, 9)
     rest_add_max_s: Literal[20] = 20
     rest_total_max_s: Literal[60] = 60
     pain_brake_at: Literal[4] = 4
+
+
+THERAPY_LIMITS = TherapyLimits()
 
 
 class TherapyAdjustments(ContractModel):
