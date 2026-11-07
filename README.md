@@ -149,7 +149,7 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 
 ## 4. Software
 
-> Esta sección es la **especificación** del software. Está pensada para que otro agente (o integrante) arme el plan de implementación a partir de acá: qué tiene que hacer el sistema, sus partes, las interfaces entre ellas y cómo se valida. No fija la implementación.
+> **Estado: implementado.** Esta sección era la especificación; el plan detallado está en [`docs/plan/`](docs/plan/README.md) y el código en `firmware/`, `frontend/` y `backend/`. Cómo correrlo y qué falta: [4.12](#412-cómo-correrlo) y [4.13](#413-estado-y-pendientes).
 
 ### 4.1 Objetivo
 
@@ -258,8 +258,10 @@ Máquina de estados por intento:
 
 ### 4.8 Voz y Gemini
 
-- **Tiempo real** ("bien", "un poco más", "paramos acá"): frases fijas con la Web Speech API. Sin LLM: tiene demasiada latencia.
-- **Entre intentos y al final de la sesión:** Gemini recibe un resumen estructurado de las métricas (no video ni datos crudos) y devuelve una frase para el paciente o un resumen para el terapeuta.
+- **Coach de voz con Gemini Live:** da la instrucción de cada posición, alienta, comenta cada intento y entiende comandos ("pausa", "seguí", "cómo voy", "basta"). La clave nunca llega al navegador: el backend entrega un token temporal.
+- **Seguridad sin red:** sobrecorriente, STOP, desconexión o cámara perdida se anuncian al instante con frases fijas locales (Web Speech) y un tono, sin esperar a Gemini.
+- **Sin clave de Gemini:** la voz usa solo frases fijas.
+- **Al final de la sesión:** Gemini recibe un resumen estructurado de las métricas (no video ni datos crudos) y devuelve una frase para el paciente o un resumen para el terapeuta.
 - **Resumen semanal para el terapeuta:** texto + los gráficos del dashboard.
 - Todo lo que dice Gemini se presenta como acompañamiento, no como indicación médica.
 
@@ -276,13 +278,44 @@ Por sesión: paciente (seudónimo), fecha, calibración, modo. Por intento: posi
 5. Desconectar el USB afloja el guante en 1 s como máximo (watchdog).
 6. Una sesión completa (5 posiciones × 3 intentos) queda registrada y genera un resumen de Gemini.
 
-### 4.11 Decisiones abiertas (para quien haga el plan)
+### 4.11 Decisiones tomadas
 
-- Framework de la app (vanilla + Vite, React, etc.).
-- Proxy de Gemini: servidor local mínimo vs. otra solución.
-- IndexedDB vs. archivos JSON para el registro.
-- Filtro de suavizado y umbrales exactos de "llegó a la posición".
-- Si se usa Zelos para ver la telemetría durante el desarrollo.
+| Tema | Decisión |
+|---|---|
+| App | React + Vite + TypeScript. En el navegador corren la visión (MediaPipe), el puente serie (Web Serial), el motor de sesión, la mano virtual (three.js) y la voz |
+| Servidor | FastAPI + SQLite local: guarda sesiones, intentos, calibraciones y evaluaciones; agrega el historial; exporta JSON/CSV; habla con Gemini |
+| Registro | SQLite en el servidor local (sobrevive a borrar el navegador) |
+| Suavizado | Filtro One Euro sobre cada ángulo de articulación + amortiguado independiente de los fps en la mano 3D |
+| "Llegó a la posición" | Todos los dedos a ±10% del objetivo durante 0,5 s; si no llega en 6 s o se estanca, asiste el guante |
+| Simulador | Guante, paciente y cámara simulados que respetan las reglas del firmware: todo funciona sin hardware |
+| Diseño | Sistema de diseño propio (`frontend/src/design-system/`, galería en `/_dev/design`), tonos claros |
+| Zelos | Opcional, no integrado |
+
+### 4.12 Cómo correrlo
+
+Requisitos: Chrome o Edge (Web Serial), Node ≥ 20 con pnpm, Python ≥ 3.11 con uv, PlatformIO para el firmware.
+
+```bash
+make setup          # instala backend, frontend y firmware
+make dev-sim        # todo simulado (guante + cámara) → http://localhost:5173
+make dev-camera     # webcam real + guante simulado: para probar la detección
+make dev            # guante real por USB + webcam real
+make demo-seed      # carga sesiones de demo (marcadas como demo)
+make test           # backend + frontend + tests del firmware
+make e2e            # recorrido completo en el navegador con el simulador
+make fw-build       # compila el firmware; make fw-flash lo sube a la ESP32
+```
+
+**API keys:** solo hace falta `GEMINI_API_KEY` en `backend/.env` (copiar `backend/.env.example`), de Google AI Studio. Habilita el coach de voz (Gemini Live, modelo `gemini-3.8-live`) y los resúmenes. Sin ella todo funciona con voz de frases fijas. MediaPipe, Web Serial y la base de datos no necesitan claves.
+
+Guías: [`docs/DEMO.md`](docs/DEMO.md) (guion de la demo), [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md) y [`firmware/BENCH.md`](firmware/BENCH.md) (puesta en marcha del hardware), [`docs/design/DESIGN_SYSTEM.md`](docs/design/DESIGN_SYSTEM.md).
+
+### 4.13 Estado y pendientes
+
+- **Hecho:** firmware con todas las reglas de seguridad, app completa (calibración, ejercicio, evaluación, historial, vista del médico), coach de voz, resúmenes y simulador. Tests: backend 60, frontend 318, firmware 32 y 12 recorridos e2e, todos en verde.
+- **Antes de poner una mano en el guante:** correr [`firmware/BENCH.md`](firmware/BENCH.md) en la placa real.
+- **Pendiente: 5 dedos.** El hardware pasó a 5 servos (pulgar, índice, medio, anular y meñique, pines 25/26/27/13/4, fuente de 2,5 A). El software todavía mueve y mide **3 dedos** (pulgar, índice y medio). Hay que extender el protocolo, el firmware, el motor y la UI.
+- **Sin probar con hardware real:** la visión se ajustó con datos sintéticos (calibrar con la webcam y el ángulo reales) y el coach de Gemini Live nunca corrió con una clave real.
 
 ---
 
