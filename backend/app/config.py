@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     gemini_live_model: str = "gemini-3.8-live"
     gemini_live_voice: str = "Puck"
     gemini_text_model: str = "gemini-3.8-flash"
+    gemini_text_fallback_models: str = "gemini-3.5-flash"
     rehab_db_path: str = "data/rehab.db"
     rehab_port: int = 8000
 
