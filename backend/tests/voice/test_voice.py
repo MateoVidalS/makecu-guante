@@ -110,6 +110,8 @@ def test_real_sdk_serializes_locked_configuration(client, monkeypatch):
     assert payload["uses"] == 1
     setup = payload["bidiGenerateContentSetup"]
     assert setup["model"] == f"models/{gemini_live.CURRENT_MODEL}"
+    # Extended-thinking Live models reject a session without an explicit thinking level.
+    assert setup["generationConfig"]["thinkingConfig"]["thinking_level"] == "MEDIUM"
     assert setup["generationConfig"]["responseModalities"] == ["AUDIO"]
     assert setup["tools"][0]["functionDeclarations"][0]["name"] == "pause_session"
     assert "fieldMask" not in payload
