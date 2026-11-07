@@ -100,6 +100,7 @@ export class RehabRuntime implements Runtime {
   private evaluationLimit = 600;
   private retryAt = 0;
   private pendingEvents: GloveEvent[] = [];
+  private beforeRelease: GloveTelemetry | null = null;
   private readonly clock: () => number;
   constructor(private readonly options: RuntimeOptions) {
     this.clock =
@@ -395,7 +396,12 @@ export class RehabRuntime implements Runtime {
       const input = {
         now: this.clock(),
         vision: this.options.vision.latest,
-        tel: this.options.glove.client.latest(),
+        // A camera tick may precede the first telemetry confirming release. Never
+        // re-pause on the old fault frame or treat it as permission for movement.
+        tel:
+          this.options.glove.client.latest() === this.beforeRelease
+            ? null
+            : this.options.glove.client.latest(),
         gloveEvents: [...this.pendingEvents.splice(0), ...events],
         gloveConnected: this.options.glove.client.connection() === 'connected',
       };
@@ -429,6 +435,7 @@ export class RehabRuntime implements Runtime {
         else client.follow(command.f);
       } else if (command.t === 'release') {
         this.echo = null;
+        this.beforeRelease = client.latest();
         client.release();
       } else client.limit(command.ma);
     }

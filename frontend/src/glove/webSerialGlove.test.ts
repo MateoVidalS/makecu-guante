@@ -229,6 +229,7 @@ describe('Web Serial connection lifecycle', () => {
     const { client, port } = setup();
     clients.push(client);
     await client.connect();
+    const oldController = port.controller;
     const cancel = vi
       .spyOn(ReadableStreamDefaultReader.prototype, 'cancel')
       .mockImplementation(() => new Promise<void>(() => {}));
@@ -238,7 +239,15 @@ describe('Web Serial connection lifecycle', () => {
     expect(client.connection()).toBe('disconnected');
     expect(port.closes).toBe(1);
     cancel.mockRestore();
-    port.controller.close();
+    await client.connect();
+    oldController.enqueue(
+      new TextEncoder().encode(
+        '{"t":"tel","ms":0,"a":[1,1,1],"ma":900,"st":"fault","md":"none","tg":[0,0,0]}\n',
+      ),
+    );
+    await flush();
+    expect(client.latest()).toBeNull();
+    oldController.close();
   });
   it('disconnect rejects new motion while draining and a concurrent reconnect waits for cleanup', async () => {
     const { client, port } = setup();

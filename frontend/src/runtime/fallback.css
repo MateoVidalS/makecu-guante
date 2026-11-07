@@ -1,11 +1,14 @@
-.runtime-fallback {
+.runtime-fallback,
+.runtime-simulator {
   position: relative;
   font-size: var(--small);
 }
 .runtime-fallback summary {
   cursor: pointer;
+  white-space: nowrap;
 }
-.runtime-fallback__panel {
+.runtime-fallback__panel,
+.runtime-simulator__panel {
   position: absolute;
   inset-block-start: 100%;
   inset-inline-end: 0;
@@ -16,5 +19,11 @@
   border: var(--control-border) solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
+  color: var(--text);
   box-shadow: var(--elevation-overlay);
+}
+
+.runtime-simulator__panel {
+  inset-block-start: auto;
+  inset-block-end: 100%;
 }

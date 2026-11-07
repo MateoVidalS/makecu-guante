@@ -29,7 +29,17 @@ function memoryStorage() {
     },
   };
 }
-async function harness() {
+// Transport doubles share the real simulator; this does not exercise physical hardware.
+function sourceKind<T extends object>(source: T, kind: string): T {
+  return new Proxy(source, {
+    get(target, key) {
+      if (key === 'kind') return kind;
+      const value = Reflect.get(target, key);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+}
+async function harness(stubHardware = false) {
   const calibration: Calibration = structuredClone(fixture);
   calibration.camera.closed_flex = {
     thumb: 100,
@@ -44,10 +54,17 @@ async function harness() {
     seed: 42,
     preset: 'moderate',
   });
-  const glove = createGloveController({ world, kind: 'sim' });
+  const glove = createGloveController({
+    world,
+    kind: stubHardware ? 'serial' : 'sim',
+    ...(stubHardware ? { serial: sourceKind(world.glove, 'serial') } : {}),
+  });
   const vision = createVisionController({
     simSource: world.vision,
-    initialKind: 'sim',
+    initialKind: stubHardware ? 'camera' : 'sim',
+    ...(stubHardware
+      ? { cameraSource: sourceKind(world.vision, 'camera') }
+      : {}),
   });
   const posts = {
     createSession: vi
@@ -68,8 +85,15 @@ async function harness() {
       ),
   };
   const storage = memoryStorage();
-  const runtime = new RehabRuntime({ glove, vision, api: posts, storage });
+  const runtime = new RehabRuntime({
+    glove,
+    vision,
+    api: posts,
+    storage,
+    now: world.timestamp,
+  });
   glove.mount();
+  if (stubHardware) await glove.client.connect();
   await vision.start();
   runtime.mount();
   await runtime.calibration.reload();
@@ -324,4 +348,48 @@ it('aborts an evaluation before fallback and does not restart a sweep', async ()
   expect(world.firmware.mode).toBe('none');
   await runtime.persistence.flush();
   expect(posts.createEvaluation.mock.lastCall?.[0].is_demo).toBe(true);
+});
+
+it('releases and replaces real-source transport doubles before starting a flagged demo run', async () => {
+  const { runtime, world, glove, vision, posts } = await harness(true);
+  expect(runtime.sources.glove).toBe('serial');
+  expect(runtime.sources.vision).toBe('camera');
+  await runtime.exercise.start(
+    [{ pose: 'full_fist', reps: 1 }],
+    DEFAULT_EXERCISE_SETTINGS,
+  );
+  until(world, () => runtime.exercise.view().phase === 'ATTEMPT');
+  const release = vi.spyOn(glove.client, 'release');
+  await runtime.sources.setGlove('sim');
+  expect(release).toHaveBeenCalled();
+  expect(glove.client).toBe(world.glove);
+  await runtime.sources.setVision('sim');
+  expect(vision.source).toBe(world.vision);
+  await runtime.persistence.flush();
+  expect(posts.createSession.mock.calls[0][0].is_demo).toBe(false);
+  expect(posts.endSession).toHaveBeenCalledTimes(1);
+  await runtime.exercise.start(
+    [{ pose: 'full_fist', reps: 1 }],
+    DEFAULT_EXERCISE_SETTINGS,
+  );
+  until(world, () => runtime.exercise.view().phase === 'DONE');
+  await runtime.persistence.flush();
+  expect(posts.createSession.mock.lastCall?.[0].is_demo).toBe(true);
+  expect(posts.endSession).toHaveBeenCalledTimes(2);
+});
+
+it('waits for fresh telemetry after Resume instead of reusing a pre-release fault frame', async () => {
+  const { runtime, world } = await harness();
+  await runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS);
+  until(world, () => runtime.exercise.view().phase === 'ATTEMPT');
+  world.controls.pressStop();
+  world.advance(100);
+  expect(world.glove.latest()?.st).toBe('fault');
+  world.controls.releaseStop();
+  runtime.exercise.resume();
+  runtime.tick(); // A vision callback can arrive before the next 50 Hz telemetry frame.
+  expect(runtime.exercise.view().phase).toBe('RELEASE');
+  expect(world.firmware.mode).toBe('none');
+  world.advance(1000);
+  expect(runtime.exercise.view().phase).toBe('REST');
 });

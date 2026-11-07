@@ -4,6 +4,8 @@ import { useGlove } from '../glove';
 import { useVision } from '../vision';
 import { GLOVE_FINGERS } from '../contracts/glove';
 import { useRuntime } from './RuntimeProvider';
+import { Button, Checkbox, Stack } from '../design-system';
+import './fallback.css';
 
 /** Simulator-only controls for the resistance demo; no hardware commands. */
 export function RuntimeSimulatorControls() {
@@ -11,22 +13,30 @@ export function RuntimeSimulatorControls() {
   const [, refresh] = useState(0);
   if (client.kind !== 'sim') return null;
   return (
-    <details className="card">
+    <details className="card runtime-simulator">
       <summary>Simulator controls</summary>
-      <label>
-        <input
-          type="checkbox"
+      <Stack className="runtime-simulator__panel" gap={8}>
+        <Checkbox
+          label="Rigid index"
           checked={world.patient.rigid.index}
           onChange={(event) => {
             world.controls.setRigid('index', event.target.checked);
             refresh((value) => value + 1);
           }}
         />
-        Rigid index
-      </label>
-      <button onClick={() => world.controls.handOutOfFrame(3000)}>
-        Hide simulated hand for 3 seconds
-      </button>
+        <Button onClick={() => world.controls.handOutOfFrame(3000)}>
+          Hide simulated hand for 3 seconds
+        </Button>
+        <Button variant="danger" onClick={() => world.controls.pressStop()}>
+          Press simulated STOP
+        </Button>
+        <Button onClick={() => world.controls.releaseStop()}>
+          Release simulated STOP
+        </Button>
+        <Button onClick={() => world.controls.unplug()}>
+          Unplug simulated glove
+        </Button>
+      </Stack>
     </details>
   );
 }
