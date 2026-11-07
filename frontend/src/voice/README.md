@@ -14,6 +14,13 @@ have 15-second deadlines. Periodic server GoAway messages reconnect with current
 pose, movement, previous-session and recent-event context. Context compression
 is enabled; reconnect starts a fresh model session rather than resuming a handle.
 
+Finger names are centralized in `fingerNames.ts` (and `finger_names.py` for the
+server prompt): thumb, index, middle, ring, little finger. Context pushes keep
+only unmet targets and fingers needing assistance; opening targets use lower
+closure as better. Attempt comparisons require the same pose and target, and
+missing measurements are never filled with zero. Start/reconnect and session
+recaps use compact summaries rather than raw five-finger JSON.
+
 Mic mute affects patient audio only. Simple voice uses local fixed phrases and
 session buttons; speech commands require Live coach. Off disables coaching.
 Local safety earcons, speech and captions remain armed in every mode, even before
@@ -33,6 +40,9 @@ configuration serialization, tool dispatch, safety event timing, cue scheduling,
 16 kHz capture from 44.1/48 kHz, 24 kHz playback/flush, transcript retries, and
 connection/fallback behavior. Backend tests exercise profile/previous-session
 context and transcript persistence against the merged WP5 storage APIs.
+The F6 prompt snapshot and naming tests live inside the owned backend voice
+directory. Run them explicitly with
+`cd backend && uv run pytest -q app/voice/test_prompt.py`.
 
 For the browser check, run `make dev-sim`, then from `frontend`:
 
