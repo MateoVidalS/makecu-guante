@@ -249,6 +249,17 @@ test('evaluation measures all friction before a selected patient subset and reus
     page.getByRole('button', { name: 'Stop evaluation', exact: true }),
   ).toHaveCount(1);
   await expect(page.locator('.app-progress')).not.toContainText('Pose');
+  await expect(
+    page.getByRole('button', { name: 'Release glove now', exact: true }),
+  ).toBeInViewport();
+  await expect(
+    page.getByText('Keep the glove empty and hanging freely.', { exact: true }),
+  ).toBeInViewport();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollHeight <= innerHeight,
+    ),
+  ).toBe(true);
   await page.screenshot({
     path:
       process.env.REHAB_SIMPLIFY_SCREENSHOTS === '1'
@@ -283,7 +294,16 @@ test('evaluation measures all friction before a selected patient subset and reus
     page.getByText('Evaluation stopped. Rest before trying again.'),
   ).toBeVisible();
   await expect(measure).toHaveCount(0);
-  await page.reload();
+  const saved = await page.evaluate(async () => {
+    const response = await fetch('/api/calibrations/latest');
+    return response.json();
+  });
+  expect(Object.keys(saved.friction)).toHaveLength(5);
+  expect(Date.now() - Date.parse(saved.created_at)).toBeLessThan(60_000);
+  await page.getByRole('link', { name: 'Doctor view', exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Evaluate movement', exact: true })
+    .click();
   await expect(
     page.getByText(
       'Recent glove friction saved. Put the glove on, then relax.',

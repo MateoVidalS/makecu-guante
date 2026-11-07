@@ -37,3 +37,14 @@
 .eval-friction h3 {
   margin: 0;
 }
+
+/* Keep the safety strip and live chart together in the focus viewport. */
+.eval-live {
+  gap: var(--space-12);
+}
+.eval-live .hp-chart {
+  height: 30vh;
+}
+.eval-live .ds-page-header {
+  margin-block-end: 0;
+}

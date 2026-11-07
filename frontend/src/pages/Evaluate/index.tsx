@@ -213,6 +213,9 @@ export default function Evaluate() {
   const selectedFingers = GLOVE_FINGERS.filter((f) => selected.includes(f));
   useSessionLeaveGuard('evaluation');
   const running = ['prepare', 'sweep', 'cooldown'].includes(view.stage);
+  useEffect(() => {
+    document.documentElement.scrollTop = 0;
+  }, [running]);
   const frictionReady = hasRecentFriction(runtime.calibration.current);
   function release() {
     client.release();
@@ -281,7 +284,7 @@ export default function Evaluate() {
       Math.max(0, activeFingers.indexOf(view.finger ?? activeFingers[0])) * 2 +
       (view.speed === 'fast' ? 2 : 1);
     return (
-      <div className="hp-page hp-live">
+      <div className="hp-page hp-live eval-live">
         <PageHeader
           title={
             measuringFriction
