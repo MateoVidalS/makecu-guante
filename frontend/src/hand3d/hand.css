@@ -58,3 +58,11 @@
   background: var(--hand);
   box-shadow: inset 0 0 0 var(--control-border) var(--border-strong);
 }
+.hand-legend__focus {
+  color: var(--text);
+  font-size: var(--small);
+  font-weight: 600;
+}
+.hand-legend__focus::before {
+  border: var(--focus-width) solid var(--text);
+}

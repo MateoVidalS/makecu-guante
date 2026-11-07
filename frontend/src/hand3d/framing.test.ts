@@ -62,6 +62,20 @@ describe('stable family framing', () => {
             ).toBeCloseTo(HAND_VIEW_FILL);
             // The same family always returns the same envelope and center.
             expect(handFamilyBounds(hand, pose.family)).toBe(bounds);
+            // Coach contours fit the reserved margin without reframing the pose.
+            for (const meshes of scene.focusMeshes)
+              for (const mesh of meshes) mesh.visible = true;
+            const focused = projectedHandBounds(root, camera);
+            for (const x of [focused.min.x, focused.max.x])
+              expect(
+                Math.abs(((x - fit.centerX) * fit.zoom) / (width / 2)),
+              ).toBeLessThan(1);
+            for (const y of [focused.min.y, focused.max.y])
+              expect(
+                Math.abs(((y - fit.centerY) * fit.zoom) / (height / 2)),
+              ).toBeLessThan(1);
+            for (const meshes of scene.focusMeshes)
+              for (const mesh of meshes) mesh.visible = false;
           }
         } finally {
           scene.dispose();

@@ -49,6 +49,16 @@ export function createHandScene(handedness: Handedness, palette: HandTheme) {
     toneMapped: false,
   });
   const materials = [palm, ...fingers, ghost, outline];
+  // A steady high-contrast contour keeps coach focus separate from state color.
+  const focusMaterial = new MeshBasicMaterial({
+    color: palette.text,
+    side: BackSide,
+    transparent: true,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  materials.push(focusMaterial);
+  const focusMeshes: Mesh[][] = FINGERS.map(() => []);
   function attach(
     parent: Group,
     geometry: (typeof geometries)[number],
@@ -89,6 +99,13 @@ export function createHandScene(handedness: Handedness, palette: HandTheme) {
         fingers[f],
         length / 2,
       );
+      const focus = new Mesh(geometry, focusMaterial);
+      focus.position.y = length / 2;
+      focus.scale.setScalar(1.18);
+      focus.renderOrder = 2;
+      focus.visible = false;
+      actual.fingers[finger].joints[i].add(focus);
+      focusMeshes[f].push(focus);
       attach(
         target.fingers[finger].joints[i],
         geometry,
@@ -106,6 +123,8 @@ export function createHandScene(handedness: Handedness, palette: HandTheme) {
     fingers,
     ghost,
     outline,
+    focusMaterial,
+    focusMeshes,
     dispose() {
       for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();

@@ -26,6 +26,8 @@ export interface VirtualHandProps {
   target: JointMap | null;
   actual: () => JointMap | null;
   state: (finger: FingerId) => FingerState;
+  /** A steady coach focus contour, independent of movement/assistance state. */
+  highlight?: FingerId | null;
   handedness?: Handedness;
   /** Manual orthographic zoom when fit is false. */
   zoom?: number;
@@ -59,6 +61,7 @@ function HandScene({
   zoom = 85,
   fit = true,
   keepTargetOnReach = false,
+  highlight = null,
   reducedMotion,
   pose,
   palette,
@@ -118,6 +121,7 @@ function HandScene({
       Boolean(reducedMotion),
       delta,
       keepTargetOnReach,
+      highlight,
     );
     if (animator.visibilityChanged) onVisibility(animator.visible);
     if (rim.current) rim.current.intensity = animator.rimIntensity;
@@ -192,7 +196,7 @@ export function VirtualHand(props: VirtualHandProps) {
     <div
       className="hand-view"
       role="img"
-      aria-label={`${label} Palm down, ${props.handedness ?? 'right'} hand.`}
+      aria-label={`${label} Palm down, ${props.handedness ?? 'right'} hand.${props.highlight ? ` Focus on your ${props.highlight}.` : ''}`}
       data-visible={visible}
     >
       <HandFallback>
@@ -226,6 +230,11 @@ export function VirtualHand(props: VirtualHandProps) {
       <div className="hand-legend" aria-hidden="true">
         <span className="hand-legend__target">Target</span>
         <span className="hand-legend__actual">You</span>
+        {props.highlight && (
+          <span className="hand-legend__focus">
+            Focus on your {props.highlight}
+          </span>
+        )}
       </div>
     </div>
   );

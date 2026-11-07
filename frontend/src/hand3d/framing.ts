@@ -17,7 +17,7 @@ export function projectedHandBounds(root: Group, camera: OrthographicCamera) {
   const bounds = new Box3();
   const point = new Vector3();
   root.traverse((object) => {
-    if (!(object instanceof Mesh)) return;
+    if (!(object instanceof Mesh) || !object.visible) return;
     object.geometry.computeBoundingBox();
     const box = object.geometry.boundingBox!;
     for (let corner = 0; corner < 8; corner++) {

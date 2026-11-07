@@ -92,3 +92,14 @@ and the latest performance report are in `docs/design/screenshots/ux-u2/`.
 Use `REHAB_FRONTEND_PORT=5192` with the gallery Playwright config when another
 worker is using port 5173. Performance evidence uses a synthetic camera;
 physical camera + MediaPipe verification remains an integration check.
+
+## Coach finger focus
+
+`highlight?: FingerId | null` defaults to null. A selected finger receives a
+steady high-contrast contour using the existing text token, plus full state tint
+when moving, assisted, or reached. Other fingers keep their normal state colors.
+The contour has no pulse or interpolation, including under reduced motion; it
+follows the actual hand's tracking-loss opacity. A visible “Focus on your …”
+legend and the hand's accessible name identify the selected finger. Clearing the
+prop removes the contour immediately. A4 can pass coach state directly without
+changing the actual/target getters or finger state callback.
