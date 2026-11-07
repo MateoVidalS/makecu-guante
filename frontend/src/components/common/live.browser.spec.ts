@@ -136,7 +136,7 @@ test('mock flows run end to end and remain readable in both themes', async ({
           .first()
           .evaluate((e) => parseFloat(getComputedStyle(e).fontSize)),
       ).toBeGreaterThanOrEqual(24);
-      for (const button of await page.locator('main button').all())
+      for (const button of await page.locator('main button:visible').all())
         expect(
           await button.evaluate((e) => e.getBoundingClientRect().height),
         ).toBeGreaterThanOrEqual(64);

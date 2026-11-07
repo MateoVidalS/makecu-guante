@@ -54,7 +54,10 @@ export default function Calibrate() {
   useEffect(() => {
     mounted.current = true;
     const unsub = client.onEvent((e) => {
-      if (e.e === 'calib_ok') setAck(true);
+      if (e.e === 'calib_ok') {
+        setAck(true);
+        setDraft((d) => (d.step === 0 ? { ...d, step: 1 } : d));
+      }
       if (
         ['overcurrent', 'stop_button', 'watchdog', 'ina_missing'].includes(e.e)
       ) {
@@ -134,11 +137,6 @@ export default function Calibrate() {
       const r = draft.servo[f]!;
       client.calib(i as 0 | 1 | 2, r.min_deg!, r.max_deg!);
     });
-    // WP0's scripted glove has no acknowledgement implementation.
-    if (client.kind === 'sim') {
-      setAck(true);
-      update({ step: 1 });
-    }
   }
   function captureRange(kind: 'open' | 'closed' | 'pinch') {
     if (client.connection() !== 'connected') {

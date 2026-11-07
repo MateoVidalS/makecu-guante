@@ -13,6 +13,7 @@ import {
   percent,
   title,
 } from '../../components/common';
+import type { PatientPreset } from '../../glove/sim/patient';
 import type { GloveInfo } from '../../contracts/glove';
 export default function Setup() {
   const glove = useGlove(),
@@ -32,6 +33,7 @@ export default function Setup() {
     [mirror, setMirror] = useState(true),
     [busy, setBusy] = useState(false);
   const [samples, setSamples] = useState<number[]>([]);
+  const [, refreshControls] = useState(0);
   useEffect(() => {
     let last = 0;
     return glove.client.onTelemetry((t) => {
@@ -83,7 +85,12 @@ export default function Setup() {
               disabled={busy}
               onClick={() =>
                 void action(async () => {
-                  await runtime.sources.setGlove('serial');
+                  await glove.setKind('serial');
+                  try {
+                    await runtime.sources.setGlove('serial');
+                  } catch (e) {
+                    if (!/comes in WP2/.test((e as Error).message)) throw e;
+                  }
                   setInfo(await glove.client.connect());
                 })
               }
@@ -216,6 +223,7 @@ export default function Setup() {
           onClick={() =>
             void action(async () => {
               await runtime.sources.setGlove('sim');
+              await glove.setKind('sim');
               await runtime.sources.setVision('sim');
               setInfo(await glove.client.connect());
               await vision.source.start({ affectedHand: 'right' });
@@ -224,9 +232,59 @@ export default function Setup() {
         >
           Use simulator
         </BigButton>
-        <p className="muted">
-          Patient presets and fault controls arrive with the simulator.
-        </p>
+        {glove.client.kind === 'sim' && (
+          <div className="live-stack">
+            <label>
+              Patient preset
+              <select
+                value={glove.world.patient.preset}
+                onChange={(e) => {
+                  glove.world.controls.setPreset(
+                    e.target.value as PatientPreset,
+                  );
+                  refreshControls((n) => n + 1);
+                }}
+              >
+                <option value="mild">Mild</option>
+                <option value="moderate">Moderate</option>
+                <option value="severe">Severe</option>
+              </select>
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={glove.world.patient.rigid.index}
+                onChange={(e) => {
+                  glove.world.controls.setRigid('index', e.target.checked);
+                  refreshControls((n) => n + 1);
+                }}
+              />
+              Rigid index
+            </label>
+            <div className="actions">
+              <BigButton onClick={() => glove.world.controls.pressStop()}>
+                Press STOP
+              </BigButton>
+              <BigButton onClick={() => glove.world.controls.releaseStop()}>
+                Release STOP
+              </BigButton>
+              <BigButton onClick={() => glove.world.controls.unplug()}>
+                Unplug USB
+              </BigButton>
+              <BigButton
+                disabled={vision.source !== glove.world.vision}
+                onClick={() => glove.world.controls.handOutOfFrame(5000)}
+              >
+                Hand out of frame
+              </BigButton>
+            </div>
+            {vision.source !== glove.world.vision && (
+              <p className="muted">
+                Camera fault controls need the shared simulator connection.
+              </p>
+            )}
+          </div>
+        )}
       </section>
       <Link className="button" to="/calibrate">
         Continue to calibration

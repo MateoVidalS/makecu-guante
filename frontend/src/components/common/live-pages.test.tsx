@@ -67,6 +67,7 @@ beforeAll(() => {
   );
 });
 beforeEach(() => {
+  vi.stubEnv('VITE_SIM', '1');
   resetMocks();
   server.resetHandlers();
   sessionStorage.clear();
@@ -75,6 +76,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 afterAll(() => {
   server.close();
@@ -165,7 +167,7 @@ describe('Home and Setup', () => {
     ).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Reconnect glove' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Hardware connection is unavailable in this preview',
+      'Use Chrome or Edge for the glove',
     );
     fireEvent.click(screen.getByText('Glove diagnostics'));
     expect(screen.getByText(/State:/)).toBeVisible();

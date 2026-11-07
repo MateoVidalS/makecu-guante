@@ -30,7 +30,7 @@ import {
   useSessionLeaveGuard,
 } from '../../components/common';
 import { useQuery } from '@tanstack/react-query';
-import { createSummary } from '../../api/client';
+import { createSummary, useHealth } from '../../api/client';
 const Hand = memo(function Hand() {
   const runtime = useRuntime(),
     vision = useVision();
@@ -93,6 +93,36 @@ const Hand = memo(function Hand() {
     </div>
   );
 });
+const CoachArea = memo(function CoachArea() {
+  const voice = useVoice();
+  return (
+    <>
+      <div className="coach-full">
+        <CoachPanel />
+      </div>
+      <div className="coach-compact">
+        <p className="coach-caption">
+          {voice.lastCoachLine ??
+            (voice.mode === 'off' ? 'Voice off' : 'Your coach is here.')}
+        </p>
+        <details
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.currentTarget.open = false;
+              e.currentTarget.querySelector('summary')?.focus();
+            }
+          }}
+        >
+          <summary>Coach controls</summary>
+          <div className="coach-popover">
+            <CoachPanel />
+          </div>
+        </details>
+      </div>
+    </>
+  );
+});
 function LiveDetails() {
   const view = useExerciseView();
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
@@ -112,7 +142,7 @@ function LiveDetails() {
       <div className="camera-pip">
         <CameraOverlay />
       </div>
-      <CoachPanel />
+      <CoachArea />
     </aside>
   );
 }
@@ -152,6 +182,11 @@ export default function Exercise() {
     voice = useVoice(),
     location = useLocation(),
     { store } = useGlove();
+  const { start: startVoice, stop: stopVoice, setMode: setVoiceMode } = voice;
+  const voiceMode = useRef(voice.mode);
+  voiceMode.current = voice.mode;
+  const health = useHealth();
+  const voiceSessionId = useExerciseView((v) => v.sessionId);
   const phase = useExerciseView((v) => v.phase),
     pose = useExerciseView((v) => v.pose),
     paused = phase === 'PAUSED',
@@ -214,14 +249,26 @@ export default function Exercise() {
     return () => window.removeEventListener('keydown', keyboard);
   }, [live, runtime]);
   useEffect(() => {
-    if (!live) voice.stop();
-  }, [live, voice]);
+    if (!live || health.isPending) return;
+    if (health.data?.gemini === false && voiceMode.current === 'live')
+      setVoiceMode('simple');
+    void startVoice(voiceSessionId).catch((e) =>
+      setError((e as Error).message),
+    );
+  }, [
+    live,
+    voiceSessionId,
+    startVoice,
+    setVoiceMode,
+    health.isPending,
+    health.data?.gemini,
+  ]);
+  useEffect(() => () => stopVoice(), [stopVoice]);
   async function start() {
     setBusy(true);
     setError('');
     try {
       await runtime.exercise.start(plan, settings);
-      await voice.start(runtime.exercise.view().sessionId);
       setPlanning(false);
     } catch (e) {
       setError((e as Error).message);
