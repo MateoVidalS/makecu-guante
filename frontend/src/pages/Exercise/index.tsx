@@ -1,51 +1,346 @@
+import { memo, useCallback, useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useStore } from 'zustand';
 import { useRuntime, useExerciseView } from '../../runtime';
-import { DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
-import { CoachPanel } from '../../voice';
-export default function Exercise() {
+import {
+  DEFAULT_PLAN,
+  PINCH_PLAN,
+  DEFAULT_EXERCISE_SETTINGS,
+  POSES,
+  type PoseId,
+} from '../../contracts/poses';
+import type {
+  ExercisePlanItem,
+  ExerciseSettings,
+} from '../../contracts/engine';
+import { CoachPanel, useVoice } from '../../voice';
+import { VirtualHand } from '../../hand3d/VirtualHand';
+import { useVision, useVisionFrame } from '../../vision';
+import { CameraOverlay } from '../../vision/CameraOverlay';
+import { useGlove } from '../../glove';
+import {
+  BigButton,
+  PhaseRing,
+  FingerBars,
+  AttemptToast,
+  SessionSummaryCard,
+  ConfirmDialog,
+  useSessionLeaveGuard,
+} from '../../components/common';
+import { useQuery } from '@tanstack/react-query';
+import { createSummary } from '../../api/client';
+const Hand = memo(function Hand() {
   const runtime = useRuntime(),
-    view = useExerciseView();
+    vision = useVision();
+  const pose = useExerciseView((v) => v.pose);
+  const actual = useCallback(
+    () => vision.source.latest()?.joints ?? null,
+    [vision.source],
+  );
+  const state = useCallback(
+    (finger: string) => {
+      const v = runtime.exercise.view();
+      if (
+        finger === 'ring' ||
+        finger === 'pinky' ||
+        ['PAUSED', 'PRESENT', 'REST', 'RELEASE'].includes(v.phase)
+      )
+        return 'idle';
+      return v.phase === 'HOLD' || v.phase === 'ASSIST_HOLD'
+        ? 'reached'
+        : v.assisting
+          ? 'assist'
+          : 'active';
+    },
+    [runtime],
+  );
   return (
-    <section>
-      <h1>Exercise</h1>
-      <p>Coming in WP7 · Scripted simulator</p>
-      <p className="instruction">{view.pose.instruction}</p>
-      <p className="phase">{view.phase}</p>
-      <div className="actions">
-        <button
-          className="primary"
-          onClick={() =>
-            void runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS)
-          }
-          disabled={view.phase !== 'DONE'}
-        >
-          Play scripted exercise
-        </button>
-        <button
-          onClick={() =>
-            view.paused ? runtime.exercise.resume() : runtime.exercise.pause()
-          }
-          disabled={view.phase === 'DONE'}
-        >
-          {view.paused ? 'Resume' : 'Pause'}
-        </button>
-        <button
-          onClick={runtime.exercise.skip}
-          disabled={view.phase === 'DONE'}
-        >
-          Skip pose
-        </button>
-        <button
-          onClick={() => void runtime.exercise.stop()}
-          disabled={view.phase === 'DONE'}
-        >
-          End session
-        </button>
+    <div role="img" aria-label={`Target pose: ${pose.name}`}>
+      <VirtualHand target={pose.render} actual={actual} state={state} />
+    </div>
+  );
+});
+function LiveDetails() {
+  const view = useExerciseView();
+  const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
+  return (
+    <aside className="live-details">
+      <PhaseRing
+        phase={view.phase}
+        elapsed={view.phaseElapsed}
+        duration={view.phaseDuration}
+        waiting={view.phase === 'PRESENT' && !seen}
+      />
+      <FingerBars
+        pose={view.pose}
+        activeMax={view.activeMax}
+        assisting={view.assisting}
+      />
+      <div className="camera-pip">
+        <CameraOverlay />
       </div>
       <CoachPanel />
-      <details>
-        <summary>Scripted runtime data</summary>
-        <pre>{JSON.stringify(view, null, 2)}</pre>
-      </details>
+    </aside>
+  );
+}
+function Summary({ onAgain }: { onAgain: () => void }) {
+  const view = useExerciseView();
+  const summary = useQuery({
+    queryKey: ['patient-summary', view.sessionId],
+    queryFn: () =>
+      createSummary({ kind: 'session', session_id: view.sessionId! }),
+    enabled: view.sessionId != null,
+    retry: false,
+  });
+  return (
+    <>
+      <SessionSummaryCard summary={view.summary!} />
+      {summary.isFetching ? (
+        <p role="status">Preparing your recap…</p>
+      ) : summary.data?.text ? (
+        <p>{summary.data.text}</p>
+      ) : null}
+      <div className="actions">
+        <BigButton variant="primary" onClick={onAgain}>
+          Practice again
+        </BigButton>
+        <Link className="button" to="/history">
+          See progress
+        </Link>
+        <Link className="button" to="/">
+          Home
+        </Link>
+      </div>
+    </>
+  );
+}
+export default function Exercise() {
+  const runtime = useRuntime(),
+    voice = useVoice(),
+    location = useLocation(),
+    { store } = useGlove();
+  const phase = useExerciseView((v) => v.phase),
+    pose = useExerciseView((v) => v.pose),
+    paused = phase === 'PAUSED',
+    summary = useExerciseView((v) => v.summary);
+  const connected = useStore(store, (s) => s.connection === 'connected');
+  const [plan, setPlan] = useState<ExercisePlanItem[]>(DEFAULT_PLAN),
+    [settings, setSettings] = useState<ExerciseSettings>(
+      DEFAULT_EXERCISE_SETTINGS,
+    ),
+    [confirm, setConfirm] = useState(false),
+    [error, setError] = useState(''),
+    [busy, setBusy] = useState(false),
+    [planning, setPlanning] = useState(false);
+  const live = phase !== 'DONE';
+  useSessionLeaveGuard('exercise');
+  useEffect(() => {
+    if (!live) return;
+    const keyboard = (e: KeyboardEvent) => {
+      if (
+        e.repeat ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey ||
+        (e.target instanceof Element && e.target.closest(
+          'input,select,textarea,button,summary,[contenteditable],dialog',
+        ))
+      )
+        return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        const v = runtime.exercise.view();
+        if (v.paused) runtime.exercise.resume();
+        else runtime.exercise.pause();
+      } else if (e.key.toLowerCase() === 's') runtime.exercise.skip();
+      else if (e.key === 'Escape') setConfirm(true);
+    };
+    window.addEventListener('keydown', keyboard);
+    return () => window.removeEventListener('keydown', keyboard);
+  }, [live, runtime]);
+  useEffect(() => {
+    if (!live) voice.stop();
+  }, [live, voice]);
+  async function start() {
+    setBusy(true);
+    setError('');
+    try {
+      await runtime.exercise.start(plan, settings);
+      await voice.start(runtime.exercise.view().sessionId);
+      setPlanning(false);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!live && summary && !planning)
+    return (
+      <section className="live-stack">
+        <Summary onAgain={() => setPlanning(true)} />
+      </section>
+    );
+  if (!live)
+    return (
+      <section className="live-stack">
+        <h1>Your practice</h1>
+        <p>Choose a comfortable pace.</p>
+        <div className="actions">
+          <BigButton onClick={() => setPlan(DEFAULT_PLAN)}>
+            Tendon glides
+          </BigButton>
+          <BigButton onClick={() => setPlan(PINCH_PLAN)}>
+            Pinch practice
+          </BigButton>
+          <BigButton
+            onClick={() =>
+              setPlan(DEFAULT_PLAN.map((p) => ({ ...p, reps: 1 })))
+            }
+          >
+            Short session
+          </BigButton>
+        </div>
+        <div className="card">
+          {Object.values(POSES).map((p) => (
+            <div key={p.id} className="actions">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={plan.some((i) => i.pose === p.id)}
+                  onChange={(e) =>
+                    setPlan(
+                      e.target.checked
+                        ? [...plan, { pose: p.id as PoseId, reps: 3 }]
+                        : plan.filter((i) => i.pose !== p.id),
+                    )
+                  }
+                />
+                {p.name}
+              </label>
+              {plan.some((i) => i.pose === p.id) && (
+                <label>
+                  Repetitions for {p.name}
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={plan.find((i) => i.pose === p.id)!.reps}
+                    onChange={(e) =>
+                      setPlan(
+                        plan.map((i) =>
+                          i.pose === p.id
+                            ? { ...i, reps: Number(e.target.value) }
+                            : i,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+              )}
+            </div>
+          ))}
+        </div>
+        <label>
+          <input
+            type="checkbox"
+            checked={!settings.assist_enabled}
+            onChange={(e) =>
+              setSettings({ ...settings, assist_enabled: !e.target.checked })
+            }
+          />
+          Observation only (no glove help)
+        </label>
+        <details>
+          <summary>Advanced settings</summary>
+          {Object.entries(settings)
+            .filter(([k]) => k !== 'assist_enabled')
+            .map(([key, value]) => (
+              <label key={key}>
+                {key.replaceAll('_', ' ')}
+                <input
+                  type="number"
+                  min={key === 'tolerance' ? 0.01 : 0.1}
+                  max={key === 'assist_speed' || key === 'tolerance' ? 1 : 60}
+                  step={0.1}
+                  value={Number(value)}
+                  onChange={(e) =>
+                    setSettings({ ...settings, [key]: Number(e.target.value) })
+                  }
+                />
+              </label>
+            ))}
+        </details>
+        {!runtime.calibration.current && (
+          <p>
+            Find your comfortable range first.{' '}
+            <Link to="/calibrate">Calibrate</Link>
+          </p>
+        )}
+        {!connected && settings.assist_enabled && (
+          <Link to="/setup">Connect your glove</Link>
+        )}
+        {error && <p role="alert">{error}</p>}
+        <BigButton
+          variant="primary"
+          disabled={
+            busy ||
+            !runtime.calibration.current ||
+            (settings.assist_enabled && !connected) ||
+            !plan.length ||
+            plan.some(
+              (p) => !Number.isInteger(p.reps) || p.reps < 1 || p.reps > 10,
+            ) ||
+            Object.values(settings).some(
+              (v) => typeof v === 'number' && (!Number.isFinite(v) || v <= 0),
+            )
+          }
+          onClick={() => void start()}
+        >
+          Start practice
+        </BigButton>
+      </section>
+    );
+  return (
+    <section className="live-stack" key={location.key}>
+      <div className="live-layout">
+        <div className="live-hero">
+          <Hand />
+          <h1 className="instruction">{pose.instruction}</h1>
+          {(phase === 'REST' || phase === 'RELEASE') && (
+            <p>Take a breath. Your next pose is coming.</p>
+          )}
+        </div>
+        <LiveDetails />
+      </div>
+      <div className="actions">
+        <BigButton
+          onClick={() =>
+            paused ? runtime.exercise.resume() : runtime.exercise.pause()
+          }
+        >
+          {paused ? 'Resume' : 'Pause'}
+        </BigButton>
+        <BigButton onClick={runtime.exercise.skip}>Skip pose</BigButton>
+        <BigButton onClick={() => setConfirm(true)}>End practice</BigButton>
+      </div>
+      <p className="muted">Space: pause · S: skip · Esc: end</p>
+      <AttemptResultToast />
+      {confirm && (
+        <ConfirmDialog
+          title="Finish for today?"
+          onCancel={() => setConfirm(false)}
+          onConfirm={() => {
+            setConfirm(false);
+            void runtime.exercise.stop();
+          }}
+        >
+          <p>Your practice so far will be saved.</p>
+        </ConfirmDialog>
+      )}
     </section>
   );
+}
+function AttemptResultToast() {
+  const result = useExerciseView((v) => v.lastResult);
+  return <AttemptToast result={result} />;
 }
