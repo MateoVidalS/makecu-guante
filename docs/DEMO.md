@@ -41,9 +41,10 @@ REHAB_DB_PATH=/tmp/rehab-event.db make demo-seed
 REHAB_DB_PATH=/tmp/rehab-event.db make dev-sim
 ```
 
-For a built local demo, run `make demo` after seeding and open
-**http://127.0.0.1:8000**. Select simulated glove and camera in Setup, then calibrate
-the simulator. `make demo` does not seed automatically.
+For a built simulator demo, run `VITE_SIM=1 make demo` after seeding and open
+**http://127.0.0.1:8000**. Calibrate the simulator before practice. Plain `make demo`
+starts with physical sources; select both simulators in Setup for a hardware-free
+run. Neither command seeds automatically.
 
 ## Pre-demo checklist (15 minutes before)
 
