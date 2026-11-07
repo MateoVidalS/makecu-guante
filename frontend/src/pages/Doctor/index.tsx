@@ -145,10 +145,7 @@ export default function Doctor() {
       </section>
       <section className="report-page data-section">
         <h2>Assistance over sessions</h2>
-        <p>
-          Per-finger gap to target. Assisted rate describes all attempts, shared
-          across fingers.
-        </p>
+        <p>Per-finger gap to target and rate of assisted attempts.</p>
         {hasDemo && <DemoBadge />}
         <DataStatus error={assist.error || sessions.error}>
           <div className="chart-grid">

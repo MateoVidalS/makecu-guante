@@ -490,7 +490,7 @@ export function AssistTrend({
   return (
     <Chart
       title={`${fingerName(finger)}: help from the glove`}
-      hint="↓ Less help is better. Dashed: sessions’ assisted attempt rate (all fingers)."
+      hint="↓ Less help is better. Dashed: rate of assisted attempts."
       rows={assistSeries(points, finger, timeline)}
       series={[
         {
