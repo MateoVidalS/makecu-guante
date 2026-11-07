@@ -101,9 +101,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await expect(
     page.getByRole('img', { name: /Your attempt, moment by moment/ }),
   ).toBeVisible();
-  await expect(
-    page.getByLabel('Attempt', { exact: true }).locator('option'),
-  ).toHaveCount(15);
+  await expect(page.getByLabel('Attempt').locator('option')).toHaveCount(15);
   await page.goto('/evaluate');
   await page
     .getByRole('checkbox', { name: 'Hand relaxed in the glove' })

@@ -33,6 +33,7 @@ export default defineConfig({
       REHAB_DB_PATH: join(tmpdir(), `rehab-e2e-${process.pid}.db`),
       GEMINI_API_KEY: '',
       VITE_SIM_SPEED: '3',
+      VITE_MOCK_API: process.env.REHAB_E2E_MOCK === '1' ? '1' : '0',
     },
     url: baseURL,
     reuseExistingServer: false,
