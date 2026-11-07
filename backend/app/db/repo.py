@@ -14,7 +14,7 @@ from sqlmodel import select
 from app.contracts import types as c
 from app.db import models as m
 
-FINGERS = ("thumb", "index", "middle")
+FINGERS = ("thumb", "index", "middle", "ring", "pinky")
 
 
 def now() -> str:

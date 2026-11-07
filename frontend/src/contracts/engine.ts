@@ -1,4 +1,4 @@
-import type { GloveFinger, Triple } from './glove';
+import type { GloveFinger, Quint } from './glove';
 import type { FingerId } from './vision';
 import type { PoseId } from './poses';
 
@@ -39,7 +39,7 @@ export type EngineEvent =
     } // index = attempt index in the session
   | { kind: 'reached'; t_rel: number; assisted: boolean }
   | { kind: 'progress'; finger: GloveFinger; active_max: number } // throttled to at most 2 Hz per finger
-  | { kind: 'assist_started'; fingers: GloveFinger[]; from: Triple; to: Triple }
+  | { kind: 'assist_started'; fingers: GloveFinger[]; from: Quint; to: Quint }
   | { kind: 'resistance'; finger: GloveFinger; ma: number } // current high + finger not following
   | {
       kind: 'safety';

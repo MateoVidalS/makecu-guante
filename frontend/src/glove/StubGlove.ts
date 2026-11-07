@@ -5,7 +5,7 @@ import type {
   GloveError,
   GloveConnection,
   GloveInfo,
-  Triple,
+  Quint,
 } from '../contracts/glove';
 import type { Unsubscribe } from '../contracts/runtime';
 
@@ -15,7 +15,7 @@ export class StubGlove implements GloveClient {
   private status: GloveConnection = 'disconnected';
   private timer: ReturnType<typeof setInterval> | null = null;
   private tel: GloveTelemetry | null = null;
-  private goal: Triple = [0, 0, 0];
+  private goal: Quint = [0, 0, 0, 0, 0];
   private mode: GloveTelemetry['md'] = 'none';
   private telemetry = new Set<(t: GloveTelemetry) => void>();
   private events = new Set<(e: GloveEvent) => void>();
@@ -43,9 +43,9 @@ export class StubGlove implements GloveClient {
       }, 20);
     return {
       fw: 'WP0-stub',
-      fingers: 3,
+      fingers: 5,
       limit: 900,
-      calib: [null, null, null],
+      calib: [null, null, null, null, null],
     };
   }
   async disconnect() {
@@ -55,22 +55,22 @@ export class StubGlove implements GloveClient {
     this.status = 'disconnected';
     this.connections.forEach((cb) => cb(this.status));
   }
-  target(f: Triple, _v: number) {
+  target(f: Quint, _v: number) {
     this.goal = [...f];
     this.mode = 'target';
   }
-  follow(f: Triple) {
-    this.goal = f.map((v) => Math.max(0, v - 0.05)) as Triple;
+  follow(f: Quint) {
+    this.goal = f.map((v) => Math.max(0, v - 0.05)) as Quint;
     this.mode = 'follow';
   }
   release() {
-    this.goal = [0, 0, 0];
+    this.goal = [0, 0, 0, 0, 0];
     this.mode = 'none';
   }
-  calib(_i: 0 | 1 | 2, _minDeg: number, _maxDeg: number) {
+  calib(_i: 0 | 1 | 2 | 3 | 4, _minDeg: number, _maxDeg: number) {
     /* WP2 */
   }
-  jog(_i: 0 | 1 | 2, _deg: number) {
+  jog(_i: 0 | 1 | 2 | 3 | 4, _deg: number) {
     /* WP2 */
   }
   limit(_ma: number) {

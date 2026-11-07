@@ -7,7 +7,7 @@ import type {
   ExerciseSettings,
 } from '../contracts/engine';
 import { GLOVE_FINGERS } from '../contracts/glove';
-import type { GloveFinger, Triple } from '../contracts/glove';
+import type { GloveFinger, Quint } from '../contracts/glove';
 import { calibratedPinch, POSES } from '../contracts/poses';
 import type { PoseDef, PoseId } from '../contracts/poses';
 import type {
@@ -20,7 +20,7 @@ import { closure, motorSafe, output, visible } from './input';
 import { AttemptMetrics, isoTime, summarizeSession } from './metrics';
 
 type Safety = Extract<EngineEvent, { kind: 'safety' }>;
-type Gap = { now: number; gaps: Triple };
+type Gap = { now: number; gaps: Quint };
 
 class Exercise implements ExerciseEngine {
   private phase: ExercisePhase = 'DONE';
@@ -46,8 +46,8 @@ class Exercise implements ExerciseEngine {
     best: Partial<Record<GloveFinger, number>>;
   }[] = [];
   private gaps: Gap[] = [];
-  private target: Triple = [0, 0, 0];
-  private targetVision: Triple = [0, 0, 0];
+  private target: Quint = [0, 0, 0, 0, 0];
+  private targetVision: Quint = [0, 0, 0, 0, 0];
   private targetSent = false;
   private baseline: number[] = [];
   private baselineTel: number | null = null;
@@ -483,7 +483,7 @@ class Exercise implements ExerciseEngine {
         : this.fingerReached(f)
           ? this.targetVision[i]
           : this.pose.closure[f]!,
-    ) as Triple;
+    ) as Quint;
     this.targetSent = false;
     this.settledAt = null;
   }
@@ -547,7 +547,7 @@ class Exercise implements ExerciseEngine {
         now: this.now,
         gaps: GLOVE_FINGERS.map(
           (f, i) => input.tel!.a[i] - input.vision!.closure![f],
-        ) as Triple,
+        ) as Quint,
       });
   }
   private attribute(): GloveFinger | null {

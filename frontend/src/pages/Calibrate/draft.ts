@@ -18,7 +18,10 @@ export interface Draft {
   finger: number;
   angle: number;
   servo: Partial<
-    Record<'thumb' | 'index' | 'middle', Partial<ServoCalibration>>
+    Record<
+      'thumb' | 'index' | 'middle' | 'ring' | 'pinky',
+      Partial<ServoCalibration>
+    >
   >;
   hand: 'left' | 'right';
   mirror: boolean;

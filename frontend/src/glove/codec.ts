@@ -11,8 +11,8 @@ export type DecodedMessage =
 export const codecStats = { malformedLines: 0 };
 const finite = (v: unknown): v is number =>
   typeof v === 'number' && Number.isFinite(v);
-const triple = (v: unknown): v is [number, number, number] =>
-  Array.isArray(v) && v.length === 3 && v.every(finite);
+const quint = (v: unknown): v is [number, number, number, number, number] =>
+  Array.isArray(v) && v.length === 5 && v.every(finite);
 const states = ['boot', 'idle', 'run', 'calib', 'fault'];
 const modes = ['none', 'follow', 'target', 'jog'];
 const events = [
@@ -58,11 +58,11 @@ export function decode(
       v.t === 'tel' &&
       finite(v.ms) &&
       v.ms >= 0 &&
-      triple(v.a) &&
+      quint(v.a) &&
       finite(v.ma) &&
       states.includes(v.st) &&
       modes.includes(v.md) &&
-      (v.tg === null || triple(v.tg))
+      (v.tg === null || quint(v.tg))
     ) {
       return {
         t: now,
@@ -84,10 +84,10 @@ export function decode(
     if (
       v.t === 'info' &&
       typeof v.fw === 'string' &&
-      v.fingers === 3 &&
+      v.fingers === 5 &&
       finite(v.limit) &&
       Array.isArray(v.calib) &&
-      v.calib.length === 3 &&
+      v.calib.length === 5 &&
       v.calib.every(
         (c: unknown) =>
           c === null || (Array.isArray(c) && c.length === 2 && c.every(finite)),

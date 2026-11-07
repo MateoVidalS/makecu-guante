@@ -52,6 +52,16 @@
         "finger": "middle",
         "active_max_mean": 0.67,
         "assist_needed_mean": 0.32999999999999996
+      },
+      {
+        "finger": "ring",
+        "active_max_mean": 0.67,
+        "assist_needed_mean": 0.32999999999999996
+      },
+      {
+        "finger": "pinky",
+        "active_max_mean": 0.67,
+        "assist_needed_mean": 0.32999999999999996
       }
     ],
     "previous": {
@@ -67,6 +77,14 @@
         },
         {
           "finger": "middle",
+          "active_max_mean": 0.63
+        },
+        {
+          "finger": "ring",
+          "active_max_mean": 0.63
+        },
+        {
+          "finger": "pinky",
           "active_max_mean": 0.63
         }
       ]
@@ -97,34 +115,34 @@
         {
           "finger": "index",
           "scored": true,
-          "target": 1,
+          "target": 0.95,
           "active_max": 0.65,
-          "assist_needed": 0.35,
+          "assist_needed": 0.29999999999999993,
           "final": 0.66
         },
         {
           "finger": "middle",
           "scored": true,
-          "target": 1,
+          "target": 0.95,
           "active_max": 0.67,
-          "assist_needed": 0.32999999999999996,
+          "assist_needed": 0.2799999999999999,
           "final": 0.96
         },
         {
           "finger": "ring",
-          "scored": false,
-          "target": 1,
-          "active_max": null,
-          "assist_needed": null,
-          "final": null
+          "scored": true,
+          "target": 0.95,
+          "active_max": 0.67,
+          "assist_needed": 0.2799999999999999,
+          "final": 0.96
         },
         {
           "finger": "pinky",
-          "scored": false,
-          "target": 1,
-          "active_max": null,
-          "assist_needed": null,
-          "final": null
+          "scored": true,
+          "target": 0.95,
+          "active_max": 0.67,
+          "assist_needed": 0.2799999999999999,
+          "final": 0.96
         }
       ],
       "pinch_min": null,

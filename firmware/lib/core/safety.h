@@ -21,9 +21,9 @@ class SafetyController {
   State state() const { return state_; }
   Mode mode() const { return mode_; }
   bool calibrated() const;
-  bool attached(std::size_t i) const { return i < 3 && attached_[i]; }
+  bool attached(std::size_t i) const { return i < config::FINGERS && attached_[i]; }
   float angle(std::size_t i) const;
-  float goal(std::size_t i) const { return i < 3 ? goals_[i] : 0; }
+  float goal(std::size_t i) const { return i < config::FINGERS ? goals_[i] : 0; }
   bool stopHeld() const { return stopHeld_; }
 
  private:
@@ -35,10 +35,10 @@ class SafetyController {
   void* context_;
   State state_ = State::Idle;
   Mode mode_ = Mode::None;
-  std::array<Calibration, 3> calibration_{};
-  Triple angles_{{90, 90, 90}};
-  Triple goals_{};
-  std::array<bool, 3> attached_{};
+  std::array<Calibration, config::FINGERS> calibration_{};
+  Quint angles_{{90, 90, 90, 90, 90}};
+  Quint goals_{};
+  std::array<bool, config::FINGERS> attached_{};
   float speed_ = 0;
   float ma_ = 0;
   float limit_ = config::LIMIT_DEFAULT_MA;

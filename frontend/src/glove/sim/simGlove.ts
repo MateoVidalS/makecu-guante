@@ -2,7 +2,7 @@ import type {
   GloveClient,
   GloveInfo,
   SerialCommand,
-  Triple,
+  Quint,
 } from '../../contracts/glove';
 import { ClientBase } from '../clientBase';
 import type { SimWorld } from './simWorld';
@@ -61,19 +61,19 @@ export class SimGlove extends ClientBase implements GloveClient {
     this.lastSent = this.world.now;
     this.world.firmware.handle(cmd, this.world.now);
   }
-  target(f: Triple, v: number) {
+  target(f: Quint, v: number) {
     this.send({ t: 'target', f, v });
   }
-  follow(f: Triple) {
+  follow(f: Quint) {
     this.send({ t: 'follow', f });
   }
   release() {
     this.send({ t: 'release' });
   }
-  calib(i: 0 | 1 | 2, min: number, max: number) {
+  calib(i: 0 | 1 | 2 | 3 | 4, min: number, max: number) {
     this.send({ t: 'calib', i, min, max });
   }
-  jog(i: 0 | 1 | 2, deg: number) {
+  jog(i: 0 | 1 | 2 | 3 | 4, deg: number) {
     this.send({ t: 'jog', i, deg });
   }
   limit(ma: number) {

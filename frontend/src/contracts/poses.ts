@@ -16,6 +16,8 @@ export interface PoseDef {
 }
 // POSES (constant, in src/contracts/poses.ts; values in 06-session.md §2)
 
+export const MAX_ASSIST_CLOSURE = 0.95;
+
 export const POSES: Record<PoseId, PoseDef> = {
   open: {
     id: 'open',
@@ -183,10 +185,10 @@ export const POSES: Record<PoseId, PoseDef> = {
     family: 'tendon_glide',
     closure: {
       thumb: 0.7,
-      index: 1,
-      middle: 1,
-      ring: 1,
-      pinky: 1,
+      index: MAX_ASSIST_CLOSURE,
+      middle: MAX_ASSIST_CLOSURE,
+      ring: MAX_ASSIST_CLOSURE,
+      pinky: MAX_ASSIST_CLOSURE,
     },
     render: {
       index: {
@@ -285,7 +287,7 @@ export const DEFAULT_EVAL_SETTINGS: EvalSettings = {
   slow_v: 0.2,
   fast_v: 1,
   limit_ma: 600,
-  fingers: ['thumb', 'index', 'middle'],
+  fingers: ['thumb', 'index', 'middle', 'ring', 'pinky'],
 };
 // Resolve pinch against the current patient; the static default matches the shared calibration fixture.
 export const calibratedPinch = (pinchClosed: number): PoseDef => ({

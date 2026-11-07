@@ -218,18 +218,20 @@ export const handlers = [
           .map((s) => s.started_at.slice(0, 10)),
       ).size,
       last_session_at: sorted.at(-1)?.started_at ?? null,
-      per_finger: (['thumb', 'index', 'middle'] as const).map((finger) => ({
-        finger,
-        active_max_first:
-          first?.summary?.per_finger.find((f) => f.finger === finger)
-            ?.active_max_mean ?? null,
-        active_max_last:
-          last?.summary?.per_finger.find((f) => f.finger === finger)
-            ?.active_max_mean ?? null,
-        assist_needed_last:
-          last?.summary?.per_finger.find((f) => f.finger === finger)
-            ?.assist_needed_mean ?? null,
-      })),
+      per_finger: (['thumb', 'index', 'middle', 'ring', 'pinky'] as const).map(
+        (finger) => ({
+          finger,
+          active_max_first:
+            first?.summary?.per_finger.find((f) => f.finger === finger)
+              ?.active_max_mean ?? null,
+          active_max_last:
+            last?.summary?.per_finger.find((f) => f.finger === finger)
+              ?.active_max_mean ?? null,
+          assist_needed_last:
+            last?.summary?.per_finger.find((f) => f.finger === finger)
+              ?.assist_needed_mean ?? null,
+        }),
+      ),
     });
   }),
   http.get('/api/history/rom', ({ request }) => {

@@ -6,7 +6,7 @@ import type {
   EvaluationResult,
 } from '../contracts/evaluation';
 import { GLOVE_FINGERS } from '../contracts/glove';
-import type { GloveFinger, Triple } from '../contracts/glove';
+import type { GloveFinger, Quint } from '../contracts/glove';
 import type { EvaluationView } from '../contracts/runtime';
 import type {
   EngineInput,
@@ -304,7 +304,7 @@ class Evaluation implements FrictionEngine {
         );
     if (!this.curve) this.allFriction = false;
     this.sweep = { ...item, points: [], aborted_at: null };
-    const target: Triple = [0, 0, 0];
+    const target: Quint = [0, 0, 0, 0, 0];
     target[GLOVE_FINGERS.indexOf(item.finger)] = 1;
     out.commands.push({ t: 'target', f: target, v: item.v });
     this.point(input);

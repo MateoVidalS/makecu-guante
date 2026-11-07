@@ -50,7 +50,7 @@ export async function generateDemo(endDate: string) {
     world.glove.onEvent((event) => events.push(event));
     await world.glove.connect();
     for (const [i, servo] of calibration.servo.entries())
-      world.glove.calib(i as 0 | 1 | 2, servo.min_deg, servo.max_deg);
+      world.glove.calib(i as 0 | 1 | 2 | 3 | 4, servo.min_deg, servo.max_deg);
     world.glove.limit(calibration.current_limit_ma);
     world.vision.setCalibration(calibration.camera);
     await world.vision.start({ affectedHand: "right" });

@@ -2,7 +2,7 @@ import type {
   GloveClient,
   GloveInfo,
   SerialCommand,
-  Triple,
+  Quint,
 } from '../contracts/glove';
 import { ClientBase } from './clientBase';
 import { decode, encode } from './codec';
@@ -343,10 +343,10 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
     });
     return this.closing;
   }
-  target(f: Triple, v: number) {
+  target(f: Quint, v: number) {
     this.enqueue({ t: 'target', f: [...f], v });
   }
-  follow(f: Triple) {
+  follow(f: Quint) {
     if (!this.writer || this.disconnectTask) return;
     encode({ t: 'follow', f });
     this.pendingFollow = { t: 'follow', f: [...f] };
@@ -363,10 +363,10 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
   release() {
     this.enqueue({ t: 'release' });
   }
-  calib(i: 0 | 1 | 2, min: number, max: number) {
+  calib(i: 0 | 1 | 2 | 3 | 4, min: number, max: number) {
     this.enqueue({ t: 'calib', i, min, max });
   }
-  jog(i: 0 | 1 | 2, deg: number) {
+  jog(i: 0 | 1 | 2 | 3 | 4, deg: number) {
     this.enqueue({ t: 'jog', i, deg });
   }
   limit(ma: number) {

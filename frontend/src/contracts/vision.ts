@@ -2,7 +2,8 @@ import type { Unsubscribe } from './runtime';
 import type { CameraCalibration } from './calibration';
 
 // ---------- vision (src/contracts/vision.ts) ----------
-export type FingerId = 'thumb' | 'index' | 'middle' | 'ring' | 'pinky';
+export type FingerId =
+  'thumb' | 'index' | 'middle' | 'ring' | 'pinky' | 'ring' | 'pinky';
 export type Handedness = 'left' | 'right';
 export interface JointAngles {
   mcp: number;

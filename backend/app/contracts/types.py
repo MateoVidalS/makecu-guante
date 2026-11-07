@@ -2,8 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-GloveFinger = Literal["thumb", "index", "middle"]
 FingerId = Literal["thumb", "index", "middle", "ring", "pinky"]
+GloveFinger = FingerId
 Handedness = Literal["left", "right"]
 PoseId = Literal["open", "hook", "full_fist", "tabletop", "straight_fist", "pinch"]
 ExercisePhase = Literal[

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SimFirmware } from './simFirmware';
 import { SimWorld } from './simWorld';
-import type { GloveError, GloveEvent, Triple } from '../../contracts/glove';
+import type { GloveError, GloveEvent, Quint } from '../../contracts/glove';
 
 function controller(sensorPresent = true) {
   const fw = new SimFirmware(sensorPresent);
@@ -11,7 +11,7 @@ function controller(sensorPresent = true) {
   fw.errors.subscribe((e) => errors.push(e));
   fw.boot();
   const calibrate = () => {
-    for (const i of [0, 1, 2] as const)
+    for (const i of [0, 1, 2, 3, 4] as const)
       fw.handle({ t: 'calib', i, min: 20, max: 150 }, 0);
   };
   const tick = (from: number, to: number, current = 30) => {
@@ -20,7 +20,7 @@ function controller(sensorPresent = true) {
   return { fw, events, errors, calibrate, tick };
 }
 const calibrateWorld = (world: SimWorld) => {
-  for (const i of [0, 1, 2] as const) world.glove.calib(i, 20, 150);
+  for (const i of [0, 1, 2, 3, 4] as const) world.glove.calib(i, 20, 150);
 };
 
 describe('04-firmware §4 safety conformance', () => {
@@ -28,45 +28,45 @@ describe('04-firmware §4 safety conformance', () => {
     const { fw, calibrate, tick } = controller();
     calibrate();
     fw.handle({ t: 'calib', i: 1, min: 175, max: 5 }, 0);
-    fw.handle({ t: 'target', f: [-2, 2, 0.5], v: 1 }, 0);
+    fw.handle({ t: 'target', f: [-2, 2, 0.5, 0.5, 0.5], v: 1 }, 0);
     tick(5, 1000);
-    expect(fw.position).toEqual([0, 1, 0.5]);
-    expect(fw.angles).toEqual([20, 5, 85]);
+    expect(fw.position).toEqual([0, 1, 0.5, 0.5, 0.5]);
+    expect(fw.angles).toEqual([20, 5, 85, 85, 85]);
     expect(fw.angles.every((a) => a >= 5 && a <= 175)).toBe(true);
   });
   it('Target speed is capped at V_MAX; v ≤ 0 is bad_args', () => {
     const { fw, calibrate, errors } = controller();
     calibrate();
     for (const v of [0, -1, NaN, Infinity])
-      fw.handle({ t: 'target', f: [1, 1, 1], v }, 0);
+      fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v }, 0);
     expect(errors.map((e) => e.why)).toEqual(Array(4).fill('bad_args'));
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 5 }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 5 }, 0);
     fw.tick(500);
-    expect(fw.position).toEqual([0.5, 0.5, 0.5]);
+    expect(fw.position).toEqual([0.5, 0.5, 0.5, 0.5, 0.5]);
   });
   it('Follow replaces target and takes up slack at V_FOLLOW', () => {
     const { fw, calibrate } = controller();
     calibrate();
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 0.3 }, 0);
-    fw.handle({ t: 'follow', f: [0.5, 0.02, 1.5] }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 0.3 }, 0);
+    fw.handle({ t: 'follow', f: [0.5, 0.02, 1.5, 1.5, 1.5] }, 0);
     fw.tick(100);
     expect(fw.mode).toBe('follow');
-    expect(fw.goal).toEqual([0.45, 0, 1]);
+    expect(fw.goal).toEqual([0.45, 0, 1, 1, 1]);
     expect(fw.position[0]).toBeCloseTo(0.15);
   });
   it('Overcurrent releases and latches fault only after 100 ms continuously above limit', () => {
     const { fw, calibrate, events } = controller();
     calibrate();
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 1 }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
     fw.tick(5, 4000); // filtered 1000: first sample over limit
     fw.tick(104, 4000);
     expect(fw.state).toBe('run');
     fw.tick(106, 4000);
     expect(fw.state).toBe('fault');
-    expect(fw.goal).toEqual([0, 0, 0]);
+    expect(fw.goal).toEqual([0, 0, 0, 0, 0]);
     expect(events.at(-1)).toMatchObject({ e: 'overcurrent' });
     expect(events.at(-1)!.ma).toBeGreaterThan(900);
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 1 }, 107);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 107);
     expect(fw.state).toBe('fault');
     fw.handle({ t: 'release' }, 108);
     expect(fw.state).toBe('idle');
@@ -74,7 +74,7 @@ describe('04-firmware §4 safety conformance', () => {
   it('Overcurrent spike below 100 ms resets the continuous-duration counter', () => {
     const { fw, calibrate, tick, events } = controller();
     calibrate();
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 1 }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
     tick(5, 55, 1500);
     tick(60, 200, 30);
     expect(events.some((e) => e.e === 'overcurrent')).toBe(false);
@@ -84,15 +84,15 @@ describe('04-firmware §4 safety conformance', () => {
   it('STOP releases and latches fault; release cannot clear while held; stop_released does not clear', () => {
     const { fw, calibrate, errors, events, tick } = controller();
     calibrate();
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 1 }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
     tick(5, 100);
     fw.setStop(true, 100);
     fw.handle({ t: 'release' }, 105);
     expect(fw.state).toBe('fault');
     expect(errors.at(-1)?.why).toBe('fault');
     for (const cmd of [
-      { t: 'target', f: [1, 1, 1] as Triple, v: 1 } as const,
-      { t: 'follow', f: [1, 1, 1] as Triple } as const,
+      { t: 'target', f: [1, 1, 1, 1, 1] as Quint, v: 1 } as const,
+      { t: 'follow', f: [1, 1, 1, 1, 1] as Quint } as const,
       { t: 'jog', i: 1, deg: 90 } as const,
     ])
       fw.handle(cmd, 105);
@@ -101,8 +101,8 @@ describe('04-firmware §4 safety conformance', () => {
     expect(events.at(-1)?.e).toBe('stop_released');
     expect(fw.state).toBe('fault');
     tick(115, 800);
-    expect(fw.position).toEqual([0, 0, 0]);
-    expect(fw.attached).toEqual([false, false, false]);
+    expect(fw.position).toEqual([0, 0, 0, 0, 0]);
+    expect(fw.attached).toEqual([false, false, false, false, false]);
     fw.handle({ t: 'release' }, 805);
     expect(fw.state).toBe('idle');
   });
@@ -112,7 +112,7 @@ describe('04-firmware §4 safety conformance', () => {
       calibrate();
       fw.handle(
         mode === 'target'
-          ? { t: 'target', f: [1, 1, 1], v: 0.3 }
+          ? { t: 'target', f: [1, 1, 1, 1, 1], v: 0.3 }
           : { t: 'jog', i: 0, deg: 170 },
         0,
       );
@@ -130,11 +130,11 @@ describe('04-firmware §4 safety conformance', () => {
   it('Any valid message feeds watchdog, including a state-rejected command; bad args do not', () => {
     const { fw, calibrate } = controller();
     calibrate();
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 0.3 }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 0.3 }, 0);
     fw.handle({ t: 'calib', i: 0, min: 20, max: 150 }, 900);
     fw.tick(1500);
     expect(fw.state).toBe('run');
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 0 }, 1800);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 0 }, 1800);
     fw.tick(1905);
     expect(fw.state).toBe('fault');
   });
@@ -149,15 +149,15 @@ describe('04-firmware §4 safety conformance', () => {
     fw.handle({ t: 'jog', i: 0, deg: 180 }, 500);
     expect(errors.at(-1)?.why).toBe('bad_args');
     fw.handle({ t: 'release' }, 500);
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 1 }, 500);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 500);
     fw.handle({ t: 'jog', i: 0, deg: 90 }, 500);
     expect(errors.at(-1)?.why).toBe('state');
   });
   it('Calib invalidates a finger until valid; calib_ok only when all three are valid; no_calib blocks target/follow', () => {
     const { fw, errors, events } = controller();
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 1 }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
     expect(errors.at(-1)?.why).toBe('no_calib');
-    fw.handle({ t: 'follow', f: [1, 1, 1] }, 0);
+    fw.handle({ t: 'follow', f: [1, 1, 1, 1, 1] }, 0);
     expect(errors.at(-1)?.why).toBe('no_calib');
     fw.handle({ t: 'calib', i: 0, min: 20, max: 150 }, 0);
     fw.handle({ t: 'calib', i: 1, min: 20, max: 150 }, 0);
@@ -166,30 +166,36 @@ describe('04-firmware §4 safety conformance', () => {
     expect(events.at(-1)?.e).toBe('calib_ok');
     fw.handle({ t: 'calib', i: 1, min: 20, max: 25 }, 0);
     expect(fw.calibration[1]).toBeNull();
-    fw.handle({ t: 'follow', f: [1, 1, 1] }, 0);
+    fw.handle({ t: 'follow', f: [1, 1, 1, 1, 1] }, 0);
     expect(errors.at(-1)?.why).toBe('no_calib');
   });
   it('Boot is idle, detached, emits boot + info and never persists calibration', () => {
     const { fw, events } = controller();
     expect(fw.state).toBe('idle');
-    expect(fw.attached).toEqual([false, false, false]);
+    expect(fw.attached).toEqual([false, false, false, false, false]);
     expect(events.map((e) => e.e)).toEqual(['boot']);
-    expect(fw.info().calib).toEqual([null, null, null]);
+    expect(fw.info().calib).toEqual([null, null, null, null, null]);
     const infos: unknown[] = [];
     fw.infos.subscribe((info) => infos.push(info));
     fw.handle({ t: 'calib', i: 0, min: 20, max: 150 }, 0);
     fw.boot();
-    expect(fw.info().calib).toEqual([null, null, null]);
+    expect(fw.info().calib).toEqual([null, null, null, null, null]);
     expect(infos).toHaveLength(1);
-    expect(new SimFirmware().info().calib).toEqual([null, null, null]);
+    expect(new SimFirmware().info().calib).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
   });
   it('INA missing emits ina_missing and refuses target/follow while permitting jog/release', () => {
     const { fw, events, errors, calibrate } = controller(false);
     calibrate();
     expect(events.some((e) => e.e === 'ina_missing')).toBe(true);
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 1 }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
     expect(errors.at(-1)?.why).toBe('state');
-    fw.handle({ t: 'follow', f: [1, 1, 1] }, 0);
+    fw.handle({ t: 'follow', f: [1, 1, 1, 1, 1] }, 0);
     expect(errors.at(-1)?.why).toBe('state');
     fw.handle({ t: 'jog', i: 0, deg: 90 }, 0);
     expect(fw.state).toBe('calib');
@@ -199,18 +205,18 @@ describe('04-firmware §4 safety conformance', () => {
   it('Release ramps at V_RELEASE and detaches 500 ms after completing', () => {
     const { fw, calibrate } = controller();
     calibrate();
-    fw.handle({ t: 'target', f: [1, 1, 1], v: 1 }, 0);
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
     fw.tick(1000);
     fw.handle({ t: 'release' }, 1000);
     fw.tick(1100);
     expect(fw.position[0]).toBeCloseTo(0.7);
     fw.tick(1400);
-    expect(fw.position).toEqual([0, 0, 0]);
+    expect(fw.position).toEqual([0, 0, 0, 0, 0]);
     fw.tick(1899);
     expect(fw.attached).toEqual([true, true, true]);
     fw.tick(1900);
-    expect(fw.attached).toEqual([false, false, false]);
-    fw.handle({ t: 'follow', f: [0.2, 0.2, 0.2] }, 1900);
+    expect(fw.attached).toEqual([false, false, false, false, false]);
+    fw.handle({ t: 'follow', f: [0.2, 0.2, 0.2, 0.2, 0.2] }, 1900);
     expect(fw.attached).toEqual([true, true, true]);
   });
   it('Limit is clamped to [100, LIMIT_MAX_MA] and hello returns current config', () => {
@@ -227,7 +233,7 @@ describe('04-firmware §4 safety conformance', () => {
 });
 
 describe('SimGlove acceptance and timing', () => {
-  it('Moderate preset target([1,1,1],0.3) completes in ~3.3 s below 900 mA', async () => {
+  it('Moderate preset target([1,1,1, 1, 1],0.3) completes in ~3.3 s below 900 mA', async () => {
     const world = new SimWorld({ autoStart: false });
     await world.glove.connect();
     calibrateWorld(world);
@@ -235,11 +241,11 @@ describe('SimGlove acceptance and timing', () => {
     world.glove.onTelemetry((tel) => {
       peak = Math.max(peak, tel.ma);
     });
-    world.glove.target([1, 1, 1], 0.3);
+    world.glove.target([1, 1, 1, 1, 1], 0.3);
     world.advance(3300);
     expect(world.firmware.position[0]).toBeCloseTo(0.99, 5);
     world.advance(40);
-    expect(world.firmware.position).toEqual([1, 1, 1]);
+    expect(world.firmware.position).toEqual([1, 1, 1, 1, 1]);
     expect(peak).toBeLessThan(900);
     expect(world.firmware.state).toBe('run');
   });
@@ -252,7 +258,7 @@ describe('SimGlove acceptance and timing', () => {
     world.glove.onEvent((e) => {
       if (e.e === 'overcurrent') position = world.firmware.position[1];
     });
-    world.glove.target([1, 1, 1], 0.3);
+    world.glove.target([1, 1, 1, 1, 1], 0.3);
     world.advance(2000);
     expect(position).toBeGreaterThanOrEqual(0.25);
     expect(position).toBeLessThanOrEqual(0.4);
@@ -266,7 +272,7 @@ describe('SimGlove acceptance and timing', () => {
       firmwareEvents: GloveEvent[] = [];
     world.glove.onEvent((e) => events.push(e));
     world.firmware.events.subscribe((e) => firmwareEvents.push(e));
-    world.glove.target([1, 1, 1], 0.3);
+    world.glove.target([1, 1, 1, 1, 1], 0.3);
     world.advance(100);
     world.controls.unplug();
     world.advance(1000);

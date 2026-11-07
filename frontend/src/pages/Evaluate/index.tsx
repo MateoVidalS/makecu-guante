@@ -22,7 +22,7 @@ interface Point {
   pos: number;
   ma: number;
 }
-const FINGER_ORDER = ['thumb', 'index', 'middle'];
+const FINGER_ORDER = ['thumb', 'index', 'middle', 'ring', 'pinky'];
 // Chart geometry (viewBox units). Current is plotted up to 900 mA.
 const CHART = { left: 56, right: 780, top: 32, bottom: 236, maxMa: 900 };
 const px = (pos: number) => CHART.left + pos * (CHART.right - CHART.left);

@@ -8,10 +8,10 @@ describe('metrics (06-session §4)', () => {
     const w = new FakeWorld();
     const trace = new TraceBuilder(0);
     trace.sample(w.step(0), 'ATTEMPT');
-    w.hand = [0.5, 0.5, 0.5];
+    w.hand = [0.5, 0.5, 0.5, 0.5, 0.5];
     w.ma = 300;
     trace.sample(w.step(33), 'ATTEMPT');
-    w.hand = [1, 1, 1];
+    w.hand = [1, 1, 1, 1, 1];
     w.ma = 500;
     trace.sample(w.step(33), 'HOLD');
     expect(trace.trace.t).toEqual([0, 0.05]);
@@ -22,13 +22,13 @@ describe('metrics (06-session §4)', () => {
   it('uses active minima for open, holds final through release, and excludes free fingers', () => {
     const w = new FakeWorld();
     const m = new AttemptMetrics(POSES.open, 1, 0, 0);
-    w.hand = [0.8, 0.7, 0.6];
+    w.hand = [0.8, 0.7, 0.6, 0.6, 0.6];
     m.observe(w.step(0), 'ATTEMPT');
-    w.hand = [0.1, 0.2, 0.3];
+    w.hand = [0.1, 0.2, 0.3, 0.3, 0.3];
     m.observe(w.step(), 'ATTEMPT');
-    w.hand = [0.4, 0.4, 0.4];
+    w.hand = [0.4, 0.4, 0.4, 0.4, 0.4];
     m.observe(w.step(), 'HOLD');
-    w.hand = [0, 0, 0];
+    w.hand = [0, 0, 0, 0, 0];
     m.observe(w.step(), 'RELEASE');
     const result = m.finish(w.now);
     expect(result.active_ratio).toBeCloseTo(0.8);
@@ -78,6 +78,12 @@ it('marks held vision samples unknown after the frame expires', () => {
   t.sample(w.step(0), 'ATTEMPT');
   t.sample(w.step(500), 'ATTEMPT');
   expect(t.trace.closure.index.slice(0, 7)).toEqual([0, 0, 0, 0, 0, 0, 0]);
-  expect(t.trace.closure.index.slice(7, 10)).toEqual([null, null, null]);
+  expect(t.trace.closure.index.slice(7, 10)).toEqual([
+    null,
+    null,
+    null,
+    null,
+    null,
+  ]);
   expect(t.trace.closure.index[10]).toBe(0);
 });

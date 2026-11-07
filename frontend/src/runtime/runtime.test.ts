@@ -189,7 +189,7 @@ describe('real runtime integration', () => {
       'End the current session',
     );
     world.controls.unplug();
-    world.firmware.calibration = [null, null, null];
+    world.firmware.calibration = [null, null, null, null, null];
     world.glove.limit(100);
     await glove.client.connect();
     expect(world.firmware.info().calib).toEqual(

@@ -100,6 +100,8 @@ describe('exercise phase table (06-session §3 and §6)', () => {
           r.world.now - start,
         ),
         0.6,
+        0.6,
+        0.6,
       ];
       r.step();
     }
@@ -130,10 +132,14 @@ describe('exercise phase table (06-session §3 and §6)', () => {
   });
   it('times out on partial closure, holds reached/free fingers, and reaches with assistance', () => {
     const r = new Run('hook', { attempt_s: 1 });
-    r.world.hand = [0.2, 0.3, 0.6];
+    r.world.hand = [0.2, 0.3, 0.6, 0.6, 0.6];
     r.until('ASSIST');
     const target = r.outputs.at(-1)!.commands.find((c) => c.t === 'target');
-    expect(target).toMatchObject({ t: 'target', f: [0.17, 0.6, 0.6], v: 0.3 });
+    expect(target).toMatchObject({
+      t: 'target',
+      f: [0.17, 0.6, 0.6, 0.6, 0.6],
+      v: 0.3,
+    });
     const count = r.outputs
       .flatMap((o) => o.commands)
       .filter((c) => c.t === 'target').length;
@@ -141,7 +147,7 @@ describe('exercise phase table (06-session §3 and §6)', () => {
     expect(
       r.outputs.flatMap((o) => o.commands).filter((c) => c.t === 'target'),
     ).toHaveLength(count);
-    r.world.hand = [0.2, 0.6, 0.6];
+    r.world.hand = [0.2, 0.6, 0.6, 0.6, 0.6];
     r.until('DONE');
     expect(r.results()[0]).toMatchObject({
       reached_active: false,
@@ -157,7 +163,7 @@ describe('exercise phase table (06-session §3 and §6)', () => {
   });
   it('plateaus after at least 3 seconds and observation mode releases without assist', () => {
     const r = new Run('hook', { attempt_s: 20 });
-    r.world.hand = [0, 0.2, 0.2];
+    r.world.hand = [0, 0.2, 0.2, 0.2, 0.2];
     r.until('ATTEMPT');
     const start = r.world.now;
     r.until('ASSIST');
@@ -176,11 +182,11 @@ describe('exercise phase table (06-session §3 and §6)', () => {
   });
   it('scores best opening and ignores ring/pinky', () => {
     const r = new Run('open');
-    r.world.hand = [0.8, 0.8, 0.8];
+    r.world.hand = [0.8, 0.8, 0.8, 0.8, 0.8];
     r.until('ATTEMPT');
-    r.world.hand = [0.05, 0.05, 0.05];
+    r.world.hand = [0.05, 0.05, 0.05, 0.05, 0.05];
     r.until('HOLD');
-    r.world.hand = [0.4, 0.4, 0.4];
+    r.world.hand = [0.4, 0.4, 0.4, 0.4, 0.4];
     r.until('DONE');
     expect(r.results()[0].active_ratio).toBeCloseTo(0.95);
     expect(r.results()[0].fingers[1]).toMatchObject({
@@ -191,7 +197,7 @@ describe('exercise phase table (06-session §3 and §6)', () => {
   });
   it('requires calibrated pinch distance as well as scored closure', () => {
     const r = new Run('pinch');
-    r.world.hand = [0.5, 0.55, 0];
+    r.world.hand = [0.5, 0.55, 0, 0, 0];
     r.world.pinch = 0.15;
     r.until('ATTEMPT');
     for (let i = 0; i < 15; i++) r.step();
@@ -227,7 +233,7 @@ describe('exercise phase table (06-session §3 and §6)', () => {
     expect(same.commands.some((c) => c.t === 'follow')).toBe(false);
     const times: Record<string, number> = {};
     for (let i = 0; i < 30; i++) {
-      r.world.hand = [0, i * 0.01, i * 0.01];
+      r.world.hand = [0, i * 0.01, i * 0.01, i * 0.01, i * 0.01];
       const out = r.step();
       for (const e of out.events)
         if (e.kind === 'progress') {
@@ -272,7 +278,7 @@ describe('exercise safety (06-session §3)', () => {
     const r = new Run('hook', { attempt_s: 0.1 });
     r.until('ASSIST');
     r.step(100, (input) => {
-      input.tel!.a = [0.1, 0.6, 0.3];
+      input.tel!.a = [0.1, 0.6, 0.3, 0.3, 0.3];
     });
     r.world.schedule(r.world.now + 50, 'overcurrent', 950);
     const out = r.step();
@@ -293,7 +299,7 @@ describe('exercise safety (06-session §3)', () => {
   });
   it('reports null attribution when no recent vision has a positive gap', () => {
     const r = new Run();
-    r.world.hand = [0.8, 0.8, 0.8];
+    r.world.hand = [0.8, 0.8, 0.8, 0.8, 0.8];
     r.until('HOLD');
     r.world.schedule(r.world.now + 50, 'overcurrent', 950);
     r.step();
@@ -385,7 +391,7 @@ describe('exercise safety (06-session §3)', () => {
   it('treats stale frames as unseen and resets a broken reach dwell', () => {
     const r = new Run();
     r.until('ATTEMPT');
-    r.world.hand = [0, 0.6, 0.6];
+    r.world.hand = [0, 0.6, 0.6, 0.6, 0.6];
     for (let i = 0; i < 8; i++) r.step();
     r.step(50, (input) => {
       input.vision!.t -= 301;
@@ -407,7 +413,7 @@ it('completes the full default plan, 15 attempts, in under 200 ms CPU', () => {
   const start = process.cpuUsage();
   for (let i = 0; i < 20000 && r.engine.state().phase !== 'DONE'; i++) {
     const pose = r.engine.state().pose;
-    r.world.hand = pose === 'open' ? [0, 0, 0] : [0.7, 1, 1];
+    r.world.hand = pose === 'open' ? [0, 0, 0, 0, 0] : [0.7, 1, 1, 1, 1];
     r.step();
   }
   const elapsed = process.cpuUsage(start);
@@ -517,9 +523,9 @@ describe('safety boundary regressions', () => {
     for (let i = 0; i < 7; i++) moving.step();
     moving.world.ma = 500;
     for (let i = 0; i < 10; i++) {
-      moving.world.hand = [0, i * 0.01, i * 0.01];
+      moving.world.hand = [0, i * 0.01, i * 0.01, i * 0.01, i * 0.01];
       moving.step(50, (input) => {
-        input.tel!.a = [0, 0.7, 0.2];
+        input.tel!.a = [0, 0.7, 0.2, 0.2, 0.2];
       });
     }
     expect(moving.events.some((e) => e.kind === 'resistance')).toBe(false);
@@ -527,16 +533,16 @@ describe('safety boundary regressions', () => {
   it('refreshes assist goals only after drift exceeds 0.1', () => {
     const r = new Run('hook', { attempt_s: 0.1 });
     r.until('ASSIST');
-    r.world.hand = [0, 0.1, 0.1];
+    r.world.hand = [0, 0.1, 0.1, 0.1, 0.1];
     expect(r.step().commands).toEqual([]);
-    r.world.hand = [0, 0.11, 0.11];
+    r.world.hand = [0, 0.11, 0.11, 0.11, 0.11];
     expect(r.step().commands).toEqual([
-      { t: 'target', f: [0, 0.6, 0.6], v: 0.3 },
+      { t: 'target', f: [0, 0.6, 0.6, 0.6, 0.6], v: 0.3 },
     ]);
   });
   it('includes the first successful ATTEMPT frame in active dwell time', () => {
     const r = new Run('hook');
-    r.world.hand = [0, 0.6, 0.6];
+    r.world.hand = [0, 0.6, 0.6, 0.6, 0.6];
     r.until('DONE');
     expect(r.results()[0].time_to_position_s).toBe(0);
   });

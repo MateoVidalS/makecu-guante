@@ -1,5 +1,5 @@
 import type { VisionFrame } from '../contracts/vision';
-import type { GloveTelemetry, GloveEvent, Triple } from '../contracts/glove';
+import type { GloveTelemetry, GloveEvent, Quint } from '../contracts/glove';
 import type { Calibration } from '../contracts/calibration';
 import type {
   ExercisePlanItem,
@@ -16,8 +16,8 @@ export interface EngineInput {
   gloveConnected: boolean;
 }
 export type GloveCommand =
-  | { t: 'target'; f: Triple; v: number }
-  | { t: 'follow'; f: Triple }
+  | { t: 'target'; f: Quint; v: number }
+  | { t: 'follow'; f: Quint }
   | { t: 'release' }
   | { t: 'limit'; ma: number };
 export interface Output {

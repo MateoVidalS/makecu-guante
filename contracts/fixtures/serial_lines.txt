@@ -1,12 +1,12 @@
-{"t":"target","f":[0.8,0.6,0],"v":0.5}
-{"t":"follow","f":[0.3,0.4,0.1]}
+{"t":"target","f":[0.8,0.6,0,0.3,0.2],"v":0.5}
+{"t":"follow","f":[0.3,0.4,0.1,0.3,0.2]}
 {"t":"release"}
 {"t":"calib","i":1,"min":20,"max":150}
 {"t":"limit","ma":900}
 {"t":"ping"}
 {"t":"jog","i":1,"deg":95}
 {"t":"hello"}
-{"t":"tel","ms":12345,"a":[0.42,0.4,0],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.05]}
+{"t":"tel","ms":12345,"a":[0.42,0.4,0,0.3,0.2],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.05,0.3,0.2]}
 {"t":"evt","e":"boot"}
 {"t":"evt","e":"overcurrent","ma":950}
 {"t":"evt","e":"stop_button"}
@@ -14,7 +14,7 @@
 {"t":"evt","e":"stop_released"}
 {"t":"evt","e":"ina_missing"}
 {"t":"evt","e":"calib_ok"}
-{"t":"info","fw":"0.1.0","fingers":3,"limit":900,"calib":[[20,150],[25,160],null]}
+{"t":"info","fw":"0.1.0","fingers":5,"limit":1500,"calib":[[20,150],[25,160],null,null,null]}
 {"t":"err","c":"target","why":"bad_json"}
 {"t":"err","c":"target","why":"unknown_type"}
 {"t":"err","c":"target","why":"bad_args"}
@@ -26,8 +26,11 @@
 
 {"t":"unknown"}
 {"t":"target","f":[1,1],"v":0.5}
-{"t":"target","f":[1,"x",0],"v":0.5}
-{"t":"target","f":[1,1,1],"v":0}
-{"t":"calib","i":3,"min":20,"max":150}
+{"t":"target","f":[1,"x",0,0.3,0.2],"v":0.5}
+{"t":"target","f":[1,1,1,0.3,0.2],"v":0}
+{"t":"calib","i":5,"min":20,"max":150}
 {"t":"calib","i":1,"min":20,"max":25}
 {"t":"jog","i":1,"deg":180}
+{"t":"calib","i":4,"min":20,"max":150}
+{"t":"jog","i":3,"deg":95}
+{"t":"target","f":[1,1,1],"v":0.5}

@@ -42,7 +42,7 @@ class EvalRun {
     for (let i = 0; i < limit && this.engine.state().stage !== stage; i++) {
       // Empty glove friction: 80 + 40 * position. Patient resistance adds speed-dependent current.
       const state = this.engine.state();
-      const iFinger = ['thumb', 'index', 'middle'].indexOf(
+      const iFinger = ['thumb', 'index', 'middle', 'ring', 'pinky'].indexOf(
         state.finger ?? 'thumb',
       );
       this.world.ma =
@@ -65,7 +65,7 @@ describe('evaluation (06-session §5 and §6)', () => {
     ]);
     for (let i = 0; i < 20; i++) expect(r.step().commands).toEqual([]);
     const out = r.step();
-    expect(out.commands).toEqual([{ t: 'target', f: [1, 0, 0], v: 0.2 }]);
+    expect(out.commands).toEqual([{ t: 'target', f: [1, 0, 0, 0, 0], v: 0.2 }]);
     expect(r.engine.state()).toMatchObject({
       stage: 'sweep',
       finger: 'thumb',
@@ -81,12 +81,12 @@ describe('evaluation (06-session §5 and §6)', () => {
       .flatMap((o) => o.commands)
       .filter((c) => c.t === 'target');
     expect(targets).toEqual([
-      { t: 'target', f: [1, 0, 0], v: 0.2 },
-      { t: 'target', f: [1, 0, 0], v: 1 },
-      { t: 'target', f: [0, 1, 0], v: 0.2 },
-      { t: 'target', f: [0, 1, 0], v: 1 },
-      { t: 'target', f: [0, 0, 1], v: 0.2 },
-      { t: 'target', f: [0, 0, 1], v: 1 },
+      { t: 'target', f: [1, 0, 0, 0, 0], v: 0.2 },
+      { t: 'target', f: [1, 0, 0, 0, 0], v: 1 },
+      { t: 'target', f: [0, 1, 0, 0, 0], v: 0.2 },
+      { t: 'target', f: [0, 1, 0, 0, 0], v: 1 },
+      { t: 'target', f: [0, 0, 1, 0, 0], v: 0.2 },
+      { t: 'target', f: [0, 0, 1, 0, 0], v: 1 },
     ]);
     expect(result.sweeps).toHaveLength(6);
     expect(result.friction_used).toBe(true);
@@ -226,14 +226,16 @@ describe('evaluation (06-session §5 and §6)', () => {
     }
     for (let i = 0; i < 30; i++) {
       const out = r.step(50, (input) => {
-        input.tel!.a = [0.3, 0, 0];
+        input.tel!.a = [0.3, 0, 0, 0, 0];
       });
       expect(out.commands).toEqual([]);
     }
     r.world.confidence = 0.5;
     for (let i = 0; i < 30; i++) expect(r.step().commands).toEqual([]);
     r.world.confidence = 0.6;
-    expect(r.step().commands).toEqual([{ t: 'target', f: [0, 1, 0], v: 0.2 }]);
+    expect(r.step().commands).toEqual([
+      { t: 'target', f: [0, 1, 0, 0, 0], v: 0.2 },
+    ]);
   });
   it.each([
     'stop_button',
@@ -325,7 +327,9 @@ it('waits two seconds after a sweep and one second released before the next spee
   expect(r.step().commands).toEqual([{ t: 'release' }]);
   expect(r.engine.state().stage).toBe('prepare');
   for (let i = 0; i < 20; i++) expect(r.step().commands).toEqual([]);
-  expect(r.step().commands).toEqual([{ t: 'target', f: [0, 1, 0], v: 1 }]);
+  expect(r.step().commands).toEqual([
+    { t: 'target', f: [0, 1, 0, 0, 0], v: 1 },
+  ]);
 });
 
 it('preserves evaluation motion safety over seeded random input sequences', () => {
