@@ -61,7 +61,10 @@ run. Neither command seeds automatically.
 - [ ] Volume audible; click a control to unlock browser audio. Confirm the local
   safety phrase is audible even with Voice mode Off. Simple voice needs no key;
   browsers without an installed speech voice still show captions.
-- [ ] Camera sees the whole affected hand, including fingertips. Use diffuse
+- [ ] Palm down, wrist module at the table edge, forearm on a towel. Camera
+  30–40 cm away, in front on the thumb side, diagonal and above the hand.
+  Check Setup’s five-second detection fraction with the actual light, thin glove.
+- [ ] Camera sees the whole affected hand, including all five fingertips. Use diffuse
   light, a steady background, and an angle that keeps tendons from hiding joints.
 - [ ] If using hardware: recorded bench gate, accessible physical STOP and supply
   switch, helper present, fresh calibration for this hand and mounting. Seeded
@@ -76,12 +79,24 @@ run. Neither command seeds automatically.
 | Time | Action | What to say / show |
 | --- | --- | --- |
 | 0:00–0:45 | Home → Exercise. Choose a single full fist, one repetition; Start practice. | “Try on your own first. The glove helps with the rest.” Explain ghost = target, solid = your hand. For a physical demo, the helper remains beside STOP. |
-| 0:45–1:30 | Let the moderate simulated patient try halfway; watch blue movement, orange assistance, then green hold. | “The camera estimates how far each finger closes. Assistance fills the remaining movement.” Point to the labels as well as colors. |
-| 1:30–2:30 | Start another full-fist repetition. Expand **Simulator controls**, check **Rigid index**, and wait for assistance. | “Here is resistance. The glove stops and releases on its own.” Show the safety banner, listen for “Stopping. I felt resistance in your index.” Uncheck Rigid index before Resume. Show the current trace later in replay, where technical units belong. Never deliberately stiffen or stall a person's finger. |
+| 0:45–1:30 | Let the moderate simulated patient try halfway; watch blue movement, orange assistance, then green hold. | “The camera estimates how far each finger closes. Assistance fills the remaining movement.” Show all five finger labels and the stagger: starts are at least 150 ms apart, at most three motors move. Targets stay within 95% of the calibrated glove range. |
+| 1:30–2:30 | Start another full-fist repetition. Expand **Simulator controls**, check **Rigid index**, and wait for assistance. | “Here is resistance. The glove stops and releases on its own.” A firmware fault releases and pauses with a safety banner. A softer resistance stop holds the achieved command briefly, then releases; it is also saved in replay. Listen for “Stopping. I felt resistance in your index.” Uncheck Rigid index before Resume or another attempt. Show the current trace later in replay, where technical units belong. Never deliberately stiffen or stall a person's finger. |
 | 2:30–3:15 | Finish/end the run; wait for Saved. Open History → Sessions and a demo session → replay. Pick a Full fist attempt. | Show the attempt, assistance and current trace. “These examples are labeled demo data.” Use Show as table if the projector obscures a chart. |
 | 3:15–4:00 | History → range/assistance trends, then resistance/evaluations. | “The synthetic patient improves over three weeks.” Evaluation resistance is an estimate inspired by clinical practice; total servo current cannot isolate a muscle or establish a diagnosis. |
 | 4:00–5:00 | Doctor view → Generate summary (when available). | “The therapist can review trends and request a summary.” Read the actual generated text; do not promise a particular conclusion. Without a key/network, show the unavailable state and the underlying charts. |
 | 5:00–6:00 | Doctor export JSON/CSV; optionally Print. Exit doctor view. | Show the read-only banner and demo labels in output. Explain that practice still works with simple voice and simulated sources. End any active run and release before removing hardware. |
+
+The five-finger firmware uses GPIO25/26/27/13/4 in thumb-to-little-finger order,
+a 5 V / 2.5 A supply with 470–1000 µF servo-rail capacitance, and two LEDC timers.
+The default total-current cut-off is 1500 mA (hard maximum 2200 mA), sustained
+100 ms. A single stalled servo can stay below that total, so also verify the
+current-plus-stalled-vision resistance stop. Host tests do not prove real force.
+
+For an evaluation demo, first measure empty-glove friction for all five fingers
+when prompted (missing or older than 24 hours). Stop/reject incomplete or aborted
+measurements. Put the glove back on, reconfirm Hand relaxed, and select any finger
+subset. Two selected fingers produce four slow/fast sweeps; all five produce ten.
+Do this during rehearsal or allow extra time outside the six-minute pitch.
 
 The full default plan is fifteen attempts; do not run it during this six-minute
 pitch. A single fist demonstrates the core behavior promptly. All deliberate

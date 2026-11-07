@@ -13,7 +13,7 @@
 | **Hardware** | Guías y anclajes impresos. Falta imprimir módulo, tapa y carretes (`hardware/definitivas/2_...`), coser, cablear y probar |
 | **Firmware en la placa** | Compila y pasa los tests nativos, pero **nunca se cargó en una ESP32**. Primero el banco de pruebas de [`firmware/BENCH.md`](firmware/BENCH.md) |
 
-> **Se usan los 5 dedos.** El software se construyó primero para 3 (pulgar, índice y medio) y **se está pasando a 5**: protocolo, firmware, app, simulador y prompt de voz. Hasta que ese cambio esté en main, el firmware solo mueve los servos de GPIO 25, 26 y 27.
+> **Five fingers are implemented end to end:** protocol, firmware, simulator, camera, exercise/evaluation, voice and history. Wire order is `[thumb, index, middle, ring, pinky]`, on GPIO25/26/27/13/4. Boards reporting another finger count are rejected. Physical acceptance remains pending in [`firmware/BENCH.md`](firmware/BENCH.md).
 
 **Requisitos:** Node 20+, pnpm, Python 3.11+, [uv](https://docs.astral.sh/uv/), Chrome o Edge (Web Serial). PlatformIO solo para el firmware.
 
@@ -124,7 +124,7 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
                                    └── USB ──> laptop (cámara, mano virtual, voz, dashboard)
 ```
 
-**Los servos los controla directamente la ESP32-WROOM-32** con PWM por hardware (LEDC, 50 Hz, pulsos de 500–2500 µs) y la librería `ESP32Servo`. No hace falta driver (el PCA9685 está agotado y la ESP32 tiene 16 canales PWM).
+**The ESP32-WROOM-32 drives all five servos** with hardware PWM (LEDC, 50 Hz, 500–2500 µs pulses) through `ESP32Servo`. Firmware allocates **two LEDC timers** so the fifth servo can attach while the other four remain attached (PR #39). Verify all five together on the empty bench fixture; see `firmware/BENCH.md` step 4.
 
 | Función | Pin ESP32 | Notas |
 |---|---|---|
@@ -145,7 +145,7 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 
 - **Fuente de laboratorio Facmogu en 5 V con límite de 2,5 A** (5 servos). Los servos **no** se alimentan desde la ESP32.
 - **Capacitor de 470–1000 µF** entre 5 V y GND en la línea de los servos: amortigua el pico cuando arrancan varios a la vez, que si no puede resetear la ESP32.
-- El firmware corta si la corriente total filtrada supera el umbral durante 100 ms. El umbral de 900 mA se eligió para 3 servos: **ajustarlo para 5 en el banco de pruebas**, midiendo el consumo real del guante vacío.
+- Firmware releases on total filtered current above the limit for 100 ms: **1500 mA default, 2200 mA maximum**, below the 2.5 A supply limit. Measure each actual servo and empty-glove friction on the bench; provisional profiles are not measured force limits.
 - El límite de corriente es un **corte físico**: aunque el software falle, la fuente no deja pasar más.
 - **GND común** entre la fuente, los servos y la ESP32.
 - Verificar los 5 V con el multímetro **antes** de conectar los servos.
@@ -250,7 +250,7 @@ USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). L
 | `release` | `{"t":"release"}` | Aflojar todo; también sale de `fault` |
 | `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | Ángulos del servo para 0% y 100% del dedo `i` (no se guardan en la placa) |
 | `jog` | `{"t":"jog","i":1,"deg":95}` | Mover un servo a un ángulo, para calibrar |
-| `limit` / `ping` / `hello` | `{"t":"limit","ma":900}` | Umbral de corriente / keepalive / pedir `info` |
+| `limit` / `ping` / `hello` | `{"t":"limit","ma":1500}` | Umbral de corriente / keepalive / pedir `info` |
 
 | ESP32 → laptop | Ejemplo |
 |---|---|
@@ -290,7 +290,9 @@ Motor determinista en TypeScript (`frontend/src/engine/`), sin reloj propio, tes
 ```
 
 - **Plan por defecto:** mano abierta, gancho, mesa, puño recto y puño completo, 3 repeticiones cada una (15 intentos). La pinza pulgar–índice es un plan aparte, opcional.
-- La asistencia arranca por tiempo o cuando el paciente deja de progresar.
+- Assistance begins after the attempt timeout or plateau. Unreached fingers start at least **150 ms apart**, with at most **three moving at once**. Glove-assisted targets are capped at **0.95 of the calibrated range**; 100% calibration means as far as the relaxed glove comfortably goes, not an anatomical full fist.
+- All five fingers are scored and assisted in tendon glides; pinch uses thumb and index. Evaluation accepts any subset, with one slow and one fast sweep per selected finger. Old three-finger sessions remain readable with missing ring/little-finger measurements.
+- The simulator exposes rigid-finger resistance. Detection also covers a stall already present in the initial assist baseline; a single stall need not exceed the aggregate firmware current limit. See `docs/DEV.md` for the browser and unit regressions.
 - **Evaluación:** con la mano relajada, cierra cada dedo lento y rápido y registra corriente vs. posición, restando la fricción del guante vacío medida en la calibración.
 
 **Métricas por intento:** cierre activo máximo por dedo, tiempo hasta la posición, ayuda necesaria, corriente pico y media, eventos de seguridad, y una traza a 20 Hz para repetir el intento después.

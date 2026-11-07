@@ -11,8 +11,9 @@ GloveProvider and VisionProvider controllers and mounts/disposes subscriptions.
 - Commands go through GloveClient, which owns follow coalescing, release priority,
   stale-motion cancellation and keepalives. Runtime adds no movement queue.
 - Phase events set simulated patient intent. The same events feed the voice
-  controller and UI, including the always-armed local safety net in Voice Off.
-- A reconnect or firmware boot sends release, three saved servo ranges, and the
+  controller and UI, including the always-armed local safety net in Voice Off. All glove arrays use
+  thumb/index/middle/ring/pinky order.
+- A reconnect or firmware boot sends release, five saved servo ranges, and the
   appropriate current limit. Calibration and switches to physical sources are locked during an
   exercise, paused session, evaluation, or friction sweep. Switching to a simulator
   first ends and saves the run and releases the glove; no movement resumes.
@@ -98,3 +99,8 @@ The header’s **Demo recovery** menu is available during focus mode. Glove/came
 fallback ends the run before replacing a source, preserving demo provenance. It
 can also reconnect an unplugged simulator or restart simulated vision. Simple
 voice switches immediately without ending practice. See `docs/DEMO.md`.
+
+F9 verification, rigid-finger baseline regression, calibration-range validation,
+friction abort behavior and the repeated 20-minute soak runner are documented in
+[`docs/DEV.md`](../../../docs/DEV.md). The F9 runner writes its own evidence to
+`docs/qa/f9-soak.json`; the older WP10 soak evidence is retained unchanged.
