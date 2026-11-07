@@ -22,6 +22,8 @@ import {
   KpiRow,
   KpiTile,
   ReplayChart,
+  AttemptHand,
+  handFromAttempt,
   formatDate,
   percentage,
   fingerName,
@@ -51,22 +53,33 @@ function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
       demo={demo}
       demoNote="Demo data"
     >
-      <KpiRow>
-        <KpiTile label="On your own" value={percentage(attempt.active_ratio)} />
-        <KpiTile
-          label="Time to reach on your own"
-          value={
-            attempt.time_to_position_s == null
-              ? '—'
-              : `${attempt.time_to_position_s.toFixed(1)} s`
-          }
-        />
-        <KpiTile
-          label="Glove help needed"
-          value={percentage(meanAssist(attempt))}
-        />
-        <KpiTile label="Safety events" value={attempt.safety_events.length} />
-      </KpiRow>
+      <div className="attempt-overview">
+        <div className="data-stack">
+          <KpiRow>
+            <KpiTile
+              label="On your own"
+              value={percentage(attempt.active_ratio)}
+            />
+            <KpiTile
+              label="Time to reach on your own"
+              value={
+                attempt.time_to_position_s == null
+                  ? '—'
+                  : `${attempt.time_to_position_s.toFixed(1)} s`
+              }
+            />
+            <KpiTile
+              label="Glove help needed"
+              value={percentage(meanAssist(attempt))}
+            />
+            <KpiTile
+              label="Safety events"
+              value={attempt.safety_events.length}
+            />
+          </KpiRow>
+        </div>
+        <AttemptHand values={handFromAttempt(attempt.fingers)} demo={demo} />
+      </div>
       <DataStatus error={trace.error}>
         <ReplayChart
           trace={trace.data}

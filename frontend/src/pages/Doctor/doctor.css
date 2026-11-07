@@ -49,6 +49,14 @@
   line-height: var(--line-height);
 }
 
+/* At a glance: four visuals in a 2 × 2 grid, one page in print. */
+.report-glance__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: var(--space-16);
+  min-width: 0;
+}
+
 @page {
   size: auto;
   margin: 12mm;
@@ -145,6 +153,62 @@
   .doctor-report .chart-canvas,
   .doctor-report .compact .chart-canvas {
     height: calc(var(--placeholder-height) - var(--space-64) - var(--space-48));
+  }
+  .doctor-report .ds-page-header {
+    margin-block-end: 0;
+  }
+  .doctor-report .kpi-row .ds-kpi__label {
+    font-size: var(--caption);
+    white-space: nowrap;
+  }
+  .doctor-report .hand-figure figcaption {
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+    font-size: var(--caption);
+  }
+  .doctor-report .report-glance__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8);
+  }
+  .doctor-report .report-glance__grid .chart-card {
+    margin: 0;
+  }
+  .doctor-report .report-glance .viz-body {
+    gap: var(--space-8) var(--space-16);
+  }
+  .doctor-report .report-dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-24);
+  }
+  .doctor-report .report-patient h2 {
+    font-size: var(--body);
+  }
+  .doctor-report .report-glance .hand-figure {
+    width: 124px !important;
+  }
+  .doctor-report .report-glance .hand-deltas__change {
+    display: none;
+  }
+  .doctor-report .report-glance .hand-deltas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: none;
+    gap: var(--space-8);
+  }
+  .doctor-report .report-glance .hand-deltas li {
+    grid-template-columns: 1fr;
+    padding: 0;
+    border: 0;
+  }
+  .doctor-report .report-glance .hand-deltas__change {
+    grid-column: 1;
+  }
+  .doctor-report .report-glance .hand-deltas__value {
+    font-size: var(--body);
+  }
+  /* The section description carries the shared key; legends stay. */
+  .doctor-report .report-glance .chart-hint,
+  .doctor-report .report-glance .calendar-stats {
+    display: none;
   }
   .doctor-report .therapist-summary {
     break-inside: avoid;

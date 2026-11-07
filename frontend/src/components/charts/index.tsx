@@ -38,8 +38,21 @@ import {
   type ChartRow,
   type TimelineEntry,
 } from './transforms';
+import { PhaseStrip } from './PhaseStrip';
 import './charts.css';
+import './visuals.css';
 
+export { HandFigure, HandRangeMap, AttemptHand } from './HandMap';
+export {
+  EffortColumns,
+  EffortSmallMultiples,
+  LatestEffortBars,
+} from './EffortBars';
+export { PracticeCalendar } from './PracticeCalendar';
+export { ResistanceDumbbells } from './ResistanceDumbbells';
+export { PhaseStrip } from './PhaseStrip';
+export { VisualCard, VisualLegend } from './VisualCard';
+export * from './visuals';
 export {
   assistSeries,
   decimate,
@@ -214,6 +227,9 @@ interface ChartProps {
   loading?: boolean;
   compact?: boolean;
   tall?: boolean;
+  short?: boolean;
+  /** Drawn above the plot, inside the card (e.g. the phase strip). */
+  prelude?: ReactNode;
   children?: ReactNode;
 }
 
@@ -251,6 +267,8 @@ function Chart({
   loading,
   compact,
   tall,
+  short,
+  prelude,
   children,
 }: ChartProps) {
   const id = useId().replace(/:/g, '');
@@ -281,7 +299,12 @@ function Chart({
         })));
   return (
     <article
-      className={cx('chart-card', compact && 'compact', tall && 'tall')}
+      className={cx(
+        'chart-card',
+        compact && 'compact',
+        tall && 'tall',
+        short && 'short',
+      )}
       aria-labelledby={`${id}-title`}
     >
       <header className="chart__header">
@@ -301,6 +324,7 @@ function Chart({
         </Text>
       ) : (
         <>
+          {prelude}
           <div className="chart__units" aria-hidden="true">
             <span>{yLabel}</span>
             {right && <span>Total current (mA)</span>}
@@ -734,43 +758,75 @@ export function ReplayChart({
       r.phase !== p.phase ||
       safety.some((e) => e.t_rel >= p.x && e.t_rel <= r.x),
   );
+  const bands = trace ? phaseBands(trace) : [];
+  const assistRows = reduced.filter(
+    (r) => r.phase === 'ASSIST' || r.phase === 'ASSIST_HOLD',
+  );
+  const peak = Math.max(
+    ...assistRows.map((r) => (typeof r.current === 'number' ? r.current : 0)),
+    0,
+  );
+  const faintBands = bands.map((b, i) => (
+    <ReferenceArea
+      key={`band-${i}`}
+      yAxisId="primary"
+      x1={b.start}
+      x2={b.end}
+      fill={phaseColor[b.phase]}
+      fillOpacity={0.045}
+      stroke="var(--chart-grid)"
+      strokeOpacity={i === 0 ? 0 : 1}
+    />
+  ));
+  const markers = (y: (e: AttemptResult['safety_events'][number]) => number) =>
+    safety.map((e, i) => (
+      <ReferenceDot
+        key={`safety-${i}`}
+        yAxisId="primary"
+        x={e.t_rel}
+        y={y(e)}
+        ifOverflow="extendDomain"
+        shape={(props: { cx?: number; cy?: number }) => (
+          <g transform={`translate(${props.cx}, ${props.cy})`}>
+            <path
+              d="M0 5L-5.5 -4.5H5.5Z"
+              fill="var(--danger)"
+              stroke="var(--chart-surface)"
+              strokeWidth={2}
+              paintOrder="stroke"
+            />
+            <title>{safetyLabel(e)}</title>
+          </g>
+        )}
+      />
+    ));
   return (
     <div className="data-stack">
       <Chart
         title="Your attempt, moment by moment"
-        hint="Higher means further closed. Solid lines: camera. Dashed: commanded servo position. Grey: total current, right axis."
+        hint="Higher means further closed. Solid lines: camera. Dashed: where the glove was told to go."
         rows={reduced}
-        series={[
-          ...GLOVE_FINGERS.flatMap((f) => [
-            {
-              key: `${f}Closure`,
-              label: `${fingerName(f)} camera`,
-              unit: '%',
-              color: color(f),
-            },
-            {
-              key: `${f}Servo`,
-              label: `${fingerName(f)} servo`,
-              unit: '%',
-              color: color(f),
-              dashed: true,
-            },
-          ]),
+        series={GLOVE_FINGERS.flatMap((f) => [
           {
-            key: 'current',
-            label: 'Total current',
-            unit: ' mA',
-            color: MUTED,
-            right: true,
+            key: `${f}Closure`,
+            label: `${fingerName(f)} camera`,
+            unit: '%',
+            color: color(f),
           },
-        ]}
+          {
+            key: `${f}Servo`,
+            label: `${fingerName(f)} servo`,
+            unit: '%',
+            color: color(f),
+            dashed: true,
+          },
+        ])}
         legend={[
           ...GLOVE_FINGERS.map((f) => ({
             label: fingerName(f),
             color: color(f),
           })),
           { label: 'Servo (commanded)', color: MUTED, dashed: true },
-          { label: 'Total current', color: MUTED },
         ]}
         xKind="number"
         xLabel="Time (s)"
@@ -778,48 +834,43 @@ export function ReplayChart({
         yDomain={[0, 110]}
         loading={loading}
         tall
+        prelude={<PhaseStrip trace={trace} safety={safety} />}
       >
-        {trace &&
-          phaseBands(trace).map((b, i) => (
-            <ReferenceArea
-              key={i}
-              yAxisId="primary"
-              x1={b.start}
-              x2={b.end}
-              fill={phaseColor[b.phase]}
-              fillOpacity={0.045}
-              stroke="var(--chart-grid)"
-              strokeOpacity={i === 0 ? 0 : 1}
-              label={{
-                value: b.phase.toLowerCase().replaceAll('_', ' '),
-                position: 'insideTopLeft',
-                fill: MUTED,
-                fontSize: AXIS_FONT,
-              }}
-            />
-          ))}
-        {safety.map((e, i) => (
-          <ReferenceDot
-            key={i}
-            yAxisId="primary"
-            x={e.t_rel}
-            y={100}
-            ifOverflow="extendDomain"
-            shape={(props: { cx?: number; cy?: number }) => (
-              <g transform={`translate(${props.cx}, ${props.cy})`}>
-                <path d="M0 -5L5 4H-5Z" fill="var(--danger)" />
-                <title>{safetyLabel(e)}</title>
-              </g>
-            )}
-          />
-        ))}
+        {faintBands}
+        {markers(() => 104)}
       </Chart>
+      {!loading && reduced.some((r) => typeof r.current === 'number') && (
+        <Chart
+          title={
+            peak > 0
+              ? `Motor current peaked at ${Math.round(peak)} mA while the glove helped`
+              : 'Motor current stayed low: the glove did not need to help'
+          }
+          hint="Total current of the three servos. Spikes mean the finger pushed back."
+          rows={reduced}
+          series={[
+            {
+              key: 'current',
+              label: 'Total current',
+              unit: ' mA',
+              color: 'var(--chart-current)',
+            },
+          ]}
+          xKind="number"
+          xLabel="Time (s)"
+          yLabel="Total current, mA"
+          short
+        >
+          {faintBands}
+          {markers((e) => e.ma ?? 0)}
+        </Chart>
+      )}
       {safety.length > 0 && (
         <ul aria-label="Safety events" className="safety-list">
           {safety.map((e, i) => (
             <li key={i}>
               <svg viewBox="0 0 10 10" aria-hidden="true">
-                <path d="M5 1L9 9H1Z" />
+                <path d="M5 9L1 1H9Z" />
               </svg>
               {safetyLabel(e)}
             </li>
