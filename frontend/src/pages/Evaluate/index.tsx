@@ -18,6 +18,12 @@ import {
   percent,
   useSessionLeaveGuard,
 } from '../../components/common';
+import {
+  SpeedDumbbell,
+  SweepTracker,
+  stifferAtSpeed,
+} from '../../components/metrics';
+import './evaluate.css';
 interface Point {
   pos: number;
   ma: number;
@@ -109,7 +115,17 @@ function SweepChart() {
           stroke="var(--accent)"
           fill="none"
           strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
         />
+        {points.length > 0 && (
+          <circle
+            className="eval-head"
+            cx={px(points[points.length - 1].pos)}
+            cy={py(points[points.length - 1].ma)}
+            r="6"
+          />
+        )}
       </svg>
       <p className="hp-legend">
         <span>
@@ -207,10 +223,16 @@ export default function Evaluate() {
           }
         />
         <progress
-          className="hp-progress"
+          className="hp-progress eval-progress"
           aria-label="Sweep progress"
           value={view.progress}
           max={1}
+        />
+        <SweepTracker
+          fingers={FINGER_ORDER}
+          finger={view.finger}
+          speed={view.speed}
+          progress={view.stage === 'sweep' ? view.progress : 0}
         />
         <SweepChart />
         <div className="hp-actions">
@@ -223,6 +245,9 @@ export default function Evaluate() {
   }
   if (view.result && !again) {
     const result = view.result;
+    const stiffCount = result.fingers.filter((f) =>
+      stifferAtSpeed(f.resistance_slow_ma, f.resistance_fast_ma),
+    ).length;
     return (
       <div className="hp-page">
         <PageHeader
@@ -231,67 +256,93 @@ export default function Evaluate() {
         />
         <Section
           flush
+          title={
+            stiffCount > 0
+              ? `${stiffCount === 1 ? 'One finger is' : `${stiffCount} fingers are`} stiffer when moved quickly`
+              : 'Similar resistance at both speeds'
+          }
           description={
             <>
-              Resistance as a share of the {DEFAULT_EVAL_SETTINGS.limit_ma} mA
-              safety limit.{' '}
+              How hard the glove had to pull each finger, slowly and then
+              quickly. A big jump at speed can mean stiffness (spasticity).{' '}
               {result.friction_used
                 ? 'Empty-glove friction was accounted for.'
                 : 'No empty-glove friction correction was used.'}
             </>
           }
         >
-          <table className="hp-table">
-            <thead>
-              <tr>
-                <th scope="col">Finger</th>
-                <th scope="col" className="hp-num">
-                  Slow resistance
-                </th>
-                <th scope="col" className="hp-num">
-                  Fast resistance
-                </th>
-                <th scope="col" className="hp-num">
-                  Speed difference
-                </th>
-                <th scope="col">Sweep</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.fingers.map((f) => {
-                const abortedAt = result.sweeps.find(
-                  (s) => s.finger === f.finger && s.aborted_at != null,
-                )?.aborted_at;
-                return (
-                  <tr key={f.finger}>
-                    <th scope="row">{title(f.finger)}</th>
-                    <td className="hp-num">{mA(f.resistance_slow_ma)}</td>
-                    <td className="hp-num">{mA(f.resistance_fast_ma)}</td>
-                    <td className="hp-num">{mA(f.velocity_dependence_ma)}</td>
-                    <td>
-                      {f.aborted ? (
-                        <span className="hp-capture-status">
-                          <StatusDot tone="caution" />
-                          <span>
-                            Stopped safely
-                            {abortedAt != null
-                              ? ` at ${percent(abortedAt)}`
-                              : ''}
-                          </span>
-                        </span>
-                      ) : (
-                        'Complete'
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <SpeedDumbbell
+            rows={result.fingers.map((f) => ({
+              finger: f.finger,
+              slow: f.resistance_slow_ma,
+              fast: f.resistance_fast_ma,
+              aborted: f.aborted,
+              abortedAt: result.sweeps.find(
+                (s) => s.finger === f.finger && s.aborted_at != null,
+              )?.aborted_at,
+            }))}
+            axisLabel={
+              result.friction_used ? 'mA above glove friction' : 'mA measured'
+            }
+          />
           <p className="hp-note">
             Results are saved with your history. Lower values suggest less
             resistance.
           </p>
+          <details className="hp-disclosure">
+            <summary>Show as table</summary>
+            <p className="hp-note">
+              Resistance as a share of the {DEFAULT_EVAL_SETTINGS.limit_ma} mA
+              safety limit.
+            </p>
+            <table className="hp-table">
+              <thead>
+                <tr>
+                  <th scope="col">Finger</th>
+                  <th scope="col" className="hp-num">
+                    Slow resistance
+                  </th>
+                  <th scope="col" className="hp-num">
+                    Fast resistance
+                  </th>
+                  <th scope="col" className="hp-num">
+                    Speed difference
+                  </th>
+                  <th scope="col">Sweep</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.fingers.map((f) => {
+                  const abortedAt = result.sweeps.find(
+                    (s) => s.finger === f.finger && s.aborted_at != null,
+                  )?.aborted_at;
+                  return (
+                    <tr key={f.finger}>
+                      <th scope="row">{title(f.finger)}</th>
+                      <td className="hp-num">{mA(f.resistance_slow_ma)}</td>
+                      <td className="hp-num">{mA(f.resistance_fast_ma)}</td>
+                      <td className="hp-num">{mA(f.velocity_dependence_ma)}</td>
+                      <td>
+                        {f.aborted ? (
+                          <span className="hp-capture-status">
+                            <StatusDot tone="caution" />
+                            <span>
+                              Stopped safely
+                              {abortedAt != null
+                                ? ` at ${percent(abortedAt)}`
+                                : ''}
+                            </span>
+                          </span>
+                        ) : (
+                          'Complete'
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </details>
         </Section>
         <div className="hp-actions">
           <Button

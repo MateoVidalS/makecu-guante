@@ -9,6 +9,7 @@ import {
   vi,
 } from 'vitest';
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -127,5 +128,88 @@ describe('live stage', () => {
     expect(document.querySelector('.live-hero .live-stage')).not.toBeNull();
     // The old picture-in-picture camera is gone from the side column.
     expect(document.querySelector('.live-details .camera-overlay')).toBeNull();
+  });
+  it('shows a tall gauge per glove finger with the goal band and a legend', async () => {
+    const runtime = new ScriptedRuntime({ persist: false });
+    await runtime.exercise.start(
+      [{ pose: 'full_fist', reps: 1 }],
+      DEFAULT_EXERCISE_SETTINGS,
+    );
+    runtime.dispose();
+    mount(<Exercise />, runtime);
+    await waitFor(() =>
+      expect(document.querySelector('.live-details')).not.toBeNull(),
+    );
+    const meters = screen.getAllByRole('meter');
+    expect(meters.map((m) => m.getAttribute('aria-label'))).toEqual([
+      'Thumb',
+      'Index',
+      'Middle',
+    ]);
+    for (const m of meters)
+      expect(m.querySelector('.mx-gauge__band')).not.toBeNull();
+    expect(
+      screen.getByRole('list', { name: 'How to read the bars' }),
+    ).toHaveTextContent('On your ownGloveGoal');
+  });
+});
+
+describe('session recap', () => {
+  it('draws then → now, own vs glove bars and one dot per attempt', async () => {
+    const runtime = new ScriptedRuntime({ persist: false });
+    await runtime.exercise.start(
+      [{ pose: 'full_fist', reps: 1 }],
+      DEFAULT_EXERCISE_SETTINGS,
+    );
+    runtime.dispose();
+    mount(<Exercise />, runtime);
+    act(() =>
+      runtime.exerciseStore.setState({
+        phase: 'DONE',
+        summary: {
+          attempts: 3,
+          reached_active: 1,
+          assisted: 1,
+          interrupted: 1,
+          active_ratio_mean: 0.6,
+          per_pose: [],
+          per_finger: [
+            { finger: 'thumb', active_max_mean: 0.4, assist_needed_mean: 0.2 },
+            { finger: 'index', active_max_mean: 0.6, assist_needed_mean: 0.1 },
+            { finger: 'middle', active_max_mean: 0.5, assist_needed_mean: 0 },
+          ],
+          previous: {
+            active_ratio_mean: 0.5,
+            per_finger: [
+              { finger: 'thumb', active_max_mean: 0.35 },
+              { finger: 'index', active_max_mean: 0.45 },
+              { finger: 'middle', active_max_mean: 0.5 },
+            ],
+          },
+        },
+      }),
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Session complete' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('3 attempts · 1 on your own · 1 with help'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Your index closed further on its own than last time.'),
+    ).toBeVisible();
+    expect(screen.getByRole('img', { name: /^Last time:/ })).toBeVisible();
+    expect(screen.getByRole('img', { name: /^Today:/ })).toBeVisible();
+    expect(
+      screen.getByRole('img', {
+        name: 'Thumb: 40% on your own, glove helped 20% more',
+      }),
+    ).toBeVisible();
+    expect(document.querySelectorAll('.mx-strip__groups .mx-dot')).toHaveLength(
+      3,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Practice again' }),
+    ).toBeVisible();
   });
 });

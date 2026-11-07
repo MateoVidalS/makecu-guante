@@ -41,12 +41,13 @@ import type { FingerId, VisionFrame } from '../../contracts/vision';
 import {
   BigButton,
   PhaseRing,
-  FingerBars,
-  AttemptToast,
-  SessionSummaryCard,
   ConfirmDialog,
   useSessionLeaveGuard,
 } from '../../components/common';
+import { AttemptFeedback } from '../../components/metrics';
+import type { AttemptResult } from '../../contracts/engine';
+import { LiveFingerMeters } from './LiveFingerMeters';
+import { SessionRecap, useSessionAttempts } from './SessionRecap';
 import './exercise.css';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
@@ -225,8 +226,9 @@ function LiveDetails() {
         duration={view.phaseDuration}
         waiting={view.phase === 'PRESENT' && !seen}
       />
-      <FingerBars
+      <LiveFingerMeters
         pose={view.pose}
+        phase={view.phase}
         activeMax={view.activeMax}
         assisting={view.assisting}
       />
@@ -237,8 +239,15 @@ function LiveDetails() {
     </aside>
   );
 }
-function Summary({ onAgain }: { onAgain: () => void }) {
+function Summary({
+  onAgain,
+  attempts,
+}: {
+  onAgain: () => void;
+  attempts: AttemptResult[];
+}) {
   const view = useExerciseView();
+  const runtime = useRuntime();
   const saving = useSavingStatus();
   const summary = useQuery({
     queryKey: ['patient-summary', view.sessionId],
@@ -249,11 +258,15 @@ function Summary({ onAgain }: { onAgain: () => void }) {
   });
   return (
     <>
-      <SessionSummaryCard summary={view.summary!} />
+      <SessionRecap
+        summary={view.summary!}
+        attempts={attempts}
+        mirrored={runtime.calibration.current?.camera.affected_hand === 'left'}
+      />
       {summary.isFetching ? (
         <p role="status">Preparing your recap…</p>
       ) : summary.data?.text ? (
-        <p>{summary.data.text}</p>
+        <p className="recap__coach">{summary.data.text}</p>
       ) : saving !== 'Saved' ? (
         <p role="status">Your recap will be available after saving.</p>
       ) : summary.isError ? (
@@ -294,6 +307,7 @@ export default function Exercise() {
     [planning, setPlanning] = useState(false),
     [preset, setPreset] = useState('glides');
   const live = phase !== 'DONE';
+  const attempts = useSessionAttempts();
   const index = useExerciseView((v) => v.index);
   const next = plan.flatMap((p) =>
     Array.from({ length: Math.min(10, Math.max(0, p.reps)) }, () => p.pose),
@@ -372,7 +386,7 @@ export default function Exercise() {
   if (!live && summary && !planning)
     return (
       <Stack as="section" gap={24}>
-        <Summary onAgain={() => setPlanning(true)} />
+        <Summary onAgain={() => setPlanning(true)} attempts={attempts} />
       </Stack>
     );
   if (!live)
@@ -556,5 +570,11 @@ export default function Exercise() {
 }
 function AttemptResultToast() {
   const result = useExerciseView((v) => v.lastResult);
-  return <AttemptToast result={result} />;
+  const runtime = useRuntime();
+  return (
+    <AttemptFeedback
+      result={result}
+      mirrored={runtime.calibration.current?.camera.affected_hand === 'left'}
+    />
+  );
 }
