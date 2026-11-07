@@ -9,18 +9,21 @@ import {
   useSummaries,
   useCreateSummary,
 } from '../../api/client';
-import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
-  AssistTrend,
   DataSection,
   DataStatus,
+  EffortSmallMultiples,
+  HandRangeMap,
   KpiRow,
   KpiTile,
-  ResistanceSlowFast,
+  LatestEffortBars,
+  PracticeCalendar,
+  ResistanceDumbbells,
   TrendSmallMultiples,
   formatDate,
+  handFromOverview,
 } from '../../components/charts';
-import { useAllSessions } from '../History/data';
+import { firstAndLast, useAllSessions } from '../History/data';
 import { ExportButtons } from './ExportButtons';
 import './doctor.css';
 
@@ -59,6 +62,51 @@ export default function Doctor() {
             </div>
           }
         />
+        <DataStatus loading={overview.isPending} error={overview.error}>
+          {overview.data && (
+            <KpiRow>
+              <KpiTile label="Sessions" value={overview.data.sessions} />
+              <KpiTile label="Attempts" value={overview.data.attempts} />
+              <KpiTile
+                label="Days practiced, last 7"
+                value={overview.data.days_practiced_last_7}
+              />
+              <KpiTile label="Evaluations" value={overview.data.evaluations} />
+            </KpiRow>
+          )}
+        </DataStatus>
+        <DataSection
+          title="At a glance"
+          description={`Blue: on their own. Orange: glove helped.${hasDemo ? ' Demo data is drawn hollow.' : ''}`}
+          className="report-glance"
+        >
+          <div className="report-glance__grid">
+            <HandRangeMap
+              {...handFromOverview(overview.data)}
+              {...firstAndLast(sessions.data)}
+              mirror={profile.data?.affected_hand === 'left'}
+              loading={overview.isPending || sessions.isPending}
+              compact
+            />
+            <LatestEffortBars
+              rom={rom.data ?? []}
+              assist={assist.data ?? []}
+              loading={rom.isPending || assist.isPending}
+            />
+            <ResistanceDumbbells
+              points={resistance.data ?? []}
+              loading={resistance.isPending}
+              compact
+              hint="Extra motor current. Circle: slow sweep. Diamond: fast sweep. The bar is fast − slow, a velocity-dependence estimate. Check friction calibration and incomplete sweeps in evaluation details."
+            />
+            <PracticeCalendar
+              sessions={sessions.data ?? []}
+              loading={sessions.isPending}
+            />
+          </div>
+        </DataSection>
+      </section>
+      <section className="report-page">
         <DataStatus loading={profile.isPending} error={profile.error}>
           {profile.data && (
             <DataSection
@@ -93,19 +141,6 @@ export default function Doctor() {
                 ]}
               />
             </DataSection>
-          )}
-        </DataStatus>
-        <DataStatus loading={overview.isPending} error={overview.error}>
-          {overview.data && (
-            <KpiRow>
-              <KpiTile label="Sessions" value={overview.data.sessions} />
-              <KpiTile label="Attempts" value={overview.data.attempts} />
-              <KpiTile
-                label="Days practiced, last 7"
-                value={overview.data.days_practiced_last_7}
-              />
-              <KpiTile label="Evaluations" value={overview.data.evaluations} />
-            </KpiRow>
           )}
         </DataStatus>
         <DataSection
@@ -147,61 +182,35 @@ export default function Doctor() {
           )}
         </DataSection>
       </section>
-      <DataSection
-        className="report-page"
-        title="Active range over sessions"
-        description="Mean best finger position during the active attempt, all poses. Higher is better for closing, lower for opening. Compare a single pose in History."
-        demo={demoSessions}
-      >
-        <DataStatus error={rom.error || sessions.error}>
-          <TrendSmallMultiples
-            points={rom.data ?? []}
-            timeline={sessions.data}
-            loading={rom.isPending || sessions.isPending}
-            compact
-          />
-        </DataStatus>
-      </DataSection>
+      <section className="report-page">
+        <DataSection
+          title="Active range over sessions"
+          description="Mean best finger position during the active attempt, all poses. Higher is better for closing, lower for opening. Compare a single pose in History."
+          demo={demoSessions}
+        >
+          <DataStatus error={rom.error || sessions.error}>
+            <TrendSmallMultiples
+              points={rom.data ?? []}
+              timeline={sessions.data}
+              loading={rom.isPending || sessions.isPending}
+              compact
+            />
+          </DataStatus>
+        </DataSection>
+      </section>
       <DataSection
         className="report-page"
         title="Assistance over sessions"
-        description="Per-finger gap to target (solid) and rate of assisted attempts (dashed)."
+        description="Per session: best closure on its own (blue) and what the glove added to reach the target (orange). All poses."
         demo={demoSessions}
+        demoNote="Demo data is drawn hollow"
       >
-        <DataStatus error={assist.error || sessions.error}>
-          <div className="chart-grid">
-            {GLOVE_FINGERS.map((finger) => (
-              <AssistTrend
-                key={finger}
-                finger={finger}
-                points={assist.data ?? []}
-                timeline={sessions.data}
-                loading={assist.isPending || sessions.isPending}
-                compact
-              />
-            ))}
-          </div>
-        </DataStatus>
-      </DataSection>
-      <DataSection
-        className="report-page"
-        title="Resistance over evaluations"
-        description="Mean excess current over 20–90% position. Fast − slow is a velocity-dependence estimate. Review friction calibration and incomplete sweeps in evaluation details."
-        demo={demoEvaluations}
-      >
-        <DataStatus error={resistance.error || evaluations.error}>
-          <div className="chart-grid">
-            {GLOVE_FINGERS.map((finger) => (
-              <ResistanceSlowFast
-                key={finger}
-                finger={finger}
-                points={resistance.data ?? []}
-                timeline={evaluations.data}
-                loading={resistance.isPending || evaluations.isPending}
-                compact
-              />
-            ))}
-          </div>
+        <DataStatus error={assist.error || rom.error}>
+          <EffortSmallMultiples
+            rom={rom.data ?? []}
+            assist={assist.data ?? []}
+            loading={assist.isPending || rom.isPending}
+          />
         </DataStatus>
       </DataSection>
     </section>

@@ -95,7 +95,8 @@ test('doctor report exports A4 and Letter with white pages and indivisible chart
   page,
 }, info) => {
   await page.goto('/doctor');
-  await expect(page.locator('.recharts-line-curve')).toHaveCount(18);
+  await expect(page.locator('.recharts-line-curve')).toHaveCount(3);
+  await expect(page.locator('.report-glance .viz-card')).toHaveCount(4);
   await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
   await expect(page.locator('.doctor-banner')).toBeHidden();
   await expect(
