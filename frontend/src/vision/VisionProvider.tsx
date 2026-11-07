@@ -32,7 +32,11 @@ export function createVisionController(
   const camera = options.cameraSource ?? new CameraVision();
   const initial =
     options.initialKind ??
-    (import.meta.env.VITE_SIM === '1' ? 'sim' : 'camera');
+    (import.meta.env.VITE_VISION === 'camera' || import.meta.env.VITE_VISION === 'sim'
+      ? import.meta.env.VITE_VISION
+      : import.meta.env.VITE_SIM === '1'
+        ? 'sim'
+        : 'camera');
   const store = createStore<{
     source: VisionSource;
     latest: VisionFrame | null;
