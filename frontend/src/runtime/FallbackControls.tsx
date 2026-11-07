@@ -68,9 +68,14 @@ export function RuntimeFallbackControls() {
         }
       }}
     >
-      <summary>Demo recovery</summary>
+      <summary>Demo tools</summary>
       <Stack className="runtime-fallback__panel" gap={8}>
-        <Text>Switching sources ends and saves the current run.</Text>
+        <Text>
+          For live demos and testing without hardware: switch to a simulated
+          glove or camera if something fails, and trigger safety moments (rigid
+          finger, STOP) on the simulated glove. Switching ends and saves the
+          current run.
+        </Text>
         {!simulated && (
           <Button size="sm" disabled={busy} onClick={() => change('both')}>
             Use simulator
