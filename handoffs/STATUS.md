@@ -18,8 +18,8 @@ Integration branch: `MateoVidalS/rehab-hub` · Repo id: `de782449-371b-4870-89e2
 | WP11 | [polish-demo](WP11-polish-demo.md) | 3 | high | | | | #21 | merged | after WP10 |
 | WP12 | [design-adoption](WP12-design-adoption.md) | 3 | high | `…/wp12-design-adoption` | `term_0fac6373` | `MateoVidalS/wp12-design-adoption` | #20 | merged | from the design-lead audit |
 | DS | design system (Claude Opus 5.5 design lead) | 2 | – | agent worktree | – | `MateoVidalS/design-system` | #18 | merged | tokens, primitives, gallery, shell |
-| U1 | [helper-flows](ux/U1-helper-flows.md) | UX-1 | high | | | | | queued | starts now |
-| U2 | [virtual-hand](ux/U2-virtual-hand.md) | UX-1 | high | | | | | queued | starts now |
+| U1 | [helper-flows](ux/U1-helper-flows.md) | UX-1 | high | `…/u1-helper-flows` | `term_134d0050` | `MateoVidalS/u1-helper-flows` | | handed-off | |
+| U2 | [virtual-hand](ux/U2-virtual-hand.md) | UX-1 | high | `…/u2-virtual-hand` | `term_6168c807` | `MateoVidalS/u2-virtual-hand` | | handed-off | |
 | U3 | [data-views](ux/U3-data-views.md) | UX-2 | high | | | | | queued | after A3 + A4 merged |
 | U4 | [live-screen](ux/U4-live-screen.md) | UX-2 | xhigh | | | | | queued | after A1, A2, A4, U1, U2 merged |
 
