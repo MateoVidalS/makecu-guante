@@ -20,7 +20,7 @@ Open <http://127.0.0.1:5173>, visit Calibrate, choose **Calibrate simulator**, t
 **Continue to practice**. Known simulator ranges apply only to simulated sources.
 Never copy them to hardware. The default plan has fifteen attempts across five
 poses; all five fingers are scored. Pinch scores thumb and index. The shell keeps Home/History/Setup navigation;
-Exercise and Evaluate are available from Home. **Demo recovery** in the header
+Exercise and Evaluate are available from Home. **Demo tools** in the header
 is the single simulator menu, including patient preset, rigid-finger selection,
 STOP, hand hiding and source restart. The camera preview starts hidden. If the USB chooser has no glove, Setup’s
 **Simulate glove** replaces only the glove; the selected real camera stays

@@ -110,6 +110,25 @@ function until(world: SimWorld, predicate: () => boolean, maxMs = 400_000) {
   expect(predicate(), 'simulator reached the expected state').toBe(true);
 }
 
+describe('calibration from before the five-finger glove', () => {
+  it('treats a stored 3-finger servo calibration as "calibration needed"', async () => {
+    const { runtime, glove, world, calibration } = await harness();
+    const legacy = structuredClone(calibration);
+    legacy.servo = legacy.servo.filter((s) =>
+      ['thumb', 'index', 'middle'].includes(s.finger),
+    );
+    vi.spyOn(api, 'getLatestCalibration').mockResolvedValue(legacy);
+    await runtime.calibration.reload();
+    world.advance(100);
+    expect(runtime.calibration.current).toBeNull();
+    // Connecting (real or simulated) must not throw "Missing ring servo calibration".
+    await expect(glove.client.connect()).resolves.toBeTruthy();
+    await expect(
+      runtime.exercise.start([{ pose: 'full_fist', reps: 1 }], {} as never),
+    ).rejects.toThrow(/Calibrate/);
+  });
+});
+
 describe('real runtime integration', () => {
   it('executes the moderate default plan and persists all 15 real attempts in order', async () => {
     const { runtime, world, posts } = await harness();
