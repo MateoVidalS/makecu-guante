@@ -455,3 +455,29 @@
 .exercise-live {
   grid-template-rows: minmax(0, 1fr) auto auto;
 }
+
+/* Leave room for wrapping speech, the audit row and attempt feedback together. */
+@media (max-height: 760px) {
+  .exercise-live .live-details {
+    gap: var(--space-8);
+  }
+  .exercise-live .mx-gauge {
+    --gauge-h: var(--control-lg);
+  }
+  .exercise-live .phase-ring {
+    padding-block-end: var(--space-8);
+  }
+  .exercise-live .live-tools {
+    padding-block-start: var(--space-8);
+  }
+  .shell--focus:has(#safety-banner-slot [role='alert'])
+    .exercise-live
+    .mx-gauge {
+    --gauge-h: var(--space-32);
+  }
+  .shell--focus:has(#safety-banner-slot [role='alert'])
+    .exercise-live
+    .mx-legend--gauge {
+    display: none;
+  }
+}

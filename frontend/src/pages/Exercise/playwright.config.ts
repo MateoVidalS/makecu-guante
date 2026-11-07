@@ -13,7 +13,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'VITE_MOCK_API=1 VITE_SIM=1 pnpm dev --port 5284 --strictPort',
+    command:
+      'VITE_MOCK_API=1 VITE_SIM=1 VITE_SIM_SPEED=3 pnpm dev --port 5284 --strictPort',
     url: 'http://127.0.0.1:5284',
     reuseExistingServer: false,
   },

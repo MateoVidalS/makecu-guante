@@ -226,6 +226,7 @@ function LiveDetails() {
   return (
     <aside className="live-details">
       <PhaseRing
+        compact
         phase={view.phase}
         elapsed={view.phaseElapsed}
         duration={view.phaseDuration}

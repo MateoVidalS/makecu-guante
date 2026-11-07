@@ -48,6 +48,29 @@ for (const theme of ['light', 'dark']) {
       expect(box!.y + box!.height).toBeLessThanOrEqual(720);
     }
     await page.screenshot({ path: info.outputPath(`live-${theme}.png`) });
+    await page.getByRole('button', { name: 'Resume', exact: true }).click();
+    await expect(page.locator('.mx-attempt')).toBeVisible({ timeout: 30000 });
+    await page.getByText('Coach controls', { exact: true }).click();
+    await expect(page.getByLabel('Voice mode')).toBeVisible();
+    await page.getByText('Coach controls', { exact: true }).click();
+    expect(
+      await page.evaluate(() => {
+        const details = document
+          .querySelector('.live-details')!
+          .getBoundingClientRect();
+        const coach = document
+          .querySelector('.coach-quick-controls')!
+          .getBoundingClientRect();
+        const audit = document
+          .querySelector('.therapy-live')!
+          .getBoundingClientRect();
+        return (
+          details.bottom <= audit.top &&
+          coach.bottom <= audit.top &&
+          document.documentElement.scrollHeight <= innerHeight
+        );
+      }),
+    ).toBe(true);
     await page.getByRole('button', { name: 'Brake', exact: true }).click();
     await expect(
       page.getByRole('button', { name: 'Resume', exact: true }).first(),
