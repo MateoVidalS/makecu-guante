@@ -2,7 +2,15 @@ import { Color } from 'three';
 import { tokens } from '../styles/tokens';
 import type { FingerId } from '../contracts/vision';
 import { applyJoints, FINGERS, type JointMap } from './rig';
-import type { createHandScene, FingerState, HandTheme } from './scene';
+import {
+  GHOST_OPACITY,
+  OUTLINE_RATIO,
+  STATE_TINT,
+  type createHandScene,
+  type FingerState,
+  type HandTheme,
+} from './scene';
+import { createJointSmoother } from './smoothing';
 
 const REACH_SECONDS = parseFloat(tokens.durReach) / 1000;
 /** Owns reusable animation state; tick allocates no vectors, arrays, or objects. */
@@ -16,6 +24,7 @@ export function createHandAnimator(
     assist: new Color(palette.assist),
     reached: new Color(palette.reached),
   };
+  const smoother = createJointSmoother();
   const animator = {
     visible: true,
     visibilityChanged: false,
@@ -36,7 +45,12 @@ export function createHandAnimator(
       const visible = sample !== null;
       animator.visibilityChanged = visible !== animator.visible;
       animator.visible = visible;
-      if (sample) applyJoints(scene.actual, sample, reducedMotion ? 1 : 0.5);
+      if (sample)
+        applyJoints(
+          scene.actual,
+          smoother.step(sample, delta, reducedMotion),
+          1,
+        );
       const opacity = visible ? 1 : 0.3;
       const blend = reducedMotion ? 1 : Math.min(1, delta * 12);
       scene.palm.opacity = reducedMotion
@@ -48,7 +62,7 @@ export function createHandAnimator(
         const status = i < 3 ? state(FINGERS[i]) : 'idle';
         const material = scene.fingers[i];
         material.color.copy(colors.idle);
-        if (status !== 'idle') material.color.lerp(colors[status], 0.55);
+        if (status !== 'idle') material.color.lerp(colors[status], STATE_TINT);
         material.opacity = scene.palm.opacity;
         material.transparent = scene.palm.transparent;
         if (status === 'reached') reached = true;
@@ -68,9 +82,9 @@ export function createHandAnimator(
         : reached && visible
           ? reducedMotion
             ? 0
-            : 0.55 * (1 - progress)
-          : 0.35;
-      scene.outline.opacity = scene.ghost.opacity * 1.5;
+            : GHOST_OPACITY * 1.5 * (1 - progress)
+          : GHOST_OPACITY;
+      scene.outline.opacity = scene.ghost.opacity * OUTLINE_RATIO;
       scene.target.visible = scene.ghost.opacity > 0;
     },
   };

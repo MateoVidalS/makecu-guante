@@ -31,6 +31,12 @@ after 100 ms without inference results. Internal presence fades to zero over
 200 ms, but published missing frames always have confidence 0 and null closure,
 as required by `VisionFrame`. Filters reset on a hand change or a 200 ms gap.
 
+Smoothing: `JointFilter` (`jointFilter.ts`) runs a One Euro filter on every joint
+angle (degrees; `minCutoff 0.3 Hz`, `beta 0.01`, `dCutoff 1 Hz`). `rawFlexSum`
+and `closure` are derived from those filtered joints, so the rendered hand and the
+engine read one timeline. The 3D hand adds frame-rate-independent damping and a
+1° dead-band (`hand3d/smoothing.ts`). `hand3d/jitter.test.ts` measures the result.
+
 ## Provider and overlay
 
 `VisionProvider` uses camera by default and simulator with `VITE_SIM=1`. It obtains
