@@ -13,7 +13,7 @@
 | **Hardware** | Guías y anclajes impresos. Falta imprimir módulo, tapa y carretes (`hardware/definitivas/2_...`), coser, cablear y probar |
 | **Firmware en la placa** | Compila y pasa los tests nativos, pero **nunca se cargó en una ESP32**. Primero el banco de pruebas de [`firmware/BENCH.md`](firmware/BENCH.md) |
 
-> **Ojo: el software mueve 3 dedos (pulgar, índice y medio); el hardware tiene 5 servos.** El plan de software se hizo cuando anular y meñique no se actuaban, y todo (protocolo, firmware, app y prompt de voz) usa arrays de 3. Para la demo: conectar solo los servos de pulgar (GPIO 25), índice (26) y medio (27). Anular y meñique quedan montados pero sin conectar hasta que se extienda el contrato (ver 4.10).
+> **Se usan los 5 dedos.** El software se construyó primero para 3 (pulgar, índice y medio) y **se está pasando a 5**: protocolo, firmware, app, simulador y prompt de voz. Hasta que ese cambio esté en main, el firmware solo mueve los servos de GPIO 25, 26 y 27.
 
 **Requisitos:** Node 20+, pnpm, Python 3.11+, [uv](https://docs.astral.sh/uv/), Chrome o Edge (Web Serial). PlatformIO solo para el firmware.
 
@@ -115,7 +115,7 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 ### Electrónica
 
 ```
-  Fuente 5 V (límite 1,5 A) ──> [INA219] ──> (+) servos (3 hoy, 5 a futuro)
+  Fuente 5 V (límite 2,5 A) ──> [INA219] ──> (+) 5 servos
                                    │ I2C              ▲ PWM
                                    ▼                  │
   Botón STOP ───────────────────> [ESP32-WROOM-32] ───┘
@@ -130,8 +130,8 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 | Servo pulgar | GPIO 25 | |
 | Servo índice | GPIO 26 | |
 | Servo medio | GPIO 27 | |
-| Servo anular | GPIO 13 | Reservado: el firmware todavía no lo usa |
-| Servo meñique | GPIO 4 | Reservado: el firmware todavía no lo usa |
+| Servo anular | GPIO 13 | |
+| Servo meñique | GPIO 4 | |
 | NeoPixel (datos) | GPIO 33 | Level shifter (3,3 → 5 V) + resistencia de ~330 Ω |
 | INA219 SDA / SCL | GPIO 21 / 22 | I2C |
 | Botón STOP | GPIO 32 | `INPUT_PULLUP`, el botón va a GND |
@@ -142,8 +142,9 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 
 ### Alimentación
 
-- **Fuente de laboratorio Facmogu en 5 V.** Con los 3 servos que maneja el firmware hoy: **límite de 1,5 A** (lo que pide `firmware/README.md`). Con los 5: 2,5 A. Los servos **no** se alimentan desde la ESP32.
-- El firmware corta solo si la corriente total pasa de **900 mA** durante 100 ms (configurable entre 100 y 1400 mA).
+- **Fuente de laboratorio Facmogu en 5 V con límite de 2,5 A** (5 servos). Los servos **no** se alimentan desde la ESP32.
+- **Capacitor de 470–1000 µF** entre 5 V y GND en la línea de los servos: amortigua el pico cuando arrancan varios a la vez, que si no puede resetear la ESP32.
+- El firmware corta si la corriente total filtrada supera el umbral durante 100 ms. El umbral de 900 mA se eligió para 3 servos: **ajustarlo para 5 en el banco de pruebas**, midiendo el consumo real del guante vacío.
 - El límite de corriente es un **corte físico**: aunque el software falle, la fuente no deja pasar más.
 - **GND común** entre la fuente, los servos y la ESP32.
 - Verificar los 5 V con el multímetro **antes** de conectar los servos.
@@ -239,12 +240,12 @@ En el encabezado hay un menú **Demo recovery** para pasar a guante o cámara si
 
 ### 4.4 Protocolo serie (laptop ↔ ESP32)
 
-USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). Los arrays de dedos van siempre en orden **[pulgar, índice, medio]**.
+USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). Los arrays de dedos van siempre en orden **[pulgar, índice, medio, anular, meñique]**.
 
 | Laptop → ESP32 | Ejemplo | Qué hace |
 |---|---|---|
-| `target` | `{"t":"target","f":[0.8,0.6,0.0],"v":0.5}` | Ir al cierre objetivo (0–1) a velocidad `v` (fracción del rango por segundo) |
-| `follow` | `{"t":"follow","f":[0.3,0.4,0.1]}` | Enrollar el hilo flojo hasta 5% menos de lo que ve la cámara, sin tirar |
+| `target` | `{"t":"target","f":[0.8,0.6,0.6,0.5,0.5],"v":0.5}` | Ir al cierre objetivo (0–1) a velocidad `v` (fracción del rango por segundo) |
+| `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | Enrollar el hilo flojo hasta 5% menos de lo que ve la cámara, sin tirar |
 | `release` | `{"t":"release"}` | Aflojar todo; también sale de `fault` |
 | `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | Ángulos del servo para 0% y 100% del dedo `i` (no se guardan en la placa) |
 | `jog` | `{"t":"jog","i":1,"deg":95}` | Mover un servo a un ángulo, para calibrar |
@@ -252,7 +253,7 @@ USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). L
 
 | ESP32 → laptop | Ejemplo |
 |---|---|
-| `tel` (50 Hz) | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.0],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.05]}` |
+| `tel` (50 Hz) | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.35,0.30,0.30],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.40,0.35,0.35]}` |
 | `evt` | `overcurrent`, `stop_button`, `stop_released`, `watchdog`, `boot`, `ina_missing`, `calib_ok` |
 | `info` / `err` | Versión, cantidad de dedos, límite y calibración / comando rechazado y por qué |
 
@@ -261,9 +262,9 @@ USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). L
 ### 4.5 Seguridad en el firmware
 
 Se aplica siempre, aunque la laptop diga otra cosa (detalle en [`firmware/README.md`](firmware/README.md)):
-- Al arrancar, PWM desconectado: no recuerda calibración ni movimiento. `target` y `follow` se rechazan hasta calibrar los 3 dedos.
+- Al arrancar, PWM desconectado: no recuerda calibración ni movimiento. `target` y `follow` se rechazan hasta calibrar todos los dedos.
 - Nunca sale del rango calibrado; rampa con tope de 1 rango/s.
-- **Corte por corriente:** más de 900 mA (filtrado) durante 100 ms → afloja todo y queda en `fault`.
+- **Corte por corriente:** más del umbral (filtrado) durante 100 ms → afloja todo y queda en `fault`.
 - **STOP:** se engancha al primer flanco; para seguir hay que soltarlo y mandar `release`.
 - **Watchdog:** 1 s sin mensajes válidos → afloja todo.
 - Al aflojar, desenrolla hasta abierto y recién 500 ms después desconecta el PWM.
@@ -310,7 +311,8 @@ SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con
 
 ### 4.10 Pendiente
 
-- **Anular y meñique.** El protocolo, el firmware, la app, el simulador y el prompt de voz usan arrays de 3. Pasar a 5 implica cambiar el contrato (`docs/plan/03-contracts.md`, `contracts/fixtures/`, `firmware/lib/core/protocol.h`, `frontend/src/contracts/`, `backend/app/contracts/`) y todo lo que lo usa. Un atajo para la demo: sin tocar nada, dejarlos sin conectar.
+- **Pasar de 3 a 5 dedos** (en curso): contrato (`docs/plan/03-contracts.md`, `contracts/fixtures/`, `firmware/lib/core/protocol.h`, `frontend/src/contracts/`, `backend/app/contracts/`) y todo lo que lo usa: firmware, calibración, mano virtual, métricas, gráficos, simulador, tests y prompt de voz.
+- **Umbral de corriente para 5 servos:** medirlo en el banco de pruebas.
 - **Probar el firmware en la placa** con [`firmware/BENCH.md`](firmware/BENCH.md) y después [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), sin el guante puesto.
 - **Gemini con la key real:** confirmar que `/api/health` diga `gemini: true` y ensayar una conexión de voz y un resumen.
 - Fuera de alcance: modo espejo, retiro gradual del feedback, acceso remoto, varios pacientes, otros idiomas.
@@ -431,8 +433,10 @@ Pedir que saquen de la O-00014: ESP32-CAM, Raspberry Pi AI Camera, USB 3.1 break
 - Tanza o hilo encerado.
 - Tubitos plásticos o sorbetes para las guías.
 - Banda elástica para el dorso.
-- Velcro.
-- Cables jumper.
+- Velcro (2 correas para el módulo).
+- Cables jumper macho-macho y macho-hembra (5 servos a la breadboard).
+- Hilo de coser resistente, aguja y gotita (para guías, anclajes y nudos).
+- Capacitor electrolítico de 470–1000 µF para la línea de 5 V de los servos.
 
 ### Impresión 3D (Makerspace, Mudd 254)
 
@@ -450,7 +454,7 @@ Piezas en `hardware/`: módulo de muñeca, tapa, carretes, guías y anclajes (ve
 | Integración | Un dedo de punta a punta: calibrar, `follow`, asistencia, corte por corriente | Pendiente. **Hito: un dedo cerrando con el servo antes de la medianoche del sábado** |
 | Pitch | Ensayar `docs/DEMO.md`, video de Devpost | Pendiente |
 
-**Orden:** primero **un dedo + un servo + la cámara de punta a punta**. Después los otros dos dedos actuados. Anular y meñique, solo si sobra tiempo (sección 4.10).
+**Orden:** primero **un dedo + un servo + la cámara de punta a punta**. Después los otros cuatro.
 
 ### Riesgos
 
