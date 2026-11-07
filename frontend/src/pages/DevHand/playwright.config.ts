@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+const port = process.env.REHAB_FRONTEND_PORT ?? '5173';
 export default defineConfig({
   testDir: '.',
   testMatch: 'gallery.browser.spec.ts',
@@ -8,7 +9,7 @@ export default defineConfig({
   outputDir: '../../../test-results/hand',
   use: {
     ...devices['Desktop Chrome'],
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: `http://127.0.0.1:${port}`,
     viewport: { width: 1440, height: 1100 },
     launchOptions: {
       args: [
@@ -24,7 +25,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm dev',
     cwd: new URL('../../..', import.meta.url).pathname,
-    url: 'http://127.0.0.1:5173',
+    url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
   },
 });
