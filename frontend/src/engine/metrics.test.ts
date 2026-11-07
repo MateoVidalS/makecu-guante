@@ -31,16 +31,16 @@ describe('metrics (06-session §4)', () => {
     w.hand = [0, 0, 0, 0, 0];
     m.observe(w.step(), 'RELEASE');
     const result = m.finish(w.now);
-    expect(result.active_ratio).toBeCloseTo(0.8);
+    expect(result.active_ratio).toBeCloseTo(0.76);
     expect(result.fingers[1]).toMatchObject({
       active_max: 0.2,
       assist_needed: 0.2,
       final: 0.4,
     });
     expect(result.fingers[3]).toMatchObject({
-      scored: false,
-      active_max: null,
-      assist_needed: null,
+      scored: true,
+      active_max: 0.3,
+      assist_needed: 0.3,
     });
     expect(result.current_mean_ma).toBeNull();
     const hook = new AttemptMetrics(POSES.hook, 1, 1, w.now);
@@ -78,12 +78,6 @@ it('marks held vision samples unknown after the frame expires', () => {
   t.sample(w.step(0), 'ATTEMPT');
   t.sample(w.step(500), 'ATTEMPT');
   expect(t.trace.closure.index.slice(0, 7)).toEqual([0, 0, 0, 0, 0, 0, 0]);
-  expect(t.trace.closure.index.slice(7, 10)).toEqual([
-    null,
-    null,
-    null,
-    null,
-    null,
-  ]);
+  expect(t.trace.closure.index.slice(7, 10)).toEqual([null, null, null]);
   expect(t.trace.closure.index[10]).toBe(0);
 });

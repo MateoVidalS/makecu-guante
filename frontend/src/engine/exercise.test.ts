@@ -242,7 +242,7 @@ describe('exercise phase table (06-session §3 and §6)', () => {
           times[e.finger] = r.world.now;
         }
     }
-    expect(Object.keys(times)).toEqual(['index', 'middle']);
+    expect(Object.keys(times)).toEqual(['index', 'middle', 'ring', 'pinky']);
   });
 });
 

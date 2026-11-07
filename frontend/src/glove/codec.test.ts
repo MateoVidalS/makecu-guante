@@ -30,7 +30,7 @@ describe('serial fixtures', () => {
   }
   it('rounds numbers and terminates each command', () => {
     expect(encode({ t: 'target', f: [0.123456, 1, 0, 0, 0], v: 0.33333 })).toBe(
-      '{"t":"target","f":[0.123,1,0, 0, 0],"v":0.333}\n',
+      '{"t":"target","f":[0.123,1,0,0,0],"v":0.333}\n',
     );
     expect(() => encode({ t: 'limit', ma: NaN })).toThrow('finite');
   });

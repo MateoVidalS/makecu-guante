@@ -117,7 +117,7 @@ def test_digest_excludes_demo_and_outside_window_and_has_adherence_and_safety(da
         "evaluations": 1,
     }
     assert all(p["session_id"] == real.id for p in digest["active_range"] + digest["assistance"])
-    assert len(digest["resistance"]) == 3
+    assert len(digest["resistance"]) == 5
     assert digest["safety_events"][0]["source"] == "resistance"
     assert digest["safety_events"][0]["session_id"] == real.id
     repo.delete_session(db, real.id)

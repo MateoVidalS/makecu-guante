@@ -115,7 +115,7 @@ describe('record review pages', () => {
     });
     const tables = await screen.findAllByText('Show as table');
     fireEvent.click(tables[1]);
-    expect(screen.getAllByRole('table', { hidden: true })).toHaveLength(3);
+    expect(screen.getAllByRole('table', { hidden: true })).toHaveLength(5);
     fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }));
     const table = await screen.findByRole('table');
     await waitFor(() =>
@@ -175,7 +175,7 @@ describe('record review pages', () => {
     mount(`/history/evaluations/${mockState.evaluations[0].id}`);
     expect(await screen.findByText(/No friction calibration/)).toBeVisible();
     // Resistance dumbbells plus one sweep chart per finger, each with a table twin.
-    expect(screen.getAllByText('Show as table')).toHaveLength(4);
+    expect(screen.getAllByText('Show as table')).toHaveLength(6);
     expect(screen.getAllByRole('table')[0]).toHaveTextContent('mA');
     expect(
       await screen.findByRole('img', { name: /Resistance per finger/ }),

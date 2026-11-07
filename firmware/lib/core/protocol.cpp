@@ -357,7 +357,7 @@ ParseResult parse(const char* line, std::size_t length) {
   if (c.type == CommandType::Calib || c.type == CommandType::Jog) {
     if (!doc["i"].is<double>()) return result;
     const double index = doc["i"].as<double>();
-    if (!std::isfinite(index) || index < 0 || index > 2 || std::floor(index) != index)
+    if (!std::isfinite(index) || index < 0 || index >= config::FINGERS || std::floor(index) != index)
       return result;
     c.i = static_cast<int>(index);
   }

@@ -427,9 +427,9 @@ describe('Calibration wizard', () => {
     expect(screen.getByText('Open at 90°')).toBeVisible();
     expect(screen.getByText('Closed at 120°')).toBeVisible();
   });
-  it('completes three fingers, example camera, friction skip, review and save', async () => {
+  it('completes five fingers, example camera, friction skip, review and save', async () => {
     mount(<Calibrate />);
-    for (const finger of ['Thumb', 'Index', 'Middle']) {
+    for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky']) {
       fireEvent.click(
         screen.getByRole('button', { name: new RegExp(`^${finger} ·`) }),
       );
@@ -546,7 +546,7 @@ describe('Evaluation', () => {
       },
     });
     mount(<Evaluate />, runtime);
-    expect(screen.getAllByText('Stopped safely at 30%')).toHaveLength(3);
-    expect(screen.getAllByText(/Unavailable/)).toHaveLength(6);
+    expect(screen.getAllByText('Stopped safely at 30%')).toHaveLength(5);
+    expect(screen.getAllByText(/Unavailable/)).toHaveLength(10);
   });
 });

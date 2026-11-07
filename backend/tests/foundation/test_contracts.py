@@ -64,7 +64,7 @@ def test_serial_annotations_cover_all_lines():
     lines = (FIXTURES / "serial_lines.txt").read_text().splitlines()
     annotations = json.loads((FIXTURES / "serial_lines.expected.json").read_text())
     assert len(lines) == len(annotations)
-    assert sum(not a["valid"] for a in annotations) == 10
+    assert sum(not a["valid"] for a in annotations) == 11
     for line, entry in zip(lines, annotations):
         if entry["valid"]:
             assert len(line.encode()) <= 200

@@ -230,9 +230,9 @@ describe('real runtime integration', () => {
     await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
     until(world, () => runtime.evaluation.view().stage === 'done');
     await runtime.persistence.flush();
-    expect(runtime.evaluation.view().result?.sweeps).toHaveLength(6);
+    expect(runtime.evaluation.view().result?.sweeps).toHaveLength(10);
     expect(posts.createEvaluation).toHaveBeenCalledTimes(1);
-    expect(posts.createEvaluation.mock.calls[0][0].fingers).toHaveLength(3);
+    expect(posts.createEvaluation.mock.calls[0][0].fingers).toHaveLength(5);
     expect(world.firmware.info().limit).toBe(900);
   });
   it('releases on missing assist vision and latches a camera safety pause', async () => {

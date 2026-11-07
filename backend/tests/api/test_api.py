@@ -148,7 +148,7 @@ def test_missing_references_and_query_validation(client, session_body, attempt_b
         "/sessions?limit=0",
         "/sessions?offset=-1",
         "/sessions?mode=bad",
-        "/history/rom?finger=ring",
+        "/history/rom?finger=invalid",
         "/history/rom?pose=bad",
         "/export?format=xml",
         "/summaries?kind=bad",

@@ -314,7 +314,7 @@ Guías: [`docs/DEMO.md`](docs/DEMO.md) (guion de la demo), [`docs/HARDWARE_CHECK
 
 - **Hecho:** firmware con todas las reglas de seguridad, app completa (calibración, ejercicio, evaluación, historial, vista del médico), coach de voz, resúmenes y simulador. Tests: backend 60, frontend 318, firmware 32 y 12 recorridos e2e, todos en verde.
 - **Antes de poner una mano en el guante:** correr [`firmware/BENCH.md`](firmware/BENCH.md) en la placa real.
-- **Pendiente: 5 dedos.** El hardware pasó a 5 servos (pulgar, índice, medio, anular y meñique, pines 25/26/27/13/4, fuente de 2,5 A). El software todavía mueve y mide **3 dedos** (pulgar, índice y medio). Hay que extender el protocolo, el firmware, el motor y la UI.
+- **Five-finger migration:** protocol, firmware, simulator, scoring, calibration and data views use `[thumb, index, middle, ring, pinky]`, with servo pins 25/26/27/13/4. The firmware current limit defaults to 1500 mA and caps at 2200 mA for the 2.5 A supply. Power-aware assist, servo profiles, palm-down presentation, camera guidance and voice updates remain in F1–F8 of the [update plan](docs/plan/12-five-finger-update.md).
 - **Sin probar con hardware real:** la visión se ajustó con datos sintéticos (calibrar con la webcam y el ángulo reales) y el coach de Gemini Live nunca corrió con una clave real.
 
 ---

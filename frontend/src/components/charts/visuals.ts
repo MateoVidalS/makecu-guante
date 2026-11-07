@@ -235,10 +235,13 @@ export interface DumbbellRow {
 export function dumbbellRows(
   points: ResistancePoint[],
 ): Record<GloveFinger, DumbbellRow[]> {
-  const out = { thumb: [], index: [], middle: [] } as Record<
-    GloveFinger,
-    DumbbellRow[]
-  >;
+  const out = {
+    thumb: [],
+    index: [],
+    middle: [],
+    ring: [],
+    pinky: [],
+  } as Record<GloveFinger, DumbbellRow[]>;
   points.forEach((p) =>
     out[p.finger]?.push({
       evaluationId: p.evaluation_id,

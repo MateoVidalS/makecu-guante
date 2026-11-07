@@ -35,7 +35,7 @@ def test_real_engine_seed_reset_and_provenance(tmp_path, generated, monkeypatch)
         assert trace.hz == 20 and len(trace.t) > 100
         assert "ASSIST" in trace.phase
         assert len(repo.list_evaluations(db)) == 4
-        assert all(e.is_demo and len(e.sweeps) == 6 for e in repo.list_evaluations(db))
+        assert all(e.is_demo and len(e.sweeps) == 10 for e in repo.list_evaluations(db))
         trend = repo.history_resistance(db)
         index = [p for p in trend if p.finger == "index"]
         assert index[-1].slow < index[0].slow

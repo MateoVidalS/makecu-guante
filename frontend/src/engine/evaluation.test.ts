@@ -87,8 +87,12 @@ describe('evaluation (06-session §5 and §6)', () => {
       { t: 'target', f: [0, 1, 0, 0, 0], v: 1 },
       { t: 'target', f: [0, 0, 1, 0, 0], v: 0.2 },
       { t: 'target', f: [0, 0, 1, 0, 0], v: 1 },
+      { t: 'target', f: [0, 0, 0, 1, 0], v: 0.2 },
+      { t: 'target', f: [0, 0, 0, 1, 0], v: 1 },
+      { t: 'target', f: [0, 0, 0, 0, 1], v: 0.2 },
+      { t: 'target', f: [0, 0, 0, 0, 1], v: 1 },
     ]);
-    expect(result.sweeps).toHaveLength(6);
+    expect(result.sweeps).toHaveLength(10);
     expect(result.friction_used).toBe(true);
     // The fake current uses the preceding telemetry sample, so the slow/fast lag is known.
     for (const finger of result.fingers) {

@@ -58,14 +58,14 @@ describe('04-firmware §4 safety conformance', () => {
     const { fw, calibrate, events } = controller();
     calibrate();
     fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
-    fw.tick(5, 4000); // filtered 1000: first sample over limit
+    fw.tick(5, 8000); // filtered 2000: first sample over limit
     fw.tick(104, 4000);
     expect(fw.state).toBe('run');
     fw.tick(106, 4000);
     expect(fw.state).toBe('fault');
     expect(fw.goal).toEqual([0, 0, 0, 0, 0]);
     expect(events.at(-1)).toMatchObject({ e: 'overcurrent' });
-    expect(events.at(-1)!.ma).toBeGreaterThan(900);
+    expect(events.at(-1)!.ma).toBeGreaterThan(1500);
     fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 107);
     expect(fw.state).toBe('fault');
     fw.handle({ t: 'release' }, 108);
@@ -75,10 +75,10 @@ describe('04-firmware §4 safety conformance', () => {
     const { fw, calibrate, tick, events } = controller();
     calibrate();
     fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
-    tick(5, 55, 1500);
+    tick(5, 55, 2500);
     tick(60, 200, 30);
     expect(events.some((e) => e.e === 'overcurrent')).toBe(false);
-    tick(205, 260, 1500);
+    tick(205, 260, 2500);
     expect(fw.state).toBe('run');
   });
   it('STOP releases and latches fault; release cannot clear while held; stop_released does not clear', () => {
@@ -153,7 +153,7 @@ describe('04-firmware §4 safety conformance', () => {
     fw.handle({ t: 'jog', i: 0, deg: 90 }, 500);
     expect(errors.at(-1)?.why).toBe('state');
   });
-  it('Calib invalidates a finger until valid; calib_ok only when all three are valid; no_calib blocks target/follow', () => {
+  it('Calib invalidates a finger until valid; calib_ok only when all five are valid; no_calib blocks target/follow', () => {
     const { fw, errors, events } = controller();
     fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
     expect(errors.at(-1)?.why).toBe('no_calib');
@@ -163,6 +163,10 @@ describe('04-firmware §4 safety conformance', () => {
     fw.handle({ t: 'calib', i: 1, min: 20, max: 150 }, 0);
     expect(events.map((e) => e.e)).toEqual(['boot']);
     fw.handle({ t: 'calib', i: 2, min: 20, max: 150 }, 0);
+    expect(events.map((e) => e.e)).toEqual(['boot']);
+    fw.handle({ t: 'calib', i: 3, min: 20, max: 150 }, 0);
+    expect(events.map((e) => e.e)).toEqual(['boot']);
+    fw.handle({ t: 'calib', i: 4, min: 20, max: 150 }, 0);
     expect(events.at(-1)?.e).toBe('calib_ok');
     fw.handle({ t: 'calib', i: 1, min: 20, max: 25 }, 0);
     expect(fw.calibration[1]).toBeNull();
@@ -213,18 +217,18 @@ describe('04-firmware §4 safety conformance', () => {
     fw.tick(1400);
     expect(fw.position).toEqual([0, 0, 0, 0, 0]);
     fw.tick(1899);
-    expect(fw.attached).toEqual([true, true, true]);
+    expect(fw.attached).toEqual([true, true, true, true, true]);
     fw.tick(1900);
     expect(fw.attached).toEqual([false, false, false, false, false]);
     fw.handle({ t: 'follow', f: [0.2, 0.2, 0.2, 0.2, 0.2] }, 1900);
-    expect(fw.attached).toEqual([true, true, true]);
+    expect(fw.attached).toEqual([true, true, true, true, true]);
   });
   it('Limit is clamped to [100, LIMIT_MAX_MA] and hello returns current config', () => {
     const { fw } = controller();
     fw.handle({ t: 'limit', ma: 1 }, 0);
     expect(fw.info().limit).toBe(100);
     fw.handle({ t: 'limit', ma: 9000 }, 0);
-    expect(fw.info().limit).toBe(1400);
+    expect(fw.info().limit).toBe(2200);
     const infos: unknown[] = [];
     fw.infos.subscribe((i) => infos.push(i));
     fw.handle({ t: 'hello' }, 0);
@@ -233,7 +237,7 @@ describe('04-firmware §4 safety conformance', () => {
 });
 
 describe('SimGlove acceptance and timing', () => {
-  it('Moderate preset target([1,1,1, 1, 1],0.3) completes in ~3.3 s below 900 mA', async () => {
+  it('Moderate preset target([1,1,1, 1, 1],0.3) completes in ~3.3 s below 1500 mA', async () => {
     const world = new SimWorld({ autoStart: false });
     await world.glove.connect();
     calibrateWorld(world);
@@ -246,7 +250,7 @@ describe('SimGlove acceptance and timing', () => {
     expect(world.firmware.position[0]).toBeCloseTo(0.99, 5);
     world.advance(40);
     expect(world.firmware.position).toEqual([1, 1, 1, 1, 1]);
-    expect(peak).toBeLessThan(900);
+    expect(peak).toBeLessThan(1500);
     expect(world.firmware.state).toBe('run');
   });
   it('Rigid index faults with overcurrent between position 0.25 and 0.4 during target ramp', async () => {

@@ -33,7 +33,7 @@ describe('evaluation comparison', () => {
     const latest = (evaluations as Evaluation[]).find((e) => e.id === 3)!;
     const points = compareWithPrevious(latest, resistance as ResistancePoint[]);
     expect([...new Set(points.map((p) => p.evaluation_id))]).toEqual([2, 3]);
-    expect(points.filter((p) => p.evaluation_id === 3)).toHaveLength(3);
+    expect(points.filter((p) => p.evaluation_id === 3)).toHaveLength(5);
     const first = (evaluations as Evaluation[]).find((e) => e.id === 1)!;
     expect(
       new Set(
@@ -88,7 +88,7 @@ describe('hand map values', () => {
       },
     ];
     const hand = handFromAttempt(fingers);
-    expect(Object.keys(hand)).toEqual(['thumb', 'index']);
+    expect(Object.keys(hand)).toEqual(['thumb', 'index', 'ring']);
     expect(hand.thumb).toEqual({ own: 0.63, glove: 0.07, target: 0.7 });
     expect(hand.index?.glove).toBeCloseTo(0.2);
   });
@@ -206,9 +206,15 @@ describe('resistance dumbbells', () => {
       },
     ]);
     expect(rows.index.map((r) => r.gap)).toEqual([60, null]);
-    expect(resistanceTakeaway({ thumb: [], index: [], middle: [] })).toBe(
-      'No resistance measured yet',
-    );
+    expect(
+      resistanceTakeaway({
+        thumb: [],
+        index: [],
+        middle: [],
+        ring: [],
+        pinky: [],
+      }),
+    ).toBe('No resistance measured yet');
   });
 });
 

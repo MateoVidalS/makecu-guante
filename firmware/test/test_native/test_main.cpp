@@ -188,27 +188,27 @@ void overcurrent_trips_at_100_ms_with_peak() {
   Harness h;
   h.calibrate();
   h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}");
-  h.safety.current(950, 5);
-  h.safety.current(1100, 55);
-  h.safety.current(960, 104);
+  h.safety.current(1550, 5);
+  h.safety.current(1700, 55);
+  h.safety.current(1560, 104);
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Run), static_cast<int>(h.safety.state()));
-  h.safety.current(960, 105);
+  h.safety.current(1560, 105);
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Fault), static_cast<int>(h.safety.state()));
   TEST_ASSERT_EQUAL_INT(static_cast<int>(EventKind::Overcurrent),
                         static_cast<int>(h.events[h.count - 1].kind));
-  TEST_ASSERT_FLOAT_WITHIN(0.01F, 1100, h.events[h.count - 1].ma);
+  TEST_ASSERT_FLOAT_WITHIN(0.01F, 1700, h.events[h.count - 1].ma);
 }
 void overcurrent_101_ms_and_spikes_reset_timer() {
   Harness h;
   h.calibrate();
   h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}");
-  h.safety.current(1000, 0);
-  h.safety.current(1000, 99);
-  h.safety.current(900, 100);
-  h.safety.current(1000, 200);
-  h.safety.current(1000, 299);
+  h.safety.current(1600, 0);
+  h.safety.current(1600, 99);
+  h.safety.current(1500, 100);
+  h.safety.current(1600, 200);
+  h.safety.current(1600, 299);
   TEST_ASSERT_FALSE(h.saw(EventKind::Overcurrent));
-  h.safety.current(1000, 301);
+  h.safety.current(1600, 301);
   TEST_ASSERT_TRUE(h.saw(EventKind::Overcurrent));
 }
 void watchdog_boundary_idle_and_valid_message_refresh() {
@@ -393,7 +393,7 @@ void current_limit_is_clamped_in_any_state() {
   TEST_ASSERT_EQUAL_FLOAT(100, h.safety.info().limit);
   h.safety.stopPressed(0);
   h.send("{\"t\":\"limit\",\"ma\":10000}");
-  TEST_ASSERT_EQUAL_FLOAT(1400, h.safety.info().limit);
+  TEST_ASSERT_EQUAL_FLOAT(2200, h.safety.info().limit);
 }
 void timers_survive_millis_wrap() {
   Harness h(true, UINT32_MAX - 500);
@@ -408,8 +408,8 @@ void timers_survive_millis_wrap() {
   Harness c(true, UINT32_MAX - 50);
   c.calibrate();
   c.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}");
-  c.safety.current(1000, UINT32_MAX - 50);
-  c.safety.current(1000, 49);
+  c.safety.current(1600, UINT32_MAX - 50);
+  c.safety.current(1600, 49);
   TEST_ASSERT_TRUE(c.saw(EventKind::Overcurrent));
 }
 void filtered_spike_is_rejected_and_sustained_load_trips() {
@@ -427,7 +427,7 @@ void filtered_spike_is_rejected_and_sustained_load_trips() {
   TEST_ASSERT_FALSE(h.saw(EventKind::Overcurrent));
   CurrentFilter sustained;
   sustained.update(0);
-  for (uint32_t time = 400; time <= 550; time += 5) h.safety.current(sustained.update(1200), time);
+  for (uint32_t time = 400; time <= 550; time += 5) h.safety.current(sustained.update(1800), time);
   TEST_ASSERT_TRUE(h.saw(EventKind::Overcurrent));
 }
 void stop_debounce_latches_pulses_and_requires_stable_release() {

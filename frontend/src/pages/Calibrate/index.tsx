@@ -405,7 +405,10 @@ export default function Calibrate() {
                     onClick={() => {
                       client.release();
                       update({
-                        finger: Math.min(2, draft.finger + 1),
+                        finger: Math.min(
+                          GLOVE_FINGERS.length - 1,
+                          draft.finger + 1,
+                        ),
                         angle: 90,
                       });
                     }}
