@@ -389,6 +389,8 @@ export class VoiceController {
               'pause_session',
               'stop_session',
               'repeat_instruction',
+              'highlight_finger',
+              'note_for_therapist',
             ].includes(call.name)
           ) {
             const response = {

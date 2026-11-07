@@ -77,10 +77,23 @@ start/stop actions; its scaffold does not start voice itself.
 
 ## AI therapy assistant (A2)
 
-All eight therapy tools dispatch exclusively through `Runtime.therapy` using the
+All thirteen therapy tools dispatch exclusively through `Runtime.therapy` using the
 frozen `TherapyApi`. Runtime decisions return `ok`, `reason` and the full decision
 (including requested/applied values) so the coach can describe clamping or
 rejection accurately. No voice tool changes calibration, current limits or motors.
+The owner-approved Nov 7 contract defines more help as starting 1 second sooner
+and less help as 1 second later, within 1–9 seconds per finger. Gentler lowers
+speed by 0.05/s, within 0.10–0.20/s; speed never exceeds the default 0.20/s.
+Resistance automatically lowers speed in the runtime. The model cannot undo
+that protection, raise current limits, change calibration or command motors.
+
+The added tools request one-finger help now during ATTEMPT (with the same
+stagger/power rules), shape targets by 0.1 within 0.5–1.0 of the pose target,
+highlight a finger for about four seconds, save a therapist note, or add one
+repetition (up to three extra per session). All mutations remain runtime-owned.
+Live snapshots include highlighted_finger, glove state/current/simulation and
+last_safety; technical current values are context, not patient-facing speech.
+
 Until A1 supplies therapy, new tools return unavailable; the local brake uses the
 existing runtime pause/release path. Tests provide a local TherapyApi stub; no
 runtime or contract files were changed.

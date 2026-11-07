@@ -31,6 +31,11 @@ export async function dispatchTool(
       case 'set_attempt_time':
       case 'add_rest':
       case 'choose_next_pose':
+      case 'assist_finger_now':
+      case 'adjust_target':
+      case 'highlight_finger':
+      case 'note_for_therapist':
+      case 'repeat_pose':
       case 'record_feeling':
       case 'brake':
       case 'undo_last_adjustment': {

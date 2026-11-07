@@ -10,6 +10,7 @@ def declaration(name, description, properties=None, required=None):
 
 
 REASON = {"type": "STRING", "description": "Explain the change in plain words."}
+FINGER = {"type": "STRING", "enum": ["thumb", "index", "middle", "ring", "pinky"]}
 TOOLS = [
     {
         "functionDeclarations": [
@@ -26,7 +27,8 @@ TOOLS = [
                 ("get_progress", "Get current finger percentages and the previous session."),
                 (
                     "get_live_state",
-                    "Get live fingers, targets, help, feelings and safe adjustments.",
+                    "Get live fingers, targets, help, feelings, highlights, glove state/current "
+                    "and the last safety event.",
                 ),
                 ("undo_last_adjustment", "Undo the last non-brake adjustment at a safe boundary."),
             ]
@@ -34,17 +36,50 @@ TOOLS = [
         + [
             declaration(
                 "adjust_help",
-                "Change help speed by 0.05/s within 0.10–0.30/s, once per finger per attempt. "
-                "More applies next ASSIST; less is immediate. "
-                "Never changes force or current limits.",
+                "More means help starts 1 second sooner; less means 1 second later, within "
+                "1–9 seconds per finger. Gentler lowers speed by 0.05/s within 0.10–0.20/s. "
+                "Never faster than the 0.20/s default. More applies next ATTEMPT; "
+                "less/gentler are immediate. Once per finger per attempt.",
                 {
                     "finger": {
                         "type": "STRING",
                         "enum": ["thumb", "index", "middle", "ring", "pinky", "all"],
                     },
-                    "direction": {"type": "STRING", "enum": ["more", "less"]},
+                    "direction": {"type": "STRING", "enum": ["more", "less", "gentler"]},
                     "reason": REASON,
                 },
+            ),
+            declaration(
+                "assist_finger_now",
+                "Request help on one finger now, only in ATTEMPT. Uses its gentle speed and "
+                "shaped target through the runtime's existing stagger/power safety rules.",
+                {"finger": FINGER, "reason": REASON},
+            ),
+            declaration(
+                "adjust_target",
+                "Lower or raise one finger's target scale by 0.1 within 0.5–1.0 of the pose "
+                "target, starting next ATTEMPT. Never above the calibrated range.",
+                {
+                    "finger": FINGER,
+                    "direction": {"type": "STRING", "enum": ["lower", "raise"]},
+                    "reason": REASON,
+                },
+            ),
+            declaration(
+                "highlight_finger",
+                "Highlight one finger on the virtual hand for about 4 seconds while naming it.",
+                {"finger": FINGER},
+            ),
+            declaration(
+                "note_for_therapist",
+                "Save a patient-reported observation for therapist review, without diagnosing.",
+                {"text": {"type": "STRING"}},
+            ),
+            declaration(
+                "repeat_pose",
+                "Add one repetition of the current pose after this attempt; at most 3 extra "
+                "repetitions per session.",
+                {"reason": REASON},
             ),
             declaration(
                 "set_attempt_time",

@@ -107,6 +107,9 @@ export function liveContext(
       last_attempt: state.last_attempt,
       adjustments: state.adjustments,
       last_feeling: state.last_feeling,
+      highlighted_finger: state.highlighted_finger,
+      glove: state.glove,
+      last_safety: state.last_safety,
     })
   );
 }

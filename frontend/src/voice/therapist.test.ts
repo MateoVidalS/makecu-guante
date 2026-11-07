@@ -20,7 +20,7 @@ const decision: CoachDecision = {
   session_id: 1,
   tool: 'adjust_help',
   requested: {},
-  applied: { speed: 0.3 },
+  applied: { speed: 0.2 },
   result: 'clamped',
   reason: 'Safe speed cap.',
   source: 'coach',
@@ -49,14 +49,20 @@ function setup() {
     })),
     last_attempt: null,
     last_feeling: null,
+    highlighted_finger: 'index',
+    glove: { state: 'run', current_ma: 240, simulated: true },
+    last_safety: { source: 'resistance', finger: 'index', seconds_ago: 5 },
     adjustments: {
       assist_speed: {
-        thumb: 0.3,
-        index: 0.3,
-        middle: 0.3,
-        ring: 0.3,
-        pinky: 0.3,
+        thumb: 0.2,
+        index: 0.2,
+        middle: 0.2,
+        ring: 0.2,
+        pinky: 0.2,
       },
+      assist_delay_s: { thumb: 6, index: 6, middle: 6, ring: 6, pinky: 6 },
+      target_scale: { thumb: 1, index: 1, middle: 1, ring: 1, pinky: 1 },
+      extra_reps: 0,
       attempt_s: 6,
       extra_rest_s: 0,
       next_pose: null,
@@ -492,5 +498,121 @@ it('saves a late stop tool result to its original session after voice has stoppe
       }),
     ]),
   );
+  s.controller.dispose();
+});
+
+it.each([
+  [
+    'adjust_help',
+    { finger: 'index', direction: 'more', reason: 'Start help sooner.' },
+  ],
+  [
+    'adjust_help',
+    { finger: 'index', direction: 'less', reason: 'Wait longer.' },
+  ],
+  [
+    'adjust_help',
+    { finger: 'index', direction: 'gentler', reason: 'Slow down.' },
+  ],
+  ['assist_finger_now', { finger: 'ring', reason: 'Help this finger now.' }],
+  [
+    'adjust_target',
+    { finger: 'pinky', direction: 'lower', reason: 'Try a smaller target.' },
+  ],
+  [
+    'adjust_target',
+    {
+      finger: 'pinky',
+      direction: 'raise',
+      reason: 'Return toward the pose target.',
+    },
+  ],
+  ['highlight_finger', { finger: 'thumb' }],
+  [
+    'note_for_therapist',
+    { text: 'Patient reports tingling in the little finger.' },
+  ],
+  ['repeat_pose', { reason: 'Patient asked for another repetition.' }],
+] as const)(
+  'dispatches approved %s requests unchanged through TherapyApi',
+  async (name, args) => {
+    const s = setup();
+    await s.controller.start(1);
+    const call = { id: 'approved', name, args };
+    s.transport.emit({ type: 'tools', calls: [call] });
+    await Promise.resolve();
+    expect(s.therapy.adjust).toHaveBeenCalledExactlyOnceWith(
+      name,
+      args,
+      'coach',
+    );
+    expect(s.transport.responses).toEqual([
+      { call, response: { ok: true, reason: decision.reason, decision } },
+    ]);
+    s.controller.dispose();
+  },
+);
+
+it('streams approved timing, shaping, highlight, glove and safety fields', async () => {
+  const s = setup();
+  await s.controller.start(1);
+  await vi.advanceTimersByTimeAsync(1000);
+  const line = s.transport.texts.find((text) =>
+    text.text.startsWith('[live]'),
+  )!;
+  const state = JSON.parse(line.text.slice(7));
+  expect(line.speak).toBe(false);
+  expect(state).toMatchObject({
+    highlighted_finger: 'index',
+    glove: { state: 'run', current_ma: 240, simulated: true },
+    last_safety: { source: 'resistance', finger: 'index', seconds_ago: 5 },
+    adjustments: {
+      assist_speed: { index: 0.2 },
+      assist_delay_s: { index: 6 },
+      target_scale: { index: 1 },
+      extra_reps: 0,
+    },
+  });
+  s.controller.dispose();
+});
+
+it('permits a highlight and therapist note after a local brake while rejecting motion tools', async () => {
+  const s = setup();
+  await s.controller.start(1);
+  s.transcript('it hurts', true);
+  s.transport.emit({
+    type: 'tools',
+    calls: [
+      { id: 'highlight', name: 'highlight_finger', args: { finger: 'pinky' } },
+      {
+        id: 'note',
+        name: 'note_for_therapist',
+        args: { text: 'Reports pain.' },
+      },
+      {
+        id: 'assist',
+        name: 'assist_finger_now',
+        args: { finger: 'pinky', reason: 'Help now' },
+      },
+      {
+        id: 'target',
+        name: 'adjust_target',
+        args: { finger: 'pinky', direction: 'raise', reason: 'Raise' },
+      },
+    ],
+  });
+  await Promise.resolve();
+  expect(s.therapy.adjust).toHaveBeenCalledTimes(2);
+  expect(s.therapy.adjust).toHaveBeenCalledWith(
+    'note_for_therapist',
+    { text: 'Reports pain.' },
+    'coach',
+  );
+  expect(
+    s.transport.responses.find((r) => r.call.id === 'assist')?.response.ok,
+  ).toBe(false);
+  expect(
+    s.transport.responses.find((r) => r.call.id === 'target')?.response.ok,
+  ).toBe(false);
   s.controller.dispose();
 });
