@@ -3,17 +3,31 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session, SQLModel
 
 from app.config import settings
+from app.db.session import get_session, make_engine
 from app.main import app
 from app.voice import gemini_live
 from app.voice.prompt import render_prompt
 
 
 @pytest.fixture
-def client(monkeypatch):
+def client(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "gemini_api_key", "")
-    return TestClient(app)
+    engine = make_engine(str(tmp_path / "voice.db"))
+    SQLModel.metadata.create_all(engine)
+
+    def db_session():
+        with Session(engine) as db:
+            yield db
+
+    app.dependency_overrides[get_session] = db_session
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.pop(get_session, None)
+        engine.dispose()
 
 
 def test_missing_key(client):
