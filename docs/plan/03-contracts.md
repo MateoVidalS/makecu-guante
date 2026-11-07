@@ -53,8 +53,8 @@ Before all 5 fingers have received `calib`, `target` and `follow` are rejected w
 | `t` | Example | Rate | Meaning |
 |---|---|---|---|
 | `tel` | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.0,0.3,0.3],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.05,0.3,0.3]}` | 50 Hz | `a` = current **commanded, ramped** position per servo (0–1; hobby servos don't report their real position). `ma` = INA219 total current (filtered, 10 ms). `st` = state. ➕ `md` = mode `none\|follow\|target\|jog`. ➕ `tg` = the final target being ramped to |
-| `evt` | `{"t":"evt","e":"overcurrent","ma":950}` | on event | `e`: `boot`, `overcurrent`, `stop_button`, `watchdog`, ➕ `stop_released` (button released, still faulted), ➕ `ina_missing` (sensor not found; target/follow refused), ➕ `calib_ok` (all 3 fingers calibrated) |
-| ➕ `info` | `{"t":"info","fw":"0.2.0","fingers":5,"limit":1500,"calib":[[20,150],[25,160],null,null,null]}` | on `hello` and boot | Firmware identity + current config |
+| `evt` | `{"t":"evt","e":"overcurrent","ma":950}` · boot: `{"t":"evt","e":"boot","reset_reason":1}` | on event | `e`: `boot`, `overcurrent`, `stop_button`, `watchdog`, ➕ `stop_released` (button released, still faulted), ➕ `ina_missing` (sensor not found; target/follow refused), ➕ `calib_ok` (all 5 fingers calibrated). ➕ `boot` carries `reset_reason` = `esp_reset_reason()`; **9 = brown-out** (several servos starting together; check the bulk capacitor), which the app must surface in Setup |
+| ➕ `info` | `{"t":"info","fw":"0.1.0","fingers":5,"limit":1500,"calib":[[20,150],[25,160],null,null,null]}` | on `hello` and boot | Firmware identity + current config |
 | ➕ `err` | `{"t":"err","c":"target","why":"no_calib"}` | on error | `why`: `bad_json`, `unknown_type`, `bad_args`, `no_calib`, `fault`, `state` |
 
 ### 2.3 Firmware states
