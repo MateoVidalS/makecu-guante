@@ -17,7 +17,12 @@ import {
   RuntimeStatus,
 } from './runtime';
 import { VoiceProvider } from './voice';
-import { StatusChip, Toasts } from './components/common';
+import {
+  GloveChip,
+  CameraChip,
+  SafetyBanner,
+  Toasts,
+} from './components/common';
 import Home from './pages/Home';
 import Setup from './pages/Setup';
 import Calibrate from './pages/Calibrate';
@@ -97,8 +102,8 @@ function Shell() {
         )}
         <div className="statuses">
           <RuntimeStatus />
-          <StatusChip>● Glove: Simulator</StatusChip>
-          <StatusChip>● Camera: Simulated hand</StatusChip>
+          <GloveChip />
+          <CameraChip />
           {!focus && !doctor && (
             <Link className="button" to="/doctor">
               Doctor view
@@ -106,7 +111,9 @@ function Shell() {
           )}
         </div>
       </header>
-      <div id="safety-banner-slot" aria-live="assertive" aria-atomic="true" />
+      <div id="safety-banner-slot" aria-live="assertive" aria-atomic="true">
+        <SafetyBanner />
+      </div>
       <main id="main" tabIndex={-1}>
         <Routes>
           <Route path="/" element={<Home />} />
