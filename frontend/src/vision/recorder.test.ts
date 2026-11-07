@@ -72,7 +72,7 @@ describe('opt-in real landmark recording', () => {
   });
   it('bounds recording memory and rejects invalid duration', async () => {
     const { source, emit, detach } = setup();
-    for (const durationMs of [0, -1, 30001, NaN])
+    for (const durationMs of [0, 0.5, -1, 30001, NaN])
       expect(() =>
         recordLandmarks(source, {
           pose: 'open',

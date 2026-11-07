@@ -311,6 +311,7 @@ export class CameraVision implements VisionSource {
   }
   setCalibration(calibration: CameraCalibration | null): void {
     this.processor.calibration = calibration;
+    if (calibration) this.affectedHand = calibration.affected_hand;
     this.processor.reset();
     this.publish(missingFrame(performance.now()));
   }

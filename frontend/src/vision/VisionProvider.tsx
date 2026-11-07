@@ -121,6 +121,10 @@ export function createVisionController(
       await controller.start(opts ?? settings);
     },
     setCalibration(value: CameraCalibration | null) {
+      if (calibration?.affected_hand !== value?.affected_hand) {
+        robustnessTracker.reset(performance.now());
+        store.setState({ robustness: controller.robustness() });
+      }
       calibration = value;
       camera.setCalibration(value);
       sim.setCalibration(value);

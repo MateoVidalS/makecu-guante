@@ -34,7 +34,8 @@ as required by `VisionFrame`. Filters reset on a configured hand change or a
 affected hand, regardless of MediaPipe's label (including an unknown label).
 The score must still be at least 0.6. With two hands, labels select the configured
 hand; the mirror preference only changes this disambiguation. Flipping a lone
-hand's MediaPipe label does not reset joint smoothing.
+hand's MediaPipe label does not reset joint smoothing. Loading a saved affected-hand
+calibration also updates an already running camera's configured hand.
 
 Smoothing: `JointFilter` (`jointFilter.ts`) runs a One Euro filter on every joint
 angle (degrees; `minCutoff 0.3 Hz`, `beta 0.01`, `dCutoff 1 Hz`). `rawFlexSum`
@@ -78,7 +79,8 @@ F7 can import `useVisionRobustness()` from `../vision` alongside `useVision()`.
 It returns a reactive `VisionRobustnessStats` on every source frame. For polling or
 non-React use, call `vision.robustness()`; for standalone sources, subscribe frames
 to `new VisionRobustnessTracker().add(frame)` and call `tracker.stats(performance.now())`.
-A restart, source switch or stop clears the provider's window. The API stays in
+A restart, source switch, affected-hand calibration change or stop clears the
+provider's window. The API stays in
 `vision/`; no frozen `VisionSource` or `VisionFrame` contract additions are needed.
 
 ```tsx

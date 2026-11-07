@@ -123,6 +123,14 @@ describe('vision source controller', () => {
     });
     expect(controller.store.getState().robustness.samples).toBe(1);
     expect(controller.robustness(50).detectionRate).toBe(1);
+    controller.setCalibration({
+      affected_hand: 'left',
+      open_flex: fingerMap(() => 0),
+      closed_flex: fingerMap(() => 200),
+      pinch_open: 1,
+      pinch_closed: 0.1,
+    });
+    expect(controller.robustness().samples).toBe(0);
     await controller.start();
     expect(controller.robustness().samples).toBe(0);
     await controller.setKind('sim');

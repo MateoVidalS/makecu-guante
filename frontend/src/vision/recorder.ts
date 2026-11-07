@@ -30,7 +30,7 @@ export function recordLandmarks(
   },
 ) {
   const durationMs = options.durationMs ?? 30000;
-  if (!Number.isFinite(durationMs) || durationMs <= 0 || durationMs > 30000)
+  if (!Number.isFinite(durationMs) || durationMs < 1 || durationMs > 30000)
     throw new Error('Choose a recording duration between 1 and 30000 ms');
   const started = performance.now();
   const frames: LandmarkCapture[] = [];
