@@ -16,6 +16,7 @@ import {
   createVisionController,
   useVision,
   useVisionFrame,
+  useVisionRobustness,
   VisionProvider,
 } from './VisionProvider';
 import { CameraOverlay } from './CameraOverlay';
@@ -105,6 +106,38 @@ describe('vision source controller', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('publishes reactive robustness and resets on restart, source switch and stop', async () => {
+    vi.useFakeTimers({ toFake: ['performance'] });
+    const camera = new TestSource('camera'),
+      sim = new TestSource('sim');
+    const controller = createVisionController({
+      cameraSource: camera,
+      simSource: sim,
+      initialKind: 'camera',
+    });
+    await controller.start();
+    camera.emit({
+      ...visible(),
+      t: 0,
+      joints: fingerMap(() => ({ mcp: 0, pip: 0, dip: 0 })),
+    });
+    expect(controller.store.getState().robustness.samples).toBe(1);
+    expect(controller.robustness(50).detectionRate).toBe(1);
+    controller.setCalibration({
+      affected_hand: 'left',
+      open_flex: fingerMap(() => 0),
+      closed_flex: fingerMap(() => 200),
+      pinch_open: 1,
+      pinch_closed: 0.1,
+    });
+    expect(controller.robustness().samples).toBe(0);
+    await controller.start();
+    expect(controller.robustness().samples).toBe(0);
+    await controller.setKind('sim');
+    expect(controller.robustness().samples).toBe(0);
+    controller.stop();
+    expect(controller.store.getState().robustness.observedMs).toBe(0);
+  });
   it('switches sources, forwards persistent subscriptions and settings, and removes old listeners', async () => {
     const sim = new TestSource('sim'),
       camera = new TestSource('camera');
@@ -174,9 +207,10 @@ describe('vision source controller', () => {
     function Probe() {
       const vision = useVision(),
         detected = useVisionFrame((f) => f?.detected ?? false);
+      const robustness = useVisionRobustness();
       return (
         <output>
-          {vision.source.kind}:{String(detected)}
+          {vision.source.kind}:{String(detected)}:{robustness.status}
         </output>
       );
     }
@@ -186,9 +220,9 @@ describe('vision source controller', () => {
       </VisionProvider>,
     );
     await act(async () => {});
-    expect(screen.getByText('sim:false')).toBeDefined();
+    expect(screen.getByText('sim:false:collecting')).toBeDefined();
     act(() => sim.emit(visible()));
-    expect(screen.getByText('sim:true')).toBeDefined();
+    expect(screen.getByText('sim:true:collecting')).toBeDefined();
     view.unmount();
     expect(sim.listeners.size).toBe(0);
     expect(sim.stop).toHaveBeenCalled();
@@ -204,7 +238,7 @@ describe('camera overlay', () => {
     const view = render(<CameraOverlay source={source} compact />);
     expect(screen.getByText('Hand not visible')).toBeDefined();
     act(() => source.emit(visible()));
-    expect(screen.getByText('Sees hand 95%')).toBeDefined();
+    expect(screen.getByText('Hand detected 95%')).toBeDefined();
     expect(screen.getAllByText('50%')).toHaveLength(5);
     act(() => source.emit({ ...visible(), closure: null }));
     expect(screen.getAllByText('—')).toHaveLength(5);
@@ -273,6 +307,6 @@ describe('camera overlay', () => {
     });
     expect(screen.getByText('Simulated camera')).toBeDefined();
     act(() => sim.emit(visible()));
-    expect(screen.getByText('Sees hand 95%')).toBeDefined();
+    expect(screen.getByText('Hand detected 95%')).toBeDefined();
   });
 });

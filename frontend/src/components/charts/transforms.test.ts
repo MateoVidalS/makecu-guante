@@ -4,6 +4,7 @@ import {
   decimate,
   phaseBands,
   resistanceSeries,
+  replayRows,
   toFingerSeries,
 } from './transforms';
 import type {
@@ -11,7 +12,7 @@ import type {
   ResistancePoint,
   RomPoint,
 } from '../../contracts/api';
-import type { ExercisePhase } from '../../contracts/engine';
+import type { AttemptTrace, ExercisePhase } from '../../contracts/engine';
 const timeline = [
   { id: 1, started_at: '2026-01-01T00:00:00Z', is_demo: true },
   { id: 2, started_at: '2026-01-02T00:00:00Z', is_demo: false },
@@ -112,6 +113,58 @@ describe('history transforms', () => {
   });
 });
 describe('replay transforms', () => {
+  it('preserves all five closure and servo lines, including measured zero', () => {
+    const fingers = ['thumb', 'index', 'middle', 'ring', 'pinky'] as const;
+    const trace: AttemptTrace = {
+      hz: 20,
+      t: [0, 0.05],
+      ma: [100, 200],
+      phase: ['ATTEMPT', 'ASSIST'],
+      closure: {
+        thumb: [0, 0.1],
+        index: [0, 0.2],
+        middle: [0, 0.3],
+        ring: [0, 0.4],
+        pinky: [0, 0.5],
+      },
+      servo: {
+        thumb: [0, 1],
+        index: [0, 1],
+        middle: [0, 1],
+        ring: [0, 1],
+        pinky: [0, 1],
+      },
+    };
+    const rows = replayRows(trace, true);
+    fingers.forEach((f, i) => {
+      expect(rows[0][`${f}Closure`]).toBe(0);
+      expect(rows[1][`${f}Closure`]).toBeCloseTo((i + 1) * 10);
+      expect(rows[1][`${f}Servo`]).toBe(100);
+    });
+    expect(rows[1]).toMatchObject({
+      current: 200,
+      demo: true,
+      phase: 'ASSIST',
+    });
+  });
+  it('keeps missing legacy ring and pinky samples unmeasured', () => {
+    const legacy = {
+      hz: 20,
+      t: [0],
+      closure: { thumb: [0.2], index: [0.3], middle: [0.4] },
+      servo: { thumb: [0], index: [0.1], middle: [0.2] },
+      ma: [150],
+      phase: ['ATTEMPT'],
+    } as unknown as AttemptTrace;
+    expect(replayRows(legacy)[0]).toMatchObject({
+      thumbClosure: 20,
+      middleServo: 20,
+      ringClosure: null,
+      ringServo: null,
+      pinkyClosure: null,
+      pinkyServo: null,
+    });
+  });
   it('uses the actual transition time for contiguous phase bands', () => {
     const phase: ExercisePhase[] = [
       'ATTEMPT',

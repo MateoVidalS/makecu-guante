@@ -11,13 +11,15 @@ import type {
   SerialCommand,
 } from '../contracts/glove';
 import { codecStats } from './codec';
+import { createGloveController } from './GloveProvider';
+import { SimWorld } from './sim/simWorld';
 
 const info = {
   t: 'info',
   fw: '0.1.0',
-  fingers: 3,
+  fingers: 5,
   limit: 900,
-  calib: [null, null, null],
+  calib: [null, null, null, null, null],
 };
 class FakePort implements SerialPortLike {
   readable: ReadableStream<Uint8Array> | null = null;
@@ -150,6 +152,91 @@ describe('Web Serial connection lifecycle', () => {
     expect(port.readable?.locked).toBe(false);
     expect(port.writable?.locked).toBe(false);
   });
+  it.each([0, 3, 4, 6])(
+    'rejects a %i-finger handshake immediately, exposes the reason and can reconnect',
+    async (fingers) => {
+      const { client, port } = setup();
+      clients.push(client);
+      const provider = createGloveController({
+        kind: 'serial',
+        serial: client,
+        world: new SimWorld({ autoStart: false }),
+      });
+      provider.mount();
+      port.autoInfo = false;
+      const result = expect(client.connect()).rejects.toThrow(
+        `reports ${fingers} fingers`,
+      );
+      await flush();
+      port.receive(
+        JSON.stringify({ ...info, fingers, calib: Array(fingers).fill(null) }) +
+          '\n',
+      );
+      await result;
+      await flush();
+      expect(provider.connection).toBe('error');
+      expect(provider.connectionError).toContain('requires 5-finger firmware');
+      expect(port.closes).toBe(1);
+      expect(port.readable?.locked).toBe(false);
+      expect(port.writable?.locked).toBe(false);
+      client.target([1, 1, 1, 1, 1], 0.3);
+      expect(port.writes.map((cmd) => cmd.t)).toEqual(['hello']);
+      port.autoInfo = true;
+      await client.connect();
+      expect(provider.connection).toBe('connected');
+      expect(provider.connectionError).toBeNull();
+      provider.dispose();
+    },
+  );
+  it('rejects incompatible info received after connection and discards buffered telemetry', async () => {
+    const { client, port } = setup();
+    clients.push(client);
+    const provider = createGloveController({
+      kind: 'serial',
+      serial: client,
+      world: new SimWorld({ autoStart: false }),
+    });
+    provider.mount();
+    await client.connect();
+    port.receive(
+      JSON.stringify({
+        t: 'tel',
+        ms: 10,
+        a: [0, 0, 0, 0, 0],
+        ma: 30,
+        st: 'idle',
+        md: 'none',
+        tg: null,
+      }) + '\n',
+    );
+    await flush();
+    expect(provider.latest).not.toBeNull();
+    const errors: string[] = [];
+    client.onError((error) => errors.push(error.why));
+    port.receive(
+      JSON.stringify({ ...info, fingers: 3 }) +
+        '\n' +
+        JSON.stringify({
+          t: 'tel',
+          ms: 20,
+          a: [0, 0, 0, 0, 0],
+          ma: 30,
+          st: 'run',
+          md: 'target',
+          tg: [1, 1, 1, 1, 1],
+        }) +
+        '\n',
+    );
+    await flush();
+    expect(client.connection()).toBe('error');
+    expect(client.latest()).toBeNull();
+    expect(provider.latest).toBeNull();
+    expect(provider.connectionError).toContain('requires 5-finger firmware');
+    expect(errors).toEqual([
+      'This glove reports 3 fingers. Rehab Hub requires 5-finger firmware.',
+    ]);
+    provider.dispose();
+  });
   it('reports the unsupported browser error', async () => {
     const client = new WebSerialGlove();
     clients.push(client);
@@ -208,7 +295,7 @@ describe('Web Serial connection lifecycle', () => {
     await client.connect();
     await flush();
     port.hold = true;
-    client.target([1, 1, 1], 0.3);
+    client.target([1, 1, 1, 1, 1], 0.3);
     await flush();
     const unblocked = port.unblock;
     const closing = client.disconnect();
@@ -242,7 +329,7 @@ describe('Web Serial connection lifecycle', () => {
     await client.connect();
     oldController.enqueue(
       new TextEncoder().encode(
-        '{"t":"tel","ms":0,"a":[1,1,1],"ma":900,"st":"fault","md":"none","tg":[0,0,0]}\n',
+        '{"t":"tel","ms":0,"a":[1,1,1, 1, 1],"ma":900,"st":"fault","md":"none","tg":[0,0,0, 0, 0]}\n',
       ),
     );
     await flush();
@@ -258,8 +345,8 @@ describe('Web Serial connection lifecycle', () => {
     client.limit(600);
     await flush();
     const closing = client.disconnect();
-    client.target([1, 1, 1], 0.3);
-    client.follow([1, 1, 1]);
+    client.target([1, 1, 1, 1, 1], 0.3);
+    client.follow([1, 1, 1, 1, 1]);
     const reconnect = client.connect();
     port.hold = false;
     port.unblock?.();
@@ -294,8 +381,8 @@ describe('Web Serial framing and scheduling', () => {
     const tel = {
       t: 'tel',
       ms: 20,
-      a: [0, 0.2, 0.3],
-      tg: [0, 0.4, 0.5],
+      a: [0, 0.2, 0.3, 0.3, 0.3],
+      tg: [0, 0.4, 0.5, 0.5, 0.5],
       ma: 300,
       st: 'run',
       md: 'target',
@@ -318,7 +405,7 @@ describe('Web Serial framing and scheduling', () => {
     );
     await flush();
     expect(received).toHaveLength(1);
-    expect(client.latest()?.a).toEqual([0, 0.2, 0.3]);
+    expect(client.latest()?.a).toEqual([0, 0.2, 0.3, 0.3, 0.3]);
     expect(events).toHaveLength(1);
     expect(errors).toHaveLength(1);
     expect(codecStats.malformedLines - before).toBe(2);
@@ -344,13 +431,13 @@ describe('Web Serial framing and scheduling', () => {
     clients.push(client);
     await client.connect();
     for (let i = 0; i < 100; i++) {
-      client.follow([i / 100, 0, 0]);
+      client.follow([i / 100, 0, 0, 0, 0]);
       await vi.advanceTimersByTimeAsync(1);
     }
     await vi.advanceTimersByTimeAsync(50);
     const follows = port.writes.filter((c) => c.t === 'follow');
     expect(follows.length).toBeLessThanOrEqual(5);
-    expect(follows.at(-1)).toEqual({ t: 'follow', f: [0.99, 0, 0] });
+    expect(follows.at(-1)).toEqual({ t: 'follow', f: [0.99, 0, 0, 0, 0] });
   });
   it('release jumps queued configuration, discards stale movement and cancels pending follow', async () => {
     const { client, port } = setup();
@@ -358,10 +445,10 @@ describe('Web Serial framing and scheduling', () => {
     await client.connect();
     await flush();
     port.hold = true;
-    client.target([0.2, 0.2, 0.2], 0.3);
+    client.target([0.2, 0.2, 0.2, 0.2, 0.2], 0.3);
     await flush();
-    client.target([1, 1, 1], 0.3);
-    client.follow([0.5, 0.5, 0.5]);
+    client.target([1, 1, 1, 1, 1], 0.3);
+    client.follow([0.5, 0.5, 0.5, 0.5, 0.5]);
     client.jog(0, 90);
     client.calib(0, 20, 150);
     client.limit(600);
@@ -382,10 +469,10 @@ describe('Web Serial framing and scheduling', () => {
     const { client, port } = setup();
     clients.push(client);
     await client.connect();
-    client.follow([0.1, 0.1, 0.1]);
+    client.follow([0.1, 0.1, 0.1, 0.1, 0.1]);
     await flush();
-    client.follow([0.2, 0.2, 0.2]);
-    client.target([1, 1, 1], 0.3);
+    client.follow([0.2, 0.2, 0.2, 0.2, 0.2]);
+    client.target([1, 1, 1, 1, 1], 0.3);
     client.calib(0, 20, 150);
     client.jog(0, 90);
     client.limit(600);
@@ -411,7 +498,7 @@ describe('Web Serial framing and scheduling', () => {
     client.limit(700);
     await flush();
     for (let i = 0; i < 100; i++) {
-      client.follow([i / 100, 0, 0]);
+      client.follow([i / 100, 0, 0, 0, 0]);
       await vi.advanceTimersByTimeAsync(10);
     }
     port.hold = false;
@@ -419,7 +506,7 @@ describe('Web Serial framing and scheduling', () => {
     await flush();
     await vi.advanceTimersByTimeAsync(50);
     expect(port.writes.filter((c) => c.t === 'follow')).toEqual([
-      { t: 'follow', f: [0.99, 0, 0] },
+      { t: 'follow', f: [0.99, 0, 0, 0, 0] },
     ]);
   });
 });

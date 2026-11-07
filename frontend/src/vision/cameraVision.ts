@@ -6,6 +6,7 @@ import type {
 } from '../contracts/vision';
 import type { CameraCalibration } from '../contracts/calibration';
 import { FrameProcessor, missingFrame } from './frameProcessor';
+import type { LandmarkCapture } from './recorder';
 
 type Delegate = 'GPU' | 'CPU';
 export interface LatencyStats {
@@ -48,6 +49,7 @@ export class CameraVision implements VisionSource {
   private processor = new FrameProcessor();
   private listeners = new Set<(frame: VisionFrame) => void>();
   private frame: VisionFrame | null = null;
+  private landmarkListeners = new Set<(capture: LandmarkCapture) => void>();
   private generation = 0;
   private callback: number | null = null;
   private callbackIsVideo = false;
@@ -231,6 +233,7 @@ export class CameraVision implements VisionSource {
       const result = this.landmarker.detectForVideo(this.video, started);
       const ended = performance.now();
       if (generation !== this.generation) return;
+      this.landmarkListeners.forEach((cb) => cb({ t: started, result }));
       const frame = this.processor.process(
         result,
         started,
@@ -308,6 +311,7 @@ export class CameraVision implements VisionSource {
   }
   setCalibration(calibration: CameraCalibration | null): void {
     this.processor.calibration = calibration;
+    if (calibration) this.affectedHand = calibration.affected_hand;
     this.processor.reset();
     this.publish(missingFrame(performance.now()));
   }
@@ -319,6 +323,13 @@ export class CameraVision implements VisionSource {
     this.listeners.add(cb);
     return () => {
       this.listeners.delete(cb);
+    };
+  }
+  /** Raw geometry for explicit development recordings; bypasses filters/calibration. */
+  onLandmarks(cb: (capture: LandmarkCapture) => void) {
+    this.landmarkListeners.add(cb);
+    return () => {
+      this.landmarkListeners.delete(cb);
     };
   }
   latest() {

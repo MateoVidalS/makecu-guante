@@ -42,7 +42,7 @@ class EvalRun {
     for (let i = 0; i < limit && this.engine.state().stage !== stage; i++) {
       // Empty glove friction: 80 + 40 * position. Patient resistance adds speed-dependent current.
       const state = this.engine.state();
-      const iFinger = ['thumb', 'index', 'middle'].indexOf(
+      const iFinger = ['thumb', 'index', 'middle', 'ring', 'pinky'].indexOf(
         state.finger ?? 'thumb',
       );
       this.world.ma =
@@ -65,7 +65,7 @@ describe('evaluation (06-session §5 and §6)', () => {
     ]);
     for (let i = 0; i < 20; i++) expect(r.step().commands).toEqual([]);
     const out = r.step();
-    expect(out.commands).toEqual([{ t: 'target', f: [1, 0, 0], v: 0.2 }]);
+    expect(out.commands).toEqual([{ t: 'target', f: [1, 0, 0, 0, 0], v: 0.2 }]);
     expect(r.engine.state()).toMatchObject({
       stage: 'sweep',
       finger: 'thumb',
@@ -81,14 +81,18 @@ describe('evaluation (06-session §5 and §6)', () => {
       .flatMap((o) => o.commands)
       .filter((c) => c.t === 'target');
     expect(targets).toEqual([
-      { t: 'target', f: [1, 0, 0], v: 0.2 },
-      { t: 'target', f: [1, 0, 0], v: 1 },
-      { t: 'target', f: [0, 1, 0], v: 0.2 },
-      { t: 'target', f: [0, 1, 0], v: 1 },
-      { t: 'target', f: [0, 0, 1], v: 0.2 },
-      { t: 'target', f: [0, 0, 1], v: 1 },
+      { t: 'target', f: [1, 0, 0, 0, 0], v: 0.2 },
+      { t: 'target', f: [1, 0, 0, 0, 0], v: 1 },
+      { t: 'target', f: [0, 1, 0, 0, 0], v: 0.2 },
+      { t: 'target', f: [0, 1, 0, 0, 0], v: 1 },
+      { t: 'target', f: [0, 0, 1, 0, 0], v: 0.2 },
+      { t: 'target', f: [0, 0, 1, 0, 0], v: 1 },
+      { t: 'target', f: [0, 0, 0, 1, 0], v: 0.2 },
+      { t: 'target', f: [0, 0, 0, 1, 0], v: 1 },
+      { t: 'target', f: [0, 0, 0, 0, 1], v: 0.2 },
+      { t: 'target', f: [0, 0, 0, 0, 1], v: 1 },
     ]);
-    expect(result.sweeps).toHaveLength(6);
+    expect(result.sweeps).toHaveLength(10);
     expect(result.friction_used).toBe(true);
     // The fake current uses the preceding telemetry sample, so the slow/fast lag is known.
     for (const finger of result.fingers) {
@@ -226,14 +230,16 @@ describe('evaluation (06-session §5 and §6)', () => {
     }
     for (let i = 0; i < 30; i++) {
       const out = r.step(50, (input) => {
-        input.tel!.a = [0.3, 0, 0];
+        input.tel!.a = [0.3, 0, 0, 0, 0];
       });
       expect(out.commands).toEqual([]);
     }
     r.world.confidence = 0.5;
     for (let i = 0; i < 30; i++) expect(r.step().commands).toEqual([]);
     r.world.confidence = 0.6;
-    expect(r.step().commands).toEqual([{ t: 'target', f: [0, 1, 0], v: 0.2 }]);
+    expect(r.step().commands).toEqual([
+      { t: 'target', f: [0, 1, 0, 0, 0], v: 0.2 },
+    ]);
   });
   it.each([
     'stop_button',
@@ -325,7 +331,9 @@ it('waits two seconds after a sweep and one second released before the next spee
   expect(r.step().commands).toEqual([{ t: 'release' }]);
   expect(r.engine.state().stage).toBe('prepare');
   for (let i = 0; i < 20; i++) expect(r.step().commands).toEqual([]);
-  expect(r.step().commands).toEqual([{ t: 'target', f: [0, 1, 0], v: 1 }]);
+  expect(r.step().commands).toEqual([
+    { t: 'target', f: [0, 1, 0, 0, 0], v: 1 },
+  ]);
 });
 
 it('preserves evaluation motion safety over seeded random input sequences', () => {
@@ -359,4 +367,99 @@ it('preserves evaluation motion safety over seeded random input sequences', () =
     w.apply(out.commands);
   }
   expect(targets).toBeGreaterThan(10);
+});
+
+it('evaluates only a deduplicated ring/pinky subset and reports overall progress', () => {
+  const r = new EvalRun(
+    undefined,
+    { ...DEFAULT_EVAL_SETTINGS, fingers: ['pinky', 'ring', 'pinky'] },
+    false,
+  );
+  const progress: number[] = [];
+  const targets: number[][] = [];
+  while (r.engine.state().stage !== 'done') {
+    const out = r.step();
+    progress.push(r.engine.state().overallProgress);
+    for (const command of out.commands)
+      if (command.t === 'target') targets.push(command.f);
+  }
+  expect(targets).toEqual([
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+  ]);
+  expect(
+    progress.every(
+      (value, i) =>
+        value >= 0 && value <= 1 && (i === 0 || value >= progress[i - 1]),
+    ),
+  ).toBe(true);
+  expect(r.engine.state()).toMatchObject({
+    completedSweeps: 4,
+    totalSweeps: 4,
+    overallProgress: 1,
+  });
+  expect(r.engine.state().result!.fingers.map((f) => f.finger)).toEqual([
+    'pinky',
+    'ring',
+  ]);
+});
+
+it('rejects invalid evaluation finger names before sending any commands', () => {
+  expect(() =>
+    createEvaluationEngine().start(
+      { ...DEFAULT_EVAL_SETTINGS, fingers: ['invalid'] as never },
+      calibration,
+      0,
+    ),
+  ).toThrow('five-finger');
+});
+
+it("stores independent friction curves for all five fingers and subtracts each finger's own baseline", () => {
+  const engine = frictionRun();
+  const r = new EvalRun(engine);
+  r.until('done');
+  expect(Object.keys(engine.curves())).toEqual([
+    'thumb',
+    'index',
+    'middle',
+    'ring',
+    'pinky',
+  ]);
+  expect(
+    Object.values(engine.curves()).every((curves) => curves.length === 2),
+  ).toBe(true);
+  const fingers = DEFAULT_EVAL_SETTINGS.fingers;
+  const friction = Object.fromEntries(
+    fingers.map((finger, i) => [
+      finger,
+      [0.2, 1].map((v) => ({
+        v,
+        points: [
+          { pos: 0, ma: i * 10 },
+          { pos: 1, ma: i * 10 },
+        ],
+      })),
+    ]),
+  );
+  const evalEngine = createEvaluationEngine();
+  const evaluation = new EvalRun(evalEngine);
+  evaluation.accept(
+    evalEngine.start(
+      DEFAULT_EVAL_SETTINGS,
+      { ...calibration, friction },
+      evaluation.world.now,
+    ),
+  );
+  while (evalEngine.state().stage !== 'done') {
+    const index = fingers.indexOf(evalEngine.state().finger ?? 'thumb');
+    evaluation.world.ma = 100 + index * 10;
+    evaluation.step();
+  }
+  expect(evalEngine.state().result!.friction_used).toBe(true);
+  for (const result of evalEngine.state().result!.fingers) {
+    expect(result.resistance_slow_ma).toBeCloseTo(100);
+    expect(result.resistance_fast_ma).toBeCloseTo(100);
+  }
 });

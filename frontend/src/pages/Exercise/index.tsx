@@ -9,6 +9,7 @@ import {
   Input,
   Pill,
   Switch,
+  VisuallyHidden,
 } from '../../design-system';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -40,12 +41,15 @@ import type { FingerId, VisionFrame } from '../../contracts/vision';
 import {
   BigButton,
   PhaseRing,
-  FingerBars,
-  AttemptToast,
-  SessionSummaryCard,
   ConfirmDialog,
   useSessionLeaveGuard,
 } from '../../components/common';
+import { AttemptFeedback } from '../../components/metrics';
+import type { AttemptResult } from '../../contracts/engine';
+import { liveFingerState } from './fingerState';
+import { LiveFingerMeters } from './LiveFingerMeters';
+import { SessionRecap, useSessionAttempts } from './SessionRecap';
+import './exercise.css';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
 const Hand = memo(function Hand() {
@@ -56,8 +60,15 @@ const Hand = memo(function Hand() {
   const [zoom, setZoom] = useState(42.5);
   useEffect(() => {
     if (!container.current) return;
+    // The hand spans ~6 model units tall and ~4.4 wide; fit both in the panel.
     const resize = new ResizeObserver(([entry]) =>
-      setZoom(Math.min(85, entry.contentRect.height / 6)),
+      setZoom(
+        Math.min(
+          85,
+          entry.contentRect.height / 6,
+          entry.contentRect.width / 4.4,
+        ),
+      ),
     );
     resize.observe(container.current);
     return () => resize.disconnect();
@@ -81,23 +92,26 @@ const Hand = memo(function Hand() {
   const state = useCallback(
     (finger: string) => {
       const v = runtime.exercise.view();
-      if (
-        finger === 'ring' ||
-        finger === 'pinky' ||
-        v.pose.closure[finger as FingerId] === null ||
-        ['PAUSED', 'PRESENT', 'REST', 'RELEASE'].includes(v.phase)
-      )
-        return 'idle';
-      return v.phase === 'HOLD' || v.phase === 'ASSIST_HOLD'
-        ? 'reached'
-        : v.assisting
-          ? 'assist'
-          : 'active';
+      return liveFingerState({
+        phase: v.phase,
+        target: v.pose.closure[finger as FingerId],
+        value:
+          vision.latest?.detected && vision.latest.confidence >= 0.6
+            ? (vision.latest.closure?.[finger as FingerId] ?? null)
+            : null,
+        best: v.activeMax[finger as FingerId] ?? null,
+        assisting: v.assisting,
+      });
     },
-    [runtime],
+    [runtime, vision],
   );
   return (
-    <div ref={container} role="img" aria-label={`Target pose: ${pose.name}`}>
+    <div
+      ref={container}
+      className="live-panel__body"
+      role="img"
+      aria-label={`Target pose: ${pose.name}`}
+    >
       <VirtualHand
         target={pose.render}
         actual={actual}
@@ -146,6 +160,60 @@ const CoachArea = memo(function CoachArea() {
     </>
   );
 });
+const CAMERA_KEY = 'rehab-hub.exercise.camera';
+function readCameraPreference() {
+  try {
+    return window.localStorage.getItem(CAMERA_KEY) !== 'hidden';
+  } catch {
+    return true;
+  }
+}
+/** Two equal panels: the virtual hand against its target, and what the camera sees. */
+export function LiveStage() {
+  const [camera, setCamera] = useState(readCameraPreference);
+  const toggle = (on: boolean) => {
+    setCamera(on);
+    try {
+      window.localStorage.setItem(CAMERA_KEY, on ? 'shown' : 'hidden');
+    } catch {
+      /* Preference is a convenience only. */
+    }
+  };
+  return (
+    <div className="live-stage" data-camera={camera ? 'shown' : 'hidden'}>
+      <section className="live-panel" aria-label="Target and your hand">
+        <header className="live-panel__head">
+          <h2 className="live-panel__title">Target &amp; your hand</h2>
+          {!camera && (
+            <Switch
+              className="live-camera-toggle"
+              label="Show camera"
+              checked={camera}
+              onCheckedChange={toggle}
+            />
+          )}
+        </header>
+        <Hand />
+      </section>
+      {camera && (
+        <section className="live-panel live-panel--camera" aria-label="Camera">
+          <header className="live-panel__head">
+            <h2 className="live-panel__title">Camera</h2>
+            <Switch
+              className="live-camera-toggle"
+              label={<VisuallyHidden>Show camera</VisuallyHidden>}
+              checked={camera}
+              onCheckedChange={toggle}
+            />
+          </header>
+          <div className="live-panel__body live-panel__body--camera">
+            <CameraOverlay bare mirrored />
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
 function LiveDetails() {
   const view = useExerciseView();
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
@@ -157,14 +225,12 @@ function LiveDetails() {
         duration={view.phaseDuration}
         waiting={view.phase === 'PRESENT' && !seen}
       />
-      <FingerBars
+      <LiveFingerMeters
         pose={view.pose}
+        phase={view.phase}
         activeMax={view.activeMax}
         assisting={view.assisting}
       />
-      <div className="camera-pip">
-        <CameraOverlay compact />
-      </div>
       <div className="live-tools">
         <CoachArea />
         <RuntimeSimulatorControls />
@@ -172,8 +238,15 @@ function LiveDetails() {
     </aside>
   );
 }
-function Summary({ onAgain }: { onAgain: () => void }) {
+function Summary({
+  onAgain,
+  attempts,
+}: {
+  onAgain: () => void;
+  attempts: AttemptResult[];
+}) {
   const view = useExerciseView();
+  const runtime = useRuntime();
   const saving = useSavingStatus();
   const summary = useQuery({
     queryKey: ['patient-summary', view.sessionId],
@@ -184,11 +257,15 @@ function Summary({ onAgain }: { onAgain: () => void }) {
   });
   return (
     <>
-      <SessionSummaryCard summary={view.summary!} />
+      <SessionRecap
+        summary={view.summary!}
+        attempts={attempts}
+        mirrored={runtime.calibration.current?.camera.affected_hand === 'left'}
+      />
       {summary.isFetching ? (
         <p role="status">Preparing your recap…</p>
       ) : summary.data?.text ? (
-        <p>{summary.data.text}</p>
+        <p className="recap__coach">{summary.data.text}</p>
       ) : saving !== 'Saved' ? (
         <p role="status">Your recap will be available after saving.</p>
       ) : summary.isError ? (
@@ -229,6 +306,7 @@ export default function Exercise() {
     [planning, setPlanning] = useState(false),
     [preset, setPreset] = useState('glides');
   const live = phase !== 'DONE';
+  const attempts = useSessionAttempts();
   const index = useExerciseView((v) => v.index);
   const next = plan.flatMap((p) =>
     Array.from({ length: Math.min(10, Math.max(0, p.reps)) }, () => p.pose),
@@ -246,7 +324,7 @@ export default function Exercise() {
       ? 'Bend the top two joints'
       : pose.id === 'tabletop'
         ? 'Bend only at the knuckles'
-        : null;
+        : 'Palm down, fingers beyond the table edge';
   useSessionLeaveGuard('exercise');
   useEffect(() => {
     if (!live) return;
@@ -307,13 +385,16 @@ export default function Exercise() {
   if (!live && summary && !planning)
     return (
       <Stack as="section" gap={24}>
-        <Summary onAgain={() => setPlanning(true)} />
+        <Summary onAgain={() => setPlanning(true)} attempts={attempts} />
       </Stack>
     );
   if (!live)
     return (
       <Stack as="section" gap={24} className="practice-plan">
-        <PageHeader title="Your practice" lead="Choose a comfortable pace." />
+        <PageHeader
+          title="Your practice"
+          lead="Choose a comfortable pace. Rest palm down, fingers beyond the table edge."
+        />
         <Inline>
           {[
             { id: 'glides', label: 'Tendon glides', plan: DEFAULT_PLAN },
@@ -439,8 +520,15 @@ export default function Exercise() {
     >
       <div className="live-layout">
         <div className="live-hero">
-          <Hand />
-          <h1 className="instruction">{instruction}</h1>
+          <div className="live-heading">
+            <h1 className="instruction">{instruction}</h1>
+            {hint && <p className="pose-hint">{hint}</p>}
+            {(phase === 'REST' || phase === 'RELEASE') && (
+              <p className="pose-next">
+                Next: {next ? POSES[next].name.toLowerCase() : 'session recap'}
+              </p>
+            )}
+          </div>
           <Inline justify="center" gap={12} className="practice-actions">
             <Button
               size="lg"
@@ -461,12 +549,8 @@ export default function Exercise() {
               Skip pose
             </Button>
           </Inline>
-          {hint && <p className="pose-hint">{hint}</p>}
-          {(phase === 'REST' || phase === 'RELEASE') && (
-            <p>
-              Next: {next ? POSES[next].name.toLowerCase() : 'session recap'}
-            </p>
-          )}
+          {/* After the actions in DOM (tab order), above them on screen. */}
+          <LiveStage />
         </div>
         <LiveDetails />
       </div>
@@ -488,5 +572,11 @@ export default function Exercise() {
 }
 function AttemptResultToast() {
   const result = useExerciseView((v) => v.lastResult);
-  return <AttemptToast result={result} />;
+  const runtime = useRuntime();
+  return (
+    <AttemptFeedback
+      result={result}
+      mirrored={runtime.calibration.current?.camera.affected_hand === 'left'}
+    />
+  );
 }

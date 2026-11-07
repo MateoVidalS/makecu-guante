@@ -10,7 +10,7 @@ class ServoOut {
   void apply(const SafetyController& safety);
 
  private:
-  Servo servos_[3];
-  int channels_[3] = {-1, -1, -1};
+  Servo servos_[config::FINGERS];
+  int channels_[config::FINGERS] = {-1, -1, -1, -1, -1};
 };
 }  // namespace rehab::hal

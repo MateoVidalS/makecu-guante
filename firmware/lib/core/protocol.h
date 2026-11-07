@@ -7,7 +7,7 @@
 #include "config.h"
 
 namespace rehab {
-using Triple = std::array<float, config::FINGERS>;
+using Quint = std::array<float, config::FINGERS>;
 enum class State { Boot, Idle, Run, Calib, Fault };
 enum class Mode { None, Follow, Target, Jog };
 enum class CommandType { Target, Follow, Release, Calib, Limit, Ping, Jog, Hello, Unknown };
@@ -21,7 +21,7 @@ struct Calibration {
 };
 struct Command {
   CommandType type = CommandType::Unknown;
-  Triple f{};
+  Quint f{};
   float v = 0;
   int i = -1;
   float min = 0;
@@ -35,11 +35,11 @@ struct Event {
 };
 struct Telemetry {
   uint32_t ms = 0;
-  Triple a{};
+  Quint a{};
   float ma = 0;
   State st = State::Idle;
   Mode md = Mode::None;
-  Triple tg{};
+  Quint tg{};
 };
 struct Info {
   float limit = config::LIMIT_DEFAULT_MA;

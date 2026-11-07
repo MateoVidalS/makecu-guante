@@ -77,6 +77,13 @@ test('theme tokens and page layout at patient viewport sizes', async ({
     await page.setViewportSize(size);
     for (const theme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+      await page.addInitScript((t) => {
+        try {
+          localStorage.setItem('rehab-hub.theme', t);
+        } catch {
+          /* storage unavailable */
+        }
+      }, theme);
       await page.goto('/');
       await expect(page.getByRole('heading', { name: /^Hello/ })).toBeVisible();
       expect(

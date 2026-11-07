@@ -27,11 +27,12 @@ make dev-sim      # API en :8000 + app en http://127.0.0.1:5173, con guante y c�
 |---|---|
 | `make dev` | Igual que `dev-sim`, pero con guante (USB) y cámara reales |
 | `make dev-mock` | Solo el frontend, con la API simulada en el navegador |
+| `make dev-camera` | Webcam real + guante simulado: para ver cómo detecta MediaPipe la mano antes de tener el hardware |
 | `make test` / `make e2e` | pytest, vitest, TypeScript, Ruff, ESLint (+ tests nativos del firmware si hay `pio`) / Playwright |
 | `make demo` | Compila el frontend y lo sirve desde el backend en http://127.0.0.1:8000 |
 | `make fw-build` / `make fw-flash` | Compilar / cargar el firmware (**solo después del banco de pruebas**) |
 
-- **Gemini:** copiar `backend/.env.example` a `backend/.env` y poner `GEMINI_API_KEY`. Sin key, la app funciona igual con voz simple (frases fijas del navegador) y sin resúmenes.
+- **Gemini:** copiar `backend/.env.example` a `backend/.env` y poner `GEMINI_API_KEY` (Google AI Studio). Es la única API key. Modelos: voz `gemini-3.8-live-extended-thinking` (razonamiento `medium`); resúmenes `gemini-4-argon` (requiere facturación), con caída automática a `gemini-3.8-flash` y `gemini-3.5-flash` si hay falta de cuota o saturación. Sin key, la app funciona igual con voz simple (frases fijas del navegador) y sin resúmenes.
 - La app está **en inglés**. Este README es el concepto; el plan técnico detallado está en [`docs/plan/`](docs/plan/README.md) y el contrato (fuente de verdad) en [`docs/plan/03-contracts.md`](docs/plan/03-contracts.md).
 - Más detalle: [`docs/DEV.md`](docs/DEV.md) (desarrollo), [`docs/DEMO.md`](docs/DEMO.md) (guion de demo de 6 min y cómo recuperarse de fallas), [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md) (antes de ponerle el guante a alguien).
 

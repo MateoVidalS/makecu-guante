@@ -1,10 +1,4 @@
-import {
-  Button,
-  Card,
-  PageHeader,
-  Inline,
-  DescriptionList,
-} from '../../design-system';
+import { Button, PageHeader, DescriptionList } from '../../design-system';
 import {
   useProfile,
   useHistoryOverview,
@@ -15,19 +9,26 @@ import {
   useSummaries,
   useCreateSummary,
 } from '../../api/client';
-import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
-  AssistTrend,
+  DataSection,
   DataStatus,
-  DemoBadge,
+  EffortSmallMultiples,
+  HandRangeMap,
+  KpiRow,
   KpiTile,
-  ResistanceSlowFast,
+  LatestEffortBars,
+  PracticeCalendar,
+  ResistanceDumbbells,
   TrendSmallMultiples,
   formatDate,
+  handFromOverview,
 } from '../../components/charts';
-import { useAllSessions } from '../History/data';
+import { firstAndLast, useAllSessions } from '../History/data';
 import { ExportButtons } from './ExportButtons';
 import './doctor.css';
+
+const capitalize = (value: string) =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 
 export default function Doctor() {
   const profile = useProfile(),
@@ -42,47 +43,84 @@ export default function Doctor() {
   const latest = summaries.data
     ?.slice()
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
-  const hasDemo =
-    sessions.data?.some((s) => s.is_demo) ||
-    evaluations.data?.some((e) => e.is_demo);
+  const demoSessions = !!sessions.data?.some((s) => s.is_demo);
+  const demoEvaluations = !!evaluations.data?.some((e) => e.is_demo);
+  const hasDemo = demoSessions || demoEvaluations;
   return (
     <section className="data-page doctor-report">
-      <section className="report-page data-section">
+      <section className="report-page">
         <PageHeader
+          eyebrow="Rehab Hub · Clinical review"
           title="Practice and movement report"
+          lead={`Prepared ${formatDate(Date.now())}. Estimates inspired by clinical practice; not validated medical measurements.${hasDemo ? ' Includes demo data.' : ''}`}
           actions={
-            <Inline align="start">
+            <div className="report-actions no-print">
               <ExportButtons size="sm" />
-              <Button
-                size="sm"
-                className="no-print"
-                onClick={() => window.print()}
-              >
+              <Button size="sm" onClick={() => window.print()}>
                 Print / Save PDF
               </Button>
-            </Inline>
+            </div>
           }
         />
-        <p className="report-label">
-          Rehab Hub · read-only clinical review · {formatDate(Date.now())}
-        </p>
-        <p>
-          Estimates inspired by clinical practice; not validated medical
-          measurements.
-        </p>
-        {hasDemo && (
-          <p>
-            <DemoBadge /> This report includes sample records. Demo and recorded
-            data may appear together.
-          </p>
-        )}
+        <DataStatus loading={overview.isPending} error={overview.error}>
+          {overview.data && (
+            <KpiRow>
+              <KpiTile label="Sessions" value={overview.data.sessions} />
+              <KpiTile label="Attempts" value={overview.data.attempts} />
+              <KpiTile
+                label="Days practiced, last 7"
+                value={overview.data.days_practiced_last_7}
+              />
+              <KpiTile label="Evaluations" value={overview.data.evaluations} />
+            </KpiRow>
+          )}
+        </DataStatus>
+        <DataSection
+          title="At a glance"
+          description={`Blue: on their own. Orange: glove helped.${hasDemo ? ' Demo data is drawn hollow.' : ''}`}
+          className="report-glance"
+        >
+          <div className="report-glance__grid">
+            <HandRangeMap
+              {...handFromOverview(overview.data, sessions.data)}
+              {...firstAndLast(sessions.data)}
+              mirror={profile.data?.affected_hand === 'left'}
+              loading={overview.isPending || sessions.isPending}
+              compact
+            />
+            <LatestEffortBars
+              timeline={sessions.data}
+              rom={rom.data ?? []}
+              assist={assist.data ?? []}
+              loading={rom.isPending || assist.isPending || sessions.isPending}
+            />
+            <ResistanceDumbbells
+              points={resistance.data ?? []}
+              loading={resistance.isPending}
+              compact
+              hint="Extra motor current. Circle: slow sweep. Diamond: fast sweep. The bar is fast − slow, a velocity-dependence estimate. Check friction calibration and incomplete sweeps in evaluation details."
+            />
+            <PracticeCalendar
+              sessions={sessions.data ?? []}
+              loading={sessions.isPending}
+            />
+          </div>
+        </DataSection>
+      </section>
+      <section className="report-page">
         <DataStatus loading={profile.isPending} error={profile.error}>
           {profile.data && (
-            <Card>
-              <h2>{profile.data.pseudonym || 'Patient profile'}</h2>
+            <DataSection
+              title={profile.data.pseudonym || 'Patient profile'}
+              className="report-patient"
+            >
               <DescriptionList
+                className="report-dl"
                 items={[
-                  { label: 'Affected hand', value: profile.data.affected_hand },
+                  {
+                    label: 'Affected hand',
+                    value: capitalize(profile.data.affected_hand),
+                  },
                   {
                     label: 'Condition',
                     value: profile.data.condition || 'Not provided',
@@ -103,115 +141,80 @@ export default function Doctor() {
                   },
                 ]}
               />
-            </Card>
+            </DataSection>
           )}
         </DataStatus>
-        <DataStatus loading={overview.isPending} error={overview.error}>
-          {overview.data && (
-            <div className="kpi-grid">
-              <KpiTile label="Sessions" value={overview.data.sessions} />
-              <KpiTile label="Attempts" value={overview.data.attempts} />
-              <KpiTile
-                label="Days practiced, last 7"
-                value={overview.data.days_practiced_last_7}
-              />
-              <KpiTile label="Evaluations" value={overview.data.evaluations} />
-            </div>
-          )}
-        </DataStatus>
-        <Card title="Therapist summary" className="therapist-summary">
+        <DataSection
+          title="Therapist summary"
+          className="therapist-summary"
+          description={
+            latest
+              ? `Generated ${formatDate(latest.created_at)} · Last ${latest.days ?? 7} days · Model: ${latest.model}${latest.model === 'fixture' ? ' (Demo data)' : ''}`
+              : undefined
+          }
+          actions={
+            <Button
+              size="sm"
+              variant="secondary"
+              className="no-print"
+              disabled={generate.isPending || summaries.isPending}
+              onClick={() => generate.mutate({ kind: 'therapist', days: 7 })}
+            >
+              {generate.isPending ? 'Generating…' : 'Generate (last 7 days)'}
+            </Button>
+          }
+        >
           <DataStatus loading={summaries.isPending} error={summaries.error}>
             {latest ? (
-              <>
-                <p className="muted">
-                  Generated {formatDate(latest.created_at)} · Last{' '}
-                  {latest.days ?? 7} days · Model: {latest.model}
-                </p>
-                <p className="summary-copy">{latest.text}</p>
-                {latest.model === 'fixture' && <DemoBadge />}
-              </>
+              <p className="summary-copy">{latest.text}</p>
             ) : (
-              <p>No summary generated yet.</p>
+              <p className="footnote">No summary generated yet.</p>
             )}
           </DataStatus>
-          <Button
-            size="sm"
-            variant="primary"
-            className="no-print"
-            disabled={generate.isPending || summaries.isPending}
-            onClick={() => generate.mutate({ kind: 'therapist', days: 7 })}
-          >
-            {generate.isPending ? 'Generating…' : 'Generate (last 7 days)'}
-          </Button>
           {generate.isPending && (
-            <p role="status">Preparing the therapist summary…</p>
+            <p role="status" className="footnote">
+              Preparing the therapist summary…
+            </p>
           )}
           {generate.isError && (
-            <p role="status">
+            <p role="status" className="footnote">
               Summary unavailable. Check the Gemini connection and try again.
             </p>
           )}
-        </Card>
+        </DataSection>
       </section>
-      <section className="report-page data-section">
-        <h2>Active range over sessions</h2>
-        <p>
-          Mean best finger position during the active attempt, all poses.
-          Compare the same pose in History. Higher is better for closing; lower
-          for opening.
-        </p>
-        {hasDemo && <DemoBadge />}
-        <DataStatus error={rom.error || sessions.error}>
-          <TrendSmallMultiples
-            points={rom.data ?? []}
+      <section className="report-page">
+        <DataSection
+          title="Active range over sessions"
+          description="Mean best finger position during the active attempt, all poses. Higher is better for closing, lower for opening. Compare a single pose in History."
+          demo={demoSessions}
+        >
+          <DataStatus error={rom.error || sessions.error}>
+            <TrendSmallMultiples
+              points={rom.data ?? []}
+              timeline={sessions.data}
+              loading={rom.isPending || sessions.isPending}
+              compact
+            />
+          </DataStatus>
+        </DataSection>
+      </section>
+      <DataSection
+        className="report-page"
+        title="Assistance over sessions"
+        description="Per session: best closure on its own (blue) and what the glove added to reach the target (orange). All poses."
+        demo={demoSessions}
+        demoNote="Demo data is drawn hollow"
+      >
+        <DataStatus error={assist.error || rom.error}>
+          <EffortSmallMultiples
             timeline={sessions.data}
-            loading={rom.isPending || sessions.isPending}
-            compact
+            rom={rom.data ?? []}
+            assist={assist.data ?? []}
+            loading={assist.isPending || rom.isPending || sessions.isPending}
           />
         </DataStatus>
-      </section>
-      <section className="report-page data-section">
-        <h2>Assistance over sessions</h2>
-        <p>Per-finger gap to target and rate of assisted attempts.</p>
-        {hasDemo && <DemoBadge />}
-        <DataStatus error={assist.error || sessions.error}>
-          <div className="chart-grid">
-            {GLOVE_FINGERS.map((finger) => (
-              <AssistTrend
-                key={finger}
-                finger={finger}
-                points={assist.data ?? []}
-                timeline={sessions.data}
-                loading={assist.isPending || sessions.isPending}
-                compact
-              />
-            ))}
-          </div>
-        </DataStatus>
-      </section>
-      <section className="report-page data-section">
-        <h2>Resistance over evaluations</h2>
-        <p>
-          Mean excess current over 20–90% position. Fast − slow is a
-          velocity-dependence estimate. Review friction calibration and
-          incomplete sweeps in evaluation details.
-        </p>
-        {hasDemo && <DemoBadge />}
-        <DataStatus error={resistance.error || evaluations.error}>
-          <div className="chart-grid">
-            {GLOVE_FINGERS.map((finger) => (
-              <ResistanceSlowFast
-                key={finger}
-                finger={finger}
-                points={resistance.data ?? []}
-                timeline={evaluations.data}
-                loading={resistance.isPending || evaluations.isPending}
-                compact
-              />
-            ))}
-          </div>
-        </DataStatus>
-      </section>
+      </DataSection>
     </section>
   );
 }

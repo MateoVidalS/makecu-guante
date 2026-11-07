@@ -9,10 +9,18 @@ import type {
 export type DecodedMessage =
   GloveTelemetry | GloveEvent | GloveInfo | GloveError;
 export const codecStats = { malformedLines: 0 };
+export class UnsupportedFingerCountError extends Error {
+  constructor(readonly fingers: number) {
+    super(
+      `This glove reports ${fingers} fingers. Rehab Hub requires 5-finger firmware.`,
+    );
+    this.name = 'UnsupportedFingerCountError';
+  }
+}
 const finite = (v: unknown): v is number =>
   typeof v === 'number' && Number.isFinite(v);
-const triple = (v: unknown): v is [number, number, number] =>
-  Array.isArray(v) && v.length === 3 && v.every(finite);
+const quint = (v: unknown): v is [number, number, number, number, number] =>
+  Array.isArray(v) && v.length === 5 && v.every(finite);
 const states = ['boot', 'idle', 'run', 'calib', 'fault'];
 const modes = ['none', 'follow', 'target', 'jog'];
 const events = [
@@ -48,21 +56,27 @@ export function encode(command: SerialCommand): string {
 export function decode(
   line: string,
   now = performance.now(),
+  onIncompatibleInfo?: (error: UnsupportedFingerCountError) => void,
 ): DecodedMessage | null {
   try {
     if (new TextEncoder().encode(line.replace(/\r$/, '')).length > 200)
       throw new Error();
     const v = JSON.parse(line);
     if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error();
+    // Preserve a useful compatibility error instead of waiting for the info timeout.
+    if (v.t === 'info' && finite(v.fingers) && v.fingers !== 5) {
+      onIncompatibleInfo?.(new UnsupportedFingerCountError(v.fingers));
+      return null;
+    }
     if (
       v.t === 'tel' &&
       finite(v.ms) &&
       v.ms >= 0 &&
-      triple(v.a) &&
+      quint(v.a) &&
       finite(v.ma) &&
       states.includes(v.st) &&
       modes.includes(v.md) &&
-      (v.tg === null || triple(v.tg))
+      (v.tg === null || quint(v.tg))
     ) {
       return {
         t: now,
@@ -84,10 +98,10 @@ export function decode(
     if (
       v.t === 'info' &&
       typeof v.fw === 'string' &&
-      v.fingers === 3 &&
+      v.fingers === 5 &&
       finite(v.limit) &&
       Array.isArray(v.calib) &&
-      v.calib.length === 3 &&
+      v.calib.length === 5 &&
       v.calib.every(
         (c: unknown) =>
           c === null || (Array.isArray(c) && c.length === 2 && c.every(finite)),

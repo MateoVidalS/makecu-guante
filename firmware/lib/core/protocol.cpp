@@ -7,6 +7,7 @@
 #include <cstring>
 #include <new>
 
+#include "boot_event.h"
 #include "calib.h"
 
 namespace rehab::protocol {
@@ -183,9 +184,9 @@ class Writer {
     byte(static_cast<char>('0' + (rounded / 10) % 10));
     byte(static_cast<char>('0' + rounded % 10));
   }
-  void triple(const Triple& values) {
+  void quint(const Quint& values) {
     byte('[');
-    for (std::size_t i = 0; i < 3; ++i) {
+    for (std::size_t i = 0; i < config::FINGERS; ++i) {
       if (i) byte(',');
       number(values[i]);
     }
@@ -208,7 +209,7 @@ class Writer {
   std::size_t used_ = 0;
   bool valid_ = true;
 };
-bool finiteTriple(const Triple& values) {
+bool finiteQuint(const Quint& values) {
   return std::all_of(values.begin(), values.end(), [](float f) { return std::isfinite(f); });
 }
 }  // namespace
@@ -301,14 +302,14 @@ const char* name(EventKind event) {
 bool validCommand(const Command& c) {
   switch (c.type) {
     case CommandType::Target:
-      return finiteTriple(c.f) && std::isfinite(c.v) && c.v > 0;
+      return finiteQuint(c.f) && std::isfinite(c.v) && c.v > 0;
     case CommandType::Follow:
-      return finiteTriple(c.f);
+      return finiteQuint(c.f);
     case CommandType::Calib:
-      return c.i >= 0 && c.i < 3 && calib::valid(c.min, c.max);
+      return c.i >= 0 && c.i < static_cast<int>(config::FINGERS) && calib::valid(c.min, c.max);
     case CommandType::Jog:
-      return c.i >= 0 && c.i < 3 && std::isfinite(c.deg) && c.deg >= config::HARD_MIN &&
-             c.deg <= config::HARD_MAX;
+      return c.i >= 0 && c.i < static_cast<int>(config::FINGERS) && std::isfinite(c.deg) &&
+             c.deg >= config::HARD_MIN && c.deg <= config::HARD_MAX;
     case CommandType::Limit:
       return std::isfinite(c.ma);
     case CommandType::Release:
@@ -349,15 +350,16 @@ ParseResult parse(const char* line, std::size_t length) {
   }
   result.error = ErrorCode::BadArgs;
   if (c.type == CommandType::Target || c.type == CommandType::Follow) {
-    if (!doc["f"].is<JsonArrayConst>() || doc["f"].size() != 3) return result;
-    for (std::size_t i = 0; i < 3; ++i)
+    if (!doc["f"].is<JsonArrayConst>() || doc["f"].size() != config::FINGERS) return result;
+    for (std::size_t i = 0; i < config::FINGERS; ++i)
       if (!numeric(doc["f"][i], c.f[i])) return result;
     if (c.type == CommandType::Target && !numeric(doc["v"], c.v)) return result;
   }
   if (c.type == CommandType::Calib || c.type == CommandType::Jog) {
     if (!doc["i"].is<double>()) return result;
     const double index = doc["i"].as<double>();
-    if (!std::isfinite(index) || index < 0 || index > 2 || std::floor(index) != index)
+    if (!std::isfinite(index) || index < 0 || index >= config::FINGERS ||
+        std::floor(index) != index)
       return result;
     c.i = static_cast<int>(index);
   }
@@ -374,7 +376,7 @@ std::size_t format(const Telemetry& t, char* out, std::size_t capacity) {
   writer.text("{\"t\":\"tel\",\"ms\":");
   writer.integer(t.ms);
   writer.text(",\"a\":");
-  writer.triple(t.a);
+  writer.quint(t.a);
   writer.text(",\"ma\":");
   writer.number(t.ma, false);
   writer.text(",\"st\":\"");
@@ -382,7 +384,7 @@ std::size_t format(const Telemetry& t, char* out, std::size_t capacity) {
   writer.text("\",\"md\":\"");
   writer.text(name(t.md));
   writer.text("\",\"tg\":");
-  writer.triple(t.tg);
+  writer.quint(t.tg);
   return writer.finish();
 }
 std::size_t format(const Event& e, char* out, std::size_t capacity) {
@@ -396,14 +398,22 @@ std::size_t format(const Event& e, char* out, std::size_t capacity) {
   }
   return writer.finish();
 }
+std::size_t formatBoot(uint32_t resetReason, char* out, std::size_t capacity) {
+  Writer writer(out, capacity);
+  writer.text("{\"t\":\"evt\",\"e\":\"boot\",\"reset_reason\":");
+  writer.integer(resetReason);
+  return writer.finish();
+}
 std::size_t format(const Info& info, char* out, std::size_t capacity) {
   Writer writer(out, capacity);
   writer.text("{\"t\":\"info\",\"fw\":\"");
   writer.text(config::FW_VERSION);
-  writer.text("\",\"fingers\":3,\"limit\":");
+  writer.text("\",\"fingers\":");
+  writer.integer(config::FINGERS);
+  writer.text(",\"limit\":");
   writer.number(info.limit, false);
   writer.text(",\"calib\":[");
-  for (std::size_t i = 0; i < 3; ++i) {
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
     if (i) writer.byte(',');
     const auto& c = info.calib[i];
     if (!c.valid) {

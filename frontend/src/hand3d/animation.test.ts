@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Color } from 'three';
 import { POSES } from '../contracts/poses';
 import { tokens } from '../styles/tokens';
-import { createHandScene } from './scene';
+import { createHandScene, GHOST_OPACITY, STATE_TINT } from './scene';
+import { FINGERS } from './rig';
 import { createHandAnimator } from './animation';
 
 const resources: ReturnType<typeof createHandScene>[] = [];
@@ -17,27 +18,61 @@ afterEach(() => {
 });
 
 describe('hand feedback', () => {
-  it('tints only the three glove fingers, and keeps ring/pinky neutral', () => {
+  it('tints all five glove fingers with the same state feedback', () => {
     const { scene, animation } = setup();
     animation.tick(POSES.open.render, () => 'assist', true, false, 1 / 60);
     expect(
       scene.fingers[0].color.equals(
-        new Color(tokens.light.hand).lerp(new Color(tokens.light.assist), 0.55),
+        new Color(tokens.light.hand).lerp(
+          new Color(tokens.light.assist),
+          STATE_TINT,
+        ),
       ),
     ).toBe(true);
-    expect(scene.fingers[3].color.equals(new Color(tokens.light.hand))).toBe(
+    for (const finger of scene.fingers)
+      expect(finger.color.equals(scene.fingers[0].color)).toBe(true);
+    expect(scene.ghost.opacity).toBe(GHOST_OPACITY);
+  });
+  it('gives ring and pinky independent state tint while other fingers stay neutral', () => {
+    const { scene, animation } = setup();
+    animation.tick(
+      POSES.open.render,
+      (finger) =>
+        finger === 'ring' ? 'assist' : finger === 'pinky' ? 'reached' : 'idle',
       true,
-    );
-    expect(scene.fingers[4].color.equals(new Color(tokens.light.hand))).toBe(
       true,
+      1 / 60,
     );
-    expect(scene.ghost.opacity).toBe(0.35);
+    for (const finger of FINGERS) {
+      const expected = new Color(tokens.light.hand);
+      if (finger === 'ring')
+        expected.lerp(new Color(tokens.light.assist), STATE_TINT);
+      if (finger === 'pinky')
+        expected.lerp(new Color(tokens.light.reached), STATE_TINT);
+      expect(
+        scene.fingers[FINGERS.indexOf(finger)].color.equals(expected),
+      ).toBe(true);
+    }
+  });
+  it('keeps the target visible until all participating fingers reach', () => {
+    const { scene, animation } = setup();
+    animation.tick(
+      POSES.full_fist.render,
+      (finger) => (finger === 'pinky' ? 'assist' : 'reached'),
+      true,
+      true,
+      1 / 60,
+    );
+    expect(scene.ghost.opacity).toBe(GHOST_OPACITY);
+    expect(animation.reached).toBe(false);
+    animation.tick(POSES.full_fist.render, () => 'reached', true, true, 1 / 60);
+    expect(animation.reached).toBe(true);
   });
   it('pulses for 400 ms once on reaching and fades the target during hold', () => {
     const { scene, animation } = setup();
     animation.tick(POSES.full_fist.render, () => 'reached', true, false, 0.2);
     expect(animation.rimIntensity).toBeCloseTo(2);
-    expect(scene.ghost.opacity).toBeCloseTo(0.275);
+    expect(scene.ghost.opacity).toBeCloseTo(GHOST_OPACITY * 0.75);
     animation.tick(POSES.full_fist.render, () => 'reached', true, false, 0.2);
     expect(animation.rimIntensity).toBeCloseTo(0);
     expect(scene.target.visible).toBe(false);

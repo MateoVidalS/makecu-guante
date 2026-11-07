@@ -22,6 +22,18 @@
       "active_max_first": 0.39,
       "active_max_last": 0.67,
       "assist_needed_last": 0.32999999999999996
+    },
+    {
+      "finger": "ring",
+      "active_max_first": 0.39,
+      "active_max_last": 0.67,
+      "assist_needed_last": 0.32999999999999996
+    },
+    {
+      "finger": "pinky",
+      "active_max_first": 0.39,
+      "active_max_last": 0.67,
+      "assist_needed_last": 0.32999999999999996
     }
   ]
 }

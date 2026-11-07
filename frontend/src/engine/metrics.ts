@@ -23,8 +23,8 @@ export class TraceBuilder {
   readonly trace: AttemptTrace = {
     hz: 20,
     t: [],
-    closure: { thumb: [], index: [], middle: [] },
-    servo: { thumb: [], index: [], middle: [] },
+    closure: { thumb: [], index: [], middle: [], ring: [], pinky: [] },
+    servo: { thumb: [], index: [], middle: [], ring: [], pinky: [] },
     ma: [],
     phase: [],
   };

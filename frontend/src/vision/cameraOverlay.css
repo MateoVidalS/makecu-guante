@@ -10,21 +10,34 @@
 .camera-overlay--compact {
   max-width: var(--placeholder-height);
 }
+/* Fills its parent; the parent owns border and radius. */
+.camera-overlay--bare {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: var(--vision-backdrop);
+}
 .camera-overlay__preview {
   position: relative;
   aspect-ratio: 4 / 3;
-  background: var(--surface-2);
+  background: var(--vision-backdrop);
 }
+.camera-overlay--bare .camera-overlay__preview {
+  aspect-ratio: auto;
+  height: 100%;
+}
+/* Video and canvas share intrinsic size and object-fit, so landmarks stay aligned. */
 .camera-overlay__preview video,
 .camera-overlay__preview canvas {
   position: absolute;
   width: 100%;
   height: 100%;
   inset: 0;
-  object-fit: fill;
+  object-fit: cover;
 }
 .camera-overlay__preview video {
-  filter: brightness(0.5);
+  filter: brightness(0.8) saturate(0.85);
 }
 .camera-overlay__preview--mirrored video,
 .camera-overlay__preview--mirrored canvas {
@@ -33,31 +46,41 @@
 .camera-overlay__guide {
   position: absolute;
   inset: 10%;
-  border: var(--focus-width) dashed var(--target);
+  border: var(--control-border) dashed
+    color-mix(in srgb, var(--vision-skeleton) 45%, transparent);
   border-radius: var(--radius-card);
   pointer-events: none;
 }
 .camera-overlay__guide--seen {
-  border-color: var(--reached);
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--vision-skeleton) 70%, transparent);
 }
 .camera-overlay__confidence {
   position: absolute;
-  top: var(--space-8);
-  left: var(--space-8);
-  background: var(--surface);
-  padding: var(--space-4) var(--space-12);
-  border-radius: var(--radius-pill);
-  font-size: var(--small);
+  top: var(--space-12);
+  left: var(--space-12);
+  padding: var(--space-2) var(--space-8);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--vision-backdrop) 55%, transparent);
+  color: var(--vision-skeleton);
+  font-size: var(--caption);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.camera-overlay[data-detected='false'] .camera-overlay__confidence {
+  color: color-mix(in srgb, var(--vision-skeleton) 75%, transparent);
 }
 .camera-overlay__placeholder {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
+  inset: auto 0 var(--space-12);
+  text-align: center;
+  color: color-mix(in srgb, var(--vision-skeleton) 55%, transparent);
+  font-size: var(--caption);
+  pointer-events: none;
 }
 .camera-overlay figcaption {
-  padding: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border-top: var(--control-border) solid var(--border);
 }
 .camera-overlay__fingers {
   display: flex;
@@ -68,10 +91,11 @@
 }
 .camera-overlay__fingers dt {
   font-size: var(--small);
+  color: var(--muted);
 }
 .camera-overlay__fingers dd {
   margin: 0;
-  font-size: var(--h2);
+  font-size: var(--h3);
   font-variant-numeric: tabular-nums;
 }
 .camera-overlay figcaption p {

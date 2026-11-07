@@ -41,17 +41,32 @@ the ESP32 build, and the hardware checklist, particularly the allocation audit.
 | Thumb servo signal | GPIO25 | 50 Hz PWM, 500–2500 us pulse mapping |
 | Index servo signal | GPIO26 | Same |
 | Middle servo signal | GPIO27 | Same |
+| Ring servo signal | GPIO13 | Same; remains detached at boot |
+| Pinky servo signal | GPIO4 | Same; remains detached at boot |
 | NeoPixel ring data | GPIO33 | 3.3 V to 5 V level shifter, then 330 ohm resistor |
 | INA219 SDA | GPIO21 | I2C address 0x40, 400 kHz |
 | INA219 SCL | GPIO22 | I2C |
 | STOP | GPIO32 | Normally open button to GND; internal pull-up |
 
 Avoid GPIO0, 2, 5, 12, 14 and 15 for actuator signals. Use a laboratory **5 V
-supply limited to 1.5 A**. Verify the voltage with a DMM before connecting any
+supply limited to 2.5 A**. Verify the voltage with a DMM before connecting any
 servo. Feed the servo positive rail through the INA219. **Never power servos from
 the ESP32 or USB rail.** Share GND between the ESP32, sensor, servos, ring and
 supply. Ring brightness is capped at 20% because it shares that supply. Use the
 specified micro servos; substituting higher-torque servos changes the hazard.
+Fit a **470–1000 µF bulk capacitor across 5 V/GND on the servo rail**, close to
+the servo connectors, with correct polarity and a voltage rating above 5 V.
+It reduces the startup voltage dip when several servos start together; it does
+not replace the supply current limit or firmware cut-off.
+
+`ServoOut::begin()` loads LOW before enabling each signal output and never
+attaches PWM. GPIO4 and GPIO13 follow the same detached boot path as the other
+three signals. This code inspection cannot certify ROM/reset-time electrical
+behavior: the team must scope both pins across power-on, reset, brown-out and
+STOP-held boot, with servo power present, and confirm no pulse or twitch using
+BENCH.md. Do not use GPIO4 as a timing probe: it now commands the pinky.
+Optional timing instrumentation is compile-time restricted to unused WROOM-32
+outputs 16/17/18/19/23; GPIO18 is the documented probe pin.
 
 ## Team-only flashing and serial monitor
 
@@ -65,7 +80,10 @@ pio device monitor -b 115200 --port /dev/your-board --filter send_on_enter
 
 Choose the actual port locally; reset the board after opening the monitor to see
 `evt boot` and `info`. Lines are compact JSON, at most 200 bytes before the LF;
-CRLF is accepted. Finger order is always thumb, index, middle. A partial or
+CRLF is accepted. Finger order is always `[thumb, index, middle, ring, pinky]`
+(indices 0–4).
+`info.fingers` is always 5, and both telemetry arrays contain exactly five values
+rounded to two decimals within the 200-byte line budget. A partial or
 oversized line never feeds the watchdog. Unknown fields are ignored. Malformed
 JSON, non-finite numbers and invalid arguments cannot command motion.
 The bounded decoder accepts up to eight nesting levels. Deeper JSON is rejected
@@ -83,19 +101,62 @@ calibration):
 {"t":"calib","i":0,"min":20,"max":150}
 {"t":"calib","i":1,"min":20,"max":150}
 {"t":"calib","i":2,"min":150,"max":20}
-{"t":"target","f":[0.5,0.5,0.5],"v":0.5}
+{"t":"calib","i":3,"min":20,"max":150}
+{"t":"calib","i":4,"min":150,"max":20}
+{"t":"target","f":[0.5,0.5,0.5,0.5,0.5],"v":0.5}
 {"t":"ping"}
 {"t":"release"}
 ```
 
 Mirrored ranges are supported. A jog must stay within 5–175 degrees, is limited
 to 60 degrees/second and is allowed only in idle/calibration. Send `release`
-before sending calibration ranges. Receiving the third valid range emits
+before sending calibration ranges. Receiving the fifth valid range emits
 `calib_ok`. Starting a new calibration batch invalidates the old batch, requiring
-all three ranges again. Calibration is never stored in NVS.
+all five ranges again. Calibration is never stored in NVS.
 Rejected calibration arguments invalidate that finger's existing range in idle.
 After a jog outside a calibrated range, assistance waits for release to unwind
 back into the range, preserving the ramp speed cap on the transition.
+
+## Servo profiles and power limits
+
+`include/config.h` defines `SERVO_PROFILES` in wire order: unidentified thumb,
+TowerPro SG92R index, MG90S middle, Smraza S51 ring and pinky. Every nominal
+idle/moving/stall current (mA) and maximum unloaded speed (degrees/second) is a
+**placeholder, to be measured** at 5 V. In particular the thumb's model, housing
+size and torque are unknown. Record measurements in BENCH.md before replacing
+these estimates. They are descriptive estimates, not measured force or allowed
+motion speeds; normalized ramp caps below remain authoritative.
+
+Only aggregate current is measured. No per-finger soft current trip is enabled:
+there is no reliable way to infer one servo's share from a single INA219 during
+simultaneous motion. The total-current cut-off remains the hard rule even if a
+profile's estimated stall current would suggest otherwise. Five simultaneous
+stalls can exceed the supply; normal assist is staggered by the app, and the
+firmware still enforces its own total limit if all five are commanded together.
+
+The default threshold is **1500 mA**, clamped to **100–2200 mA**, below the 2.5 A
+supply limit, with the existing continuous **100 ms** trip rule. Per-build flags
+`-DREHAB_LIMIT_DEFAULT_MA=...` and `-DREHAB_LIMIT_MAX_MA=...` may lower these
+settings; compile-time validation requires `100 <= default <= max <= 2200`.
+Preserve all existing PlatformIO build flags when adding overrides.
+
+## Reset diagnosis
+
+Each physical boot emits an additive field on the existing boot event, using
+`esp_reset_reason()` from the pinned ESP32 SDK:
+
+```json
+{"t":"evt","e":"boot","reset_reason":9}
+```
+
+`reset_reason` is the numeric `esp_reset_reason_t`: 1 = power-on, 3 = software
+reset, 9 = brown-out (0 = unknown; other reasons are preserved as their numeric
+codes). This allows an app to distinguish brown-out from an ordinary start.
+The field is emitted through the same bounded event queue before `info`; no
+calibration or motion is restored, including after brown-out. Existing clients
+can ignore the additive field. The frozen `Event` struct and shared fixtures
+are unchanged; the PR requests that the coordinator document/type this optional
+field in the contracts so the app can expose it.
 
 ## Safety behavior
 
@@ -113,8 +174,8 @@ back into the range, preserving the ramp speed cap on the transition.
   detaches that channel immediately. A new accepted move reattaches PWM.
 - Current is the total servo current. A two-sample median (the midpoint for two
   samples) followed by an alpha-0.5 EMA filters it. Continuous filtered current
-  above the clamped 100–1400 mA threshold for 100 ms faults and reports its peak.
-  The default limit is 900 mA. Filtering adds roughly 10 ms to detection at the
+  above the clamped 100–2200 mA threshold for 100 ms faults and reports its peak.
+  The default limit is 1500 mA. Filtering adds roughly 10 ms to detection at the
   physical sensor; the 100 ms timer starts at the filtered threshold crossing.
 - STOP is latched on the first falling edge, sampled before serial commands.
   Release is debounced for 20 ms; it emits `stop_released` but leaves the fault
@@ -130,9 +191,11 @@ back into the range, preserving the ramp speed cap on the transition.
   Jog and release remain available for setup. A runtime sensor read failure
   inhibits assistance until reset and releases/faults any active motion.
 
-The ring shows three 8-pixel position bars: dim white in idle, blue in follow,
-orange in target and amber in calibration. Fault overrides all pixels with a
-2 Hz red blink. At zero calibrated closure a segment is dark, including before
+The 24-pixel ring shows five 4-pixel position bars in wire order: thumb 0–3,
+index 5–8, middle 10–13, ring 15–18, pinky 20–23. Pixels 4/9/14/19 are dark
+1-pixel gaps (no trailing gap). Bars are dim white in idle, blue in follow,
+orange in target and amber in calibration. Fault overrides **all 24 pixels**,
+including gaps, with a 2 Hz red blink. At zero calibrated closure a segment is dark, including before
 calibration.
 
 ## Bounded loop and allocation audit
@@ -151,7 +214,9 @@ without an existing backlog. Keep command traffic within the link capacity.
 Core storage, line buffers and the TX queue are fixed. ArduinoJson 7 uses an
 8 KiB static arena through its allocator API; no heap allocator is used by the
 codec. The fixed decimal writer also avoids float `printf`/`dtoa` heap paths.
-LEDC drivers are prepared without connecting PWM to servo pins. Wire,
+LEDC drivers are prepared without connecting PWM to servo pins. ESP32Servo
+serves four channels per LEDC timer, so the five servos reserve two timers
+(`lib/core/pwm_plan.h`); with one, the fifth attach would fail silently. Wire,
 UART and the ring allocate only during setup. The ring uses Adafruit's pixel
 buffer and a persistent asynchronous RMT driver with static transmission items;
 calling NeoPixel `show()` each frame would allocate on this Arduino core.
@@ -165,11 +230,11 @@ closed. This bus has one owner after setup. No driver is reinstalled in a tick.
 
 Budget estimate at 240 MHz: strict decode of 200 bytes and fixed-arena parsing
 0.25 ms, current transaction at most 1 ms plus about 0.1 ms API overhead, safety
-and three PWM writes 0.1 ms, formatting/queue/UART copies 0.2 ms, RMT preparation
+and five PWM writes 0.1 ms, formatting/queue/UART copies 0.2 ms, RMT preparation
 0.15 ms: **1.8 ms**. Normal I2C bus time is about 0.21 ms (400 kHz), rather than
 the timeout budget. This is an engineering estimate, not a measurement or a
 hard real-time guarantee against arbitrary interrupt/RTOS delays. The team must
 record the actual maximum under traffic, faults and ring updates in BENCH.md.
-For logic-analyzer timing, compile with `-DREHAB_TIMING_PIN=4` added to the
-ESP32 build flags; a high pulse brackets the entire control tick. Keep GPIO4
+For logic-analyzer timing, compile with `-DREHAB_TIMING_PIN=18` added to the
+ESP32 build flags; a high pulse brackets the entire control tick. Keep GPIO18
 unconnected except to the analyzer, and retain all existing build flags.

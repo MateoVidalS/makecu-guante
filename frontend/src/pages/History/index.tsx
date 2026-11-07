@@ -1,4 +1,4 @@
-import { Banner, PageHeader, Tabs, Select } from '../../design-system';
+import { PageHeader, Tabs, Select } from '../../design-system';
 import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { getSession } from '../../api/client';
@@ -12,20 +12,24 @@ import {
   useHistoryRom,
 } from '../../api/client';
 import { POSES, type PoseId } from '../../contracts/poses';
-import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
-  AssistTrend,
+  DataSection,
   DataStatus,
-  DemoBadge,
+  EffortSmallMultiples,
+  HandRangeMap,
+  KpiRow,
   KpiTile,
-  ResistanceSlowFast,
+  LatestEffortBars,
+  PracticeCalendar,
+  ResistanceDumbbells,
   TrendSmallMultiples,
-  fingerName,
   formatDate,
+  handFromOverview,
   percentage,
 } from '../../components/charts';
-import { useAllSessions } from './data';
+import { firstAndLast, useAllSessions } from './data';
 import { ExportButtons } from '../Doctor/ExportButtons';
+import './history.css';
 
 const tabs = [
   'Overview',
@@ -43,24 +47,18 @@ export default function History() {
     sessions = useAllSessions(),
     evaluations = useEvaluations();
   const rom = useHistoryRom(pose ? { pose } : {}),
+    allRom = useHistoryRom(),
     assist = useHistoryAssist(),
     resistance = useHistoryResistance();
   const timeline = sessions.data?.map((s) => ({ ...s, id: s.id }));
-  const evalTimeline = evaluations.data;
-  const demo =
-    sessions.data?.some((s) => s.is_demo) ||
-    evaluations.data?.some((e) => e.is_demo);
+  const demoSessions = !!sessions.data?.some((s) => s.is_demo);
+  const demoEvaluations = !!evaluations.data?.some((e) => e.is_demo);
   return (
     <section className="data-page">
       <PageHeader
         title="History"
-        lead="See what you did on your own. Estimated from the camera."
+        lead="What you did on your own over time, estimated from the camera."
       />
-      {demo && (
-        <Banner tone="demo" title="Includes sample records">
-          Trends may mix demo and recorded data.
-        </Banner>
-      )}
       <Tabs
         label="History views"
         value={selected}
@@ -71,7 +69,7 @@ export default function History() {
         <DataStatus loading={overview.isPending} error={overview.error}>
           {overview.data && (
             <>
-              <div className="kpi-grid">
+              <KpiRow>
                 <KpiTile label="Sessions" value={overview.data.sessions} />
                 <KpiTile label="Attempts" value={overview.data.attempts} />
                 <KpiTile
@@ -82,49 +80,75 @@ export default function History() {
                   label="Evaluations"
                   value={overview.data.evaluations}
                 />
-              </div>
-              <h2>Your first and latest sessions</h2>
-              <p>
-                Finger position on your own. Opening and closing poses differ.
-              </p>
-              <div className="chart-grid">
-                {overview.data.per_finger.map((f) => (
-                  <KpiTile
-                    key={f.finger}
-                    label={fingerName(f.finger)}
-                    value={`${percentage(f.active_max_first)} → ${percentage(f.active_max_last)}`}
-                    hint="First → latest recorded estimate"
-                  />
-                ))}
-              </div>
-              {overview.data.sessions === 0 && (
-                <p>
-                  No sessions yet.{' '}
-                  <Link to="/exercise">Start your practice</Link>.
-                </p>
-              )}
+              </KpiRow>
+              <DataSection
+                title="First and latest sessions"
+                description="How far each glove finger closed on its own: your first session next to the latest."
+                demo={demoSessions}
+                demoNote="Demo data is drawn hollow"
+              >
+                {overview.data.sessions === 0 ? (
+                  <p className="footnote">
+                    No sessions yet.{' '}
+                    <Link to="/exercise">Start your practice</Link>.
+                  </p>
+                ) : (
+                  <>
+                    <HandRangeMap
+                      loading={sessions.isPending}
+                      {...handFromOverview(overview.data, sessions.data)}
+                      {...firstAndLast(sessions.data)}
+                    />
+                    <div className="viz-grid-2">
+                      <LatestEffortBars
+                        timeline={sessions.data}
+                        rom={allRom.data ?? []}
+                        assist={assist.data ?? []}
+                        loading={
+                          allRom.isPending ||
+                          assist.isPending ||
+                          sessions.isPending
+                        }
+                      />
+                      <PracticeCalendar
+                        sessions={sessions.data ?? []}
+                        loading={sessions.isPending}
+                      />
+                    </div>
+                  </>
+                )}
+              </DataSection>
             </>
           )}
         </DataStatus>
       )}
       {selected === 'Active range' && (
-        <section className="data-section">
-          <h2>How far your fingers moved</h2>
-          <Select
-            label="Pose"
-            value={pose}
-            onChange={(e) => setPose(e.target.value as PoseId | '')}
-          >
-            <option value="">All poses</option>
-            {Object.values(POSES).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
-          {!pose && (
-            <p>For a clearer comparison, choose the same pose each time.</p>
-          )}
+        <DataSection
+          title="How far your fingers moved"
+          description={
+            pose
+              ? 'Best finger position on your own, per session.'
+              : 'Best finger position on your own, per session. Choose one pose for a clearer comparison.'
+          }
+          demo={demoSessions}
+          actions={
+            <div className="history-pose">
+              <Select
+                label="Pose"
+                layout="inline"
+                value={pose}
+                onChange={(e) => setPose(e.target.value as PoseId | '')}
+              >
+                <option value="">All poses</option>
+                {Object.values(POSES).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          }
+        >
           <DataStatus error={rom.error || sessions.error}>
             <TrendSmallMultiples
               points={rom.data ?? []}
@@ -133,71 +157,77 @@ export default function History() {
               opening={pose === 'open'}
             />
           </DataStatus>
-        </section>
+        </DataSection>
       )}
       {selected === 'Assistance' && (
-        <section className="data-section">
-          <h2>Help from the glove</h2>
-          <DataStatus error={assist.error || sessions.error}>
-            <div className="chart-grid">
-              {GLOVE_FINGERS.map((finger) => (
-                <AssistTrend
-                  key={finger}
-                  finger={finger}
-                  points={assist.data ?? []}
-                  timeline={timeline}
-                  loading={assist.isPending || sessions.isPending}
-                />
-              ))}
-            </div>
+        <DataSection
+          title="On your own vs. help from the glove"
+          description="Each session split into what the finger closed on its own (blue) and what the glove added to reach the target (orange). All poses."
+          demo={demoSessions}
+          demoNote="Demo data is drawn hollow"
+        >
+          <DataStatus error={assist.error || allRom.error}>
+            <EffortSmallMultiples
+              timeline={sessions.data}
+              rom={allRom.data ?? []}
+              assist={assist.data ?? []}
+              loading={
+                assist.isPending || allRom.isPending || sessions.isPending
+              }
+            />
           </DataStatus>
-        </section>
+        </DataSection>
       )}
       {selected === 'Resistance' && (
-        <section className="data-section">
-          <h2>Resistance estimates for your care team</h2>
-          <p>These estimates are inspired by clinical practice.</p>
-          <DataStatus error={resistance.error || evaluations.error}>
-            <div className="chart-grid">
-              {GLOVE_FINGERS.map((finger) => (
-                <ResistanceSlowFast
-                  key={finger}
-                  finger={finger}
-                  points={resistance.data ?? []}
-                  timeline={evalTimeline}
-                  loading={resistance.isPending || evaluations.isPending}
-                />
-              ))}
-            </div>
-          </DataStatus>
+        <>
+          <DataSection
+            title="Resistance estimates for your care team"
+            description="Extra motor current at slow and fast speeds. An estimate inspired by clinical practice."
+            demo={demoEvaluations}
+            demoNote="Demo data is drawn hollow"
+          >
+            <DataStatus error={resistance.error || evaluations.error}>
+              <ResistanceDumbbells
+                points={resistance.data ?? []}
+                loading={resistance.isPending || evaluations.isPending}
+              />
+            </DataStatus>
+          </DataSection>
           <EvaluationList />
-        </section>
+        </>
       )}
       {selected === 'Sessions' && (
-        <section className="data-section">
-          <h2>Your sessions</h2>
+        <DataSection
+          title="Your sessions"
+          description="Choose a date to replay a session."
+          actions={<ExportButtons size="sm" />}
+        >
           <DataStatus loading={sessions.isPending} error={sessions.error}>
             {!sessions.data?.length ? (
-              <p>No sessions recorded yet.</p>
+              <p className="footnote">No sessions recorded yet.</p>
             ) : (
               <div className="data-table-wrap">
                 <table className="data-table">
-                  <caption>Choose a date to replay a session.</caption>
+                  <caption className="sr-only">
+                    Choose a date to replay a session.
+                  </caption>
                   <thead>
                     <tr>
-                      {[
-                        'Date (UTC)',
-                        'Plan',
-                        'Attempts',
-                        'On your own',
-                        'With help',
-                        'Safety events',
-                        'Source',
-                      ].map((s) => (
-                        <th key={s} scope="col">
-                          {s}
-                        </th>
-                      ))}
+                      <th scope="col">Date (UTC)</th>
+                      <th scope="col">Plan</th>
+                      <th scope="col" className="num">
+                        Attempts
+                      </th>
+                      <th scope="col" className="num">
+                        On your own
+                      </th>
+                      <th scope="col" className="num">
+                        With help
+                      </th>
+                      <th scope="col" className="num">
+                        Safety events
+                      </th>
+                      <th scope="col">Source</th>
                     </tr>
                   </thead>
                   <SessionRows sessions={sessions.data} />
@@ -205,8 +235,7 @@ export default function History() {
               </div>
             )}
           </DataStatus>
-          <ExportButtons />
-        </section>
+        </DataSection>
       )}
     </section>
   );
@@ -214,27 +243,44 @@ export default function History() {
 export function EvaluationList() {
   const evaluations = useEvaluations();
   return (
-    <DataStatus loading={evaluations.isPending} error={evaluations.error}>
-      <div>
-        <h3>Saved evaluations</h3>
+    <DataSection title="Saved evaluations">
+      <DataStatus loading={evaluations.isPending} error={evaluations.error}>
         {!evaluations.data?.length ? (
-          <p>No evaluations recorded yet.</p>
+          <p className="footnote">No evaluations recorded yet.</p>
         ) : (
-          <ul>
-            {evaluations.data.map((e) => (
-              <li key={e.id}>
-                <Link to={`/history/evaluations/${e.id}`}>
-                  {formatDate(e.started_at)}
-                </Link>{' '}
-                {e.is_demo && <DemoBadge />}
-                {e.fingers.some((f) => f.aborted) &&
-                  ' · A sweep stopped safely'}
-              </li>
-            ))}
-          </ul>
+          <div className="data-table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Date (UTC)</th>
+                  <th scope="col">Sweeps</th>
+                  <th scope="col">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evaluations.data.map((e) => (
+                  <tr key={e.id}>
+                    <th scope="row">
+                      <Link to={`/history/evaluations/${e.id}`}>
+                        {formatDate(e.started_at)}
+                      </Link>
+                    </th>
+                    <td>
+                      {e.fingers.some((f) => f.aborted)
+                        ? 'A sweep stopped safely'
+                        : 'Complete'}
+                    </td>
+                    <td className="muted">
+                      {e.is_demo ? 'Demo data' : 'Recorded'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
-    </DataStatus>
+      </DataStatus>
+    </DataSection>
   );
 }
 
@@ -257,10 +303,10 @@ function SessionRows({ sessions }: { sessions: Session[] }) {
           <td>
             {s.plan.map((p) => `${POSES[p.pose].name} × ${p.reps}`).join(', ')}
           </td>
-          <td>{s.n_attempts}</td>
-          <td>{percentage(s.summary?.active_ratio_mean)}</td>
-          <td>{s.summary?.assisted ?? 'Not recorded'}</td>
-          <td>
+          <td className="num">{s.n_attempts}</td>
+          <td className="num">{percentage(s.summary?.active_ratio_mean)}</td>
+          <td className="num">{s.summary?.assisted ?? '—'}</td>
+          <td className="num">
             {details[i].isPending
               ? 'Loading…'
               : details[i].data
@@ -268,9 +314,9 @@ function SessionRows({ sessions }: { sessions: Session[] }) {
                     (n, a) => n + a.safety_events.length,
                     0,
                   )
-                : 'Unavailable'}
+                : '—'}
           </td>
-          <td>{s.is_demo ? <DemoBadge /> : 'Recorded'}</td>
+          <td className="muted">{s.is_demo ? 'Demo data' : 'Recorded'}</td>
         </tr>
       ))}
     </tbody>

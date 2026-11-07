@@ -1,5 +1,5 @@
 import type { EngineInput, Output } from './types';
-import type { Triple } from '../contracts/glove';
+import type { Quint } from '../contracts/glove';
 import { GLOVE_FINGERS } from '../contracts/glove';
 
 export const output = (): Output => ({ commands: [], events: [] });
@@ -14,10 +14,10 @@ export const visible = (input: EngineInput): boolean =>
     input.now - input.vision.t <= 300 &&
     GLOVE_FINGERS.every((f) => Number.isFinite(input.vision!.closure![f]))
   );
-export const closure = (input: EngineInput): Triple =>
+export const closure = (input: EngineInput): Quint =>
   GLOVE_FINGERS.map((f) =>
     Math.min(1, Math.max(0, input.vision?.closure?.[f] ?? 0)),
-  ) as Triple;
+  ) as Quint;
 export const motorSafe = (input: EngineInput): boolean =>
   input.gloveConnected &&
   input.tel !== null &&

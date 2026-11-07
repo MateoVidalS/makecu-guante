@@ -14,6 +14,7 @@ import { fallbackPhrase } from './fallbackCoach';
 import { TranscriptBatcher } from './transcript';
 import { dispatchTool } from './tools';
 import { decodePCM, encodePCM } from './audio';
+import { fingerName } from './fingerNames';
 
 const token: VoiceToken = {
   token: 'auth_tokens/test',
@@ -114,6 +115,45 @@ it('announces resistance without a network call', () => {
   );
   expect(s.deps.token).not.toHaveBeenCalled();
   s.controller.dispose();
+});
+it.each([
+  ['thumb', 'thumb'],
+  ['index', 'index'],
+  ['middle', 'middle'],
+  ['ring', 'ring'],
+  ['pinky', 'little finger'],
+] as const)(
+  'names %s consistently in local and Live safety phrases',
+  (finger, name) => {
+    expect(fingerName(finger)).toBe(name);
+    const s = setup();
+    s.controller.setMode('off');
+    const event = { kind: 'resistance', finger, ma: 950 } as const;
+    const phrase = `Stopping. I felt resistance in your ${name}.`;
+    s.emit(event);
+    expect(s.deps.local.speak).toHaveBeenCalledWith(
+      phrase,
+      expect.any(Function),
+    );
+    expect(eventCue(event, s.runtime.exercise.view())).toEqual({
+      text: `[safety] ${phrase} Already announced locally. The runtime paused; check if they are OK.`,
+      speak: false,
+    });
+    expect(
+      safetyPhrase({ kind: 'safety', source: 'overcurrent', finger, ma: 950 }),
+    ).toBe(phrase);
+    s.controller.dispose();
+  },
+);
+it('does not guess a finger when overcurrent attribution is unavailable', () => {
+  expect(
+    safetyPhrase({
+      kind: 'safety',
+      source: 'overcurrent',
+      finger: null,
+      ma: 1500,
+    }),
+  ).toBe('Stopping. I felt resistance.');
 });
 it('gives greeting, cues, tool round trips, interruption and batched transcripts', async () => {
   const s = setup();
@@ -259,8 +299,8 @@ describe('cue table and scheduler', () => {
       {
         kind: 'assist_started',
         fingers: ['index'],
-        from: [0, 0.4, 0],
-        to: [0, 0.6, 0],
+        from: [0, 0.4, 0, 0, 0],
+        to: [0, 0.6, 0, 0, 0],
       },
       { kind: 'attempt_done', result },
       { kind: 'session_done', summary },
@@ -514,6 +554,40 @@ it('does not count successful periodic reconnects as failures', async () => {
     expect(s.transports.at(-1)!.texts[0].text).toContain('Reconnected');
   }
   expect(s.deps.token).toHaveBeenCalledTimes(5);
+  s.controller.dispose();
+});
+
+it('sends compact five-finger context at start and reconnect', async () => {
+  const s = setup();
+  const view = {
+    ...s.runtime.exercise.view(),
+    pose: POSES.hook,
+    activeMax: { thumb: 0.2, index: 0.6, middle: 0.6, ring: 0.4, pinky: 0.5 },
+  };
+  vi.spyOn(s.runtime.exercise, 'view').mockReturnValue(view);
+  const session = JSON.parse(
+    readFileSync('../contracts/fixtures/sessions.json', 'utf8'),
+  )[0];
+  session.id = 7;
+  session.summary.per_finger = [
+    { finger: 'index', active_max_mean: 0.6, assist_needed_mean: 0 },
+    { finger: 'pinky', active_max_mean: 0.3, assist_needed_mean: 0.3 },
+  ];
+  vi.mocked(s.deps.sessions).mockResolvedValue([session]);
+  await s.controller.start(8);
+  s.transports[0].emit({ type: 'closed' });
+  await vi.advanceTimersByTimeAsync(1000);
+  for (const transport of s.transports) {
+    const text = transport.texts[0].text;
+    expect(text).toContain(
+      'Active movement (closure/target): ring 40%/60%; little finger 50%/60%',
+    );
+    expect(text).toContain('little finger active 30%, mean help needed 30%');
+    expect(text).not.toContain('index active');
+    expect(text).not.toContain('"per_finger"');
+    expect(text).not.toContain('pinky');
+  }
+  expect(s.transports).toHaveLength(2);
   s.controller.dispose();
 });
 

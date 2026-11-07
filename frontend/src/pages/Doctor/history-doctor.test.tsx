@@ -100,13 +100,22 @@ describe('record review pages', () => {
   it('shows fixture improvement, pose selection, accessible tables, and session safety counts', async () => {
     mount('/history');
     expect(await screen.findByText('35% → 63%')).toBeVisible();
+    expect(
+      screen.getByRole('img', { name: /Hand map, first session/ }),
+    ).toHaveAccessibleName(/Thumb 35% then, 63% now/);
+    expect(
+      await screen.findByRole('img', { name: /Latest session per finger/ }),
+    ).toHaveAccessibleName(/Index 65% on your own and 35% from the glove/);
+    expect(
+      screen.getByRole('img', { name: /Practice calendar/ }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Active range' }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Pose' }), {
       target: { value: 'full_fist' },
     });
     const tables = await screen.findAllByText('Show as table');
     fireEvent.click(tables[1]);
-    expect(screen.getAllByRole('table', { hidden: true })).toHaveLength(3);
+    expect(screen.getAllByRole('table', { hidden: true })).toHaveLength(5);
     fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }));
     const table = await screen.findByRole('table');
     await waitFor(() =>
@@ -116,6 +125,83 @@ describe('record review pages', () => {
       mockState.sessions.filter((s) => s.is_demo).length,
     );
     expect(within(table).getAllByRole('row')).toHaveLength(9);
+  });
+  it('labels missing latest ring/pinky effort instead of showing an older session', async () => {
+    const latest = mockState.sessions.reduce((a, b) =>
+      a.started_at > b.started_at ? a : b,
+    );
+    latest.summary!.per_finger = latest.summary!.per_finger.filter(
+      (f) => f.finger !== 'ring' && f.finger !== 'pinky',
+    );
+    mount('/history');
+    const bars = await screen.findByRole('img', {
+      name: /Latest session per finger/,
+    });
+    expect(bars).toHaveAccessibleName(/Ring Not measured.*Pinky Not measured/);
+    expect(within(bars).getAllByText('Not measured')).toHaveLength(2);
+    for (const finger of ['Ring', 'Pinky']) {
+      const row = within(bars).getByText(finger).closest('.effort-bars__row')!;
+      expect(row.querySelectorAll('.effort-bars__seg')).toHaveLength(0);
+    }
+  });
+  it.each(['absent', 'null'] as const)(
+    'keeps legacy %s replay fingers visible as not measured',
+    async (kind) => {
+      const attempt = mockState.details[8].attempts[0];
+      attempt.fingers = attempt.fingers.flatMap((f) => {
+        if (f.finger !== 'ring' && f.finger !== 'pinky') return [f];
+        return kind === 'absent'
+          ? []
+          : [
+              {
+                ...f,
+                scored: false,
+                target: null,
+                active_max: null,
+                assist_needed: null,
+                final: null,
+              },
+            ];
+      });
+      const trace = mockState.traces[attempt.id];
+      for (const finger of ['ring', 'pinky'] as const) {
+        trace.closure[finger] = trace.t.map(() => null);
+        // F5 returns empty servo arrays for legacy fingers.
+        trace.servo[finger] = [];
+      }
+      mount('/history/sessions/8');
+      const table = await screen.findByRole('table', {
+        name: 'Per-finger estimates from the camera',
+      });
+      for (const finger of ['Ring', 'Pinky']) {
+        const row = within(table).getByRole('row', {
+          name: new RegExp(finger),
+        });
+        expect(row).toHaveTextContent('Not measured');
+        expect(row).not.toHaveTextContent('0%');
+      }
+      expect(
+        screen.getByRole('img', { name: /Hand map for this attempt/ }),
+      ).toHaveAccessibleName(/Ring: Not measured.*Pinky: Not measured/);
+    },
+  );
+  it('shows unmeasured evaluation fingers without claiming complete sweeps', async () => {
+    const evaluation = mockState.evaluations[0];
+    evaluation.fingers = evaluation.fingers.filter(
+      (f) => f.finger !== 'ring' && f.finger !== 'pinky',
+    );
+    evaluation.sweeps = evaluation.sweeps.filter(
+      (f) => f.finger !== 'ring' && f.finger !== 'pinky',
+    );
+    mount(`/history/evaluations/${evaluation.id}`);
+    const table = await screen.findByRole('table', {
+      name: /Mean excess current over 20–90% commanded position/,
+    });
+    for (const finger of ['Ring', 'Pinky']) {
+      const row = within(table).getByRole('row', { name: new RegExp(finger) });
+      expect(row).toHaveTextContent('Not measured');
+      expect(row).not.toHaveTextContent('Complete');
+    }
   });
   it('loads and saves the optional profile', async () => {
     mount('/profile');
@@ -136,6 +222,12 @@ describe('record review pages', () => {
     expect(
       await screen.findByText('Your attempt, moment by moment'),
     ).toBeVisible();
+    expect(
+      await screen.findByRole('img', { name: /Attempt phases: On your own/ }),
+    ).toHaveAccessibleName(/1 safety event marked/);
+    expect(
+      screen.getByRole('img', { name: /Hand map for this attempt/ }),
+    ).toHaveAccessibleName(/Index: 65% on your own, glove added 35%/);
     fireEvent.click(screen.getByRole('button', { name: 'Delete session' }));
     expect(mockState.details[8]).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Keep session' }));
@@ -159,8 +251,12 @@ describe('record review pages', () => {
     mockState.evaluations[0].friction_used = false;
     mount(`/history/evaluations/${mockState.evaluations[0].id}`);
     expect(await screen.findByText(/No friction calibration/)).toBeVisible();
-    expect(screen.getAllByText('Show as table')).toHaveLength(3);
+    // Resistance dumbbells plus one sweep chart per finger, each with a table twin.
+    expect(screen.getAllByText('Show as table')).toHaveLength(6);
     expect(screen.getAllByRole('table')[0]).toHaveTextContent('mA');
+    expect(
+      await screen.findByRole('img', { name: /Resistance per finger/ }),
+    ).toBeInTheDocument();
   });
   it('renders doctor review and handles an unavailable therapist summary', async () => {
     server.use(
@@ -177,6 +273,12 @@ describe('record review pages', () => {
     });
     await waitFor(() => expect(generate).toBeEnabled());
     expect(await screen.findByText('Active range over sessions')).toBeVisible();
+    expect(screen.getByText('At a glance')).toBeVisible();
+    expect(
+      await screen.findByText(
+        'Speed-dependent resistance eased on every finger',
+      ),
+    ).toBeVisible();
     fireEvent.click(generate);
     expect(
       await screen.findByText(
@@ -227,10 +329,16 @@ describe('record review pages', () => {
     );
     expect(screen.getByRole('status')).toHaveTextContent('Loading chart');
     rerender(<FingerTrend finger="thumb" points={[]} />);
-    expect(screen.getByText('No measurements recorded yet.')).toBeVisible();
+    expect(
+      screen.getByText('Not measured. No measurements recorded yet.'),
+    ).toBeVisible();
     rerender(<ReplayChart />);
-    expect(screen.getByText('No measurements recorded yet.')).toBeVisible();
+    expect(
+      screen.getByText('Not measured. No measurements recorded yet.'),
+    ).toBeVisible();
     rerender(<SweepCurves finger="thumb" sweeps={[]} />);
-    expect(screen.getByText('No measurements recorded yet.')).toBeVisible();
+    expect(
+      screen.getByText('Not measured. No measurements recorded yet.'),
+    ).toBeVisible();
   });
 });

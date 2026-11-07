@@ -1,9 +1,16 @@
+import type { FingerId } from './vision';
 import type { Unsubscribe } from './runtime';
 
 // ---------- glove (src/contracts/glove.ts) ----------
-export type GloveFinger = 'thumb' | 'index' | 'middle';
-export const GLOVE_FINGERS: GloveFinger[] = ['thumb', 'index', 'middle'];
-export type Triple = [number, number, number]; // [thumb, index, middle]
+export type GloveFinger = FingerId;
+export const GLOVE_FINGERS: GloveFinger[] = [
+  'thumb',
+  'index',
+  'middle',
+  'ring',
+  'pinky',
+];
+export type Quint = [number, number, number, number, number]; // [thumb, index, middle, ring, pinky]
 export type FirmwareState = 'boot' | 'idle' | 'run' | 'calib' | 'fault';
 export type FirmwareMode = 'none' | 'follow' | 'target' | 'jog';
 export type GloveEventKind =
@@ -18,11 +25,11 @@ export type GloveEventKind =
 export interface GloveTelemetry {
   t: number;
   ms: number;
-  a: Triple;
+  a: Quint;
   ma: number;
   st: FirmwareState;
   md: FirmwareMode;
-  tg: Triple | null;
+  tg: Quint | null;
 }
 export interface GloveEvent {
   t: number;
@@ -49,11 +56,11 @@ export interface GloveClient {
   connection(): GloveConnection;
   connect(): Promise<GloveInfo>; // serial: requestPort() needs a user gesture
   disconnect(): Promise<void>;
-  target(f: Triple, v: number): void;
-  follow(f: Triple): void;
+  target(f: Quint, v: number): void;
+  follow(f: Quint): void;
   release(): void;
-  calib(i: 0 | 1 | 2, minDeg: number, maxDeg: number): void;
-  jog(i: 0 | 1 | 2, deg: number): void;
+  calib(i: 0 | 1 | 2 | 3 | 4, minDeg: number, maxDeg: number): void;
+  jog(i: 0 | 1 | 2 | 3 | 4, deg: number): void;
   limit(ma: number): void;
   hello(): void;
   onTelemetry(cb: (t: GloveTelemetry) => void): Unsubscribe;
@@ -66,23 +73,23 @@ export interface GloveClient {
 
 // Wire shapes from contracts §2. Receive timestamps are added by the codec.
 export type SerialCommand =
-  | { t: 'target'; f: Triple; v: number }
-  | { t: 'follow'; f: Triple }
+  | { t: 'target'; f: Quint; v: number }
+  | { t: 'follow'; f: Quint }
   | { t: 'release' }
   | { t: 'ping' }
   | { t: 'hello' }
-  | { t: 'calib'; i: 0 | 1 | 2; min: number; max: number }
+  | { t: 'calib'; i: 0 | 1 | 2 | 3 | 4; min: number; max: number }
   | { t: 'limit'; ma: number }
-  | { t: 'jog'; i: 0 | 1 | 2; deg: number };
+  | { t: 'jog'; i: 0 | 1 | 2 | 3 | 4; deg: number };
 export type SerialMessage =
   | {
       t: 'tel';
       ms: number;
-      a: Triple;
+      a: Quint;
       ma: number;
       st: FirmwareState;
       md: FirmwareMode;
-      tg: Triple;
+      tg: Quint;
     }
   | { t: 'evt'; e: GloveEventKind; ma?: number }
   | ({ t: 'info' } & GloveInfo)

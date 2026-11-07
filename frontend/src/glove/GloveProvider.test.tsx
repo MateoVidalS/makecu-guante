@@ -14,7 +14,12 @@ class FakeSerial extends ClientBase implements GloveClient {
   readonly kind = 'serial' as const;
   connect = vi.fn(async () => {
     this.setConnection('connected');
-    return { fw: 'fake', fingers: 3, limit: 900, calib: [null, null, null] };
+    return {
+      fw: 'fake',
+      fingers: 5,
+      limit: 900,
+      calib: [null, null, null, null, null],
+    };
   });
   disconnect = vi.fn(async () => {
     this.setConnection('disconnected');

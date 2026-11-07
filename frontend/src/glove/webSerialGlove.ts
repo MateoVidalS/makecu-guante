@@ -2,10 +2,10 @@ import type {
   GloveClient,
   GloveInfo,
   SerialCommand,
-  Triple,
+  Quint,
 } from '../contracts/glove';
 import { ClientBase } from './clientBase';
-import { decode, encode } from './codec';
+import { decode, encode, UnsupportedFingerCountError } from './codec';
 
 /** Structural interfaces allow fake ports without adding global Web Serial declarations. */
 export interface SerialPortLike {
@@ -160,8 +160,8 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
     } catch (error) {
       const cancelled = generation !== this.generation;
       if (!cancelled) {
-        await this.shutdown();
-        this.setConnection('error');
+        this.reportConnectionError(error);
+        await this.shutdown('error');
       }
       throw error;
     }
@@ -185,10 +185,15 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
         // Decode incrementally: arbitrary UTF-8 byte chunks and multiple lines are supported.
         for (const char of decoder.decode(value, { stream: true })) {
           if (char === '\n') {
+            let incompatible: UnsupportedFingerCountError | undefined;
             const message = decode(
               dropping ? ' '.repeat(201) : line,
               this.now(),
+              (error) => {
+                incompatible = error;
+              },
             );
+            if (incompatible) throw incompatible;
             line = '';
             bytes = 0;
             dropping = false;
@@ -208,8 +213,13 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
           }
         }
       }
-    } catch {
-      /* Reader failures represent a transport disconnect, not firmware events. */
+    } catch (error) {
+      if (error instanceof UnsupportedFingerCountError) {
+        this.rejectInfo?.(error);
+        this.reportConnectionError(error);
+        void this.shutdown('error');
+      }
+      // Other reader failures represent a transport disconnect, not firmware events.
     } finally {
       reader.releaseLock();
       if (generation === this.generation) void this.shutdown();
@@ -294,7 +304,16 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
   private async drain() {
     while (this.writing) await this.writing;
   }
-  private shutdown(): Promise<void> {
+  private reportConnectionError(error: unknown) {
+    this.errors.emit({
+      t: this.now(),
+      c: 'connect',
+      why: error instanceof Error ? error.message : String(error),
+    });
+  }
+  private shutdown(
+    status: 'disconnected' | 'error' = 'disconnected',
+  ): Promise<void> {
     if (this.closing) return this.closing;
     ++this.generation;
     clearInterval(this.timer);
@@ -309,7 +328,7 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
     this.tel = null;
     this.serial?.removeEventListener?.('disconnect', this.onUnplug);
     this.lifecycle?.removeEventListener('beforeunload', this.onUnload);
-    this.setConnection('disconnected');
+    this.setConnection(status);
     const reader = this.reader;
     const writer = this.writer;
     const port = this.port;
@@ -343,10 +362,10 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
     });
     return this.closing;
   }
-  target(f: Triple, v: number) {
+  target(f: Quint, v: number) {
     this.enqueue({ t: 'target', f: [...f], v });
   }
-  follow(f: Triple) {
+  follow(f: Quint) {
     if (!this.writer || this.disconnectTask) return;
     encode({ t: 'follow', f });
     this.pendingFollow = { t: 'follow', f: [...f] };
@@ -363,10 +382,10 @@ export class WebSerialGlove extends ClientBase implements GloveClient {
   release() {
     this.enqueue({ t: 'release' });
   }
-  calib(i: 0 | 1 | 2, min: number, max: number) {
+  calib(i: 0 | 1 | 2 | 3 | 4, min: number, max: number) {
     this.enqueue({ t: 'calib', i, min, max });
   }
-  jog(i: 0 | 1 | 2, deg: number) {
+  jog(i: 0 | 1 | 2 | 3 | 4, deg: number) {
     this.enqueue({ t: 'jog', i, deg });
   }
   limit(ma: number) {

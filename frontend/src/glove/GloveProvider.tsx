@@ -34,11 +34,13 @@ export function createGloveController(
   const store = createStore<{
     client: GloveClient;
     connection: GloveConnection;
+    connectionError: string | null;
     latest: GloveTelemetry | null;
     events: GloveEvent[];
   }>(() => ({
     client: initial,
     connection: initial.connection(),
+    connectionError: null,
     latest: initial.latest(),
     events: [],
   }));
@@ -52,9 +54,16 @@ export function createGloveController(
       client.onConnection((connection) =>
         store.setState({
           connection,
-          ...(connection === 'disconnected' ? { latest: null } : {}),
+          ...(connection === 'connecting' || connection === 'disconnected'
+            ? { connectionError: null }
+            : {}),
+          ...(connection !== 'connected' ? { latest: null } : {}),
         }),
       ),
+      client.onError((error) => {
+        if (error.c === 'connect')
+          store.setState({ connectionError: error.why });
+      }),
       client.onEvent((event) =>
         store.setState((s) => ({ events: [...s.events, event].slice(-100) })),
       ),
@@ -68,6 +77,9 @@ export function createGloveController(
     },
     get connection() {
       return store.getState().connection;
+    },
+    get connectionError() {
+      return store.getState().connectionError;
     },
     get latest() {
       return store.getState().latest;
@@ -105,6 +117,7 @@ export function createGloveController(
         store.setState({
           client,
           connection: client.connection(),
+          connectionError: null,
           latest: client.latest(),
           events: [],
         });
@@ -150,6 +163,7 @@ export function useGlove() {
   const value = useController();
   useStore(value.store, (s) => s.client);
   useStore(value.store, (s) => s.connection);
+  useStore(value.store, (s) => s.connectionError);
   useStore(value.store, (s) => s.events);
   return value;
 }

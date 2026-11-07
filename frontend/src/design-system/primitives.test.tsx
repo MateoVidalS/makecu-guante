@@ -371,17 +371,19 @@ describe('data display', () => {
 });
 
 describe('shell helpers', () => {
-  it('ThemeToggle cycles system → light → dark on <html data-theme>', () => {
+  it('ThemeToggle defaults to light and cycles light → dark → system on <html data-theme>', () => {
     render(<ThemeToggle />);
     const button = screen.getByRole('button');
-    expect(document.documentElement.dataset.theme).toBeUndefined();
-    fireEvent.click(button);
     expect(document.documentElement.dataset.theme).toBe('light');
     fireEvent.click(button);
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(window.localStorage.getItem('rehab-hub.theme')).toBe('dark');
     fireEvent.click(button);
     expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(window.localStorage.getItem('rehab-hub.theme')).toBe('system');
+    fireEvent.click(button);
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(window.localStorage.getItem('rehab-hub.theme')).toBeNull();
   });
   it('PageErrorBoundary contains a crash and resets when the route changes', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);

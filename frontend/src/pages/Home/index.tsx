@@ -1,32 +1,26 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useStore } from 'zustand';
-import { useProfile, useSessions, useHistoryOverview } from '../../api/client';
+import { useProfile, useSessions } from '../../api/client';
 import { useRuntime } from '../../runtime';
 import { useGlove } from '../../glove';
 import { useVisionFrame } from '../../vision';
 import { DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
-import { percent } from '../../components/common';
+import { Section, StatusList } from '../../components/common';
 import {
   Button,
-  ButtonLink,
-  Card,
-  Stack,
-  Inline,
-  Grid,
   PageHeader,
   Checkbox,
-  StatusChip,
   DemoBadge,
-  EmptyState,
-  Banner,
-  KpiTile,
+  Stack,
 } from '../../design-system';
 import { formatDate } from '../../components/charts';
+import { ThenNow, WeekStrip, lastSevenDays } from '../../components/metrics';
+import { rangeComparison } from './range';
+import './home.css';
 export default function Home() {
   const profile = useProfile(),
-    sessions = useSessions({ limit: 5 }),
-    overview = useHistoryOverview();
+    sessions = useSessions({ limit: 30 });
   const runtime = useRuntime(),
     navigate = useNavigate(),
     { store } = useGlove();
@@ -35,7 +29,7 @@ export default function Home() {
   const [short, setShort] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
-  const last = sessions.data?.[0];
+  const calibrated = !!runtime.calibration.current;
   async function start() {
     if (!runtime.calibration.current) {
       navigate('/calibrate');
@@ -58,137 +52,123 @@ export default function Home() {
       setBusy(false);
     }
   }
+  const blocker = !calibrated
+    ? 'Calibration needed. Start opens calibration first.'
+    : !connected
+      ? 'Glove not connected. Start opens Setup first.'
+      : !seen
+        ? "The camera can't see the hand. Start opens Setup first."
+        : null;
+  const list = sessions.data ?? [];
+  const week = lastSevenDays(list.map((s) => s.started_at));
+  const range = rangeComparison(list);
+  const mirrored = runtime.calibration.current?.camera.affected_hand === 'left';
   return (
-    <Stack as="section" gap={24}>
+    <div className="hp-page">
       <PageHeader
         title={`Hello${profile.data?.pseudonym ? `, ${profile.data.pseudonym}` : ''}`}
-        lead="Practice at your pace."
+        lead="Check that everything is ready, then start today's practice."
       />
-      <Inline>
-        <Button
-          variant="primary"
-          size="lg"
-          disabled={busy}
-          onClick={() => void start()}
+      <Section flush>
+        <div className="hp-actions">
+          <Button
+            variant="primary"
+            size="lg"
+            disabled={busy}
+            onClick={() => void start()}
+          >
+            Start today's practice
+          </Button>
+          <Checkbox
+            label="Short session (1 rep each)"
+            checked={short}
+            onChange={(e) => setShort(e.target.checked)}
+          />
+        </div>
+        {blocker && <p className="hp-note">{blocker}</p>}
+        {error && (
+          <p role="alert" className="hp-alert">
+            {error}
+          </p>
+        )}
+      </Section>
+      <div className="hp-columns">
+        <Stack gap={32}>
+          <Section title="This week">
+            {sessions.isPending ? (
+              <p className="hp-note">Loading your week…</p>
+            ) : (
+              <WeekStrip days={week} />
+            )}
+          </Section>
+          <Section title="Readiness">
+            <StatusList
+              label="Readiness checklist"
+              items={[
+                {
+                  label: 'Glove',
+                  value: connected ? 'Connected' : 'Not connected',
+                  tone: connected ? 'reached' : 'off',
+                  action: (
+                    <Link to="/setup">{connected ? 'Setup' : 'Connect'}</Link>
+                  ),
+                },
+                {
+                  label: 'Calibration',
+                  value: calibrated ? 'Saved' : 'Needed',
+                  tone: calibrated ? 'reached' : 'caution',
+                  action: (
+                    <Link to="/calibrate">
+                      {calibrated ? 'Review' : 'Calibrate'}
+                    </Link>
+                  ),
+                },
+                {
+                  label: 'Camera',
+                  value: seen ? 'Sees the hand' : "Can't see the hand",
+                  tone: seen ? 'reached' : 'caution',
+                  action: <Link to="/setup">{seen ? 'Setup' : 'Fix'}</Link>,
+                },
+              ]}
+            />
+            <p className="hp-note">
+              To measure resistance before practice,{' '}
+              <Link to="/evaluate">run an evaluation</Link>.
+            </p>
+          </Section>
+        </Stack>
+        <Section
+          title="Your active range"
+          description="How far each finger closes on its own."
+          actions={list.some((s) => s.is_demo) ? <DemoBadge /> : undefined}
         >
-          Start today's practice
-        </Button>
-        <ButtonLink to="/evaluate">Evaluate</ButtonLink>
-      </Inline>
-      <Checkbox
-        label="Short session (1 rep each)"
-        size="lg"
-        checked={short}
-        onChange={(e) => setShort(e.target.checked)}
-      />
-      {error && <p role="alert">{error}</p>}
-      {!runtime.calibration.current && (
-        <Banner tone="info" title="Calibration needed">
-          Let's find your comfortable range first.{' '}
-          <Link to="/calibrate">Calibrate</Link>
-        </Banner>
-      )}
-      <Grid columns={2}>
-        <Card title="Ready to practice?">
-          <Stack gap={12}>
-            {[
-              {
-                ok: connected,
-                label: 'Glove',
-                path: '/setup',
-                action: 'Check glove',
-              },
-              {
-                ok: !!runtime.calibration.current,
-                label: 'Calibration',
-                path: '/calibrate',
-                action: 'Check range',
-              },
-              {
-                ok: seen,
-                label: 'Camera',
-                path: '/setup',
-                action: 'Check camera',
-              },
-            ].map(({ ok, label, path, action }) => (
-              <Inline key={label} justify="between">
-                <StatusChip
-                  icon={ok ? 'check' : 'info'}
-                  label={label}
-                  value={ok ? 'Ready' : 'Needs setup'}
-                  tone={ok ? 'reached' : 'caution'}
-                />
-                <Link to={path}>{action}</Link>
-              </Inline>
-            ))}
-          </Stack>
-        </Card>
-        <Card
-          title="Last session"
-          actions={
-            sessions.data?.some((s) => s.is_demo) ? <DemoBadge /> : undefined
-          }
-        >
-          {last ? (
-            <>
-              <p>{formatDate(last.started_at)}</p>
-              <KpiTile
-                label="On your own"
-                value={percent(last.summary?.active_ratio_mean)}
+          {range ? (
+            <div className="home-range">
+              <ThenNow
+                deltas={range.deltas}
+                thenLabel={range.thenLabel}
+                nowLabel={`Latest · ${formatDate(range.latest.started_at)}`}
+                size={104}
+                mirrored={mirrored}
               />
-              <svg
-                viewBox="0 0 400 90"
-                role="img"
-                aria-label="Recent practice estimates, oldest to newest"
-              >
-                {sessions.data
-                  ?.slice()
-                  .reverse()
-                  .map((s, i, values) => {
-                    const value = s.summary?.active_ratio_mean,
-                      previous = values[i - 1]?.summary?.active_ratio_mean;
-                    return value == null ? null : (
-                      <g key={s.id}>
-                        {previous != null && (
-                          <line
-                            x1={(i - 1) * 80 + 20}
-                            y1={80 - previous * 70}
-                            x2={i * 80 + 20}
-                            y2={80 - value * 70}
-                            stroke="var(--active)"
-                            strokeWidth="3"
-                          />
-                        )}
-                        <circle
-                          cx={i * 80 + 20}
-                          cy={80 - value * 70}
-                          r="5"
-                          fill={s.is_demo ? 'var(--surface)' : 'var(--active)'}
-                          stroke="var(--active)"
-                          strokeWidth="3"
-                        />
-                      </g>
-                    );
-                  })}
-              </svg>
-              <Link to={`/history/sessions/${last.id}`}>See session</Link>
-            </>
+              <p className="hp-note">
+                {range.changeText}{' '}
+                <Link to={`/history/sessions/${range.latest.id}`}>
+                  See session
+                </Link>
+              </p>
+            </div>
           ) : (
-            <EmptyState title="Your first practice starts here">
+            <p className="hp-note">
               {sessions.isPending
                 ? 'Loading your last session…'
                 : sessions.isError
                   ? 'Session history is unavailable.'
-                  : 'Your first practice starts here.'}
-            </EmptyState>
+                  : 'No sessions yet. Your first practice will appear here.'}
+            </p>
           )}
-        </Card>
-      </Grid>
-      <p className="muted">
-        {overview.data
-          ? `This week: ${overview.data.days_practiced_last_7} of 5 days`
-          : 'Each day of practice counts.'}
-      </p>
-    </Stack>
+        </Section>
+      </div>
+    </div>
   );
 }

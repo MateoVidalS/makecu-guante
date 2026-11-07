@@ -1,0 +1,101 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
+import type { VisionRobustnessStats } from '../../vision/robustness';
+import { CameraPlacement, GloveDetectionCheck } from './CameraPlacement';
+
+const mock = vi.hoisted(() => ({
+  running: true,
+  kind: 'camera',
+  robustness: vi.fn(),
+}));
+vi.mock('../../vision', () => ({
+  useVision: () => controller,
+  useVisionFrame: () => mock.running,
+}));
+const controller = {
+  source: {
+    get kind() {
+      return mock.kind;
+    },
+  },
+  robustness: mock.robustness,
+};
+const stats = (
+  patch: Partial<VisionRobustnessStats> = {},
+): VisionRobustnessStats => ({
+  windowMs: 5000,
+  observedMs: 5000,
+  samples: 150,
+  detectionRate: 0.92,
+  meanConfidence: 0.85,
+  perFingerVisibility: {
+    thumb: 0.95,
+    index: 0.94,
+    middle: 0.92,
+    ring: 0.91,
+    pinky: 0.9,
+  },
+  status: 'ready',
+  guidance: ['Check that the skeleton follows every finger.'],
+  ...patch,
+});
+beforeEach(() => {
+  vi.useFakeTimers();
+  mock.running = true;
+  mock.kind = 'camera';
+  mock.robustness.mockReturnValue(stats());
+});
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
+describe('camera placement and glove check', () => {
+  it('describes the palm-down diagonal camera position and free fingers', () => {
+    render(<CameraPlacement />);
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      /thumb side.*above.*30–40 cm/,
+    );
+    expect(screen.getByText(/wrist module at the table edge/)).toBeVisible();
+  });
+  it('shows detection percentage and all five finger visibility estimates', () => {
+    render(<GloveDetectionCheck />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Hand detected: 92% of the last 5 s',
+    );
+    expect(screen.getByText('Tracking looks steady.')).toBeVisible();
+    for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
+      expect(screen.getByText(finger)).toBeInTheDocument();
+  });
+  it('polls when frames stop, replacing ready status with poor tracking guidance', () => {
+    render(<GloveDetectionCheck />);
+    mock.robustness.mockReturnValue(
+      stats({
+        status: 'poor',
+        detectionRate: 0.1,
+        guidance: ['Improve lighting. Use a light, thin glove.'],
+      }),
+    );
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByRole('status')).toHaveTextContent('10%');
+    expect(screen.getByText('Tracking needs adjustment.')).toBeVisible();
+    expect(screen.getByText(/Improve lighting/)).toBeVisible();
+  });
+  it('labels simulator estimates and collects a full five-second window', () => {
+    mock.kind = 'sim';
+    mock.robustness.mockReturnValue(
+      stats({ status: 'collecting', observedMs: 1200 }),
+    );
+    render(<GloveDetectionCheck />);
+    expect(screen.getByText(/Simulator check/)).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('1.2 of 5 s');
+  });
+  it('asks for the camera when stopped', () => {
+    mock.running = false;
+    render(<GloveDetectionCheck />);
+    expect(screen.getByRole('status')).toHaveTextContent('Connect the camera');
+    expect(
+      screen.queryByText('Tracking looks steady.'),
+    ).not.toBeInTheDocument();
+  });
+});

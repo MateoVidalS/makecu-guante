@@ -18,7 +18,10 @@ export interface Draft {
   finger: number;
   angle: number;
   servo: Partial<
-    Record<'thumb' | 'index' | 'middle', Partial<ServoCalibration>>
+    Record<
+      'thumb' | 'index' | 'middle' | 'ring' | 'pinky',
+      Partial<ServoCalibration>
+    >
   >;
   hand: 'left' | 'right';
   mirror: boolean;
@@ -39,7 +42,7 @@ export const freshDraft = (): Draft => ({
   closed: null,
   pinch: null,
   friction: {},
-  limit: 900,
+  limit: 1500,
 });
 // Keep only calibration values, never a movement command, across route changes.
 let memory = freshDraft();

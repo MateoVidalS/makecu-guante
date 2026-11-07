@@ -1,5 +1,6 @@
 """The demo must exercise real engines, retain traces and preserve real records."""
 
+from copy import deepcopy
 from datetime import datetime, timezone
 
 import pytest
@@ -19,6 +20,27 @@ def generated():
     return seeder.generate(END)
 
 
+def test_generated_measurements_cover_all_five_fingers(generated):
+    calibration = generated["calibration"]
+    assert [f["finger"] for f in calibration["servo"]] == list(repo.FINGERS)
+    assert set(calibration["camera"]["closed_flex"]) == set(repo.FINGERS)
+    for session in generated["sessions"]:
+        assert [f["finger"] for f in session["summary"]["per_finger"]] == list(repo.FINGERS)
+        for attempt in session["attempts"]:
+            assert [f["finger"] for f in attempt["fingers"]] == list(repo.FINGERS)
+            assert all(f["scored"] for f in attempt["fingers"][3:])
+            assert all(f["active_max"] is not None for f in attempt["fingers"] if f["scored"])
+            assert set(attempt["trace"]["closure"]) == set(repo.FINGERS)
+            assert set(attempt["trace"]["servo"]) == set(repo.FINGERS)
+    for evaluation in generated["evaluations"]:
+        assert evaluation["settings"]["fingers"] == list(repo.FINGERS)
+        assert [f["finger"] for f in evaluation["fingers"]] == list(repo.FINGERS)
+        for speed in ("slow", "fast"):
+            assert [s["finger"] for s in evaluation["sweeps"] if s["speed"] == speed] == list(
+                repo.FINGERS
+            )
+
+
 def test_real_engine_seed_reset_and_provenance(tmp_path, generated, monkeypatch):
     monkeypatch.setattr(seeder, "generate", lambda _: generated)
     engine = make_engine(str(tmp_path / "demo.db"))
@@ -35,7 +57,7 @@ def test_real_engine_seed_reset_and_provenance(tmp_path, generated, monkeypatch)
         assert trace.hz == 20 and len(trace.t) > 100
         assert "ASSIST" in trace.phase
         assert len(repo.list_evaluations(db)) == 4
-        assert all(e.is_demo and len(e.sweeps) == 6 for e in repo.list_evaluations(db))
+        assert all(e.is_demo and len(e.sweeps) == 10 for e in repo.list_evaluations(db))
         trend = repo.history_resistance(db)
         index = [p for p in trend if p.finger == "index"]
         assert index[-1].slow < index[0].slow
@@ -67,6 +89,39 @@ def test_invalid_generation_does_not_remove_demo_history(tmp_path, generated, mo
     seeder.seed_demo(engine, end=END)
     monkeypatch.setattr(seeder, "generate", lambda _: {**generated, "evaluations": [{}]})
     with pytest.raises(ValueError):
+        seeder.seed_demo(engine, reset=True, end=END)
+    with Session(engine) as db:
+        assert len(repo.list_sessions(db)) == 11
+        assert len(repo.list_evaluations(db)) == 4
+    engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "part", ["servo", "camera", "summary", "attempt", "trace", "evaluation", "sweep"]
+)
+def test_incomplete_five_finger_demo_does_not_remove_history(
+    tmp_path, generated, monkeypatch, part
+):
+    monkeypatch.setattr(seeder, "generate", lambda _: generated)
+    engine = make_engine(str(tmp_path / "demo.db"))
+    seeder.seed_demo(engine, end=END)
+    broken = deepcopy(generated)
+    if part == "servo":
+        broken["calibration"]["servo"].pop()
+    elif part == "camera":
+        broken["calibration"]["camera"]["closed_flex"].pop("pinky")
+    elif part == "summary":
+        broken["sessions"][0]["summary"]["per_finger"].pop()
+    elif part == "attempt":
+        broken["sessions"][0]["attempts"][0]["fingers"].pop()
+    elif part == "trace":
+        broken["sessions"][0]["attempts"][0]["trace"]["servo"].pop("pinky")
+    elif part == "evaluation":
+        broken["evaluations"][0]["fingers"].pop()
+    else:
+        broken["evaluations"][0]["sweeps"].pop()
+    monkeypatch.setattr(seeder, "generate", lambda _: broken)
+    with pytest.raises(ValueError, match="all five fingers"):
         seeder.seed_demo(engine, reset=True, end=END)
     with Session(engine) as db:
         assert len(repo.list_sessions(db)) == 11

@@ -1,186 +1,367 @@
-.chart-card {
-  min-width: 0;
-  margin: 0;
-  padding: var(--space-16);
-  border: var(--control-border) solid var(--border);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  break-inside: avoid;
-}
-.chart-card h3 {
-  margin: 0 0 var(--space-8);
-}
-.chart-hint,
+/* Data pages and charts: calm, hairline, light. Tokens only. */
+
+/* Chart palette: finger tokens softened toward the muted grey so lines read calm on white. */
+.chart-card,
+.demo-note,
 .chart-legend {
-  color: var(--muted);
-  font-size: var(--caption);
-}
-.chart-hint {
-  margin: var(--space-8) 0;
-}
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-12);
-  margin-block: var(--space-8);
-}
-.chart-legend span {
-  display: inline-flex;
-  gap: var(--space-4);
-  align-items: center;
-}
-.chart-swatch {
-  width: var(--space-24);
-  height: var(--space-12);
-}
-.chart-canvas {
-  width: 100%;
-  height: var(--placeholder-height);
-  min-width: 0;
-}
-.chart-card.compact .chart-canvas {
-  height: calc(var(--placeholder-height) - var(--space-48));
-}
-.chart-card .recharts-text {
-  font-size: var(--caption);
-  fill: var(--muted);
-}
-.chart-card .recharts-cartesian-axis-line,
-.chart-card .recharts-cartesian-axis-tick-line {
-  stroke: var(--border);
-}
-.chart-card .recharts-default-tooltip {
-  background: var(--surface) !important;
-  border-color: var(--border) !important;
-  color: var(--text);
-  font-size: var(--caption);
-}
-.chart-card .recharts-tooltip-item {
-  color: var(--text) !important;
-}
-.chart-card details {
-  font-size: var(--small);
-}
-.chart-card summary {
-  cursor: pointer;
-  padding: var(--space-8) 0;
-  color: var(--accent);
-}
-.data-table-wrap {
-  overflow-x: auto;
-}
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--small);
-  text-align: left;
-}
-.data-table th,
-.data-table td {
-  border-bottom: var(--control-border) solid var(--border);
-  padding: var(--space-8);
-  vertical-align: top;
-}
-.data-table caption {
-  text-align: left;
-  color: var(--muted);
-  padding: var(--space-8);
-}
-.demo-badge {
-  display: inline-block;
-  padding: var(--space-4) var(--space-8);
-  border: var(--control-border) dashed var(--muted);
-  border-radius: var(--radius-input);
-  color: var(--text);
-  background: repeating-linear-gradient(
-    135deg,
-    transparent,
-    transparent var(--space-4),
-    color-mix(in srgb, var(--demo) 12%, transparent) var(--space-4),
-    color-mix(in srgb, var(--demo) 12%, transparent) var(--space-8)
+  --chart-thumb: color-mix(in oklab, var(--finger-thumb) 78%, var(--muted));
+  --chart-index: color-mix(in oklab, var(--finger-index) 78%, var(--muted));
+  --chart-middle: color-mix(in oklab, var(--finger-middle) 78%, var(--muted));
+  /* F7 owns the global finger tokens; these local colors cover the interim. */
+  --chart-ring: color-mix(
+    in oklab,
+    var(--finger-ring, #387d72) 78%,
+    var(--muted)
   );
-  font-size: var(--caption);
-}
-.chart-grid,
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(min(100%, var(--placeholder-height)), 1fr)
+  --chart-pinky: color-mix(
+    in oklab,
+    var(--finger-pinky, #a16b25) 78%,
+    var(--muted)
   );
-  gap: var(--space-16);
+  --chart-muted: color-mix(in oklab, var(--muted) 80%, var(--surface));
+  --chart-grid: color-mix(in oklab, var(--border) 60%, var(--surface));
+  --chart-surface: var(--surface);
 }
-.kpi-tile {
-  padding: var(--space-16);
-  background: var(--surface);
-  border: var(--control-border) solid var(--border);
-  border-radius: var(--radius-card);
-}
-.kpi-tile p {
-  margin: 0;
-}
-.kpi-value {
-  font-size: var(--h1);
-}
-.sparkline {
-  height: var(--space-64);
-}
+
+/* ---------- Page rhythm ---------- */
 .data-page {
   display: grid;
-  gap: var(--space-24);
+  gap: var(--space-32);
+  min-width: 0;
 }
-.data-page h1,
-.data-page h2 {
-  margin-block: var(--space-8);
+.data-page > :is(h1, h2, h3, p) {
+  margin: 0;
 }
+.data-stack {
+  display: grid;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.back-link {
+  justify-self: start;
+  color: var(--muted);
+  font-size: var(--small);
+  text-decoration: none;
+}
+.back-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.data-page:has(> .back-link) > .ds-page-header {
+  margin-block-start: calc(-1 * var(--space-16));
+}
+
+/* ---------- Sections ---------- */
 .data-section {
   display: grid;
   gap: var(--space-16);
   min-width: 0;
 }
-.data-page .card {
-  margin: 0;
-}
-.data-tabs {
+.data-section__header {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-8);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-24);
 }
-.data-tabs [aria-current='page'] {
-  background: var(--accent);
-  color: var(--bg);
+.data-section__titles {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  max-width: var(--text-max);
 }
-.data-status {
-  padding: var(--space-16);
-  border: var(--control-border) solid var(--border);
-  border-radius: var(--radius-input);
-}
-
-/* Data pages use compact, consistent rhythm, including text runs. */
-.data-page {
-  gap: var(--space-16);
-}
-.data-page > :is(h1, h2, h3, p),
-.data-section > :is(h1, h2, h3, p) {
+.data-section__titles > * {
   margin: 0;
 }
-.data-section > .ds-card > :is(p, h2) {
-  margin-block: var(--space-8);
+.data-section__titles h2 {
+  font-size: var(--h3);
+  letter-spacing: var(--tracking-tight);
 }
-.chart-card > .ds-card__header {
-  float: right;
-  margin: 0 0 var(--space-8) var(--space-8);
+.data-section__titles p {
+  color: var(--muted);
+  font-size: var(--small);
 }
-.chart-card .ds-badge {
+.data-section__aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+}
+.data-section > :is(h2, h3, p) {
+  margin: 0;
+}
+
+/* One small note per section, never a strip or badge. */
+.demo-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
+}
+.demo-note svg {
+  width: 10px;
+  height: 10px;
+  flex: none;
+}
+.demo-note circle {
+  fill: var(--surface);
+  stroke: var(--chart-muted);
+  stroke-width: 1.25;
+}
+
+.data-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
+}
+
+/* ---------- KPI row: numbers, not boxes ---------- */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: var(--space-16) 0;
+}
+.kpi-row > .ds-kpi {
+  gap: var(--space-4);
+  padding: 0 var(--space-24);
+  border: 0;
+  border-inline-start: var(--control-border) solid var(--border);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.kpi-row > .ds-kpi:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+.kpi-row .ds-kpi__label {
+  font-size: var(--small);
+  font-weight: var(--weight-regular);
+}
+.kpi-row .ds-kpi__value {
+  font-size: var(--h2);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-tight);
+}
+.kpi-row .ds-kpi__hint {
+  font-size: var(--caption);
+}
+@media (max-width: 720px) {
+  .kpi-row > .ds-kpi {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
+
+/* ---------- Chart frame ---------- */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-16);
+  min-width: 0;
+}
+.chart-card {
+  display: grid;
+  gap: var(--space-8);
+  align-content: start;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-16) var(--space-16) var(--space-8);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  break-inside: avoid;
+}
+.chart__header {
+  display: grid;
+  gap: var(--space-2);
+}
+.chart__title {
+  margin: 0;
+  font-size: var(--body);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+.chart-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
+  line-height: var(--leading-snug);
+}
+.chart__units {
+  display: flex;
+  justify-content: space-between;
+  margin-block-start: var(--space-8);
+  color: var(--muted);
+  font-size: var(--caption);
+}
+.chart-canvas,
+.chart__loading {
+  width: 100%;
+  height: calc(var(--space-64) * 3.5);
+  min-width: 0;
+}
+.chart-card.compact .chart-canvas,
+.chart-card.compact .chart__loading {
+  height: calc(var(--space-64) * 3);
+}
+.chart-card.tall .chart-canvas {
+  height: calc(var(--space-64) * 5);
+}
+.chart__empty {
+  margin: 0;
+  padding-block: var(--space-32);
+  text-align: center;
+}
+
+.chart-card .recharts-text {
+  fill: var(--chart-muted);
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+}
+.chart-card .recharts-label {
+  fill: var(--chart-muted);
+}
+.chart-card .recharts-default-tooltip {
+  padding: var(--space-8) var(--space-12) !important;
+  border: var(--control-border) solid var(--border) !important;
+  border-radius: var(--radius-sm);
+  background: var(--surface) !important;
+  color: var(--text);
+  font-size: var(--small);
+  font-variant-numeric: tabular-nums;
+}
+.chart-card .recharts-tooltip-label {
+  margin-block-end: var(--space-4) !important;
+  color: var(--muted);
+}
+.chart-card .recharts-tooltip-item {
+  padding: 0 !important;
+  color: var(--text) !important;
+}
+.chart-card .recharts-surface:focus,
+.chart-card .recharts-wrapper:focus {
+  outline: none;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-16);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--caption);
+}
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.chart-swatch {
+  width: var(--space-16);
+  height: var(--space-8);
+}
+
+.chart__details {
+  border-block-start: var(--control-border) solid var(--border);
+  font-size: var(--small);
+}
+.chart__details summary {
+  padding-block: var(--space-8);
+  color: var(--muted);
+  font-size: var(--caption);
+  cursor: pointer;
+  list-style: none;
+}
+.chart__details summary::-webkit-details-marker {
+  display: none;
+}
+.chart__details summary:hover,
+.chart__details[open] summary {
+  color: var(--text);
+}
+
+/* ---------- Tables: hairline rows, tabular numbers ---------- */
+.data-table-wrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--small);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+.data-table th,
+.data-table td {
+  padding: var(--space-8) var(--space-12);
+  border-bottom: var(--control-border) solid var(--border);
+  vertical-align: baseline;
+}
+.data-table :is(th, td):first-child {
+  padding-inline-start: 0;
+}
+.data-table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+.data-table thead th {
+  color: var(--muted);
+  font-size: var(--caption);
+  font-weight: var(--weight-regular);
   white-space: nowrap;
 }
-.data-page .actions {
+.data-table tbody th {
+  font-weight: var(--weight-regular);
+}
+.data-table .num {
+  text-align: right;
+}
+.data-table .muted {
+  color: var(--muted);
+}
+.data-table caption {
+  padding-block-end: var(--space-8);
+  color: var(--muted);
+  font-size: var(--caption);
+  text-align: left;
+}
+.data-table a {
+  color: var(--text);
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+}
+.data-table a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* ---------- Safety events under the replay chart ---------- */
+.safety-list {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--small);
+}
+.safety-list li {
+  display: flex;
   align-items: center;
+  gap: var(--space-8);
 }
-.data-page :is(.ds-card, .data-section) > .ds-badge {
-  align-self: start;
-  justify-self: start;
+.safety-list svg {
+  width: 10px;
+  height: 10px;
+  fill: var(--danger);
 }
-.therapist-summary > .ds-button {
-  align-self: start;
+
+.footnote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
 }

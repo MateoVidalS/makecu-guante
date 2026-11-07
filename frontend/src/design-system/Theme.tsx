@@ -4,12 +4,13 @@ import { Icon, type IconName } from './Icon';
 export type ThemePreference = 'system' | 'light' | 'dark';
 const KEY = 'rehab-hub.theme';
 
-function read(): ThemePreference {
+/** Light is the default, whatever the OS says. "Match system" is an explicit, remembered choice. */
+export function readTheme(): ThemePreference {
   try {
     const v = window.localStorage.getItem(KEY);
-    return v === 'light' || v === 'dark' ? v : 'system';
+    return v === 'system' || v === 'dark' ? v : 'light';
   } catch {
-    return 'system';
+    return 'light';
   }
 }
 
@@ -21,11 +22,11 @@ export function applyTheme(pref: ThemePreference) {
 }
 
 export function useTheme() {
-  const [theme, setTheme] = useState<ThemePreference>(read);
+  const [theme, setTheme] = useState<ThemePreference>(readTheme);
   useEffect(() => {
     applyTheme(theme);
     try {
-      if (theme === 'system') window.localStorage.removeItem(KEY);
+      if (theme === 'light') window.localStorage.removeItem(KEY);
       else window.localStorage.setItem(KEY, theme);
     } catch {
       /* storage blocked: the preference lasts for this visit */
@@ -35,12 +36,12 @@ export function useTheme() {
 }
 
 const options: { id: ThemePreference; label: string; icon: IconName }[] = [
-  { id: 'system', label: 'Match system', icon: 'monitor' },
   { id: 'light', label: 'Light', icon: 'sun' },
   { id: 'dark', label: 'Dark', icon: 'moon' },
+  { id: 'system', label: 'Match system', icon: 'monitor' },
 ];
 
-/** One icon button that cycles Match system → Light → Dark. Used in the header where space is tight. */
+/** One icon button that cycles Light → Dark → Match system. Used in the header where space is tight. */
 export function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useTheme();
   const i = options.findIndex((o) => o.id === theme);

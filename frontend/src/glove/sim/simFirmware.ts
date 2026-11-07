@@ -5,7 +5,7 @@ import type {
   GloveInfo,
   GloveTelemetry,
   SerialCommand,
-  Triple,
+  Quint,
 } from '../../contracts/glove';
 import { Signal } from '../clientBase';
 import type { GloveError } from '../../contracts/glove';
@@ -19,8 +19,8 @@ export const FW = Object.freeze({
   V_RELEASE: 3,
   V_JOG_DEG: 60,
   FOLLOW_SLACK: 0.05,
-  LIMIT_DEFAULT_MA: 900,
-  LIMIT_MAX_MA: 1400,
+  LIMIT_DEFAULT_MA: 1500,
+  LIMIT_MAX_MA: 2200,
   OVERCURRENT_MS: 100,
   WATCHDOG_MS: 1000,
   TEL_HZ: 50,
@@ -36,11 +36,11 @@ const finite = (n: unknown): n is number =>
 export class SimFirmware {
   state: FirmwareState = 'idle';
   mode: FirmwareMode = 'none';
-  position: Triple = [0, 0, 0];
-  goal: Triple = [0, 0, 0];
-  angles: Triple = [90, 90, 90];
-  attached = [false, false, false];
-  calibration: ([number, number] | null)[] = [null, null, null];
+  position: Quint = [0, 0, 0, 0, 0];
+  goal: Quint = [0, 0, 0, 0, 0];
+  angles: Quint = [90, 90, 90, 90, 90];
+  attached = [false, false, false, false, false];
+  calibration: ([number, number] | null)[] = [null, null, null, null, null];
   currentLimit: number = FW.LIMIT_DEFAULT_MA;
   currentMa = 0;
   readonly events = new Signal<GloveEvent>();
@@ -61,11 +61,11 @@ export class SimFirmware {
   boot(now = 0) {
     this.state = 'idle';
     this.mode = 'none';
-    this.position = [0, 0, 0];
-    this.goal = [0, 0, 0];
-    this.angles = [90, 90, 90];
+    this.position = [0, 0, 0, 0, 0];
+    this.goal = [0, 0, 0, 0, 0];
+    this.angles = [90, 90, 90, 90, 90];
     this.attached.fill(false);
-    this.calibration = [null, null, null];
+    this.calibration = [null, null, null, null, null];
     this.currentLimit = FW.LIMIT_DEFAULT_MA;
     this.currentMa = 0;
     this.previousCurrent = 0;
@@ -84,7 +84,7 @@ export class SimFirmware {
   info(): GloveInfo {
     return {
       fw: '0.1.0-sim',
-      fingers: 3,
+      fingers: 5,
       limit: this.currentLimit,
       calib: this.calibration.map((c) => (c ? [...c] : null)),
     };
@@ -109,7 +109,7 @@ export class SimFirmware {
     if (cmd.t === 'target' || cmd.t === 'follow') {
       if (
         !Array.isArray(cmd.f) ||
-        cmd.f.length !== 3 ||
+        cmd.f.length !== 5 ||
         !cmd.f.every(finite) ||
         (cmd.t === 'target' && (!finite(cmd.v) || cmd.v <= 0))
       )
@@ -118,7 +118,7 @@ export class SimFirmware {
       if (
         !Number.isInteger(cmd.i) ||
         cmd.i < 0 ||
-        cmd.i > 2 ||
+        cmd.i > 4 ||
         !finite(cmd.min) ||
         !finite(cmd.max) ||
         cmd.min < FW.HARD_MIN ||
@@ -131,7 +131,7 @@ export class SimFirmware {
           this.state === 'idle' &&
           Number.isInteger(cmd.i) &&
           cmd.i >= 0 &&
-          cmd.i < 3
+          cmd.i < 5
         )
           this.calibration[cmd.i] = null;
         return bad();
@@ -140,7 +140,7 @@ export class SimFirmware {
       if (
         !Number.isInteger(cmd.i) ||
         cmd.i < 0 ||
-        cmd.i > 2 ||
+        cmd.i > 4 ||
         !finite(cmd.deg) ||
         cmd.deg < FW.HARD_MIN ||
         cmd.deg > FW.HARD_MAX
@@ -195,14 +195,14 @@ export class SimFirmware {
     this.mode = cmd.t;
     this.goal = cmd.f.map((f) =>
       clamp(cmd.t === 'follow' ? f - FW.FOLLOW_SLACK : f),
-    ) as Triple;
+    ) as Quint;
     this.speed = cmd.t === 'follow' ? FW.V_FOLLOW : Math.min(cmd.v, FW.V_MAX);
     this.jogIndex = null;
     this.attached.fill(true);
     this.releasedAt = null;
   }
   private unwind() {
-    this.goal = [0, 0, 0];
+    this.goal = [0, 0, 0, 0, 0];
     this.mode = 'none';
     this.speed = FW.V_RELEASE;
     this.jogIndex = null;
@@ -253,7 +253,7 @@ export class SimFirmware {
       const c = this.calibration[i];
       if (c) this.position[i] = clamp((this.angles[i] - c[0]) / (c[1] - c[0]));
     } else {
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 5; i++) {
         this.position[i] = clamp(
           move(this.position[i], this.goal[i], this.speed * dt),
         );

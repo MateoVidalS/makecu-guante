@@ -17,6 +17,10 @@ import { createSimWorld } from '../glove/sim';
 import { useGlove } from '../glove';
 import { CameraVision } from './cameraVision';
 import { missingFrame } from './frameProcessor';
+import {
+  VisionRobustnessTracker,
+  type VisionRobustnessStats,
+} from './robustness';
 
 type StartOptions = { deviceId?: string; affectedHand: Handedness };
 /** Accept shared SimWorld.vision; standalone controllers own and dispose their factory-created world. */
@@ -32,15 +36,23 @@ export function createVisionController(
   const camera = options.cameraSource ?? new CameraVision();
   const initial =
     options.initialKind ??
-    (import.meta.env.VITE_SIM === '1' ? 'sim' : 'camera');
+    (import.meta.env.VITE_VISION === 'camera' ||
+    import.meta.env.VITE_VISION === 'sim'
+      ? import.meta.env.VITE_VISION
+      : import.meta.env.VITE_SIM === '1'
+        ? 'sim'
+        : 'camera');
+  const robustnessTracker = new VisionRobustnessTracker();
   const store = createStore<{
     source: VisionSource;
     latest: VisionFrame | null;
     error: string | null;
+    robustness: VisionRobustnessStats;
   }>(() => ({
     source: initial === 'camera' ? camera : sim,
     latest: null,
     error: null,
+    robustness: robustnessTracker.stats(performance.now()),
   }));
   const listeners = new Set<(frame: VisionFrame) => void>();
   let settings: StartOptions = { affectedHand: 'right' };
@@ -58,6 +70,9 @@ export function createVisionController(
     get error() {
       return store.getState().error;
     },
+    robustness(now = performance.now()) {
+      return robustnessTracker.stats(now);
+    },
     subscribe(callback: (frame: VisionFrame) => void) {
       listeners.add(callback);
       return () => {
@@ -71,11 +86,17 @@ export function createVisionController(
       detach = null;
       const source = controller.source;
       source.stop();
-      store.setState({ latest: null, error: null });
+      robustnessTracker.reset(performance.now());
+      store.setState({
+        latest: null,
+        error: null,
+        robustness: controller.robustness(),
+      });
       source.setCalibration(calibration);
       detach = source.onFrame((latest) => {
         if (request !== generation) return;
-        store.setState({ latest });
+        robustnessTracker.add(latest);
+        store.setState({ latest, robustness: controller.robustness(latest.t) });
         listeners.forEach((cb) => cb(latest));
       });
       try {
@@ -100,6 +121,10 @@ export function createVisionController(
       await controller.start(opts ?? settings);
     },
     setCalibration(value: CameraCalibration | null) {
+      if (calibration?.affected_hand !== value?.affected_hand) {
+        robustnessTracker.reset(performance.now());
+        store.setState({ robustness: controller.robustness() });
+      }
       calibration = value;
       camera.setCalibration(value);
       sim.setCalibration(value);
@@ -111,7 +136,8 @@ export function createVisionController(
       detach = null;
       controller.source.stop();
       ownedWorld?.stop();
-      store.setState({ latest: null });
+      robustnessTracker.reset();
+      store.setState({ latest: null, robustness: controller.robustness() });
       const missing = missingFrame(performance.now());
       listeners.forEach((cb) => cb(missing));
     },
@@ -164,4 +190,10 @@ export function useVision() {
 export function useVisionFrame<T>(selector: (frame: VisionFrame | null) => T) {
   const { store } = useVision();
   return useStore(store, (s) => selector(s.latest));
+}
+
+/** Reactive Setup statistics; the source kind identifies simulated checks. */
+export function useVisionRobustness() {
+  const { store } = useVision();
+  return useStore(store, (s) => s.robustness);
 }

@@ -14,7 +14,7 @@ from sqlmodel import select
 from app.contracts import types as c
 from app.db import models as m
 
-FINGERS = ("thumb", "index", "middle")
+FINGERS = ("thumb", "index", "middle", "ring", "pinky")
 
 
 def now() -> str:
@@ -23,6 +23,32 @@ def now() -> str:
 
 def _json(value) -> str:
     return json.dumps(value, separators=(",", ":"), allow_nan=False)
+
+
+def _finger_rows(rows, **missing):
+    """Expose legacy missing fingers as null measurements without rewriting stored data."""
+    by_finger = {row["finger"]: row for row in rows}
+    return [by_finger.get(finger, {"finger": finger, **missing}) for finger in FINGERS]
+
+
+def _summary(data) -> c.SessionSummary:
+    summary = c.SessionSummary.model_validate(data)
+    summary.per_finger = [
+        c.FingerSummary.model_validate(row)
+        for row in _finger_rows(
+            [f.model_dump() for f in summary.per_finger],
+            active_max_mean=None,
+            assist_needed_mean=None,
+        )
+    ]
+    if summary.previous is not None:
+        summary.previous.per_finger = [
+            c.PreviousFinger.model_validate(row)
+            for row in _finger_rows(
+                [f.model_dump() for f in summary.previous.per_finger], active_max_mean=None
+            )
+        ]
+    return summary
 
 
 def _values(row, *, exclude=frozenset()):
@@ -103,7 +129,7 @@ def _session(row, n_attempts=0) -> c.Session:
         **_values(row, exclude={"plan_json", "settings_json", "summary_json"}),
         plan=json.loads(row.plan_json),
         settings=json.loads(row.settings_json),
-        summary=json.loads(row.summary_json) if row.summary_json else None,
+        summary=_summary(json.loads(row.summary_json)) if row.summary_json else None,
         n_attempts=n_attempts,
     )
 
@@ -149,7 +175,14 @@ def _attempt(row, fingers) -> c.Attempt:
         **data,
         index=row.idx,
         safety_events=json.loads(row.safety_json),
-        fingers=[_values(f, exclude={"id", "attempt_id"}) for f in fingers],
+        fingers=_finger_rows(
+            [_values(f, exclude={"id", "attempt_id"}) for f in fingers],
+            scored=False,
+            target=None,
+            active_max=None,
+            assist_needed=None,
+            final=None,
+        ),
     )
 
 
@@ -205,7 +238,7 @@ def session_summary_with_previous(
     row = db.exec(query).first()
     previous = None
     if row:
-        old = c.SessionSummary.model_validate_json(row.summary_json)
+        old = _summary(json.loads(row.summary_json))
         previous = c.PreviousSummary(
             active_ratio_mean=old.active_ratio_mean,
             per_finger=[
@@ -213,7 +246,7 @@ def session_summary_with_previous(
                 for f in old.per_finger
             ],
         )
-    return summary.model_copy(update={"previous": previous})
+    return _summary(summary.model_copy(update={"previous": previous}).model_dump())
 
 
 def end_session(
@@ -304,6 +337,7 @@ def get_evaluation(db: DbSession, id: int) -> c.Evaluation:
 def history_rom(
     db: DbSession, finger: c.GloveFinger | None = None, pose: c.PoseId | None = None
 ) -> list[c.RomPoint]:
+    # RomPoint requires a number: omit unmeasured values instead of inventing zeroes.
     query = (
         select(
             m.Session.id,
@@ -383,20 +417,23 @@ def history_resistance(db: DbSession) -> list[c.ResistancePoint]:
             m.EvaluationFinger.resistance_fast_ma,
             m.EvaluationFinger.velocity_dependence_ma,
         )
-        .join(m.EvaluationFinger)
+        .outerjoin(m.EvaluationFinger)
         .order_by(m.Evaluation.started_at, m.Evaluation.id, m.EvaluationFinger.id)
     )
+    evaluations = {}
+    for id, t, demo, f, slow, fast, dep in db.exec(query):
+        rows = evaluations.setdefault((id, t, demo), [])
+        if f is not None:
+            rows.append({"finger": f, "slow": slow, "fast": fast, "dependence": dep})
     return [
-        c.ResistancePoint(
-            evaluation_id=id,
-            started_at=t,
-            is_demo=demo,
-            finger=f,
-            slow=slow,
-            fast=fast,
-            dependence=dep,
+        c.ResistancePoint(evaluation_id=id, started_at=t, is_demo=demo, **row)
+        for (id, t, demo), rows in evaluations.items()
+        for row in _finger_rows(
+            rows,
+            slow=None,
+            fast=None,
+            dependence=None,
         )
-        for id, t, demo, f, slow, fast, dep in db.exec(query)
     ]
 
 

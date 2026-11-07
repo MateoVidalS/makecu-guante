@@ -37,6 +37,44 @@ def timestamp(days):
     return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat().replace("+00:00", "Z")
 
 
+def test_legacy_three_finger_records_remain_readable_beside_five_finger_records(data):
+    db, body, summary = data
+    legacy_fingers = {"thumb", "index", "middle"}
+    session = repo.create_session(db, body, started_at=timestamp(1))
+    attempt = json.loads((FIXTURES / "session_detail.json").read_text())["attempts"][0]
+    trace = json.loads((FIXTURES / "attempt_trace.json").read_text())
+    for key in ("closure", "servo"):
+        trace[key] = {f: v for f, v in trace[key].items() if f in legacy_fingers}
+    attempt["fingers"] = [f for f in attempt["fingers"] if f["finger"] in legacy_fingers]
+    saved = repo.create_attempt(
+        db,
+        session.id,
+        c.AttemptResult.model_validate(
+            {**{k: v for k, v in attempt.items() if k not in ("id", "session_id")}, "trace": trace}
+        ),
+    )
+    legacy_summary = summary.model_copy(
+        update={"per_finger": [f for f in summary.per_finger if f.finger in legacy_fingers]}
+    )
+    repo.end_session(db, session.id, legacy_summary)
+    assert len(repo.get_session(db, session.id).attempts[0].fingers) == 5
+    assert set(repo.get_trace(db, saved.id).closure) == legacy_fingers
+    overview = repo.history_overview(db)
+    assert len(overview.per_finger) == 5
+    assert all(
+        f.active_max_last is None for f in overview.per_finger if f.finger in {"ring", "pinky"}
+    )
+    current = repo.create_session(db, body)
+    ended = repo.end_session(db, current.id, summary)
+    assert len(ended.summary.per_finger) == 5
+    assert {f.finger for f in ended.summary.previous.per_finger} == set(repo.FINGERS)
+    assert all(
+        f.active_max_mean is None
+        for f in ended.summary.previous.per_finger
+        if f.finger not in legacy_fingers
+    )
+
+
 def test_previous_prefers_real_and_never_uses_self_or_future(data):
     db, body, summary = data
     first = repo.create_demo_session(db, body, started_at=timestamp(6))
@@ -117,7 +155,7 @@ def test_digest_excludes_demo_and_outside_window_and_has_adherence_and_safety(da
         "evaluations": 1,
     }
     assert all(p["session_id"] == real.id for p in digest["active_range"] + digest["assistance"])
-    assert len(digest["resistance"]) == 3
+    assert len(digest["resistance"]) == 5
     assert digest["safety_events"][0]["source"] == "resistance"
     assert digest["safety_events"][0]["session_id"] == real.id
     repo.delete_session(db, real.id)

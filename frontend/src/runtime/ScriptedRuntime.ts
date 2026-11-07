@@ -49,8 +49,8 @@ const initialEvaluation = (): EvaluationView => ({
 const emptyTrace = (): AttemptTrace => ({
   hz: 20,
   t: [],
-  closure: { thumb: [], index: [], middle: [] },
-  servo: { thumb: [], index: [], middle: [] },
+  closure: { thumb: [], index: [], middle: [], ring: [], pinky: [] },
+  servo: { thumb: [], index: [], middle: [], ring: [], pinky: [] },
   ma: [],
   phase: [],
 });
@@ -296,8 +296,12 @@ export class ScriptedRuntime implements Runtime {
           number,
           number,
           number,
+          number,
+          number,
         ],
         to: GLOVE_FINGERS.map((f) => v.pose.closure[f] ?? 0) as [
+          number,
+          number,
           number,
           number,
           number,

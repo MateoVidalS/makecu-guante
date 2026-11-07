@@ -12,7 +12,7 @@ from app.voice.prompt import render_prompt
 from app.voice.tools import TOOLS
 
 # The scaffold's retired default is translated locally; contracts/config stay frozen.
-CURRENT_MODEL = "gemini-3.8-live"
+CURRENT_MODEL = "gemini-3.8-live-extended-thinking"
 
 
 class VoiceUnavailable(Exception):
@@ -62,6 +62,9 @@ def create_token(session_id: int | None, db: DbSession) -> VoiceToken:
         "realtime_input_config": {"automatic_activity_detection": {"disabled": False}},
         "context_window_compression": {"sliding_window": {}},
     }
+    # Extended-thinking Live models require an explicit level; the plain Live model rejects one.
+    if settings.gemini_live_thinking_level and "thinking" in model:
+        config["thinking_config"] = {"thinking_level": settings.gemini_live_thinking_level}
     try:
         with genai.Client(
             api_key=settings.gemini_api_key,

@@ -1,4 +1,4 @@
-.PHONY: setup dev dev-sim dev-mock test lint typecheck e2e fw-build fw-flash build demo demo-seed
+.PHONY: setup dev dev-sim dev-camera dev-mock test lint typecheck e2e fw-build fw-flash build demo demo-seed
 
 setup:
 	cd backend && uv sync --locked
@@ -12,6 +12,9 @@ dev:
 
 dev-sim:
 	VITE_SIM=1 python3 scripts/dev.py
+
+dev-camera:
+	VITE_SIM=1 VITE_VISION=camera python3 scripts/dev.py
 
 dev-mock:
 	cd frontend && VITE_MOCK_API=1 VITE_SIM=1 pnpm dev
