@@ -54,7 +54,7 @@ to keep the header recovery controls available. Complete the hardware gate first
 - [ ] Chrome/Edge, laptop plugged in, sleep disabled for the presentation.
 - [ ] Open the local app; `/api/health` reports `ok: true`.
 - [ ] Seed loaded: History shows demo labels, replay traces, and four evaluations.
-- [ ] Both sources are simulated for rehearsal; **Demo recovery** is visible in the header.
+- [ ] Both sources are simulated for rehearsal; **Demo tools** is visible in the header.
 - [ ] Camera/microphone permissions granted if using them. Web Serial requires
   Chrome/Edge, localhost, and a helper's click to pick the USB port.
 - [ ] For Live coach and summaries, set `GEMINI_API_KEY` in `backend/.env` and
@@ -75,7 +75,7 @@ to keep the header recovery controls available. Complete the hardware gate first
 - [ ] Without a glove, Setup → **Simulate glove** keeps the real camera
   tracking your hand. The live **Glove motors** strip labels simulated motors;
   use both simulators for a fully rehearsed synthetic-patient demo.
-- [ ] Rehearse source recovery: open **Demo recovery** → **Use simulated glove**
+- [ ] Rehearse source recovery: open **Demo tools** → **Use simulated glove**
   (or **Restart simulated glove** when already connected)
   or **Use simulated camera**. It ends/saves the current run and readies the source
   without reloading. Start a new practice afterward; mixed-source runs are demo.
@@ -87,7 +87,7 @@ to keep the header recovery controls available. Complete the hardware gate first
 | --- | --- | --- |
 | 0:00–0:45 | Home → Exercise. Choose **Fist only, 1 rep**; Start practice. | “Try on your own first. The glove helps with the rest.” Explain ghost = target, solid = your hand. For a physical demo, the helper remains beside STOP. |
 | 0:45–1:30 | Let the moderate simulated patient try halfway; watch blue movement, orange assistance, then green hold. | “The camera estimates how far each finger closes. Assistance fills the remaining movement.” Show all five finger labels and the stagger: starts are at least 150 ms apart, at most three motors move. Targets stay within 95% of the calibrated glove range. |
-| 1:30–2:30 | Start another full-fist repetition. Open **Demo recovery**, choose Index under **Rigid finger**, check **Rigid index**, and wait for assistance. | “Here is resistance. The glove stops and releases on its own.” A firmware fault releases and pauses with a safety banner. A softer resistance stop holds the achieved command briefly, then releases; it is also saved in replay. Listen for “Stopping. I felt resistance in your index.” Uncheck Rigid index before Resume or another attempt. Show the current trace later in replay, where technical units belong. Never deliberately stiffen or stall a person's finger. |
+| 1:30–2:30 | Start another full-fist repetition. Open **Demo tools**, choose Index under **Rigid finger**, check **Rigid index**, and wait for assistance. | “Here is resistance. The glove stops and releases on its own.” A firmware fault releases and pauses with a safety banner. A softer resistance stop holds the achieved command briefly, then releases; it is also saved in replay. Listen for “Stopping. I felt resistance in your index.” Uncheck Rigid index before Resume or another attempt. Show the current trace later in replay, where technical units belong. Never deliberately stiffen or stall a person's finger. |
 | 2:30–3:15 | Finish/end the run; wait for Saved. Open History → Sessions and a demo session → replay. Pick a Full fist attempt. | Show the attempt, assistance and current trace. “These examples are labeled demo data.” Use Show as table if the projector obscures a chart. |
 | 3:15–4:00 | History → range/assistance trends, then resistance/evaluations. | “The synthetic patient improves over three weeks.” Evaluation resistance is an estimate inspired by clinical practice; total servo current cannot isolate a muscle or establish a diagnosis. |
 | 4:00–5:00 | Doctor view → Generate summary (when available). | “The therapist can review trends and request a summary.” Read the actual generated text; do not promise a particular conclusion. Without a key/network, show the unavailable state and the underlying charts. |
@@ -121,9 +121,9 @@ stopped. It does not automatically resume an interrupted exercise or sweep.
 
 | Problem | Immediate action | Continue |
 | --- | --- | --- |
-| Camera permission denied, hand hidden, or tracking lost | Pause/release; **Demo recovery → Use simulated camera**. | Wait for simulator-ready message, then start a new practice. Simulated vision with a physical glove still commands a real mechanism: use a fixture or also switch the glove to simulation before continuing. |
-| Glove disconnects or stops responding | Physical STOP / power off if release is uncertain. **Demo recovery → Use simulated glove**. | Source changes within five seconds without reload. Do not reconnect/restart physical motion during the pitch. Select simulated camera too for the rehearsed patient model. |
-| Live coach fails / microphone unavailable | **Demo recovery → Use simple voice**, or Coach controls → Voice mode → Simple voice. | Practice and captions continue; use on-screen Pause/Skip/End session because voice commands require Live coach. Local safety speech remains armed. |
+| Camera permission denied, hand hidden, or tracking lost | Pause/release; **Demo tools → Use simulated camera**. | Wait for simulator-ready message, then start a new practice. Simulated vision with a physical glove still commands a real mechanism: use a fixture or also switch the glove to simulation before continuing. |
+| Glove disconnects or stops responding | Physical STOP / power off if release is uncertain. **Demo tools → Use simulated glove**. | Source changes within five seconds without reload. Do not reconnect/restart physical motion during the pitch. Select simulated camera too for the rehearsed patient model. |
+| Live coach fails / microphone unavailable | **Demo tools → Use simple voice**, or Coach controls → Voice mode → Simple voice. | Practice and captions continue; use on-screen Pause/Skip/End session because voice commands require Live coach. Local safety speech remains armed. |
 | Overcurrent / physical STOP | Stop, let the mechanism release; remove the cause. Release the physical STOP before Resume. | Never repeatedly Resume against resistance. If uncertain, switch to both simulators and leave hardware powered off. |
 | Backend unavailable | End safely; keep this tab open. Restore/restart backend with the same DB path. | Header changes Offline → Saving… → Saved. Do not reload while saving is pending. History/AI summaries may remain unavailable until recovery. |
 | Summary request unavailable | Leave the unavailable message visible. | Show trend charts and exports. Do not invent a Gemini response. |

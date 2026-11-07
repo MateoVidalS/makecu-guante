@@ -133,7 +133,7 @@ describe('Home and Setup', () => {
     vi.stubEnv('VITE_SIM', '0');
     vi.stubEnv('VITE_DEMO', '0');
     mount(<RuntimeFallbackControls />);
-    expect(screen.queryByText('Demo recovery')).toBeNull();
+    expect(screen.queryByText('Demo tools')).toBeNull();
   });
 
   it('loads greeting, labeled demo history and starts the short plan', async () => {
@@ -440,7 +440,7 @@ describe('Safety and accessible common controls', () => {
     mount(
       <>
         <details open data-safety-popover>
-          <summary>Demo recovery</summary>Controls
+          <summary>Demo tools</summary>Controls
         </details>
         <SafetyBanner />
       </>,
