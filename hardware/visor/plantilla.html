@@ -1,0 +1,636 @@
+<meta charset="utf-8">
+<title>Montaje del Guante Robótico</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: banco de trabajo. Visor 3D a la izquierda, ficha técnica a la derecha; en teléfono se apilan. */
+:root {
+  --bg: #e9edf1;
+  --panel: #f7f9fb;
+  --ink: #18212b;
+  --muted: #5a6776;
+  --line: #cfd7df;
+  --pla: #e8a90c;
+  --thread: #d2342b;
+  --accent: #1f5fbf;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101419; --panel: #161c23; --ink: #e4e9ee; --muted: #93a1b0; --line: #29323d;
+    --pla: #f0b425; --thread: #ff5a4f; --accent: #6aa3ff; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101419; --panel: #161c23; --ink: #e4e9ee; --muted: #93a1b0; --line: #29323d;
+  --pla: #f0b425; --thread: #ff5a4f; --accent: #6aa3ff; color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 370px; height: 100%; }
+.stage { position: relative; min-width: 0; min-height: 0; }
+#view { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+.hud {
+  position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 16px; right: 16px;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; pointer-events: none;
+}
+.hud > * { pointer-events: auto; }
+.chip { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; display: flex; gap: 10px; align-items: center; }
+.chip label { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+#closure { width: 150px; accent-color: var(--thread); }
+#closureVal { font-family: var(--font-mono); font-variant-numeric: tabular-nums; min-width: 3.5ch; text-align: right; }
+button { font: 500 13px var(--font-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.seg { display: flex; }
+.seg button { border-radius: 0; }
+.seg button:first-child { border-radius: 6px 0 0 6px; }
+.seg button:last-child { border-radius: 0 6px 6px 0; border-left: 0; }
+.legend {
+  position: absolute; top: 14px; left: max(16px, env(safe-area-inset-left, 0px));
+  display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
+  background: color-mix(in srgb, var(--panel) 85%, transparent); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); max-width: calc(100% - 340px);
+}
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+.pip { position: absolute; top: 14px; right: 16px; width: 300px; pointer-events: none; }
+.pip .frame { width: 300px; height: 169px; border: 1px solid var(--line); border-radius: 6px; }
+.pip .cap { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 4px; text-align: right; }
+
+aside {
+  background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; min-width: 0;
+  padding-block: 22px 28px; padding-left: 22px; padding-right: max(22px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 22px;
+}
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.1; margin: 4px 0 8px; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 16px; margin: 0 0 8px; letter-spacing: .01em; }
+p { margin: 0; color: var(--muted); max-width: 65ch; }
+.parts { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.part { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; padding: 10px 6px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; text-align: left; width: 100%; }
+.part:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.part[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--ink); border-color: var(--line); }
+.part .sw { transform: translateY(1px); }
+.part .name { font-weight: 600; }
+.part .qty { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.part .meta { grid-column: 2 / 4; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
+.part .src { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
+.detail { border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; background: var(--bg); }
+.detail h3 { margin: 0 0 4px; font-size: 14px; }
+.detail p { font-size: 13px; }
+.steps { margin: 0; padding-left: 20px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+.steps li::marker { font-family: var(--font-mono); color: var(--ink); }
+.warn { border-left: 3px solid var(--pla); padding: 8px 12px; background: color-mix(in srgb, var(--pla) 10%, transparent); border-radius: 0 6px 6px 0; }
+.warn p { color: var(--ink); font-size: 13px; }
+code, .mono { font-family: var(--font-mono); font-size: 12px; }
+
+@media (max-width: 820px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 62vh auto; height: auto; }
+  .stage { height: 62vh; }
+  aside { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  #closure { width: 100px; }
+  .legend { display: none; }
+  .pip, .pip .frame { width: 180px; } .pip .frame { height: 101px; }
+}
+</style>
+
+<div class="app">
+  <div class="stage">
+    <canvas id="view" aria-label="Modelo 3D del módulo de muñeca con cinco servos, la mano con el guante, la laptop y la webcam"></canvas>
+    <div class="legend" aria-hidden="true">
+      <span><i class="sw" style="background:var(--pla)"></i>impreso (PLA)</span>
+      <span><i class="sw" style="background:#2f6fd0"></i>servo</span>
+      <span><i class="sw" style="background:var(--thread)"></i>hilo</span>
+      <span><i class="sw" style="background:#4fae7a"></i>elástico</span>
+      <span><i class="sw" style="background:#7c4dff"></i>campo de la webcam</span>
+    </div>
+    <div class="pip" id="pip">
+      <div class="frame" id="pipFrame"></div>
+      <div class="cap">Lo que ve la webcam</div>
+    </div>
+    <div class="hud">
+      <div class="seg" role="group" aria-label="Vista">
+        <button id="vAssembly" aria-pressed="true">Montaje</button>
+        <button id="vBed" aria-pressed="false">Piezas</button>
+      </div>
+      <div class="chip" id="closureChip">
+        <label for="closure">Cierre</label>
+        <input id="closure" type="range" min="0" max="100" value="60">
+        <span id="closureVal">60%</span>
+      </div>
+      <button id="play" aria-pressed="false">Animar</button>
+      <button id="insideBtn" aria-pressed="true">Ver por dentro</button>
+      <button id="gloveBtn" aria-pressed="false">Guante transparente</button>
+    </div>
+  </div>
+
+  <aside>
+    <header>
+      <div class="eyebrow">MakeCU · Healthcare · v0.6 · módulo de muñeca</div>
+      <h1>Montaje del guante robótico</h1>
+      <p>Un módulo impreso de 80,5 × 80 × 47 mm va debajo de la muñeca y el antebrazo, sujeto con dos correas. Es rígido y abarca la muñeca, así que la mantiene recta. Adentro, los cinco carretes están a la misma altura, justo debajo de la tapa. Cada hilo sale horizontal y tangente a su carrete por arriba del frente, sube unos 10° hasta la palma y corre pegado a la piel por guías cosidas al guante hasta la punta del dedo. Sin fundas ni tubos.</p>
+    </header>
+
+    <section>
+      <h2>Piezas</h2>
+      <div class="parts" id="parts"></div>
+    </section>
+
+    <section class="detail" id="detail" aria-live="polite"></section>
+
+    <section>
+      <h2>Puesta en la mesa</h2>
+      <ol class="steps">
+        <li>Ponerse el guante y el módulo debajo de la muñeca. Cerrar la correa de adelante alrededor de la mano y la de atrás alrededor del antebrazo.</li>
+        <li>Palma hacia abajo, con el frente del módulo en el borde de la mesa: la mano queda afuera y los dedos se cierran en el aire.</li>
+        <li>Antebrazo sobre una toalla doblada de unos 4 cm, para que quede a la altura del módulo.</li>
+        <li>Webcam adelante y del lado del pulgar (en el rincón de la mesa), a 30–40 cm de los dedos y más alta que la mano, apuntando en diagonal.</li>
+        <li>Laptop adelante del paciente, del lado del pulgar, con la pantalla hacia él.</li>
+        <li>Breadboard con la ESP32 y el INA219 sobre la mesa, detrás de la base; el botón STOP del otro lado.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Orden de armado</h2>
+      <ol class="steps">
+        <li>Atornillar los 3 servos de la fila de adelante y los 2 de atrás, con el eje hacia arriba y en 0°.</li>
+        <li>Atornillar cada carrete a su brazo en cruz y montarlo en el servo.</li>
+        <li>Coser en el guante, del lado de la palma: anclaje en la punta de cada dedo, una guía por falange y una en la palma a la altura de cada nudillo.</li>
+        <li>Pasar cada hilo: anclaje, guías, salida del frente del módulo y carrete. Ordenados de pulgar a meñique; índice y anular pasan por el hueco entre los carretes de adelante. Anudar con el dedo abierto y el hilo apenas tenso.</li>
+        <li>Coser los elásticos del dorso, de la punta de cada dedo al puño del guante.</li>
+        <li>Sacar los cables de los servos por la ranura de atrás hacia la breadboard y cerrar la tapa con 4 tornillos.</li>
+      </ol>
+    </section>
+
+    <section class="warn">
+      <p><strong>Antes de imprimir:</strong> medir el servo real (cuerpo, orejas, altura del eje) y el recorrido de hilo de un dedo, y ajustar los parámetros en <code>hardware/cad/piezas.py</code>. El módulo está hecho para la mano derecha; para la izquierda, espejar módulo y tapa en el slicer.</p>
+    </section>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
+<script>
+const STL = /*__PARTS__*/null;
+
+const PART_INFO = [
+  { id: "base", name: "Módulo de muñeca", qty: "1", src: "imprimir", color: "pla",
+    meta: "80,5 × 80 × 41 mm · 68,2 cm³",
+    text: "Va debajo de la muñeca, del lado de la palma. Es rígido y abarca la muñeca: con las dos correas, la mantiene recta y el largo de los hilos no cambia. Adentro, cada servo va en su propio soporte (un tubo rectangular del piso hasta las orejas) y los 5 carretes quedan a la misma altura, justo debajo de la tapa, en zigzag: pulgar, medio y meñique adelante; índice y anular atrás, con sus hilos pasando por el hueco entre los carretes de adelante. Cada hilo sale horizontal y tangente a su carrete por arriba del frente: enrolla parejo y no carga de costado el eje del servo. Atrás hay una ranura para los cables.",
+    print: "PLA, 20% de relleno, 3 perímetros. Imprimir parada sobre el piso, sin soportes. Estimado 2,5 a 3,5 h (confirmar en el slicer)." },
+  { id: "tapa", name: "Tapa (apoyo de la muñeca)", qty: "1", src: "imprimir", color: "pla",
+    meta: "80,5 × 102 × 6 mm · 32,0 cm³",
+    text: "Cierra el módulo con 4 tornillos (M2,5 o los de los servos). Es cóncava para que la muñeca calce. Tiene dos pares de orejas para correas de velcro de 25 mm (adelante rodean la mano, atrás el antebrazo).",
+    print: "PLA, 30%. Con la cara plana sobre la cama, sin soportes. Aproximadamente 1 h." },
+  { id: "carrete", name: "Carrete", qty: "5", src: "imprimir", color: "pla",
+    meta: "Ø 22 × 8,2 mm · radio de enrollado 10 mm",
+    text: "Se atornilla al brazo en cruz del servo. Con 10 mm de radio, 180° de giro enrollan unos 31 mm de hilo. El hilo se anuda en el agujero radial del núcleo.",
+    print: "PLA, 100%. Sin soportes." },
+  { id: "guia", name: "Guía de tendón", qty: "13", src: "imprimir", color: "pla",
+    meta: "12 × 9 × 5 mm · canal Ø 2 mm",
+    text: "Se cose al guante del lado de la palma: 3 por dedo largo (palma, falange proximal y media) y 1 en el pulgar. Mantienen el hilo pegado a la piel. Entradas abocinadas para que el hilo no roce contra una arista.",
+    print: "PLA, 100%. Imprimir de a varias, con 2 o 3 de repuesto." },
+  { id: "anclaje", name: "Anclaje de punta", qty: "5", src: "imprimir", color: "pla",
+    meta: "12 × 9 × 5,2 mm",
+    text: "Se cose en la punta de cada dedo. El hilo pasa por el canal y se anuda del otro lado del tope.",
+    print: "PLA, 100%. Sin soportes." },
+  { id: "servos", name: "Micro servos", qty: "5", src: "tenemos", color: "servo",
+    meta: "SG92R · MG90S · 2× S51 · 1 negro sin identificar",
+    text: "Cada uno en su soporte individual, con el eje hacia arriba. Los alojamientos son universales (23,6 × 13,2 mm, agujeros alargados) y el del pulgar 1,5 mm más grande. Asignación por torque: índice → SG92R (~2,5 kg·cm), medio → MG90S (engranajes de metal), anular y meñique → S51 (~1,6–1,8 kg·cm), pulgar → el negro (medirlo). Con 5 servos, límite de la fuente en unos 2,5 A.",
+    print: "" },
+  { id: "electronica", name: "ESP32 + INA219", qty: "1 + 1", src: "pedir", color: "pcb",
+    meta: "en la breadboard, sobre la mesa",
+    text: "La ESP32 controla los 5 servos con PWM y lee la corriente total con el INA219. Va en la breadboard detrás de la base; los cables de los servos salen por la ranura de atrás.",
+    print: "" },
+  { id: "hilos", name: "Hilos (tendones)", qty: "5", src: "comprar", color: "thread",
+    meta: "tanza 0,5–0,8 mm o hilo encerado",
+    text: "Del carrete, por la salida del frente del módulo y las guías pegadas a la palma, hasta el anclaje de la punta. Al girar el servo, el hilo se enrolla y el dedo se cierra.",
+    print: "" },
+  { id: "elasticos", name: "Elásticos del dorso", qty: "5", src: "comprar", color: "elastic",
+    meta: "banda elástica de costura",
+    text: "Abren el dedo cuando el servo afloja. Tienen que ser suaves: si tiran mucho, el servo no puede cerrar la mano.",
+    print: "" },
+  { id: "webcam", name: "Webcam", qty: "1", src: "pedir", color: "cam",
+    meta: "Logitech del desk de MLH, en un trípode chico",
+    text: "Adelante y del lado del pulgar, a 30–40 cm de los dedos y más alta que la mano. Desde ahí ve los dedos de costado y en diagonal: se nota cuánto se doblan y no se tapan entre sí. El recuadro de arriba a la derecha muestra lo que ve.",
+    print: "" },
+  { id: "laptop", name: "Laptop", qty: "1", src: "propio", color: "laptop",
+    meta: "mano virtual, voz y dashboard",
+    text: "Adelante del paciente, del lado del pulgar, con la pantalla hacia él. Muestra la mano virtual con la posición objetivo. Se conecta a la ESP32 por USB y a la webcam.",
+    print: "" },
+];
+
+/* ---------- utilidades ---------- */
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function decode(b64) {
+  const bin = atob(b64); const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Float32Array(u8.buffer);
+}
+const geoms = {};
+function stlGeom(name) {
+  if (!geoms[name]) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(decode(STL[name]), 3));
+    g.computeVertexNormals();
+    geoms[name] = g;
+  }
+  return geoms[name];
+}
+const D = THREE.MathUtils.degToRad;
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+
+/* ---------- escena ---------- */
+const canvas = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(36, 1, 1, 6000);
+const HOME = { pos: V3(560, 360, 600), target: V3(40, -70, -150) };
+camera.position.copy(HOME.pos);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.target.copy(HOME.target);
+controls.enableDamping = true; controls.minDistance = 120; controls.maxDistance = 2000;
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8090a0, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(200, 500, 300); scene.add(sun);
+const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(-300, -100, -200); scene.add(fill);
+
+const M = {};
+function makeMaterials() {
+  const std = (o) => new THREE.MeshStandardMaterial(o);
+  M.pla = M.pla || std({ roughness: 0.55 }); M.pla.color.set(css("--pla"));
+  M.plaShell = M.plaShell || std({ roughness: 0.55, transparent: true, opacity: 0.35, depthWrite: false }); M.plaShell.color.set(css("--pla"));
+  M.servo = M.servo || std({ color: 0x2f6fd0, roughness: 0.45 });
+  M.horn = M.horn || std({ color: 0xf2f2f2, roughness: 0.5 });
+  M.skin = M.skin || std({ color: 0xc99a80, roughness: 0.85 });
+  M.glove = M.glove || std({ color: 0xd9d2c5, roughness: 0.95, transparent: true, opacity: 1 });
+  M.thread = M.thread || std({ roughness: 0.5 }); M.thread.color.set(css("--thread"));
+  M.elastic = M.elastic || std({ color: 0x4fae7a, roughness: 0.7 });
+  M.table = M.table || std({ roughness: 1 }); M.table.color.set(css("--line"));
+  M.towel = M.towel || std({ color: 0x8fb3c9, roughness: 1 });
+  M.pcb = M.pcb || std({ color: 0x1d6b3a, roughness: 0.6 });
+  M.ina = M.ina || std({ color: 0x6b3fa0, roughness: 0.6 });
+  M.board = M.board || std({ color: 0xf1f1ee, roughness: 0.8 });
+  M.metal = M.metal || std({ color: 0x9aa3ad, roughness: 0.35, metalness: 0.6 });
+  M.dark = M.dark || std({ color: 0x23282f, roughness: 0.6 });
+  M.cable = M.cable || std({ color: 0x2a2f36, roughness: 0.7 });
+  M.red = M.red || std({ color: 0xd8342b, roughness: 0.5 });
+  M.cam = M.cam || new THREE.LineBasicMaterial({ color: 0x7c4dff, transparent: true, opacity: 0.8 });
+}
+makeMaterials();
+
+const groups = {};
+function tag(id, mesh) { (groups[id] = groups[id] || []).push(mesh); return mesh; }
+
+const assembly = new THREE.Group(); scene.add(assembly);
+const bed = new THREE.Group(); bed.visible = false; scene.add(bed);
+const hideInPip = [];
+
+/* Ejes: +X hacia los dedos, +Y arriba, -Z lado del pulgar (mano derecha, palma abajo). */
+const BASE_H = 41, LID_T = 6;
+/* el módulo va debajo de la muñeca: el fondo de la tapa cóncava (z = 53) toca la muñeca */
+const TABLE_Y = -20 - (BASE_H + 2), EDGE_X = 12; /* el frente del módulo queda apenas pasando el pliegue de la muñeca */
+
+const table = new THREE.Mesh(new THREE.BoxGeometry(700, 6, 760), M.table);
+table.position.set(EDGE_X - 350, TABLE_Y - 3, -110); assembly.add(table);
+/* ala de la mesa del lado del pulgar, donde va la webcam (rincón de la mesa) */
+const wing = new THREE.Mesh(new THREE.BoxGeometry(260, 6, 300), M.table);
+wing.position.set(EDGE_X + 130, TABLE_Y - 3, -340); assembly.add(wing);
+const towelH = -27 - TABLE_Y;
+/* la toalla termina antes del módulo: el módulo apoya directo en la mesa */
+const TOWEL_X0 = -265, TOWEL_X1 = EDGE_X - 80.5 - 6;
+const towel = new THREE.Mesh(new THREE.RoundedBoxGeometry(TOWEL_X1 - TOWEL_X0, towelH, 95, 3, 8), M.towel);
+towel.position.set((TOWEL_X0 + TOWEL_X1) / 2, TABLE_Y + towelH / 2, 0); assembly.add(towel);
+const arm = new THREE.Mesh(new THREE.CylinderGeometry(34, 26, 270, 40), M.skin);
+arm.rotation.z = Math.PI / 2; arm.scale.x = 0.8; arm.position.x = -135; assembly.add(arm);
+
+const palm = new THREE.Mesh(new THREE.RoundedBoxGeometry(100, 26, 82, 4, 10), M.glove);
+palm.position.set(45, 0, 0); assembly.add(palm);
+const cuff = new THREE.Mesh(new THREE.CylinderGeometry(27, 25, 18, 32), M.glove);
+cuff.rotation.z = Math.PI / 2; cuff.scale.x = 0.8; cuff.position.x = -2; assembly.add(cuff);
+
+function guideMesh(kind) {
+  const m = tag(kind, new THREE.Mesh(stlGeom(kind === "anclaje" ? "anclaje_punta" : "guia_tendon"), M.pla));
+  m.rotation.x = Math.PI / 2;
+  return m;
+}
+function marker(parent, x, y, z) { const o = new THREE.Object3D(); o.position.set(x, y, z); parent.add(o); return o; }
+
+const fingers = [];
+/* Orientación de un dedo a partir de dos direcciones: el eje del hueso y el lado
+   de la palma del dedo (hacia donde se flexiona). Local: +X = hueso, -Y = palmar. */
+function basisQuat(axis, palmar) {
+  const x = V3(...axis).normalize();
+  const p = V3(...palmar); p.sub(x.clone().multiplyScalar(p.dot(x))).normalize();
+  const y = p.clone().negate(), z = new THREE.Vector3().crossVectors(x, y);
+  return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+}
+function buildFinger({ name, base, segs, r, rot = [0, 0, 0], flex, skipFirst = false, basis = null }) {
+  const root = new THREE.Group(); root.position.set(...base); root.rotation.order = "YXZ"; root.rotation.set(...rot);
+  if (basis) root.quaternion.copy(basisQuat(basis.axis, basis.palmar));
+  assembly.add(root);
+  const joints = [], path = [], dorsal = [];
+  if (!skipFirst) { /* guía en la palma, a la altura del nudillo */
+    const g = guideMesh("guia"); g.position.set(74, -13, base[2]); assembly.add(g);
+    path.push(marker(assembly, 70, -15.6, base[2]), marker(assembly, 78, -15.6, base[2]));
+  }
+  let parent = root;
+  segs.forEach((L, i) => {
+    const j = new THREE.Group(); if (i > 0) j.position.x = segs[i - 1]; parent.add(j); joints.push(j);
+    const ri = r * (1 - 0.09 * i);
+    const geo = new THREE.CapsuleGeometry(ri, L, 6, 16); geo.rotateZ(-Math.PI / 2); geo.translate(L / 2, 0, 0);
+    j.add(new THREE.Mesh(geo, M.glove));
+    if (!(skipFirst && i === 0)) {
+      const last = i === segs.length - 1;
+      const gx = last ? L - 3 : L * 0.5;
+      const g = guideMesh(last ? "anclaje" : "guia"); g.position.set(gx, -ri, 0); j.add(g);
+      path.push(marker(j, gx - 4, -ri - 2.6, 0), marker(j, gx + (last ? 3 : 4), -ri - 2.6, 0));
+    }
+    dorsal.push(marker(j, L * 0.5, ri + 0.5, 0));
+    parent = j;
+  });
+  dorsal.push(marker(joints[joints.length - 1], segs[segs.length - 1] - 2, r * 0.7, 0));
+  const f = { name, root, joints, flex, path, dorsal, baseRotY: rot[1], baseQuat: root.quaternion.clone() };
+  fingers.push(f); return f;
+}
+/* en el mismo orden que los servos: pulgar, índice, medio, anular, meñique */
+/* Pulgar: nace en la base de la palma (lado radial, cerca de la muñeca). El metacarpiano
+   va hacia adelante, hacia afuera y hacia abajo (palmar), metido en la eminencia tenar.
+   Está rotado ~90°: la uña mira hacia afuera y su lado palmar mira hacia el índice,
+   así que al flexionarse se cierra por debajo de la palma, hacia los dedos. */
+buildFinger({ name: "pulgar", base: [6, -7, -28], segs: [40, 31, 26], r: 11.5, flex: [12, 40, 60], skipFirst: true,
+  basis: { axis: [0.72, -0.38, -0.58], palmar: [0.15, -0.45, 0.88] } });
+buildFinger({ name: "índice", base: [92, 0, -27], segs: [44, 26, 20], r: 9, flex: [75, 95, 60] });
+buildFinger({ name: "medio", base: [92, 0, -8], segs: [48, 30, 22], r: 9.5, flex: [75, 95, 60] });
+buildFinger({ name: "anular", base: [91, 0, 11], segs: [45, 28, 21], r: 9, flex: [75, 95, 60] });
+buildFinger({ name: "meñique", base: [86, 0, 29], segs: [34, 21, 18], r: 7.5, rot: [D(-6), 0, 0], flex: [75, 95, 60] });
+
+/* base palmar (coordenadas de la pieza: +X dedos, +Y pulgar, +Z arriba) */
+const dev = new THREE.Group();
+dev.rotation.x = -Math.PI / 2; dev.position.set(EDGE_X, TABLE_Y, 0); assembly.add(dev);
+const baseMesh = tag("base", new THREE.Mesh(stlGeom("modulo_muneca"), M.plaShell)); dev.add(baseMesh);
+const lidMesh = tag("tapa", new THREE.Mesh(stlGeom("tapa"), M.plaShell)); lidMesh.position.z = BASE_H; dev.add(lidMesh);
+/* todos los carretes a la misma altura; 3 adelante y 2 atrás, en zigzag */
+const DECK = 18.9;
+const SERVOS = [[-20, 25, DECK], [-54, 2.5, DECK], [-20, 0, DECK], [-54, -22.5, DECK], [-20, -25, DECK]];
+const spools = [], spoolOut = [], eyeIn = [], eyeOut = [];
+SERVOS.forEach(([sx, sy, deck]) => {
+  const bx = sx - 5.5, tz = deck + 16.4;
+  const body = tag("servos", new THREE.Mesh(new THREE.BoxGeometry(22.8, 12.4, 22.7), M.servo));
+  body.position.set(bx, sy, deck - 15.9 + 11.35); dev.add(body);
+  const tabs = tag("servos", new THREE.Mesh(new THREE.BoxGeometry(32.3, 12.4, 2.5), M.servo));
+  tabs.position.set(bx, sy, deck + 1.25); dev.add(tabs);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 5.5, 16), M.horn);
+  shaft.rotation.x = Math.PI / 2; shaft.position.set(sx, sy, deck + 9); dev.add(shaft);
+  const sg = new THREE.Group(); sg.position.set(sx, sy, deck + 12.3); dev.add(sg);
+  const horn = new THREE.Mesh(new THREE.BoxGeometry(22, 4.5, 1.5), M.horn); horn.position.z = -0.75; sg.add(horn);
+  const horn2 = horn.clone(); horn2.rotation.z = Math.PI / 2; sg.add(horn2);
+  sg.add(tag("carrete", new THREE.Mesh(stlGeom("carrete"), M.pla)));
+  spools.push(sg);
+  spoolOut.push(marker(dev, sx, sy + 10, tz));
+  /* el hilo sube del carrete y sale por arriba, por la tapa, junto al borde delantero */
+  /* el hilo sale horizontal y tangente al carrete, por arriba del frente */
+  const ty = sy + 10;
+  eyeIn.push(marker(dev, -2.5, ty, tz));
+  eyeOut.push(marker(dev, 0.5, ty, tz));
+});
+
+/* correas de velcro: adelante alrededor de la mano, atrás alrededor del antebrazo */
+M.strap = new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 1 });
+[[EDGE_X - 17, 15, 46], [EDGE_X - 64, 22, 46]].forEach(([x, top, half]) => {
+  const ly = TABLE_Y + BASE_H + 3;
+  const pts = [];
+  for (let k = 0; k <= 24; k++) { const a = Math.PI * k / 24; pts.push(V3(0, ly + (top - ly) * Math.sin(a), -half * Math.cos(a))); }
+  const m = tag("tapa", new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, 2.2, 8), M.strap));
+  m.scale.x = 5; m.position.x = x; assembly.add(m);
+});
+
+function cable(points, r = 2.2, mat = M.cable) {
+  const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 80, r, 8), mat);
+  assembly.add(m); return m;
+}
+
+/* breadboard con la ESP32 y el INA219, detrás de la base */
+const bb = new THREE.Group(); bb.position.set(-30, TABLE_Y, 95); assembly.add(bb);
+const board = new THREE.Mesh(new THREE.BoxGeometry(84, 9, 55), M.board); board.position.y = 4.5; bb.add(board);
+const esp = tag("electronica", new THREE.Mesh(new THREE.BoxGeometry(52, 4, 28), M.pcb)); esp.position.set(-8, 12, 0); bb.add(esp);
+const mod = tag("electronica", new THREE.Mesh(new THREE.BoxGeometry(18, 3.2, 25), M.metal)); mod.position.set(4, 15.5, 0); bb.add(mod);
+const ina = tag("electronica", new THREE.Mesh(new THREE.BoxGeometry(22, 4, 18), M.ina)); ina.position.set(30, 12, 12); bb.add(ina);
+cable([V3(EDGE_X - 80, TABLE_Y + 9, 0), V3(-10, TABLE_Y + 8, 20), V3(-25, TABLE_Y + 14, 70)], 3, M.servo);
+
+/* laptop: adelante del paciente, del lado del pulgar, mirando hacia él */
+const laptop = new THREE.Group(); laptop.position.set(-190, TABLE_Y, -300); assembly.add(laptop);
+laptop.rotation.y = Math.atan2(-230, 300);
+const lbase = tag("laptop", new THREE.Mesh(new THREE.RoundedBoxGeometry(300, 10, 210, 2, 4), M.dark)); lbase.position.y = 5; laptop.add(lbase);
+const screenTex = (() => {
+  const c = document.createElement("canvas"); c.width = 600; c.height = 380; const g = c.getContext("2d");
+  g.fillStyle = "#0f1720"; g.fillRect(0, 0, 600, 380);
+  g.fillStyle = "#93a1b0"; g.font = "500 22px monospace"; g.fillText("PUÑO  ·  intento 2 de 3", 28, 44);
+  const hand = (ox, col, curl) => {
+    g.strokeStyle = col; g.lineWidth = 16; g.lineCap = "round";
+    g.beginPath(); g.moveTo(ox, 300); g.lineTo(ox, 200); g.stroke();
+    [-48, -16, 16, 48].forEach((dx, i) => {
+      const k = curl[i]; g.beginPath(); g.moveTo(ox + dx, 200); g.lineTo(ox + dx, 150);
+      g.quadraticCurveTo(ox + dx + 30 * k, 100 + 40 * k, ox + dx + 10 * k, 120 + 60 * k); g.stroke();
+    });
+    g.beginPath(); g.moveTo(ox - 60, 250); g.quadraticCurveTo(ox - 100, 220, ox - 90, 180); g.stroke();
+  };
+  hand(190, "#4fae7a", [1, 1, 1, 1]); hand(420, "#e4e9ee", [0.6, 0.55, 0.45, 0.4]);
+  g.fillStyle = "#4fae7a"; g.fillText("objetivo", 140, 350); g.fillStyle = "#e4e9ee"; g.fillText("tu mano  60%", 350, 350);
+  return new THREE.CanvasTexture(c);
+})();
+const screenG = new THREE.Group(); screenG.position.set(0, 10, -105); screenG.rotation.x = -D(12); laptop.add(screenG);
+const lidL = tag("laptop", new THREE.Mesh(new THREE.RoundedBoxGeometry(300, 200, 6, 2, 3), M.dark)); lidL.position.set(0, 100, 0); screenG.add(lidL);
+const scr = new THREE.Mesh(new THREE.PlaneGeometry(280, 177), new THREE.MeshBasicMaterial({ map: screenTex })); scr.position.set(0, 100, 3.2); screenG.add(scr);
+cable([V3(-15, TABLE_Y + 12, 95), V3(-60, TABLE_Y + 3, 60), V3(-150, TABLE_Y + 3, -130), V3(-190, TABLE_Y + 6, -200)]);
+
+/* botón STOP y anillo de luz */
+const stop = new THREE.Group(); stop.position.set(-110, TABLE_Y, 190); assembly.add(stop);
+const sbox = new THREE.Mesh(new THREE.RoundedBoxGeometry(50, 22, 50, 2, 4), M.dark); sbox.position.y = 11; stop.add(sbox);
+const btn = new THREE.Mesh(new THREE.CylinderGeometry(13, 13, 8, 24), M.red); btn.position.y = 26; stop.add(btn);
+cable([V3(-45, TABLE_Y + 12, 105), V3(-80, TABLE_Y + 3, 150), V3(-105, TABLE_Y + 8, 175)], 1.8);
+const ring = new THREE.Mesh(new THREE.TorusGeometry(30, 4, 10, 32), new THREE.MeshStandardMaterial({ color: 0x4fae7a, emissive: 0x2c8a55, roughness: 0.5 }));
+ring.rotation.x = Math.PI / 2; ring.position.set(-110, TABLE_Y + 5, -150); assembly.add(ring);
+
+/* webcam en trípode chico, del lado del pulgar */
+const webcam = new THREE.Group(); assembly.add(webcam);
+const CAM_POS = V3(260, 50, -250), LOOK = V3(105, -30, -5);
+const tripod = new THREE.Group(); tripod.position.set(CAM_POS.x, TABLE_Y, CAM_POS.z); webcam.add(tripod);
+const poleH = CAM_POS.y - TABLE_Y - 12;
+const pole = tag("webcam", new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, poleH, 10), M.metal));
+pole.position.y = poleH / 2 + 12; tripod.add(pole);
+for (let k = 0; k < 3; k++) {
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 60, 8), M.metal);
+  const a = k * 2.094; leg.position.set(Math.cos(a) * 18, 10, Math.sin(a) * 18); leg.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9); tripod.add(leg);
+}
+const head = new THREE.Group(); head.position.copy(CAM_POS); webcam.add(head); head.lookAt(LOOK);
+head.add(tag("webcam", new THREE.Mesh(new THREE.RoundedBoxGeometry(90, 28, 26, 3, 8), M.dark)));
+const lens = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 3, 20), M.metal); lens.rotation.x = Math.PI / 2; lens.position.z = 14; head.add(lens);
+hideInPip.push(webcam);
+const webCam = new THREE.PerspectiveCamera(42, 16 / 9, 5, 2000);
+webCam.position.copy(CAM_POS); webCam.lookAt(LOOK); webCam.updateMatrixWorld();
+{
+  const far = 360, pts = [];
+  [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([x, y]) => {
+    const p = V3(x, y, 0.5).unproject(webCam); const dir = p.sub(CAM_POS).normalize();
+    pts.push(CAM_POS.clone(), CAM_POS.clone().add(dir.multiplyScalar(far)));
+  });
+  const fr = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), M.cam);
+  assembly.add(fr); hideInPip.push(fr);
+}
+
+/* hilos y elásticos que cambian con el cierre */
+const dynamic = new THREE.Group(); assembly.add(dynamic);
+const wp = (o) => o.getWorldPosition(new THREE.Vector3());
+function tubeThrough(points, radius, mat) {
+  const curve = new THREE.CatmullRomCurve3(points, false, "catmullrom", 0.05);
+  return new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(24, points.length * 10), radius, 6), mat);
+}
+function rebuildDynamic() {
+  dynamic.children.forEach((c) => c.geometry.dispose()); dynamic.clear();
+  scene.updateMatrixWorld(true);
+  fingers.forEach((f, i) => {
+    dynamic.add(tag("hilos", tubeThrough([wp(spoolOut[i]), wp(eyeIn[i]), wp(eyeOut[i]), ...f.path.map(wp)], 0.6, M.thread)));
+    const z = f.root.position.z;
+    const back = f.name === "pulgar" ? [V3(-6, 18, -18), V3(14, 6, -36)] : [V3(-6, 21, z * 0.6), V3(30, 14.5, z * 0.85), V3(80, 14, z)];
+    dynamic.add(tag("elasticos", tubeThrough([...back, ...f.dorsal.map(wp)], 1.2, M.elastic)));
+  });
+  applyHighlight();
+}
+
+let closure = 0.6;
+function setClosure(c) {
+  closure = c;
+  fingers.forEach((f) => {
+    f.joints.forEach((j, i) => { j.rotation.z = -D(f.flex[i] || 0) * c; });
+    /* oposición: el pulgar gira hacia el índice a medida que la mano se cierra */
+    if (f.name === "pulgar") f.root.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), -D(28) * c).multiply(f.baseQuat));
+  });
+  spools.forEach((s) => { s.rotation.z = Math.PI * c; });
+  rebuildDynamic();
+  document.getElementById("closureVal").textContent = Math.round(c * 100) + "%";
+}
+
+/* ---------- vista de piezas ---------- */
+{
+  const plateMesh = new THREE.Mesh(new THREE.BoxGeometry(250, 2, 250), M.table); plateMesh.position.y = -1; bed.add(plateMesh);
+  const put = (file, id, x, z) => {
+    const m = tag(id, new THREE.Mesh(stlGeom(file), M.pla)); m.rotation.x = -Math.PI / 2;
+    m.position.set(x, 0, z); bed.add(m);
+  };
+  put("modulo_muneca", "base", -55, -40);
+  put("tapa", "tapa", 60, -40);
+  [0, 1, 2, 3, 4].forEach((k) => put("carrete", "carrete", -95 + k * 28, 60));
+  [0, 1, 2, 3, 4, 5, 6, 7, 8].forEach((k) => put("guia_tendon", "guia", 50 + (k % 5) * 15, 45 + Math.floor(k / 5) * 13));
+  [0, 1, 2, 3, 4].forEach((k) => put("anclaje_punta", "anclaje", 50 + k * 15, 80));
+}
+
+/* ---------- panel ---------- */
+const swatch = { pla: "var(--pla)", servo: "#2f6fd0", thread: "var(--thread)", elastic: "#4fae7a", pcb: "#1d6b3a", cam: "#7c4dff", laptop: "#23282f" };
+const partsEl = document.getElementById("parts"), detailEl = document.getElementById("detail");
+let selected = "base";
+PART_INFO.forEach((p) => {
+  const b = document.createElement("button");
+  b.className = "part"; b.id = "part-" + p.id; b.setAttribute("aria-pressed", "false");
+  b.innerHTML = `<i class="sw" style="background:${swatch[p.color]}"></i><span class="name">${p.name}</span><span class="qty">×${p.qty}</span><span class="meta">${p.meta} &nbsp;<span class="src">${p.src}</span></span>`;
+  b.addEventListener("click", () => select(selected === p.id ? null : p.id));
+  partsEl.appendChild(b);
+});
+function select(id) {
+  selected = id;
+  PART_INFO.forEach((p) => document.getElementById("part-" + p.id).setAttribute("aria-pressed", String(p.id === id)));
+  const p = PART_INFO.find((q) => q.id === id);
+  detailEl.innerHTML = p
+    ? `<h3>${p.name}</h3><p>${p.text}</p>${p.print ? `<p style="margin-top:8px"><span class="mono">Impresión:</span> ${p.print}</p>` : ""}`
+    : `<h3>Elegí una pieza</h3><p>Tocá una pieza de la lista para resaltarla en el modelo.</p>`;
+  applyHighlight();
+}
+const HL = new THREE.Color(0x3b82f6);
+function applyHighlight() {
+  Object.entries(groups).forEach(([id, meshes]) => meshes.forEach((m) => {
+    if (!m.material || !m.material.emissive) return;
+    if (!m.userData.ownMat && id === selected) { m.material = m.material.clone(); m.userData.ownMat = true; m.userData.base = m.material.emissive.clone(); }
+    if (m.userData.ownMat) m.material.emissive.copy(id === selected ? HL.clone().multiplyScalar(0.45) : m.userData.base);
+  }));
+}
+
+/* ---------- controles ---------- */
+const slider = document.getElementById("closure");
+slider.addEventListener("input", () => { stopPlay(); setClosure(slider.value / 100); });
+const playBtn = document.getElementById("play");
+let playing = false, t0 = 0;
+function stopPlay() { playing = false; playBtn.setAttribute("aria-pressed", "false"); playBtn.textContent = "Animar"; }
+playBtn.addEventListener("click", () => {
+  if (playing) return stopPlay();
+  playing = true; t0 = performance.now(); playBtn.setAttribute("aria-pressed", "true"); playBtn.textContent = "Pausar";
+});
+const insideBtn = document.getElementById("insideBtn");
+insideBtn.addEventListener("click", () => {
+  const on = insideBtn.getAttribute("aria-pressed") !== "true";
+  insideBtn.setAttribute("aria-pressed", String(on));
+  [baseMesh, lidMesh].forEach((m) => { m.material = on ? M.plaShell : M.pla; m.userData.ownMat = false; });
+  applyHighlight();
+});
+const gloveBtn = document.getElementById("gloveBtn");
+gloveBtn.addEventListener("click", () => {
+  const on = gloveBtn.getAttribute("aria-pressed") !== "true";
+  gloveBtn.setAttribute("aria-pressed", String(on));
+  M.glove.opacity = on ? 0.35 : 1; M.glove.depthWrite = !on;
+});
+const vA = document.getElementById("vAssembly"), vB = document.getElementById("vBed");
+const pipEl = document.getElementById("pip");
+function setView(bedOn) {
+  bed.visible = bedOn; assembly.visible = !bedOn;
+  vA.setAttribute("aria-pressed", String(!bedOn)); vB.setAttribute("aria-pressed", String(bedOn));
+  ["closureChip", "play", "insideBtn", "gloveBtn"].forEach((id) => { document.getElementById(id).hidden = bedOn; });
+  pipEl.hidden = bedOn;
+  if (bedOn) { stopPlay(); camera.position.set(0, 250, 240); controls.target.set(0, 0, 10); }
+  else { camera.position.copy(HOME.pos); controls.target.copy(HOME.target); }
+}
+vA.addEventListener("click", () => setView(false));
+vB.addEventListener("click", () => setView(true));
+
+const retheme = () => { makeMaterials(); applyHighlight(); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", retheme);
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+let W = 1, H = 1;
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect(); W = r.width; H = r.height;
+  renderer.setSize(W, H, false);
+  camera.aspect = W / Math.max(1, H); camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas.parentElement);
+resize();
+select("base");
+setClosure(0.6);
+
+const pipFrame = document.getElementById("pipFrame");
+function frame(now) {
+  if (playing) { const c = 0.5 - 0.5 * Math.cos((now - t0) / 1400); slider.value = Math.round(c * 100); setClosure(c); }
+  controls.update();
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, W, H);
+  renderer.render(scene, camera);
+  if (!pipEl.hidden) {
+    const sr = canvas.getBoundingClientRect(), fr = pipFrame.getBoundingClientRect();
+    const x = fr.left - sr.left, y = H - (fr.bottom - sr.top), w = fr.width, h = fr.height;
+    hideInPip.forEach((o) => { o.visible = false; });
+    renderer.setScissorTest(true); renderer.setScissor(x, y, w, h); renderer.setViewport(x, y, w, h);
+    renderer.setClearColor(0x0f1720, 1); renderer.clear();
+    webCam.aspect = w / h; webCam.updateProjectionMatrix();
+    renderer.render(scene, webCam);
+    renderer.setClearColor(0x000000, 0); renderer.setScissorTest(false);
+    hideInPip.forEach((o) => { o.visible = true; });
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
