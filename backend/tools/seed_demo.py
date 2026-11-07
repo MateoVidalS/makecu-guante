@@ -56,8 +56,12 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
         for value in payload["evaluations"]
     ]
     with engine.begin() as connection:
+        # SQLite legacy transaction mode otherwise lets the first SAVEPOINT commit itself.
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
         # Repository commits release savepoints; the enclosing transaction stays atomic.
         with Session(bind=connection, join_transaction_mode="create_savepoint") as db:
+            if not reset and db.exec(select(m.Session).where(m.Session.is_demo)).first():
+                return (0, 0)
             if reset:
                 db.exec(delete(m.Session).where(m.Session.is_demo))
                 db.exec(delete(m.Evaluation).where(m.Evaluation.is_demo))

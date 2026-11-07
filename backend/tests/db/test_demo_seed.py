@@ -72,3 +72,23 @@ def test_invalid_generation_does_not_remove_demo_history(tmp_path, generated, mo
         assert len(repo.list_sessions(db)) == 11
         assert len(repo.list_evaluations(db)) == 4
     engine.dispose()
+
+
+def test_write_failure_rolls_back_the_entire_reset(tmp_path, generated, monkeypatch):
+    monkeypatch.setattr(seeder, "generate", lambda _: generated)
+    engine = make_engine(str(tmp_path / "demo.db"))
+    seeder.seed_demo(engine, end=END)
+    with Session(engine) as db:
+        before_ids = [s.id for s in repo.list_sessions(db)]
+
+    def unavailable(*args):
+        raise RuntimeError("simulated storage failure")
+
+    monkeypatch.setattr(repo, "create_evaluation", unavailable)
+    with pytest.raises(RuntimeError, match="storage failure"):
+        seeder.seed_demo(engine, reset=True, end=END)
+    with Session(engine) as db:
+        assert [s.id for s in repo.list_sessions(db)] == before_ids
+        assert len(repo.list_evaluations(db)) == 4
+        assert len(db.exec(select(m.AttemptTrace)).all()) == 165
+    engine.dispose()
