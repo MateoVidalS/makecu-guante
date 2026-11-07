@@ -4,20 +4,26 @@ import type {
   EngineEvent,
   ExercisePhase,
   ExercisePlanItem,
-  ExerciseSettings,
 } from '../contracts/engine';
 import { GLOVE_FINGERS } from '../contracts/glove';
 import type { GloveFinger, Quint } from '../contracts/glove';
-import { calibratedPinch, POSES } from '../contracts/poses';
+import { calibratedPinch, MAX_ASSIST_CLOSURE, POSES } from '../contracts/poses';
 import type { PoseDef, PoseId } from '../contracts/poses';
 import type {
   EngineInput,
   EngineOptions,
   ExerciseEngine,
   Output,
+  PowerAwareExerciseSettings,
 } from './types';
 import { closure, motorSafe, output, visible } from './input';
 import { AttemptMetrics, isoTime, summarizeSession } from './metrics';
+import {
+  AssistScheduler,
+  DEFAULT_ASSIST_STAGGER_MS,
+  MAX_ASSIST_PARALLEL,
+  SERVO_PROFILES,
+} from './assist';
 
 type Safety = Extract<EngineEvent, { kind: 'safety' }>;
 type Gap = { now: number; gaps: Quint };
@@ -28,7 +34,7 @@ class Exercise implements ExerciseEngine {
   private now = 0;
   private plan: { pose: PoseId; rep: number }[] = [];
   private index = 0;
-  private settings!: ExerciseSettings;
+  private settings!: PowerAwareExerciseSettings;
   private calibration!: Calibration;
   private input: EngineInput | null = null;
   private metrics: AttemptMetrics | null = null;
@@ -47,7 +53,7 @@ class Exercise implements ExerciseEngine {
   }[] = [];
   private gaps: Gap[] = [];
   private target: Quint = [0, 0, 0, 0, 0];
-  private targetVision: Quint = [0, 0, 0, 0, 0];
+  private scheduler: AssistScheduler | null = null;
   private targetSent = false;
   private baseline: number[] = [];
   private baselineTel: number | null = null;
@@ -70,7 +76,7 @@ class Exercise implements ExerciseEngine {
   /** 06-session §3 PRESENT row: begin released, with no motion until a visible hand. */
   start(
     plan: ExercisePlanItem[],
-    settings: ExerciseSettings,
+    settings: PowerAwareExerciseSettings,
     calibration: Calibration,
     now: number,
   ): Output {
@@ -80,7 +86,24 @@ class Exercise implements ExerciseEngine {
     }
     if (settings.assist_speed <= 0)
       throw new Error('assist_speed must be positive');
-    this.settings = { ...settings };
+    const stagger = settings.assist_stagger_ms ?? DEFAULT_ASSIST_STAGGER_MS;
+    const parallel = settings.assist_max_parallel ?? MAX_ASSIST_PARALLEL;
+    if (!Number.isFinite(stagger) || stagger < DEFAULT_ASSIST_STAGGER_MS)
+      throw new Error('assist_stagger_ms must be at least 150');
+    if (
+      !Number.isInteger(parallel) ||
+      parallel < 1 ||
+      parallel > MAX_ASSIST_PARALLEL
+    )
+      throw new Error('assist_max_parallel must be an integer from 1 to 3');
+    for (const profile of Object.values(this.options.servoProfiles ?? {}))
+      if (!Number.isFinite(profile.stall_ma) || profile.stall_ma <= 0)
+        throw new Error('Servo stall current must be positive');
+    this.settings = {
+      ...settings,
+      assist_stagger_ms: stagger,
+      assist_max_parallel: parallel,
+    };
     this.calibration = calibration;
     this.plan = plan.flatMap((item) => {
       if (!Number.isInteger(item.reps) || item.reps < 1)
@@ -314,18 +337,25 @@ class Exercise implements ExerciseEngine {
       this.high = null;
       this.resistance = false;
       this.targetSent = false;
-      this.updateTarget();
+      this.scheduler = new AssistScheduler(
+        this.pose,
+        [...(this.input!.tel?.a ?? closure(this.input!))],
+        this.settings.assist_stagger_ms!,
+        this.settings.assist_max_parallel!,
+      );
+      this.target = [...this.scheduler.target];
       out.events.push({
         kind: 'assist_started',
         fingers: GLOVE_FINGERS.filter(
           (f, i) =>
             this.pose.closure[f] !== null &&
-            this.target[i] !== closure(this.input!)[i],
+            !this.fingerReached(f) &&
+            this.scheduler!.goal[i] !== closure(this.input!)[i],
         ),
         from: closure(this.input!),
-        to: [...this.target],
+        to: [...this.scheduler.goal],
       });
-      this.sendTarget(out);
+      this.scheduleAssist(out);
       this.collectBaseline();
     }
     if (this.input)
@@ -424,7 +454,13 @@ class Exercise implements ExerciseEngine {
     }
   }
   private fingerReached(f: GloveFinger): boolean {
-    const target = this.pose.closure[f];
+    const rawTarget = this.pose.closure[f];
+    const target =
+      rawTarget === null
+        ? null
+        : this.phase === 'ASSIST' || this.phase === 'ASSIST_HOLD'
+          ? Math.min(rawTarget, MAX_ASSIST_CLOSURE)
+          : rawTarget;
     const value = this.input!.vision?.closure?.[f];
     return (
       target === null ||
@@ -475,17 +511,37 @@ class Exercise implements ExerciseEngine {
       return (this.pose.id === 'open' ? prior - best : best - prior) <= 0.03;
     });
   }
-  private updateTarget(): void {
-    this.targetVision = closure(this.input!);
-    this.target = GLOVE_FINGERS.map((f, i) =>
-      this.pose.closure[f] === null
-        ? (this.input!.tel?.a[i] ?? this.targetVision[i])
-        : this.fingerReached(f)
-          ? this.targetVision[i]
-          : this.pose.closure[f]!,
-    ) as Quint;
-    this.targetSent = false;
-    this.settledAt = null;
+  private unreached(): boolean[] {
+    return GLOVE_FINGERS.map(
+      (f) => this.pose.closure[f] !== null && !this.fingerReached(f),
+    );
+  }
+  private scheduleAssist(out: Output): void {
+    if (!motorSafe(this.input!)) return;
+    // ASSIST may start before telemetry/vision is usable. Freeze queued motors
+    // from the first safe sample, rather than replaying an old follow position.
+    if (!this.targetSent) {
+      this.scheduler = new AssistScheduler(
+        this.pose,
+        [...this.input!.tel!.a],
+        this.settings.assist_stagger_ms!,
+        this.settings.assist_max_parallel!,
+      );
+      this.target = [...this.scheduler.target];
+    }
+    if (
+      this.scheduler!.advance(
+        this.now,
+        this.input!.tel!.a,
+        closure(this.input!),
+        this.unreached(),
+      )
+    ) {
+      this.target = [...this.scheduler!.target];
+      this.targetSent = false;
+      this.settledAt = null;
+    }
+    this.sendTarget(out);
   }
   private sendTarget(out: Output): void {
     if (motorSafe(this.input!) && !this.targetSent) {
@@ -514,15 +570,11 @@ class Exercise implements ExerciseEngine {
       this.enter('ASSIST_HOLD', out);
       return;
     }
-    if (
-      visible(input) &&
-      closure(input).some((v, i) => Math.abs(v - this.targetVision[i]) > 0.1)
-    )
-      this.updateTarget();
-    this.sendTarget(out);
+    this.scheduleAssist(out);
     if (
       this.targetSent &&
       input.tel &&
+      this.scheduler!.complete(input.tel.a, closure(input), this.unreached()) &&
       input.tel.a.every((v, i) => Math.abs(v - this.target[i]) <= 0.02)
     )
       this.settledAt ??= this.now;
@@ -580,7 +632,20 @@ class Exercise implements ExerciseEngine {
         sorted[Math.floor(sorted.length / 2)]) /
       2;
     const finger = this.attribute();
-    if (tel.ma <= baseline + 250 || !finger) {
+    const profile = finger
+      ? (this.options.servoProfiles?.[finger] ?? SERVO_PROFILES[finger])
+      : null;
+    // Preserve the 250 mA threshold for the strongest servo; weaker profiles stop earlier.
+    const threshold = profile
+      ? Math.min(250, profile.stall_ma * (250 / 800))
+      : 250;
+    const gap = finger
+      ? tel.a[GLOVE_FINGERS.indexOf(finger)] -
+        this.input!.vision!.closure![finger]
+      : 0;
+    // Stagger changes total current as each motor starts. Require real pulling
+    // lag, rather than classifying a settled finger's camera noise as a stall.
+    if (tel.ma <= baseline + threshold || !finger || gap <= 0.05) {
       this.high = null;
       return false;
     }

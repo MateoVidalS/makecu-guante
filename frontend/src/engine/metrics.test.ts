@@ -81,3 +81,29 @@ it('marks held vision samples unknown after the frame expires', () => {
   expect(t.trace.closure.index.slice(7, 10)).toEqual([null, null, null]);
   expect(t.trace.closure.index[10]).toBe(0);
 });
+
+it('includes independent ring/pinky values in ratios, traces, and session summaries', () => {
+  const w = new FakeWorld();
+  const m = new AttemptMetrics(POSES.straight_fist, 1, 0, 0);
+  w.hand = [0.5, 0.7, 0.7, 0.35, 0.14];
+  m.observe(w.step(0), 'ATTEMPT');
+  const result = m.finish(0);
+  expect(result.active_ratio).toBeCloseTo(0.74);
+  expect(result.fingers[3]).toMatchObject({
+    finger: 'ring',
+    scored: true,
+    active_max: 0.35,
+    assist_needed: 0.35,
+  });
+  expect(result.fingers[4].assist_needed).toBeCloseTo(0.56);
+  expect(result.trace.closure.ring).toEqual([0.35]);
+  expect(result.trace.closure.pinky).toEqual([0.14]);
+  expect(summarizeSession([result]).per_finger.slice(3)).toEqual([
+    { finger: 'ring', active_max_mean: 0.35, assist_needed_mean: 0.35 },
+    {
+      finger: 'pinky',
+      active_max_mean: 0.14,
+      assist_needed_mean: result.fingers[4].assist_needed,
+    },
+  ]);
+});
