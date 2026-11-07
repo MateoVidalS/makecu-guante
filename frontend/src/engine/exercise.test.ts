@@ -137,7 +137,7 @@ describe('exercise phase table (06-session §3 and §6)', () => {
     const target = r.outputs.at(-1)!.commands.find((c) => c.t === 'target');
     expect(target).toMatchObject({
       t: 'target',
-      f: [0.17, 0.6, 0.6, 0.6, 0.6],
+      f: [0.17, 0.6, 0.57, 0.57, 0.57],
       v: 0.3,
     });
     const count = r.outputs
@@ -180,7 +180,7 @@ describe('exercise phase table (06-session §3 and §6)', () => {
         .some((c) => c.t === 'target'),
     ).toBe(false);
   });
-  it('scores best opening and ignores ring/pinky', () => {
+  it('scores best opening across all five fingers', () => {
     const r = new Run('open');
     r.world.hand = [0.8, 0.8, 0.8, 0.8, 0.8];
     r.until('ATTEMPT');
@@ -530,14 +530,21 @@ describe('safety boundary regressions', () => {
     }
     expect(moving.events.some((e) => e.kind === 'resistance')).toBe(false);
   });
-  it('refreshes assist goals only after drift exceeds 0.1', () => {
+  it('queues a reached finger that drifts without moving free fingers or restarting active ones', () => {
     const r = new Run('hook', { attempt_s: 0.1 });
+    r.world.hand = [0.2, 0.6, 0, 0.6, 0.6];
     r.until('ASSIST');
-    r.world.hand = [0, 0.1, 0.1, 0.1, 0.1];
+    const initial = [...r.world.tel.tg!];
+    r.world.hand = [0.4, 0.49, 0, 0.6, 0.6];
     expect(r.step().commands).toEqual([]);
-    r.world.hand = [0, 0.11, 0.11, 0.11, 0.11];
-    expect(r.step().commands).toEqual([
-      { t: 'target', f: [0, 0.6, 0.6, 0.6, 0.6], v: 0.3 },
+    expect(r.step().commands).toEqual([]);
+    const out = r.step();
+    expect(out.commands).toEqual([
+      {
+        t: 'target',
+        f: [initial[0], 0.6, initial[2], initial[3], initial[4]],
+        v: 0.3,
+      },
     ]);
   });
   it('includes the first successful ATTEMPT frame in active dwell time', () => {
@@ -547,3 +554,144 @@ describe('safety boundary regressions', () => {
     expect(r.results()[0].time_to_position_s).toBe(0);
   });
 });
+
+describe('five-finger assist semantics', () => {
+  it('settles against the capped targets after all queued fingers finish', () => {
+    const r = new Run('full_fist', { attempt_s: 0.1, assist_max_s: 15 });
+    r.until('ASSIST');
+    const start = r.world.now;
+    let peak = 0;
+    while (r.engine.state().phase === 'ASSIST') {
+      r.step();
+      const moving = r.world.tel.a.filter(
+        (a, i) => Math.abs(a - r.world.tel.tg![i]) > 1e-6,
+      ).length;
+      peak = Math.max(peak, moving);
+      expect(moving).toBeLessThanOrEqual(3);
+    }
+    expect(peak).toBe(3);
+    expect(r.engine.state().phase).toBe('ASSIST_HOLD');
+    expect(r.world.now - start).toBeLessThan(10000);
+    expect(r.world.tel.a).toEqual([0.7, 0.95, 0.95, 0.95, 0.95]);
+    r.until('DONE');
+    expect(r.results()[0].fingers.map((f) => f.scored)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(r.results()[0].reached_final).toBe(false);
+  });
+
+  it.each(['ring', 'pinky'] as const)(
+    'attributes resistance to %s at its weaker servo threshold',
+    (finger) => {
+      const r = new Run('hook', { attempt_s: 0.1 });
+      r.world.hand = [0.2, 0.6, 0.6, 0.6, 0.6];
+      r.world.hand[finger === 'ring' ? 3 : 4] = 0;
+      r.until('ASSIST');
+      for (let i = 0; i < 7; i++) r.step();
+      r.world.ma = 320; // +220 mA: below the strongest servo's +250 mA threshold.
+      for (let i = 0; i < 6; i++) r.step();
+      expect(r.events).toContainEqual({ kind: 'resistance', finger, ma: 320 });
+      expect(r.engine.state().phase).toBe('ASSIST_HOLD');
+      const targetCount = r.outputs
+        .flatMap((o) => o.commands)
+        .filter((c) => c.t === 'target').length;
+      r.until('DONE');
+      expect(
+        r.outputs.flatMap((o) => o.commands).filter((c) => c.t === 'target'),
+      ).toHaveLength(targetCount);
+    },
+  );
+
+  it('uses injected servo profiles for resistance thresholds', () => {
+    const r = new Run('hook', { attempt_s: 0.1 });
+    r.engine = createExerciseEngine({
+      servoProfiles: { index: { stall_ma: 400 } },
+    });
+    r.accept(
+      r.engine.start(
+        [{ pose: 'hook', reps: 1 }],
+        settings({ attempt_s: 0.1 }),
+        calibration,
+        0,
+      ),
+    );
+    r.until('ASSIST');
+    for (let i = 0; i < 7; i++) r.step();
+    r.world.ma = 230;
+    for (let i = 0; i < 6; i++) r.step();
+    expect(r.events).toContainEqual({
+      kind: 'resistance',
+      finger: 'index',
+      ma: 230,
+    });
+  });
+
+  it('rejects settings that weaken stagger or parallel limits', () => {
+    for (const override of [
+      { assist_stagger_ms: 149 },
+      { assist_stagger_ms: NaN },
+      { assist_max_parallel: 0 },
+      { assist_max_parallel: 4 },
+      { assist_max_parallel: 1.5 },
+    ])
+      expect(() =>
+        createExerciseEngine().start(
+          [{ pose: 'hook', reps: 1 }],
+          { ...settings(), ...override },
+          calibration,
+          0,
+        ),
+      ).toThrow();
+  });
+});
+
+it('does not treat high total current and small settled-camera noise as resistance', () => {
+  const r = new Run('hook', { attempt_s: 0.1, assist_max_s: 15 });
+  r.until('ASSIST');
+  for (let i = 0; i < 7; i++) r.step();
+  r.world.ma = 500;
+  for (let i = 0; i < 20; i++) {
+    r.world.hand = [0, 0.58, 0.58, 0.58, 0.3];
+    r.step(50, (input) => {
+      input.tel!.a = [0, 0.6, 0.6, 0.6, 0.3];
+    });
+  }
+  expect(r.events.some((e) => e.kind === 'resistance')).toBe(false);
+});
+
+it('holds queued fingers at the first safe telemetry after ASSIST entered without telemetry', () => {
+  const r = new Run('full_fist', { attempt_s: 0.1 });
+  r.world.hand = [0.2, 0.2, 0.2, 0.2, 0.2];
+  r.until('ATTEMPT');
+  while (r.engine.state().phase === 'ATTEMPT')
+    r.step(50, (input) => {
+      input.tel = null;
+    });
+  expect(r.engine.state().phase).toBe('ASSIST');
+  expect(r.outputs.at(-1)!.commands).toEqual([]);
+  const out = r.step();
+  const target = out.commands.find((command) => command.t === 'target');
+  expect(target?.t).toBe('target');
+  if (target?.t !== 'target')
+    throw new Error('Expected first safe assist target');
+  expect(
+    target.f.filter((value, i) => Math.abs(value - r.world.tel.a[i]) > 1e-6),
+  ).toHaveLength(1);
+});
+
+it.each([3, 4])(
+  'keeps attempting while finger %i alone makes plateau-breaking progress',
+  (finger) => {
+    const r = new Run('hook', { attempt_s: 20, plateau_s: 1 });
+    r.until('ATTEMPT');
+    for (let i = 1; i <= 20; i++) {
+      r.world.hand[finger] = i * 0.04;
+      r.step(200);
+    }
+    expect(r.engine.state().phase).toBe('ATTEMPT');
+  },
+);

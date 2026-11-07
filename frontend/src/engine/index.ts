@@ -9,4 +9,5 @@ export type {
   Output,
   GloveCommand,
   EngineOptions,
+  PowerAwareExerciseSettings,
 } from './types';

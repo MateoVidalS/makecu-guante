@@ -1,11 +1,12 @@
 import type { EngineEvent } from '../contracts/engine';
+import { fingerName } from './fingerNames';
 export type SafetyEvent = Extract<
   EngineEvent,
   { kind: 'safety' | 'resistance' }
 >;
 export function safetyPhrase(event: SafetyEvent): string {
   if (event.kind === 'resistance' || event.source === 'overcurrent')
-    return `Stopping. I felt resistance${event.finger ? ` in your ${event.finger}` : ''}.`;
+    return `Stopping. I felt resistance${event.finger ? ` in your ${fingerName(event.finger)}` : ''}.`;
   if (event.source === 'stop_button')
     return 'Stopped. Release the STOP button, then press Resume.';
   if (event.source === 'camera_lost') return "I can't see your hand. Pausing.";

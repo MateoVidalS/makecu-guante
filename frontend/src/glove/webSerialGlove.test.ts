@@ -11,6 +11,8 @@ import type {
   SerialCommand,
 } from '../contracts/glove';
 import { codecStats } from './codec';
+import { createGloveController } from './GloveProvider';
+import { SimWorld } from './sim/simWorld';
 
 const info = {
   t: 'info',
@@ -149,6 +151,91 @@ describe('Web Serial connection lifecycle', () => {
     expect(port.closes).toBe(1);
     expect(port.readable?.locked).toBe(false);
     expect(port.writable?.locked).toBe(false);
+  });
+  it.each([0, 3, 4, 6])(
+    'rejects a %i-finger handshake immediately, exposes the reason and can reconnect',
+    async (fingers) => {
+      const { client, port } = setup();
+      clients.push(client);
+      const provider = createGloveController({
+        kind: 'serial',
+        serial: client,
+        world: new SimWorld({ autoStart: false }),
+      });
+      provider.mount();
+      port.autoInfo = false;
+      const result = expect(client.connect()).rejects.toThrow(
+        `reports ${fingers} fingers`,
+      );
+      await flush();
+      port.receive(
+        JSON.stringify({ ...info, fingers, calib: Array(fingers).fill(null) }) +
+          '\n',
+      );
+      await result;
+      await flush();
+      expect(provider.connection).toBe('error');
+      expect(provider.connectionError).toContain('requires 5-finger firmware');
+      expect(port.closes).toBe(1);
+      expect(port.readable?.locked).toBe(false);
+      expect(port.writable?.locked).toBe(false);
+      client.target([1, 1, 1, 1, 1], 0.3);
+      expect(port.writes.map((cmd) => cmd.t)).toEqual(['hello']);
+      port.autoInfo = true;
+      await client.connect();
+      expect(provider.connection).toBe('connected');
+      expect(provider.connectionError).toBeNull();
+      provider.dispose();
+    },
+  );
+  it('rejects incompatible info received after connection and discards buffered telemetry', async () => {
+    const { client, port } = setup();
+    clients.push(client);
+    const provider = createGloveController({
+      kind: 'serial',
+      serial: client,
+      world: new SimWorld({ autoStart: false }),
+    });
+    provider.mount();
+    await client.connect();
+    port.receive(
+      JSON.stringify({
+        t: 'tel',
+        ms: 10,
+        a: [0, 0, 0, 0, 0],
+        ma: 30,
+        st: 'idle',
+        md: 'none',
+        tg: null,
+      }) + '\n',
+    );
+    await flush();
+    expect(provider.latest).not.toBeNull();
+    const errors: string[] = [];
+    client.onError((error) => errors.push(error.why));
+    port.receive(
+      JSON.stringify({ ...info, fingers: 3 }) +
+        '\n' +
+        JSON.stringify({
+          t: 'tel',
+          ms: 20,
+          a: [0, 0, 0, 0, 0],
+          ma: 30,
+          st: 'run',
+          md: 'target',
+          tg: [1, 1, 1, 1, 1],
+        }) +
+        '\n',
+    );
+    await flush();
+    expect(client.connection()).toBe('error');
+    expect(client.latest()).toBeNull();
+    expect(provider.latest).toBeNull();
+    expect(provider.connectionError).toContain('requires 5-finger firmware');
+    expect(errors).toEqual([
+      'This glove reports 3 fingers. Rehab Hub requires 5-finger firmware.',
+    ]);
+    provider.dispose();
   });
   it('reports the unsupported browser error', async () => {
     const client = new WebSerialGlove();

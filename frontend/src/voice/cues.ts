@@ -1,14 +1,15 @@
 import type { AttemptResult, EngineEvent } from '../contracts/engine';
 import type { ExerciseView } from '../contracts/runtime';
 import { POSES } from '../contracts/poses';
+import { GLOVE_FINGERS } from '../contracts/glove';
 import { safetyPhrase } from './safetyNet';
+import { fingerName } from './fingerNames';
+import { attemptContext, pct, summaryContext, targetUnmet } from './context';
 export interface Cue {
   text: string;
   speak: boolean;
   present?: boolean;
 }
-const pct = (value: number | null | undefined) =>
-  value == null ? 'n/a' : `${Math.round(value * 100)}%`;
 export function eventCue(
   event: EngineEvent,
   view: ExerciseView,
@@ -26,8 +27,10 @@ export function eventCue(
         return { text: '[session] Attempt started.', speak: false };
       return null;
     case 'progress':
+      if (!targetUnmet(event.active_max, view.pose.closure[event.finger]))
+        return null;
       return {
-        text: `[session] ${event.finger} now at ${pct(event.active_max)} (target ${pct(view.pose.closure[event.finger])}).`,
+        text: `[session] ${fingerName(event.finger)} now at ${pct(event.active_max)} (target ${pct(view.pose.closure[event.finger])}).`,
         speak: true,
       };
     case 'reached':
@@ -37,23 +40,19 @@ export function eventCue(
       };
     case 'assist_started':
       return {
-        text: `[session] Not reached alone (${event.fingers.map((f) => `${f} ${pct(view.activeMax[f])}/${pct(view.pose.closure[f])}`).join(', ')}). The glove is helping now.`,
+        text: `[session] Not reached alone (${GLOVE_FINGERS.filter((f) =>
+          event.fingers.includes(f),
+        )
+          .map((f) => {
+            const i = GLOVE_FINGERS.indexOf(f);
+            return `${fingerName(f)} ${pct(event.from[i])}/${pct(event.to[i])}`;
+          })
+          .join('; ')}). The glove is helping now.`,
         speak: true,
       };
     case 'attempt_done':
       return {
-        text: `[session] Result: ${event.result.fingers
-          .filter((f) => f.scored)
-          .map(
-            (f) =>
-              `active ${f.finger} ${pct(f.active_max)}, glove helped ${pct(f.assist_needed)}`,
-          )
-          .join('; ')}. Previous rep: ${
-          previous?.fingers
-            .filter((f) => f.scored)
-            .map((f) => `${f.finger} ${pct(f.active_max)}`)
-            .join(', ') ?? 'unavailable'
-        }.`,
+        text: `[session] Result: ${attemptContext(event.result, previous)}`,
         speak: true,
       };
     case 'safety':
@@ -64,7 +63,7 @@ export function eventCue(
       };
     case 'session_done':
       return {
-        text: `[session] Session complete. Summary: ${JSON.stringify(event.summary)}.`,
+        text: `[session] Session complete. Summary: ${summaryContext(event.summary)}`,
         speak: true,
       };
   }

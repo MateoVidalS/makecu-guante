@@ -12,6 +12,7 @@ import type { LiveTransport, TransportEvent } from './transport';
 import { BrowserLocalVoice, SafetyNet, type LocalVoice } from './safetyNet';
 import { fallbackPhrase } from './fallbackCoach';
 import { CueScheduler, eventCue } from './cues';
+import { movementContext, summaryContext } from './context';
 import { dispatchTool } from './tools';
 import { TranscriptBatcher } from './transcript';
 export type VoiceMode = 'live' | 'simple' | 'off';
@@ -247,7 +248,7 @@ export class VoiceController {
       this.update({ status: 'listening' });
       const view = this.runtime.exercise.view();
       transport.sendText(
-        `[session] ${this.greeted || this.failures ? 'Reconnected' : 'Starting'}: ${view.total} attempts. Current pose ${view.pose.name}, rep ${view.rep}, phase ${view.phase}. Instruction: ${view.pose.instruction}. Previous session: ${JSON.stringify(this.previous)}. Active movement: ${JSON.stringify(view.activeMax)}. Recent context: ${this.recent || 'none'}. Greet briefly and give the current instruction if PRESENT.`,
+        `[session] ${this.greeted || this.failures ? 'Reconnected' : 'Starting'}: ${view.total} attempts. Current pose ${view.pose.name}, rep ${view.rep}, phase ${view.phase}. Instruction: ${view.pose.instruction}. Previous session: ${summaryContext(this.previous)} Active movement (closure/target): ${movementContext(view)}. Recent context: ${this.recent || 'none'}. Greet briefly and give the current instruction if PRESENT.`,
         true,
       );
       this.greeted = true;

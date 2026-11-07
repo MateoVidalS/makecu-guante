@@ -117,7 +117,12 @@ class Evaluation implements FrictionEngine {
       )
     )
       throw new Error('Invalid evaluation settings');
-    this.settings = { ...settings, fingers: [...new Set(settings.fingers)] };
+    const fingers = [...new Set(settings.fingers ?? GLOVE_FINGERS)];
+    if (fingers.some((f) => !GLOVE_FINGERS.includes(f)))
+      throw new Error(
+        'Evaluation fingers must belong to the five-finger glove',
+      );
+    this.settings = { ...settings, fingers };
     this.calibration = calibration;
     this.now = now;
     this.started = now;
@@ -252,8 +257,15 @@ class Evaluation implements FrictionEngine {
     return out;
   }
 
-  state(): EvaluationView {
+  state(): ReturnType<EvaluationEngine['state']> {
     const item = this.queue[this.index];
+    const sweepProgress =
+      this.stage === 'sweep'
+        ? Math.min(1, Math.max(0, this.progress))
+        : this.stage === 'cooldown' ||
+            (this.stage === 'aborted' && this.progress > 0)
+          ? 1
+          : 0;
     return {
       stage: this.stage,
       finger:
@@ -266,6 +278,14 @@ class Evaluation implements FrictionEngine {
           : (item?.speed ?? null),
       progress: this.progress,
       result: this.result,
+      completedSweeps: this.sweeps.length,
+      totalSweeps: this.queue.length,
+      overallProgress:
+        this.stage === 'done'
+          ? 1
+          : this.queue.length
+            ? Math.min(1, (this.index + sweepProgress) / this.queue.length)
+            : 0,
     };
   }
 

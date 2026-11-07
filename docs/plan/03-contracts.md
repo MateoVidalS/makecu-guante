@@ -152,7 +152,7 @@ interface ServoCalibration { finger: GloveFinger; min_deg: number; max_deg: numb
 interface CameraCalibration {
   affected_hand: Handedness;
   open_flex: Record<FingerId, number>;         // raw flex sum, open hand
-  closed_flex: Record<FingerId, number>;       // raw flex sum, glove-closed relaxed hand (or the best active fist for ring/pinky)
+  closed_flex: Record<FingerId, number>;       // raw flex sum, glove-closed relaxed hand (the glove closes all five fingers)
   pinch_closed: number;                        // pinch ratio when thumb and index touch
   pinch_open: number;
 }

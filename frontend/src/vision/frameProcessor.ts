@@ -66,9 +66,8 @@ export class FrameProcessor {
     try {
       const raw = jointAngles(world),
         pinch = pinchRatio(image);
-      if (this.hand !== selected.handedness || t - this.lastSeen >= 200)
-        this.reset();
-      this.hand = selected.handedness;
+      if (this.hand !== affected || t - this.lastSeen >= 200) this.reset();
+      this.hand = affected;
       this.lastSeen = t;
       // Every joint is filtered, so the rendered hand and the normalized closure
       // share one smoothed timeline (closure derives from the same angles).

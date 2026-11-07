@@ -165,7 +165,13 @@ describe('hand selection and confidence', () => {
   it('selects affected hand, accepts a lone high-confidence hand, and mirrors labels', () => {
     expect(selectHand([left, right], 'right')?.index).toBe(1);
     expect(selectHand([left, right], 'right', true)?.index).toBe(0);
-    expect(selectHand([left], 'right')?.handedness).toBe('left');
+    expect(selectHand([left], 'right')?.handedness).toBe('right');
+    expect(selectHand([right], 'left', true)?.handedness).toBe('left');
+    expect(
+      selectHand([[{ categoryName: 'Unknown', score: 0.9 }]], 'left')
+        ?.handedness,
+    ).toBe('left');
+    expect(selectHand([[]], 'right')).toBeNull();
     expect(
       selectHand([left, [{ categoryName: 'Right', score: 0.2 }]], 'right'),
     ).toBeNull();
@@ -241,6 +247,23 @@ describe('frame processing and calibration capture', () => {
     frames[5].rawFlexSum!.index = 150;
     expect(() => captureStats(frames, 2)).toThrow('movement');
   });
+  it('captures distinct glove-closed values and rejects movement in ring and pinky', () => {
+    const frames = held();
+    for (const frame of frames)
+      frame.rawFlexSum = {
+        thumb: 90,
+        index: 190,
+        middle: 200,
+        ring: 180,
+        pinky: 160,
+      };
+    expect(captureStats(frames, 2).rawFlexSum).toEqual(frames[0].rawFlexSum);
+    for (const finger of ['ring', 'pinky'] as const) {
+      const moving = structuredClone(frames);
+      moving[5].rawFlexSum![finger] += 100;
+      expect(() => captureStats(moving, 2)).toThrow('movement');
+    }
+  });
   it('rejects short, sparse, missing, non-finite and out-of-order windows', () => {
     expect(() => captureStats(held().slice(0, 20), 2)).toThrow();
     expect(() => captureStats([], 2)).toThrow();
@@ -251,6 +274,12 @@ describe('frame processing and calibration capture', () => {
       },
       (f: VisionFrame[]) => {
         f[30].pinch = NaN;
+      },
+      (f: VisionFrame[]) => {
+        f[30].confidence = NaN;
+      },
+      (f: VisionFrame[]) => {
+        f[30].handedness = 'left';
       },
       (f: VisionFrame[]) => {
         f[30].t = f[29].t;
