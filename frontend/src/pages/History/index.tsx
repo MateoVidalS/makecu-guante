@@ -1,5 +1,4 @@
-import { PageHeader, Tabs, Select } from '../../design-system';
-import { useState } from 'react';
+import { PageHeader, Tabs } from '../../design-system';
 import { useQueries } from '@tanstack/react-query';
 import { getSession } from '../../api/client';
 import type { Session } from '../../contracts/api';
@@ -8,51 +7,34 @@ import {
   useEvaluations,
   useHistoryAssist,
   useHistoryOverview,
-  useHistoryResistance,
   useHistoryRom,
 } from '../../api/client';
-import { POSES, type PoseId } from '../../contracts/poses';
+import { POSES } from '../../contracts/poses';
 import {
   DataSection,
   DataStatus,
-  EffortSmallMultiples,
   HandRangeMap,
   KpiRow,
   KpiTile,
   LatestEffortBars,
   PracticeCalendar,
-  ResistanceDumbbells,
-  TrendSmallMultiples,
   formatDate,
   handFromOverview,
   percentage,
 } from '../../components/charts';
 import { firstAndLast, useAllSessions } from './data';
-import { ExportButtons } from '../Doctor/ExportButtons';
 import './history.css';
 
-const tabs = [
-  'Overview',
-  'Active range',
-  'Assistance',
-  'Resistance',
-  'Sessions',
-];
+const tabs = ['Overview', 'Sessions'];
 export default function History() {
   const [params, setParams] = useSearchParams();
   const selected =
     tabs.find((t) => t.toLowerCase() === params.get('tab')) ?? 'Overview';
-  const [pose, setPose] = useState<PoseId | ''>('');
   const overview = useHistoryOverview(),
-    sessions = useAllSessions(),
-    evaluations = useEvaluations();
-  const rom = useHistoryRom(pose ? { pose } : {}),
-    allRom = useHistoryRom(),
-    assist = useHistoryAssist(),
-    resistance = useHistoryResistance();
-  const timeline = sessions.data?.map((s) => ({ ...s, id: s.id }));
+    sessions = useAllSessions();
+  const allRom = useHistoryRom(),
+    assist = useHistoryAssist();
   const demoSessions = !!sessions.data?.some((s) => s.is_demo);
-  const demoEvaluations = !!evaluations.data?.some((e) => e.is_demo);
   return (
     <section className="data-page">
       <PageHeader
@@ -122,124 +104,54 @@ export default function History() {
           )}
         </DataStatus>
       )}
-      {selected === 'Active range' && (
-        <DataSection
-          title="How far your fingers moved"
-          description={
-            pose
-              ? 'Best finger position on your own, per session.'
-              : 'Best finger position on your own, per session. Choose one pose for a clearer comparison.'
-          }
-          demo={demoSessions}
-          actions={
-            <div className="history-pose">
-              <Select
-                label="Pose"
-                layout="inline"
-                value={pose}
-                onChange={(e) => setPose(e.target.value as PoseId | '')}
-              >
-                <option value="">All poses</option>
-                {Object.values(POSES).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          }
-        >
-          <DataStatus error={rom.error || sessions.error}>
-            <TrendSmallMultiples
-              points={rom.data ?? []}
-              timeline={timeline}
-              loading={rom.isPending || sessions.isPending}
-              opening={pose === 'open'}
-            />
-          </DataStatus>
-        </DataSection>
-      )}
-      {selected === 'Assistance' && (
-        <DataSection
-          title="On your own vs. help from the glove"
-          description="Each session split into what the finger closed on its own (blue) and what the glove added to reach the target (orange). All poses."
-          demo={demoSessions}
-          demoNote="Demo data is drawn hollow"
-        >
-          <DataStatus error={assist.error || allRom.error}>
-            <EffortSmallMultiples
-              timeline={sessions.data}
-              rom={allRom.data ?? []}
-              assist={assist.data ?? []}
-              loading={
-                assist.isPending || allRom.isPending || sessions.isPending
-              }
-            />
-          </DataStatus>
-        </DataSection>
-      )}
-      {selected === 'Resistance' && (
-        <>
-          <DataSection
-            title="Resistance estimates for your care team"
-            description="Extra motor current at slow and fast speeds. An estimate inspired by clinical practice."
-            demo={demoEvaluations}
-            demoNote="Demo data is drawn hollow"
-          >
-            <DataStatus error={resistance.error || evaluations.error}>
-              <ResistanceDumbbells
-                points={resistance.data ?? []}
-                loading={resistance.isPending || evaluations.isPending}
-              />
-            </DataStatus>
-          </DataSection>
-          <EvaluationList />
-        </>
-      )}
-      {selected === 'Sessions' && (
-        <DataSection
-          title="Your sessions"
-          description="Choose a date to replay a session."
-          actions={<ExportButtons size="sm" />}
-        >
-          <DataStatus loading={sessions.isPending} error={sessions.error}>
-            {!sessions.data?.length ? (
-              <p className="footnote">No sessions recorded yet.</p>
-            ) : (
-              <div className="data-table-wrap">
-                <table className="data-table">
-                  <caption className="sr-only">
-                    Choose a date to replay a session.
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Date (UTC)</th>
-                      <th scope="col">Plan</th>
-                      <th scope="col" className="num">
-                        Attempts
-                      </th>
-                      <th scope="col" className="num">
-                        On your own
-                      </th>
-                      <th scope="col" className="num">
-                        With help
-                      </th>
-                      <th scope="col" className="num">
-                        Safety events
-                      </th>
-                      <th scope="col">Source</th>
-                    </tr>
-                  </thead>
-                  <SessionRows sessions={sessions.data} />
-                </table>
-              </div>
-            )}
-          </DataStatus>
-        </DataSection>
-      )}
+      {selected === 'Sessions' && <SessionList />}
     </section>
   );
 }
+export function SessionList({ doctor = false }: { doctor?: boolean }) {
+  const sessions = useAllSessions();
+  return (
+    <DataSection
+      title={doctor ? 'Saved sessions' : 'Your sessions'}
+      description="Choose a date to replay a session."
+    >
+      <DataStatus loading={sessions.isPending} error={sessions.error}>
+        {!sessions.data?.length ? (
+          <p className="footnote">No sessions recorded yet.</p>
+        ) : (
+          <div className="data-table-wrap">
+            <table className="data-table">
+              <caption className="sr-only">
+                Choose a date to replay a session.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Date (UTC)</th>
+                  <th scope="col">Plan</th>
+                  <th scope="col" className="num">
+                    Attempts
+                  </th>
+                  <th scope="col" className="num">
+                    On your own
+                  </th>
+                  <th scope="col" className="num">
+                    With help
+                  </th>
+                  <th scope="col" className="num">
+                    Safety events
+                  </th>
+                  <th scope="col">Source</th>
+                </tr>
+              </thead>
+              <SessionRows sessions={sessions.data} />
+            </table>
+          </div>
+        )}
+      </DataStatus>
+    </DataSection>
+  );
+}
+
 export function EvaluationList() {
   const evaluations = useEvaluations();
   return (

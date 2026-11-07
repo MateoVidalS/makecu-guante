@@ -101,9 +101,10 @@ function Shell() {
                 <Button
                   icon="x"
                   onClick={() => {
-                    if (location.pathname === '/exercise')
+                    if (location.pathname === '/evaluate')
+                      void runtime.evaluation.stop();
+                    else
                       window.dispatchEvent(new Event('rehab-finish-practice'));
-                    else void runtime.evaluation.stop();
                   }}
                 >
                   {location.pathname === '/evaluate'

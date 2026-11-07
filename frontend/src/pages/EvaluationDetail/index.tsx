@@ -22,8 +22,8 @@ export default function EvaluationDetail() {
   const data = evaluation.data;
   return (
     <section className="data-page">
-      <Link className="back-link" to="/history?tab=resistance">
-        <span aria-hidden="true">← </span>Back to resistance
+      <Link className="back-link" to="/doctor">
+        <span aria-hidden="true">← </span>Back to doctor view
       </Link>
       <PageHeader
         title="Evaluation detail"
@@ -103,27 +103,30 @@ export default function EvaluationDetail() {
                 {data.settings.fast_v} ranges/s.
               </p>
             </DataSection>
-            <DataSection
-              title="Sweep curves"
-              description="Total current along the commanded range, slow and fast, with the stored friction for comparison."
-            >
-              <div className="chart-grid">
-                {GLOVE_FINGERS.map((finger) => (
-                  <SweepCurves
-                    key={finger}
-                    finger={finger}
-                    sweeps={data.sweeps}
-                    isDemo={data.is_demo}
-                    compact
-                  />
-                ))}
-              </div>
-              {data.is_demo && sweepsAreConstant(data.sweeps) && (
-                <p className="footnote">
-                  Sample sweep values are constant in these demo records.
-                </p>
-              )}
-            </DataSection>
+            <details className="data-disclosure">
+              <summary>Sweep curves</summary>
+              <DataSection
+                title="Sweep curves"
+                description="Total current along the commanded range, slow and fast, with the stored friction for comparison."
+              >
+                <div className="chart-grid">
+                  {GLOVE_FINGERS.map((finger) => (
+                    <SweepCurves
+                      key={finger}
+                      finger={finger}
+                      sweeps={data.sweeps}
+                      isDemo={data.is_demo}
+                      compact
+                    />
+                  ))}
+                </div>
+                {data.is_demo && sweepsAreConstant(data.sweeps) && (
+                  <p className="footnote">
+                    Sample sweep values are constant in these demo records.
+                  </p>
+                )}
+              </DataSection>
+            </details>
           </>
         )}
       </DataStatus>

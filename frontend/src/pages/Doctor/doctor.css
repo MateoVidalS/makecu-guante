@@ -238,3 +238,15 @@
     height: 100%;
   }
 }
+
+.report-details > summary {
+  font-weight: var(--weight-semibold);
+}
+.report-details[open] {
+  display: grid;
+  gap: var(--space-32);
+}
+.report-details > .report-page + .report-page {
+  padding-block-start: var(--space-32);
+  border-block-start: var(--control-border) solid var(--border);
+}
