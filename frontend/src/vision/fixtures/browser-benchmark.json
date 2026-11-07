@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-07",
+  "environment": "Local macOS arm64, installed Google Chrome in headless mode via Playwright",
+  "source": "https://storage.googleapis.com/mediapipe-tasks/hand_landmarker/woman_hands.jpg",
+  "method": "Real MediaPipe model and local WASM, VIDEO mode, numHands=2, 640x480 canvas.captureStream(30), small animated horizontal translation; no webcam or glove hardware",
+  "network": "All requests outside the local Vite origin blocked; zero attempted external requests during inference",
+  "gpu_two_hand_sample": {
+    "frames_at_log": 600,
+    "rolling_samples": 300,
+    "inference_p50_ms": 24.5,
+    "inference_p95_ms": 35.2,
+    "camera_to_frame_p50_ms": 33.3,
+    "camera_to_frame_p95_ms": 48.3,
+    "skipped_total": 7,
+    "page_errors": 0
+  },
+  "gpu_single_hand_crop": {
+    "crop_xywh": [150, 250, 400, 300],
+    "frames_at_log": 600,
+    "rolling_samples": 300,
+    "inference_p50_ms": 21.8,
+    "inference_p95_ms": 34.7,
+    "camera_to_frame_p50_ms": 32.0,
+    "camera_to_frame_p95_ms": 48.5,
+    "skipped_total": 3,
+    "page_errors": 0
+  },
+  "cpu_fallback_two_hand_sample": {
+    "trigger": "Browser-injected rejection of GPU delegate initialization; actual CPU model and WASM used successfully",
+    "frames_at_log": 300,
+    "rolling_samples": 300,
+    "inference_p50_ms": 51.2,
+    "inference_p95_ms": 53.5,
+    "camera_to_frame_p50_ms": 64.4,
+    "camera_to_frame_p95_ms": 66.3,
+    "skipped_total": 0,
+    "page_errors": 0
+  },
+  "acceptance": {
+    "inference_p95_25_ms": false,
+    "camera_to_frame_p95_80_ms_on_this_synthetic_stream": true,
+    "cpu_fallback": true,
+    "real_webcam_end_to_end_latency_measured": false
+  },
+  "visual_qa": "GPU overlay inspected in light and dark themes at 1440x900; 21 landmarks, outlined white bones, state dots, guide, confidence badge and missing calibration gaps verified",
+  "limitations": "Shared development host under parallel worker load; headless Chrome and a repeated image do not establish target-laptop webcam performance or physical camera-to-display latency. The 25ms p95 inference target remains unmet and must be retested/optimized on the target laptop. CPU delegates still require the browser graphics context for MediaPipe image processing; the fallback test simulates unavailable GPU delegation, not removal of WebGL itself. Explicit Metal runs also exceeded 25ms inference p95 (38.0ms two-hand, 36.0ms single-hand). The first GPU entries used default headless settings without capturing the renderer.",
+  "gpu_metal_two_hand_sample": {
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "launch_args": ["--use-gl=angle", "--use-angle=metal"],
+    "frames_at_log": 600,
+    "rolling_samples": 300,
+    "inference_p50_ms": 24.7,
+    "inference_p95_ms": 38,
+    "camera_to_frame_p50_ms": 32.8,
+    "camera_to_frame_p95_ms": 45.4,
+    "skipped_total": 5,
+    "page_errors": 0,
+    "external_requests": 0
+  },
+  "gpu_metal_single_hand_crop": {
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+    "launch_args": ["--use-gl=angle", "--use-angle=metal"],
+    "frames_at_log": 600,
+    "rolling_samples": 300,
+    "inference_p50_ms": 22.9,
+    "inference_p95_ms": 36,
+    "camera_to_frame_p50_ms": 31.3,
+    "camera_to_frame_p95_ms": 44.1,
+    "skipped_total": 25,
+    "page_errors": 0,
+    "external_requests": 0
+  }
+}
