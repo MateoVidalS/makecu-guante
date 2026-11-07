@@ -44,6 +44,7 @@ test('compares every pose in all four states, in color and grayscale', async ({
           'data-grayscale',
           String(grayscale),
         );
+        await comparison.scrollIntoViewIfNeeded();
         await page.waitForTimeout(150);
         await page.screenshot({
           path: `${evidence}states-${id}-${grayscale ? 'grayscale' : 'color'}-${width}.png`,

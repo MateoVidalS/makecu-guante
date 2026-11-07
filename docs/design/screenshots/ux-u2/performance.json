@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-07T23:35:29.721Z",
+  "viewport": {
+    "width": 1440,
+    "height": 1100
+  },
+  "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+  "camera": {
+    "label": "fake_device_0",
+    "width": 640,
+    "height": 480,
+    "frameRate": 20,
+    "state": "live",
+    "decodedFrames": 409
+  },
+  "warmupSeconds": 10,
+  "samples": [
+    60,
+    60,
+    60,
+    60,
+    60.1,
+    59.9,
+    60,
+    60,
+    60,
+    60
+  ],
+  "average": 60,
+  "stubHz": 30.497433872878013,
+  "note": "Chromium synthetic camera capture; no MediaPipe inference. Hardware camera check remains an integration check."
+}
