@@ -19,3 +19,6 @@ export {
   CAMERA_PLACEMENT_GUIDANCE,
 } from './robustness';
 export type { VisionRobustnessStats } from './robustness';
+
+export { recordLandmarks, downloadLandmarks } from './recorder';
+export type { LandmarkCapture, LandmarkRecording } from './recorder';
