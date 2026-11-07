@@ -13,8 +13,9 @@ GloveProvider and VisionProvider controllers and mounts/disposes subscriptions.
 - Phase events set simulated patient intent. The same events feed the voice
   controller and UI, including the always-armed local safety net in Voice Off.
 - A reconnect or firmware boot sends release, three saved servo ranges, and the
-  appropriate current limit. Sources and calibration cannot change during an
-  exercise, paused session, evaluation, or friction sweep.
+  appropriate current limit. Calibration and switches to physical sources are locked during an
+  exercise, paused session, evaluation, or friction sweep. Switching to a simulator
+  first ends and saves the run and releases the glove; no movement resumes.
 - First-use friction calibration can run without a patient calibration or visible
   hand: the empty glove is off the hand. Firmware calibration/current/STOP/watchdog
   protection remains in effect. Patient evaluation still requires vision.
@@ -63,7 +64,7 @@ make e2e
 
 `runtime.test.ts` uses a deterministic moderate SimWorld and mocked API, including
 all 15 default attempts, assist flags, safety/recovery, offline retry, reconnect,
-source locks and first-use friction. `backend.test.ts` starts a real FastAPI server
+physical-source locks, simulator recovery and first-use friction. `backend.test.ts` starts a real FastAPI server
 on a free port with temporary SQLite storage and verifies traces, history,
 evaluation and export. It requires the normal `make setup` uv environment.
 
@@ -92,3 +93,8 @@ React pages. The driver samples retained JavaScript heap after explicit GC every
 `frontend/e2e/soak-result.json`. The acceptance threshold is 50 MiB growth. Set
 `REHAB_SOAK_URL` for another server; `REHAB_SOAK_MS` is only for runner diagnostics,
 not the acceptance run.
+
+The header’s **Demo recovery** menu is available during focus mode. Glove/camera
+fallback ends the run before replacing a source, preserving demo provenance. It
+can also reconnect an unplugged simulator or restart simulated vision. Simple
+voice switches immediately without ending practice. See `docs/DEMO.md`.

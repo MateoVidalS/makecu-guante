@@ -137,24 +137,10 @@ export class RehabRuntime implements Runtime {
       get vision() {
         return options.vision.source.kind;
       },
-      setGlove: async (kind) => {
-        this.requireIdle();
-        this.switching = true;
-        try {
-          await options.glove.setKind(kind);
-        } finally {
-          this.switching = false;
-        }
-      },
-      setVision: async (kind) => {
-        this.requireIdle();
-        this.switching = true;
-        try {
-          await options.vision.setKind(kind);
-        } finally {
-          this.switching = false;
-        }
-      },
+      setGlove: (kind) =>
+        this.switchSource(kind, () => options.glove.setKind(kind)),
+      setVision: (kind) =>
+        this.switchSource(kind, () => options.vision.setKind(kind)),
     };
   }
   readonly sources: Runtime['sources'];
@@ -202,6 +188,26 @@ export class RehabRuntime implements Runtime {
         ? this.evaluationLimit
         : c.current_limit_ma,
     );
+  }
+  private async switchSource(
+    kind: 'serial' | 'camera' | 'sim',
+    change: () => Promise<void>,
+  ) {
+    if (this.switching)
+      throw new Error('A source change is already in progress');
+    // A fallback ends the run before replacing its sources. This preserves demo provenance
+    // and never resumes an interrupted physical command on the replacement transport.
+    if (kind !== 'sim') this.requireIdle();
+    this.switching = true;
+    try {
+      await this.exercise.stop();
+      await this.evaluation.stop();
+      this.options.glove.client.release();
+      this.options.glove.world.setIntent('open', 'DONE');
+      await change();
+    } finally {
+      this.switching = false;
+    }
   }
   private requireIdle() {
     if (this.mode || this.switching)
@@ -377,7 +383,7 @@ export class RehabRuntime implements Runtime {
   tick(
     events: Parameters<typeof this.exerciseEngine.tick>[0]['gloveEvents'] = [],
   ) {
-    if (!this.mode) return;
+    if (!this.mode || this.switching) return;
     // Simulator release can synchronously emit events. Defer nested ticks until output is applied.
     if (this.ticking) {
       this.pendingEvents.push(...events);

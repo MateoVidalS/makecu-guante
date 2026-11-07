@@ -289,3 +289,39 @@ it('ignores a late calibration reload while a session is running', async () => {
   expect(runtime.calibration.current?.id).toBe(1);
   expect(release).not.toHaveBeenCalled();
 });
+
+it('ends an interrupted run before simulator fallback, reconnects, and flags the next run as demo', async () => {
+  const { runtime, world, posts } = await harness();
+  await runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS);
+  until(world, () => runtime.exercise.view().phase === 'ASSIST');
+  world.controls.unplug();
+  expect(runtime.exercise.view().phase).toBe('PAUSED');
+  const before = performance.now();
+  await runtime.sources.setGlove('sim');
+  await runtime.sources.setVision('sim');
+  expect(performance.now() - before).toBeLessThan(5000);
+  expect(runtime.exercise.view().phase).toBe('DONE');
+  expect(world.glove.connection()).toBe('connected');
+  expect(world.firmware.mode).toBe('none');
+  await runtime.persistence.flush();
+  expect(posts.endSession).toHaveBeenCalledTimes(1);
+  await runtime.exercise.start(
+    [{ pose: 'full_fist', reps: 1 }],
+    DEFAULT_EXERCISE_SETTINGS,
+  );
+  until(world, () => runtime.exercise.view().phase === 'DONE');
+  await runtime.persistence.flush();
+  expect(posts.createSession.mock.lastCall?.[0].is_demo).toBe(true);
+  expect(runtime.exercise.view().summary?.attempts).toBe(1);
+});
+
+it('aborts an evaluation before fallback and does not restart a sweep', async () => {
+  const { runtime, world, posts } = await harness();
+  await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
+  until(world, () => runtime.evaluation.view().stage === 'sweep');
+  await runtime.sources.setVision('sim');
+  expect(runtime.evaluation.view().stage).toBe('aborted');
+  expect(world.firmware.mode).toBe('none');
+  await runtime.persistence.flush();
+  expect(posts.createEvaluation.mock.lastCall?.[0].is_demo).toBe(true);
+});

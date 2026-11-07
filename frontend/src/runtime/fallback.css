@@ -1,0 +1,20 @@
+.runtime-fallback {
+  position: relative;
+  font-size: var(--small);
+}
+.runtime-fallback summary {
+  cursor: pointer;
+}
+.runtime-fallback__panel {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-end: 0;
+  z-index: var(--z-header);
+  width: max-content;
+  max-width: calc(100vw - var(--space-8));
+  padding: var(--space-16);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--elevation-overlay);
+}

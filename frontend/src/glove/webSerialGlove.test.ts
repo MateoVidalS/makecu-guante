@@ -225,6 +225,21 @@ describe('Web Serial connection lifecycle', () => {
     await flush();
     expect(port.writes.at(-1)).toEqual({ t: 'limit', ma: 600 });
   });
+  it('bounds a stalled reader cancellation so simulator recovery can continue', async () => {
+    const { client, port } = setup();
+    clients.push(client);
+    await client.connect();
+    const cancel = vi
+      .spyOn(ReadableStreamDefaultReader.prototype, 'cancel')
+      .mockImplementation(() => new Promise<void>(() => {}));
+    const closing = client.disconnect();
+    await vi.advanceTimersByTimeAsync(1000);
+    await closing;
+    expect(client.connection()).toBe('disconnected');
+    expect(port.closes).toBe(1);
+    cancel.mockRestore();
+    port.controller.close();
+  });
   it('disconnect rejects new motion while draining and a concurrent reconnect waits for cleanup', async () => {
     const { client, port } = setup();
     clients.push(client);
