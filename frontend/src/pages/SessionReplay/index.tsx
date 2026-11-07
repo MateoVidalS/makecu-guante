@@ -1,3 +1,10 @@
+import {
+  Button,
+  Dialog,
+  Inline,
+  PageHeader,
+  Select,
+} from '../../design-system';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, Link } from 'react-router-dom';
@@ -38,11 +45,24 @@ function AttemptReplay({ attempt, demo }: { attempt: Attempt; demo: boolean }) {
           label="Time to reach on your own"
           value={
             attempt.time_to_position_s == null
-              ? 'Not reached'
+              ? '—'
               : `${attempt.time_to_position_s.toFixed(1)} s`
           }
         />
-        <KpiTile label="Glove helped" value={attempt.assisted ? 'Yes' : 'No'} />
+        <KpiTile
+          label="Glove help needed"
+          value={percentage(
+            (() => {
+              const scored = attempt.fingers.filter(
+                (f) => f.scored && f.assist_needed != null,
+              );
+              return scored.length
+                ? scored.reduce((sum, f) => sum + f.assist_needed!, 0) /
+                    scored.length
+                : null;
+            })(),
+          )}
+        />
         <KpiTile label="Safety events" value={attempt.safety_events.length} />
       </div>
       <DataStatus error={trace.error}>
@@ -107,44 +127,44 @@ export default function SessionReplay() {
   return (
     <section className="data-page">
       <Link to="/history?tab=sessions">Back to sessions</Link>
-      <h1>Session replay</h1>
+      <PageHeader
+        title="Session replay"
+        lead="Estimated from the camera — not a medical measurement."
+      />
       <DataStatus loading={session.isPending} error={session.error}>
         {detail && (
           <>
             <p>
               {formatDate(detail.started_at)} {detail.is_demo && <DemoBadge />}
             </p>
-            <p>Estimated from the camera — not a medical measurement.</p>
             {attempts.length === 0 ? (
               <p>No attempts recorded in this session.</p>
             ) : (
               <>
                 <div className="actions">
-                  <button
+                  <Button
                     disabled={selected === 0}
                     onClick={() => setIndex(selected - 1)}
                   >
-                    ↑ Previous attempt
-                  </button>
-                  <label>
-                    Attempt{' '}
-                    <select
-                      value={selected}
-                      onChange={(e) => setIndex(Number(e.target.value))}
-                    >
-                      {attempts.map((a, i) => (
-                        <option key={a.id} value={i}>
-                          {i + 1}. {POSES[a.pose].name} · Rep {a.rep}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
+                    ← Previous attempt
+                  </Button>
+                  <Select
+                    label="Attempt"
+                    value={selected}
+                    onChange={(e) => setIndex(Number(e.target.value))}
+                  >
+                    {attempts.map((a, i) => (
+                      <option key={a.id} value={i}>
+                        {i + 1}. {POSES[a.pose].name} · Rep {a.rep}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
                     disabled={selected === attempts.length - 1}
                     onClick={() => setIndex(selected + 1)}
                   >
-                    ↓ Next attempt
-                  </button>
+                    Next attempt →
+                  </Button>
                 </div>
                 <AttemptReplay
                   key={attempts[selected].id}
@@ -164,6 +184,9 @@ export default function SessionReplay() {
                       <time dateTime={line.t}>
                         {new Date(line.t).toLocaleTimeString('en', {
                           timeZone: 'UTC',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
                         })}{' '}
                         UTC
                       </time>{' '}
@@ -173,21 +196,24 @@ export default function SessionReplay() {
                 </ol>
               )}
             </details>
-            {confirm ? (
-              <section className="card" aria-labelledby="delete-title">
-                <h2 id="delete-title">Delete this session?</h2>
-                <p>
-                  This removes its attempts, traces, transcript, and summaries.
-                </p>
-                <div className="actions">
-                  <button
+            <Dialog
+              open={confirm}
+              title="Delete this session?"
+              onClose={() => {
+                if (!deletion.isPending) setConfirm(false);
+              }}
+              description="This removes its attempts, traces, transcript, and summaries."
+              footer={
+                <Inline>
+                  <Button
                     disabled={deletion.isPending}
                     onClick={() => setConfirm(false)}
-                    autoFocus
+                    data-autofocus
                   >
                     Keep session
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="danger"
                     disabled={deletion.isPending}
                     onClick={() =>
                       deletion.mutate(detail.id, {
@@ -208,17 +234,21 @@ export default function SessionReplay() {
                     }
                   >
                     {deletion.isPending ? 'Deleting…' : 'Confirm delete'}
-                  </button>
-                </div>
-                {deletion.isError && (
-                  <p role="alert">
-                    Could not delete this session. Please try again.
-                  </p>
-                )}
-              </section>
-            ) : (
-              <button onClick={() => setConfirm(true)}>Delete session</button>
-            )}
+                  </Button>
+                </Inline>
+              }
+            >
+              {deletion.isError && (
+                <p role="alert">
+                  Could not delete this session. Please try again.
+                </p>
+              )}
+            </Dialog>
+            <Inline>
+              <Button variant="quiet" onClick={() => setConfirm(true)}>
+                Delete session
+              </Button>
+            </Inline>
           </>
         )}
       </DataStatus>

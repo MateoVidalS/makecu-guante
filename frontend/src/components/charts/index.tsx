@@ -1,3 +1,11 @@
+import {
+  Card,
+  KpiTile as DSKpiTile,
+  DemoBadge as DSDemoBadge,
+  Skeleton,
+  EmptyState,
+  Banner,
+} from '../../design-system';
 import { useId, type ReactNode } from 'react';
 import {
   CartesianGrid,
@@ -52,17 +60,17 @@ export const formatDate = (value: string | number) =>
     timeZone: 'UTC',
   });
 export const percentage = (value: number | null | undefined) =>
-  value == null ? 'Not recorded' : `${Math.round(value * 100)}%`;
+  value == null ? '—' : `${Math.round(value * 100)}%`;
 const numberLabel = (
   value: number | string | boolean | null | undefined,
   unit = '',
 ) =>
   typeof value === 'number'
-    ? `${Number(value.toFixed(1))}${unit}`
-    : 'Not recorded';
+    ? `${unit.includes('mA') || unit === '%' ? Math.round(value) : value.toFixed(1)}${unit}`
+    : '—';
 const color = (finger: GloveFinger) => `var(--finger-${finger})`;
 export function DemoBadge() {
-  return <span className="demo-badge">Demo data</span>;
+  return <DSDemoBadge />;
 }
 export function DataStatus({
   loading,
@@ -98,16 +106,13 @@ export function KpiTile({
   hint?: string;
   loading?: boolean;
 }) {
-  return (
-    <article className="kpi-tile">
-      <p>{label}</p>
-      <p className="kpi-value">
-        {loading ? 'Loading…' : (value ?? 'Not recorded')}
-      </p>
-      {hint && <p className="muted">{hint}</p>}
-    </article>
+  return loading ? (
+    <Skeleton height="var(--space-64)" />
+  ) : (
+    <DSKpiTile label={label} value={value ?? '—'} hint={hint} />
   );
 }
+
 interface Series {
   data?: ChartRow[];
   key: string;
@@ -160,16 +165,21 @@ function Chart({
         })
       : `${Number(x.toFixed(1))}`;
   return (
-    <article
+    <Card
+      as="article"
+      actions={rows.some((r) => r.demo) ? <DemoBadge /> : undefined}
       className={`chart-card${compact ? ' compact' : ''}`}
       aria-labelledby={`${id}-title`}
     >
       <h3 id={`${id}-title`}>{title}</h3>
       <p className="chart-hint">{hint}</p>
       {loading ? (
-        <p role="status">Loading chart…</p>
+        <div role="status">
+          Loading chart…
+          <Skeleton height="var(--placeholder-height)" />
+        </div>
       ) : !hasData ? (
-        <p>No measurements recorded yet.</p>
+        <EmptyState title="No measurements recorded yet." />
       ) : (
         <>
           <div
@@ -412,7 +422,7 @@ function Chart({
           </details>
         </>
       )}
-    </article>
+    </Card>
   );
 }
 interface TrendProps {
@@ -609,7 +619,6 @@ export function ReplayChart({
   );
   return (
     <div className="data-section">
-      {isDemo && <DemoBadge />}
       <Chart
         title="Your attempt, moment by moment"
         hint="Higher means further closed. Solid: camera. Dashed: commanded servo position. Grey right axis: total current; no direction-of-better."
@@ -682,7 +691,7 @@ export function ReplayChart({
         <ul aria-label="Safety events">
           {safety.map((e, i) => (
             <li key={i}>
-              ▲ {e.source.replaceAll('_', ' ')} · {e.t_rel.toFixed(2)} s ·{' '}
+              ▲ {e.source.replaceAll('_', ' ')} · {e.t_rel.toFixed(1)} s ·{' '}
               {e.finger ?? 'finger unknown'} · {numberLabel(e.ma, ' mA')}
             </li>
           ))}
@@ -722,7 +731,6 @@ export function SweepCurves({
   }));
   return (
     <div className="data-section">
-      {isDemo && <DemoBadge />}
       <Chart
         title={`${fingerName(finger)}: slow and fast sweeps`}
         hint="↓ Lower excess above friction suggests less resistance. Grey: stored friction (measured − excess)."
@@ -765,6 +773,17 @@ export function SweepCurves({
         baseline={false}
         loading={loading}
       />
+      {isDemo &&
+        relevant.some(
+          (s) =>
+            s.points.length > 1 &&
+            s.points.every((p) => p.ma === s.points[0].ma),
+        ) && (
+          <Banner
+            tone="demo"
+            title="Sample sweep values are constant in these demo records."
+          />
+        )}
       {relevant
         .filter((s) => s.aborted_at != null)
         .map((s) => (

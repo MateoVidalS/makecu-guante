@@ -6,7 +6,23 @@ import { useRuntime } from '../../runtime';
 import { useGlove } from '../../glove';
 import { useVisionFrame } from '../../vision';
 import { DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
-import { BigButton, EmptyState, percent } from '../../components/common';
+import { percent } from '../../components/common';
+import {
+  Button,
+  ButtonLink,
+  Card,
+  Stack,
+  Inline,
+  Grid,
+  PageHeader,
+  Checkbox,
+  StatusChip,
+  DemoBadge,
+  EmptyState,
+  Banner,
+  KpiTile,
+} from '../../design-system';
+import { formatDate } from '../../components/charts';
 export default function Home() {
   const profile = useProfile(),
     sessions = useSessions({ limit: 5 }),
@@ -43,63 +59,83 @@ export default function Home() {
     }
   }
   return (
-    <section className="live-stack">
-      <h1>
-        Hello{profile.data?.pseudonym ? `, ${profile.data.pseudonym}` : ''}
-      </h1>
-      <p>Practice at your pace.</p>
-      <div className="actions">
-        <BigButton
+    <Stack as="section" gap={24}>
+      <PageHeader
+        title={`Hello${profile.data?.pseudonym ? `, ${profile.data.pseudonym}` : ''}`}
+        lead="Practice at your pace."
+      />
+      <Inline>
+        <Button
           variant="primary"
+          size="lg"
           disabled={busy}
           onClick={() => void start()}
         >
           Start today's practice
-        </BigButton>
-        <Link className="button" to="/evaluate">
-          Evaluate
-        </Link>
-      </div>
-      <label>
-        <input
-          type="checkbox"
-          checked={short}
-          onChange={(e) => setShort(e.target.checked)}
-        />
-        Short session (1 rep each)
-      </label>
+        </Button>
+        <ButtonLink to="/evaluate">Evaluate</ButtonLink>
+      </Inline>
+      <Checkbox
+        label="Short session (1 rep each)"
+        size="lg"
+        checked={short}
+        onChange={(e) => setShort(e.target.checked)}
+      />
       {error && <p role="alert">{error}</p>}
       {!runtime.calibration.current && (
-        <aside className="card">
-          Calibration needed. Let's find your comfortable range first.{' '}
+        <Banner tone="info" title="Calibration needed">
+          Let's find your comfortable range first.{' '}
           <Link to="/calibrate">Calibrate</Link>
-        </aside>
+        </Banner>
       )}
-      <div className="two-columns">
-        <section className="card">
-          <h2>Ready to practice?</h2>
-          <ul>
+      <Grid columns={2}>
+        <Card title="Ready to practice?">
+          <Stack gap={12}>
             {[
-              [connected, 'Glove connected', '/setup'],
-              [!!runtime.calibration.current, 'Calibrated', '/calibrate'],
-              [seen, 'Camera sees your hand', '/setup'],
-            ].map(([ok, label, path]) => (
-              <li key={String(label)}>
-                {ok ? '✓' : '○'} {label}{' '}
-                {!ok && <Link to={String(path)}>Set up</Link>}
-              </li>
+              {
+                ok: connected,
+                label: 'Glove',
+                path: '/setup',
+                action: 'Check glove',
+              },
+              {
+                ok: !!runtime.calibration.current,
+                label: 'Calibration',
+                path: '/calibrate',
+                action: 'Check range',
+              },
+              {
+                ok: seen,
+                label: 'Camera',
+                path: '/setup',
+                action: 'Check camera',
+              },
+            ].map(({ ok, label, path, action }) => (
+              <Inline key={label} justify="between">
+                <StatusChip
+                  icon={ok ? 'check' : 'info'}
+                  label={label}
+                  value={ok ? 'Ready' : 'Needs setup'}
+                  tone={ok ? 'reached' : 'caution'}
+                />
+                <Link to={path}>{action}</Link>
+              </Inline>
             ))}
-          </ul>
-        </section>
-        <section className="card">
-          <h2>Last session</h2>
+          </Stack>
+        </Card>
+        <Card
+          title="Last session"
+          actions={
+            sessions.data?.some((s) => s.is_demo) ? <DemoBadge /> : undefined
+          }
+        >
           {last ? (
             <>
-              <p>
-                {new Date(last.started_at).toLocaleDateString()}{' '}
-                {last.is_demo && <span className="chip">Demo data</span>}
-              </p>
-              <p>{percent(last.summary?.active_ratio_mean)} on your own</p>
+              <p>{formatDate(last.started_at)}</p>
+              <KpiTile
+                label="On your own"
+                value={percent(last.summary?.active_ratio_mean)}
+              />
               <svg
                 viewBox="0 0 400 90"
                 role="img"
@@ -135,24 +171,10 @@ export default function Home() {
                     );
                   })}
               </svg>
-              <div aria-label="Recent session estimates">
-                {sessions.data
-                  ?.slice()
-                  .reverse()
-                  .map((s) => (
-                    <span
-                      key={s.id}
-                      title={new Date(s.started_at).toLocaleDateString()}
-                    >
-                      {percent(s.summary?.active_ratio_mean)}
-                      {s.is_demo ? ' (Demo)' : ''} ·{' '}
-                    </span>
-                  ))}
-              </div>
               <Link to={`/history/sessions/${last.id}`}>See session</Link>
             </>
           ) : (
-            <EmptyState>
+            <EmptyState title="Your first practice starts here">
               {sessions.isPending
                 ? 'Loading your last session…'
                 : sessions.isError
@@ -160,13 +182,13 @@ export default function Home() {
                   : 'Your first practice starts here.'}
             </EmptyState>
           )}
-        </section>
-      </div>
+        </Card>
+      </Grid>
       <p className="muted">
         {overview.data
           ? `This week: ${overview.data.days_practiced_last_7} of 5 days`
           : 'Each day of practice counts.'}
       </p>
-    </section>
+    </Stack>
   );
 }

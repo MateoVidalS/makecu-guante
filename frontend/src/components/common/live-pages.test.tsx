@@ -31,6 +31,7 @@ import Exercise from '../../pages/Exercise';
 import Evaluate from '../../pages/Evaluate';
 import Calibrate from '../../pages/Calibrate';
 import {
+  GloveChip,
   SafetyBanner,
   ConfirmDialog,
   PhaseRing,
@@ -58,6 +59,14 @@ vi.mock('../../vision/CameraOverlay', () => ({
 }));
 const nativeFetch = globalThis.fetch;
 beforeAll(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    },
+  );
   server.listen({ onUnhandledRequest: 'error' });
   const intercepted = globalThis.fetch;
   vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
@@ -231,7 +240,12 @@ describe('Exercise', () => {
         runtime.exerciseStore.setState({ phase, paused: phase === 'PAUSED' }),
       );
       expect(
-        screen.getByText(phaseLabels[phase], { selector: 'strong' }),
+        screen.getByText(
+          phase === 'PRESENT'
+            ? /Get ready|Show me your hand/
+            : phaseLabels[phase],
+          { selector: 'strong' },
+        ),
       ).toBeVisible();
     }
     act(() =>
@@ -353,20 +367,42 @@ describe('Safety and accessible common controls', () => {
     expect(screen.getByText('—')).toBeVisible();
     expect(screen.queryByText(/vs last time/)).not.toBeInTheDocument();
   });
-  it('traps dialog focus and offers cancellation', () => {
+  it('focuses the safe dialog choice and offers cancellation', () => {
     const cancel = vi.fn();
     mount(
       <ConfirmDialog title="Finish?" onConfirm={vi.fn()} onCancel={cancel} />,
     );
-    const keep = screen.getByRole('button', { name: 'Keep practicing' }),
-      end = screen.getByRole('button', { name: 'End session' });
-    keep.focus();
-    fireEvent.keyDown(keep, { key: 'Tab', shiftKey: true });
-    expect(end).toHaveFocus();
-    fireEvent.keyDown(end, { key: 'Tab' });
+    const keep = screen.getByRole('button', { name: 'Keep practicing' });
     expect(keep).toHaveFocus();
     fireEvent.click(keep);
     expect(cancel).toHaveBeenCalledOnce();
+  });
+  it('shows a green Ready chip and a neutral Paused chip', async () => {
+    const runtime = new ScriptedRuntime({ persist: false });
+    let emit: (event: EngineEvent) => void = () => {};
+    vi.spyOn(runtime.exercise, 'onEvent').mockImplementation((cb) => {
+      emit = cb;
+      return () => {};
+    });
+    mount(<GloveChip />, runtime);
+    expect(screen.getByText('Ready').closest('.ds-status-chip')).toHaveClass(
+      'ds-status-chip--reached',
+    );
+    act(() =>
+      runtime.exerciseStore.setState({ phase: 'PAUSED', paused: true }),
+    );
+    expect(screen.getByText('Paused').closest('.ds-status-chip')).toHaveClass(
+      'ds-status-chip--neutral',
+    );
+    expect(screen.queryByText('Stopped')).not.toBeInTheDocument();
+    act(() =>
+      emit({ kind: 'safety', source: 'camera_lost', finger: null, ma: null }),
+    );
+    expect(screen.getByText('Stopped').closest('.ds-status-chip')).toHaveClass(
+      'ds-status-chip--danger',
+    );
+    act(() => runtime.exerciseStore.setState({ phase: 'REST', paused: false }));
+    expect(screen.getByText('Ready')).toBeVisible();
   });
   it('announces waiting for a visible hand', () => {
     mount(<PhaseRing phase="PRESENT" elapsed={0} duration={3} waiting />);
@@ -397,7 +433,7 @@ describe('Calibration wizard', () => {
     mount(<Calibrate />);
     for (const finger of ['Thumb', 'Index', 'Middle']) {
       fireEvent.click(
-        screen.getByRole('button', { name: new RegExp(`^${finger} [○✓]`) }),
+        screen.getByRole('button', { name: new RegExp(`^${finger} ·`) }),
       );
       fireEvent.change(screen.getByLabelText('Servo angle'), {
         target: { value: '20' },
@@ -452,12 +488,13 @@ describe('Evaluation', () => {
     expect(
       screen.getByRole('button', { name: 'Start evaluation' }),
     ).toBeDisabled();
-    for (const label of [
-      'Hand relaxed in the glove',
-      'Calibrated',
-      'Glove connected',
-    ])
-      fireEvent.click(screen.getByLabelText(label));
+    expect(
+      screen.queryByRole('checkbox', { name: 'Calibrated' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: 'Glove connected' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
     fireEvent.click(screen.getByRole('button', { name: 'Start evaluation' }));
     await waitFor(() =>
       expect(

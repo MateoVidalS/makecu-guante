@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import {
+  ButtonLink,
+  Card,
+  Grid,
+  Stack,
+  Inline,
+  PageHeader,
+  Select,
+  Checkbox,
+} from '../../design-system';
 import { useStore } from 'zustand';
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision, useVisionFrame } from '../../vision';
@@ -22,6 +31,7 @@ export default function Setup() {
   const connection = useStore(glove.store, (s) => s.connection),
     events = useStore(glove.store, (s) => s.events);
   const tel = useGloveTelemetry((t) => t);
+  const cameraRunning = useVisionFrame((f) => f !== null);
   const confidence = useVisionFrame((f) =>
     f ? Math.round(f.confidence * 100) : null,
   );
@@ -74,18 +84,35 @@ export default function Setup() {
     setDevices(await navigator.mediaDevices.enumerateDevices());
   }
   return (
-    <section className="live-stack">
-      <h1>Connect glove and camera</h1>
+    <Stack as="section" gap={24}>
+      <PageHeader
+        title="Connect glove and camera"
+        lead="Set up your glove and camera before practice."
+      />
       <BrowserSupportBanner />
       {error && <p role="alert">{error}</p>}
-      <div className="two-columns">
-        <section className="card live-stack">
+      <Grid columns={2}>
+        <Card className="live-stack">
           <h2>
-            {connection === 'connected' ? 'Glove ready' : 'Glove not connected'}
+            {connection === 'connected'
+              ? tel?.st === 'fault'
+                ? 'Glove stopped'
+                : 'Glove ready'
+              : connection === 'connecting'
+                ? 'Connecting glove…'
+                : 'Glove not connected'}
           </h2>
           <GloveChip />
-          <p>Click Connect and pick the USB device.</p>
-          <div className="actions">
+          <p>
+            {connection === 'connected'
+              ? tel?.st === 'fault'
+                ? 'Release the glove and check it before continuing.'
+                : 'Your glove is connected and ready for setup.'
+              : connection === 'connecting'
+                ? 'Connecting to your glove…'
+                : 'Click Connect and pick the USB device.'}
+          </p>
+          <Inline>
             <BigButton
               disabled={busy}
               onClick={() =>
@@ -120,7 +147,7 @@ export default function Setup() {
             >
               Send calibration
             </BigButton>
-          </div>
+          </Inline>
           <details>
             <summary>Glove diagnostics</summary>
             <p>
@@ -139,7 +166,7 @@ export default function Setup() {
               </p>
             ))}
             <p>
-              Current: {tel?.ma ?? '—'} mA · Limit:{' '}
+              Current: {tel ? Math.round(tel.ma) : '—'} mA · Limit:{' '}
               {info?.limit ??
                 runtime.calibration.current?.current_limit_ma ??
                 900}{' '}
@@ -172,52 +199,50 @@ export default function Setup() {
             <ul>
               {events.slice(-10).map((e, i) => (
                 <li key={i}>
-                  {e.e} {e.ma != null ? `${e.ma} mA` : ''}
+                  {e.e} {e.ma != null ? `${Math.round(e.ma)} mA` : ''}
                 </li>
               ))}
             </ul>
           </details>
-        </section>
-        <section className="card live-stack">
+        </Card>
+        <Card className="live-stack">
           <h2>Camera</h2>
           <CameraChip />
           <p>
             Confidence: {confidence == null ? '—' : `${confidence}%`} · Hand:{' '}
             {handedness ?? 'Not seen'}
           </p>
-          <label>
-            Camera device
-            <select
-              value={deviceId}
-              onChange={(e) => setDevice(e.target.value)}
-            >
-              <option value="">Default camera</option>
-              {devices
-                .filter((d) => d.kind === 'videoinput')
-                .map((d, i) => (
-                  <option key={d.deviceId} value={d.deviceId}>
-                    {d.label || `Camera ${i + 1}`}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <BigButton disabled={busy} onClick={() => void action(camera)}>
-            Connect camera
-          </BigButton>
-          <label>
-            <input
-              type="checkbox"
-              checked={mirror}
-              onChange={(e) => setMirror(e.target.checked)}
-            />
-            Mirror preview
-          </label>
+          <Select
+            label="Camera device"
+            value={deviceId}
+            onChange={(e) => setDevice(e.target.value)}
+          >
+            <option value="">Default camera</option>
+            {devices
+              .filter((d) => d.kind === 'videoinput')
+              .map((d, i) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `Camera ${i + 1}`}
+                </option>
+              ))}
+          </Select>
+          {!cameraRunning && (
+            <BigButton disabled={busy} onClick={() => void action(camera)}>
+              Connect camera
+            </BigButton>
+          )}
+          <Checkbox
+            label="Mirror preview"
+            checked={mirror}
+            onChange={(e) => setMirror(e.target.checked)}
+          />
           <CameraOverlay mirrored={mirror} />
-          <BigButton onClick={() => vision.stop()}>Stop camera</BigButton>
-        </section>
-      </div>
-      <section className="card simulator">
-        <h2>Simulator</h2>
+          {cameraRunning && (
+            <BigButton onClick={() => vision.stop()}>Stop camera</BigButton>
+          )}
+        </Card>
+      </Grid>
+      <Card tone="demo" title="Simulator" className="live-stack">
         <p>Practice without hardware. Simulated readings are estimates.</p>
         <BigButton
           disabled={busy}
@@ -239,34 +264,27 @@ export default function Setup() {
         </BigButton>
         {glove.client.kind === 'sim' && (
           <div className="live-stack">
-            <label>
-              Patient preset
-              <select
-                value={glove.world.patient.preset}
-                onChange={(e) => {
-                  glove.world.controls.setPreset(
-                    e.target.value as PatientPreset,
-                  );
-                  refreshControls((n) => n + 1);
-                }}
-              >
-                <option value="mild">Mild</option>
-                <option value="moderate">Moderate</option>
-                <option value="severe">Severe</option>
-              </select>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={glove.world.patient.rigid.index}
-                onChange={(e) => {
-                  glove.world.controls.setRigid('index', e.target.checked);
-                  refreshControls((n) => n + 1);
-                }}
-              />
-              Rigid index
-            </label>
-            <div className="actions">
+            <Select
+              label="Patient preset"
+              value={glove.world.patient.preset}
+              onChange={(e) => {
+                glove.world.controls.setPreset(e.target.value as PatientPreset);
+                refreshControls((n) => n + 1);
+              }}
+            >
+              <option value="mild">Mild</option>
+              <option value="moderate">Moderate</option>
+              <option value="severe">Severe</option>
+            </Select>
+            <Checkbox
+              label="Rigid index"
+              checked={glove.world.patient.rigid.index}
+              onChange={(e) => {
+                glove.world.controls.setRigid('index', e.target.checked);
+                refreshControls((n) => n + 1);
+              }}
+            />
+            <Inline>
               <BigButton onClick={() => glove.world.controls.pressStop()}>
                 Press STOP
               </BigButton>
@@ -282,7 +300,7 @@ export default function Setup() {
               >
                 Hand out of frame
               </BigButton>
-            </div>
+            </Inline>
             {vision.source !== glove.world.vision && (
               <p className="muted">
                 Camera fault controls need the shared simulator connection.
@@ -290,11 +308,13 @@ export default function Setup() {
             )}
           </div>
         )}
-      </section>
+      </Card>
       <RuntimeDiagnostics />
-      <Link className="button" to="/calibrate">
-        Continue to calibration
-      </Link>
-    </section>
+      <Inline justify="end">
+        <ButtonLink variant="primary" to="/calibrate">
+          Continue to calibration
+        </ButtonLink>
+      </Inline>
+    </Stack>
   );
 }

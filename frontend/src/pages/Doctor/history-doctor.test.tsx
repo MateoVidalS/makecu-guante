@@ -100,14 +100,14 @@ describe('record review pages', () => {
   it('shows fixture improvement, pose selection, accessible tables, and session safety counts', async () => {
     mount('/history');
     expect(await screen.findByText('35% → 63%')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Active range' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Active range' }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Pose' }), {
       target: { value: 'full_fist' },
     });
     const tables = await screen.findAllByText('Show as table');
     fireEvent.click(tables[1]);
     expect(screen.getAllByRole('table', { hidden: true })).toHaveLength(3);
-    fireEvent.click(screen.getByRole('button', { name: 'Sessions' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }));
     const table = await screen.findByRole('table');
     await waitFor(() =>
       expect(within(table).queryAllByText('Loading…')).toHaveLength(0),
