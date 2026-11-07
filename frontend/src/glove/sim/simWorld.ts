@@ -121,6 +121,9 @@ export class SimWorld {
         const profile = SERVO_PROFILES[GLOVE_FINGERS[i]];
         let goal = f.position[i];
         if (!f.attached[i]) return 0;
+        // A stalled shaft can lag far behind the commanded ramp. Release must
+        // never make it catch up by closing while the command is unwinding.
+        if (f.mode === 'none') goal = Math.min(goal, position);
         if (goal > position) {
           // Model the current-limited supply as loss of closing torque. A rigid
           // finger stalls its own servo; unwinding remains possible for release.

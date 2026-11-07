@@ -120,7 +120,10 @@ describe('five-servo power model', () => {
     expect(event.t - overAt!).toBeGreaterThanOrEqual(100);
     expect(event.t - overAt!).toBeLessThanOrEqual(105);
     expect(world.firmware.goal).toEqual(zeros);
-    world.advance(1000);
+    for (let i = 0; i < 200; i++) {
+      world.advance(5);
+      expect(world.servoPosition).toEqual(zeros);
+    }
     expect(world.firmware.attached).toEqual([
       false,
       false,
