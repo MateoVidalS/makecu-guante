@@ -54,7 +54,24 @@ export function GloveChip() {
         : mode === 'target' || phase === 'ASSIST'
           ? 'Helping'
           : 'Ready';
-  return <StatusChip>● Glove: {label}</StatusChip>;
+  return (
+    <StatusChip>
+      <span
+        aria-hidden="true"
+        style={{
+          color:
+            label === 'Stopped'
+              ? 'var(--danger)'
+              : label === 'Helping'
+                ? 'var(--assist)'
+                : 'var(--text)',
+        }}
+      >
+        ●
+      </span>{' '}
+      Glove: {label}
+    </StatusChip>
+  );
 }
 export function CameraChip() {
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
@@ -120,10 +137,10 @@ export function FingerBars({
             <strong>{percent(value)}</strong>
             <div
               className="finger-track"
-              role="meter"
+              role={value == null ? 'img' : 'meter'}
               aria-label={`${title(f)} movement`}
-              aria-valuemin={0}
-              aria-valuemax={100}
+              aria-valuemin={value == null ? undefined : 0}
+              aria-valuemax={value == null ? undefined : 110}
               aria-valuenow={
                 value == null ? undefined : Math.round(value * 100)
               }
@@ -303,7 +320,9 @@ export function Stepper({
   labels,
   step,
   onStep,
+  disabled = false,
 }: {
+  disabled?: boolean;
   labels: string[];
   step: number;
   onStep: (step: number) => void;
@@ -312,7 +331,7 @@ export function Stepper({
     <ol className="stepper" aria-label="Calibration steps">
       {labels.map((label, i) => (
         <li key={label} aria-current={step === i ? 'step' : undefined}>
-          <button disabled={i > step} onClick={() => onStep(i)}>
+          <button disabled={disabled || i > step} onClick={() => onStep(i)}>
             {i < step ? '✓' : i + 1} {label}
           </button>
         </li>
@@ -323,14 +342,40 @@ export function Stepper({
 export function EmptyState({ children }: { children: ReactNode }) {
   return <div className="card">{children}</div>;
 }
+export function showToast(message: string, error = false) {
+  window.dispatchEvent(
+    new CustomEvent('rehab-toast', { detail: { message, error } }),
+  );
+}
 export function Toasts() {
+  const [toast, setToast] = useState<{
+    message: string;
+    error: boolean;
+  } | null>(null);
+  useEffect(() => {
+    const listener = (event: Event) =>
+      setToast(
+        (event as CustomEvent<{ message: string; error: boolean }>).detail,
+      );
+    window.addEventListener('rehab-toast', listener);
+    return () => window.removeEventListener('rehab-toast', listener);
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
   return (
-    <div
-      id="toast-region"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-    />
+    <div id="toast-region" role="status" aria-live="polite" aria-atomic="true">
+      {toast && (
+        <div
+          className={`system-toast ${toast.error ? 'system-error' : 'system-info'}`}
+          role={toast.error ? 'alert' : undefined}
+        >
+          {toast.message}
+        </div>
+      )}
+    </div>
   );
 }
 export function ConfirmDialog({
@@ -345,8 +390,9 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const previousFocus = useRef(document.activeElement as HTMLElement);
   useEffect(() => {
-    const prior = document.activeElement as HTMLElement;
+    const prior = previousFocus.current;
     if (dialog.current?.showModal) dialog.current.showModal();
     else dialog.current?.setAttribute('open', '');
     return () => prior?.focus();
@@ -399,7 +445,9 @@ export function BrowserSupportBanner() {
 export function useSessionLeaveGuard(kind: 'exercise' | 'evaluation') {
   const runtime = useRuntime(),
     { client } = useGlove();
+  const mounted = useRef(false);
   useEffect(() => {
+    mounted.current = true;
     const leave = (e: BeforeUnloadEvent) => {
       const active =
         kind === 'exercise'
@@ -417,7 +465,11 @@ export function useSessionLeaveGuard(kind: 'exercise' | 'evaluation') {
     window.addEventListener('beforeunload', leave);
     return () => {
       window.removeEventListener('beforeunload', leave);
-      void runtime[kind].stop();
+      mounted.current = false;
+      // StrictMode remounts effects synchronously; only stop after a true departure.
+      queueMicrotask(() => {
+        if (!mounted.current) void runtime[kind].stop();
+      });
     };
   }, [runtime, client, kind]);
 }

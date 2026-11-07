@@ -18,6 +18,7 @@ import { VirtualHand } from '../../hand3d/VirtualHand';
 import { useVision, useVisionFrame } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
 import { useGlove } from '../../glove';
+import type { FingerId } from '../../contracts/vision';
 import {
   BigButton,
   PhaseRing,
@@ -43,6 +44,7 @@ const Hand = memo(function Hand() {
       if (
         finger === 'ring' ||
         finger === 'pinky' ||
+        v.pose.closure[finger as FingerId] === null ||
         ['PAUSED', 'PRESENT', 'REST', 'RELEASE'].includes(v.phase)
       )
         return 'idle';
@@ -133,6 +135,24 @@ export default function Exercise() {
     [busy, setBusy] = useState(false),
     [planning, setPlanning] = useState(false);
   const live = phase !== 'DONE';
+  const index = useExerciseView((v) => v.index);
+  const next = plan.flatMap((p) =>
+    Array.from({ length: Math.min(10, Math.max(0, p.reps)) }, () => p.pose),
+  )[index + 1];
+  const instruction =
+    pose.id === 'hook'
+      ? 'Make a hook'
+      : pose.id === 'tabletop'
+        ? 'Make a tabletop'
+        : pose.id === 'pinch'
+          ? 'Touch thumb to index'
+          : pose.instruction;
+  const hint =
+    pose.id === 'hook'
+      ? 'Bend the top two joints'
+      : pose.id === 'tabletop'
+        ? 'Bend only at the knuckles'
+        : null;
   useSessionLeaveGuard('exercise');
   useEffect(() => {
     if (!live) return;
@@ -142,9 +162,10 @@ export default function Exercise() {
         e.ctrlKey ||
         e.metaKey ||
         e.altKey ||
-        (e.target instanceof Element && e.target.closest(
-          'input,select,textarea,button,summary,[contenteditable],dialog',
-        ))
+        (e.target instanceof Element &&
+          e.target.closest(
+            'input,select,textarea,button,summary,[contenteditable],dialog',
+          ))
       )
         return;
       if (e.code === 'Space') {
@@ -153,7 +174,10 @@ export default function Exercise() {
         if (v.paused) runtime.exercise.resume();
         else runtime.exercise.pause();
       } else if (e.key.toLowerCase() === 's') runtime.exercise.skip();
-      else if (e.key === 'Escape') setConfirm(true);
+      else if (e.key === 'Escape') {
+        e.preventDefault();
+        setConfirm(true);
+      }
     };
     window.addEventListener('keydown', keyboard);
     return () => window.removeEventListener('keydown', keyboard);
@@ -301,13 +325,19 @@ export default function Exercise() {
       </section>
     );
   return (
-    <section className="live-stack" key={location.key}>
+    <section
+      className={`live-stack ${paused ? 'practice-paused' : ''}`}
+      key={location.key}
+    >
       <div className="live-layout">
         <div className="live-hero">
           <Hand />
-          <h1 className="instruction">{pose.instruction}</h1>
+          <h1 className="instruction">{instruction}</h1>
+          {hint && <p className="pose-hint">{hint}</p>}
           {(phase === 'REST' || phase === 'RELEASE') && (
-            <p>Take a breath. Your next pose is coming.</p>
+            <p>
+              Next: {next ? POSES[next].name.toLowerCase() : 'session recap'}
+            </p>
           )}
         </div>
         <LiveDetails />

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from 'zustand';
 import { useGlove, useGloveTelemetry } from '../../glove';
-import { useVision } from '../../vision';
+import { useVision, useVisionFrame } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
 import { useRuntime } from '../../runtime';
 import {
@@ -21,6 +21,10 @@ export default function Setup() {
   const connection = useStore(glove.store, (s) => s.connection),
     events = useStore(glove.store, (s) => s.events);
   const tel = useGloveTelemetry((t) => t);
+  const confidence = useVisionFrame((f) =>
+    f ? Math.round(f.confidence * 100) : null,
+  );
+  const handedness = useVisionFrame((f) => f?.handedness);
   const [info, setInfo] = useState<GloveInfo | null>(null),
     [error, setError] = useState(''),
     [devices, setDevices] = useState<MediaDeviceInfo[]>([]),
@@ -43,7 +47,12 @@ export default function Setup() {
     try {
       await fn();
     } catch (e) {
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      setError(
+        /comes in WP[23]/.test(message)
+          ? 'Hardware connection is unavailable in this preview. Use the simulator.'
+          : message,
+      );
     } finally {
       setBusy(false);
     }
@@ -130,7 +139,7 @@ export default function Setup() {
               aria-label="Current over the last ten seconds"
             >
               <path
-                d="M0 90H500"
+                d={`M0 ${100 - (info?.limit ?? runtime.calibration.current?.current_limit_ma ?? 900) / 14}H500`}
                 stroke="var(--target)"
                 strokeDasharray="4 4"
               />
@@ -160,6 +169,10 @@ export default function Setup() {
         <section className="card live-stack">
           <h2>Camera</h2>
           <CameraChip />
+          <p>
+            Confidence: {confidence == null ? '—' : `${confidence}%`} · Hand:{' '}
+            {handedness ?? 'Not seen'}
+          </p>
           <label>
             Camera device
             <select
@@ -187,7 +200,7 @@ export default function Setup() {
             />
             Mirror preview
           </label>
-          <div style={{ transform: mirror ? 'scaleX(-1)' : undefined }}>
+          <div className={mirror ? 'preview-mirrored' : undefined}>
             <CameraOverlay />
           </div>
           <BigButton onClick={() => vision.source.stop()}>

@@ -100,6 +100,41 @@ export default function Home() {
                 {last.is_demo && <span className="chip">Demo data</span>}
               </p>
               <p>{percent(last.summary?.active_ratio_mean)} on your own</p>
+              <svg
+                viewBox="0 0 400 90"
+                role="img"
+                aria-label="Recent practice estimates, oldest to newest"
+              >
+                {sessions.data
+                  ?.slice()
+                  .reverse()
+                  .map((s, i, values) => {
+                    const value = s.summary?.active_ratio_mean,
+                      previous = values[i - 1]?.summary?.active_ratio_mean;
+                    return value == null ? null : (
+                      <g key={s.id}>
+                        {previous != null && (
+                          <line
+                            x1={(i - 1) * 80 + 20}
+                            y1={80 - previous * 70}
+                            x2={i * 80 + 20}
+                            y2={80 - value * 70}
+                            stroke="var(--active)"
+                            strokeWidth="3"
+                          />
+                        )}
+                        <circle
+                          cx={i * 80 + 20}
+                          cy={80 - value * 70}
+                          r="5"
+                          fill={s.is_demo ? 'var(--surface)' : 'var(--active)'}
+                          stroke="var(--active)"
+                          strokeWidth="3"
+                        />
+                      </g>
+                    );
+                  })}
+              </svg>
               <div aria-label="Recent session estimates">
                 {sessions.data
                   ?.slice()
@@ -109,7 +144,8 @@ export default function Home() {
                       key={s.id}
                       title={new Date(s.started_at).toLocaleDateString()}
                     >
-                      {percent(s.summary?.active_ratio_mean)} ·{' '}
+                      {percent(s.summary?.active_ratio_mean)}
+                      {s.is_demo ? ' (Demo)' : ''} ·{' '}
                     </span>
                   ))}
               </div>

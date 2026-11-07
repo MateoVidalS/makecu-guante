@@ -88,6 +88,7 @@ export default function Calibrate() {
       connection();
       window.removeEventListener('beforeunload', unload);
       client.release();
+      void runtime.evaluation.stop();
       client.limit(runtime.calibration.current?.current_limit_ma ?? 900);
     };
   }, [client, runtime]);
@@ -237,6 +238,7 @@ export default function Calibrate() {
       <Stepper
         labels={['Glove range', 'Camera range', 'Glove friction', 'Review']}
         step={draft.step}
+        disabled={busy || capture}
         onStep={(step) => {
           cancel.current();
           client.release();
@@ -247,6 +249,15 @@ export default function Calibrate() {
         Keep the hand relaxed. Press STOP or say 'stop' anytime.
       </aside>
       {error && <p role="alert">{error}</p>}
+      <BigButton
+        onClick={() => {
+          cancel.current();
+          client.release();
+          void runtime.evaluation.stop();
+        }}
+      >
+        Release glove now
+      </BigButton>
       {draft.step === 0 && (
         <section className="card live-stack">
           <h2>Step 1 · Glove range: {title(finger)}</h2>
@@ -384,7 +395,7 @@ export default function Calibrate() {
             />
             Mirror preview
           </label>
-          <div style={{ transform: mirror ? 'scaleX(-1)' : undefined }}>
+          <div className={mirror ? 'preview-mirrored' : undefined}>
             <CameraOverlay />
           </div>
           <p>Keep your hand still for two seconds.</p>

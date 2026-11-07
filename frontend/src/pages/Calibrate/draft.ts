@@ -90,7 +90,10 @@ export function stableCapture(frames: VisionFrame[]): Capture {
     raw[finger] = values.reduce((a, b) => a + b, 0) / values.length;
   }
   const pinches = valid.map((f) => f.pinch!);
-  if (Math.max(...pinches) - Math.min(...pinches) > 0.08)
+  if (
+    pinches.some((v) => !Number.isFinite(v) || v < 0) ||
+    Math.max(...pinches) - Math.min(...pinches) > 0.08
+  )
     throw new Error("Too much movement — let's try again.");
   return { raw, pinch: pinches.reduce((a, b) => a + b, 0) / pinches.length };
 }

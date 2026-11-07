@@ -245,3 +245,49 @@ summary {
     grid-template-columns: 1fr;
   }
 }
+.live-stack > h1,
+.live-stack > p {
+  margin-block: var(--space-8);
+}
+@media (max-width: 1280px) {
+  .focus main {
+    padding-block: var(--space-16);
+  }
+  .focus .live-stack {
+    gap: var(--space-12);
+  }
+  .live-layout {
+    gap: var(--space-12);
+  }
+  .live-hero .virtual-hand {
+    min-height: calc(var(--placeholder-height) - var(--space-64));
+  }
+  .live-hero .instruction {
+    margin-block: var(--space-12);
+  }
+}
+.pose-hint {
+  font-size: var(--h2);
+  margin-block: var(--space-8);
+}
+.system-toast {
+  position: fixed;
+  inset-block-start: var(--space-16);
+  inset-inline-end: var(--space-16);
+  padding: var(--space-16);
+  background: var(--surface);
+  color: var(--text);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--elevation-overlay);
+}
+.focus .system-info {
+  display: none;
+}
+.practice-paused .live-hero {
+  opacity: 0.6;
+}
+.preview-mirrored video,
+.preview-mirrored canvas {
+  transform: scaleX(-1);
+}
