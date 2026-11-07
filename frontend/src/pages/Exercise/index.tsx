@@ -46,6 +46,8 @@ import {
   useShortPractice,
 } from '../../components/common/practice';
 import './exercise.css';
+import { CoachDecisions } from './CoachDecisions';
+import type { Runtime } from '../../contracts/runtime';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
 const Hand = memo(function Hand() {
@@ -289,7 +291,15 @@ export default function Exercise() {
   const runtime = useRuntime(),
     voice = useVoice(),
     location = useLocation(),
-    { store } = useGlove();
+    { store, client: glove } = useGlove();
+  const therapy = (runtime as Runtime).therapy;
+  const brake = () => {
+    if (therapy) therapy.brake('You pressed Brake.', 'patient_ui');
+    else {
+      glove.release();
+      runtime.exercise.pause();
+    }
+  };
   const { start: startVoice, stop: stopVoice, setMode: setVoiceMode } = voice;
   const voiceMode = useRef(voice.mode);
   voiceMode.current = voice.mode;
@@ -499,6 +509,9 @@ export default function Exercise() {
             >
               {paused ? 'Resume' : 'Pause'}
             </Button>
+            <Button size="lg" variant="danger" onClick={brake}>
+              Brake
+            </Button>
             <Button
               size="lg"
               variant="quiet"
@@ -513,6 +526,11 @@ export default function Exercise() {
         </div>
         <LiveDetails />
       </div>
+      <CoachDecisions
+        therapy={therapy}
+        sessionId={voiceSessionId}
+        onBrake={brake}
+      />
       <AttemptResultToast />
       {confirm && (
         <ConfirmDialog

@@ -17,6 +17,8 @@ import type { Attempt } from '../../contracts/api';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import { POSES } from '../../contracts/poses';
 import './replay.css';
+import { CoachTimeline } from '../../components/therapy/CoachTimeline';
+import type { TherapySession } from '../../components/therapy/data';
 import {
   DataSection,
   DataStatus,
@@ -148,7 +150,7 @@ export default function SessionReplay() {
     [confirm, setConfirm] = useState(false);
   const deletion = useDeleteSession(),
     navigate = useNavigate();
-  const detail = session.data,
+  const detail = session.data as TherapySession | undefined,
     attempts = detail?.attempts ?? [];
   const selected = Math.min(index, Math.max(0, attempts.length - 1));
   return (
@@ -211,6 +213,17 @@ export default function SessionReplay() {
                 />
               </>
             )}
+            <DataSection
+              title="Coach decisions and feelings"
+              demo={detail.is_demo}
+              description="Times since session start. Decisions include requested and applied values."
+            >
+              <CoachTimeline
+                decisions={detail.coach_decisions}
+                feelings={detail.feelings}
+                startedAt={detail.started_at}
+              />
+            </DataSection>
             <details className="replay-transcript">
               <summary>Session transcript</summary>
               {detail.transcript.length === 0 ? (

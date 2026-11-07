@@ -450,3 +450,8 @@
   .live-tools {
   display: none;
 }
+
+/* The compact audit line reserves its own row below the hand. */
+.exercise-live {
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
