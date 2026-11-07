@@ -35,7 +35,8 @@ TOOLS = [
             declaration(
                 "adjust_help",
                 "Change help speed by 0.05/s within 0.10–0.30/s, once per finger per attempt. "
-                "More applies next ASSIST; less is immediate. Never changes force or current limits.",
+                "More applies next ASSIST; less is immediate. "
+                "Never changes force or current limits.",
                 {
                     "finger": {
                         "type": "STRING",
@@ -57,7 +58,8 @@ TOOLS = [
             ),
             declaration(
                 "choose_next_pose",
-                "Choose the next pose from the existing plan, excluding pinch; length is unchanged.",
+                "Choose the next pose from the existing plan, excluding pinch; "
+                "length is unchanged.",
                 {
                     "pose": {
                         "type": "STRING",

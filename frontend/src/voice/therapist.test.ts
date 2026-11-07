@@ -424,3 +424,44 @@ it('does not lose a pain check-in when a simple-voice interim rating is revised 
   );
   s.controller.dispose();
 });
+
+it('audits tool requests, runtime results and local rejections in the saved transcript', async () => {
+  const s = setup();
+  await s.controller.start(1);
+  s.transport.emit({
+    type: 'tools',
+    calls: [
+      {
+        id: 'help',
+        name: 'adjust_help',
+        args: { direction: 'more', finger: 'index' },
+      },
+    ],
+  });
+  await Promise.resolve();
+  s.transcript('stop', true);
+  s.transport.emit({
+    type: 'tools',
+    calls: [{ id: 'stale', name: 'resume_session' }],
+  });
+  await vi.advanceTimersByTimeAsync(10000);
+  const lines = vi.mocked(s.deps.save).mock.calls.flatMap((call) => call[1]);
+  const audits = lines
+    .filter((line) => line.role === 'system' && line.text.startsWith('[tool] '))
+    .map((line) => JSON.parse(line.text.slice(7)));
+  expect(audits).toEqual([
+    {
+      id: 'help',
+      tool: 'adjust_help',
+      requested: { direction: 'more', finger: 'index' },
+      response: { ok: true, reason: decision.reason, decision },
+    },
+    {
+      id: 'stale',
+      tool: 'resume_session',
+      requested: {},
+      response: { ok: false, reason: expect.stringContaining('Patient brake') },
+    },
+  ]);
+  s.controller.dispose();
+});

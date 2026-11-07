@@ -8,7 +8,7 @@ import type { Session, TranscriptLine, VoiceToken } from '../contracts/api';
 import { ApiRequestError } from '../api/client';
 import { BrowserAudio, type VoiceAudio } from './audio';
 import { GeminiLiveTransport } from './GeminiLiveTransport';
-import type { LiveTransport, TransportEvent } from './transport';
+import type { LiveTransport, ToolCall, TransportEvent } from './transport';
 import { BrowserLocalVoice, SafetyNet, type LocalVoice } from './safetyNet';
 import { fallbackPhrase } from './fallbackCoach';
 import { CueScheduler, eventCue } from './cues';
@@ -391,11 +391,13 @@ export class VoiceController {
               'repeat_instruction',
             ].includes(call.name)
           ) {
-            transport?.respond(call, {
+            const response = {
               ok: false,
               reason:
                 'Patient brake is active. Wait for an explicit request to continue.',
-            });
+            };
+            this.auditTool(call, response);
+            transport?.respond(call, response);
             continue;
           }
           const response = dispatchTool(this.runtime, call, this.previous);
@@ -408,6 +410,7 @@ export class VoiceController {
                 call.args.pain >= 4));
           if (braking) this.brakeLatched = true;
           void response.then((response) => {
+            this.auditTool(call, response);
             if (transport === this.transport && !this.cancelled.has(call.id)) {
               if (braking && response.ok === true)
                 this.safety.announce(
@@ -418,6 +421,20 @@ export class VoiceController {
           });
         }
     }
+  }
+  private auditTool(call: ToolCall, response: Record<string, unknown>) {
+    // Runtime mutation decisions carry applied/clamped args; transcript auditing
+    // also preserves read/legacy tools and voice-level rejections for replay.
+    this.batch?.add(
+      'system',
+      '[tool] ' +
+        JSON.stringify({
+          id: call.id,
+          tool: call.name,
+          requested: call.args ?? {},
+          response,
+        }),
+    );
   }
   private finishTranscript(role: 'coach' | 'patient') {
     const text = this.partial[role];
