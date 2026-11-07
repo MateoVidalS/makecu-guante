@@ -2,11 +2,9 @@ import type { ExercisePhase } from '../../contracts/engine';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import { DEFAULT_EXERCISE_SETTINGS, type PoseDef } from '../../contracts/poses';
 import { useVisionFrame } from '../../vision';
-import {
-  FingerGauge,
-  GaugeLegend,
-  type GaugeState,
-} from '../../components/metrics';
+import { FingerGauge, GaugeLegend } from '../../components/metrics';
+
+import { liveFingerState } from './fingerState';
 
 const LIVE: ExercisePhase[] = ['ATTEMPT', 'HOLD', 'ASSIST', 'ASSIST_HOLD'];
 
@@ -27,13 +25,6 @@ export function LiveFingerMeters({
   const closure = useVisionFrame((f) =>
     f?.detected && f.confidence >= 0.6 ? f.closure : null,
   );
-  const state: GaugeState = !LIVE.includes(phase)
-    ? 'idle'
-    : phase === 'HOLD' || phase === 'ASSIST_HOLD'
-      ? 'reached'
-      : assisting
-        ? 'assist'
-        : 'active';
   const scoring = LIVE.includes(phase);
   return (
     <div
@@ -50,7 +41,15 @@ export function LiveFingerMeters({
             best={scoring ? (activeMax[f] ?? null) : null}
             target={pose.closure[f]}
             tolerance={tolerance}
-            state={state}
+            assisting={scoring && assisting}
+            state={liveFingerState({
+              phase,
+              target: pose.closure[f],
+              value: closure?.[f] ?? null,
+              best: activeMax[f] ?? null,
+              assisting,
+              tolerance,
+            })}
           />
         ))}
       </div>

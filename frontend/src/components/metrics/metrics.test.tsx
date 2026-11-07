@@ -188,6 +188,25 @@ describe('metric components', () => {
     });
     expect(screen.getByText('Glove helping')).toBeVisible();
   });
+  it('retains the helped part when a finger reaches during assistance', () => {
+    render(
+      <FingerGauge
+        finger="ring"
+        value={0.95}
+        best={0.4}
+        target={0.95}
+        state="reached"
+        assisting
+      />,
+    );
+    expect(screen.getByRole('meter').closest('.mx-gauge')).toHaveAttribute(
+      'data-state',
+      'reached',
+    );
+    expect(
+      screen.getByRole('meter').querySelector('.mx-fill--help'),
+    ).not.toBeNull();
+  });
   it('gauge shows a gap, not 0, when the hand is not seen; free fingers have no goal', () => {
     render(
       <>

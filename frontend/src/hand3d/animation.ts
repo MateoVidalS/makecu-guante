@@ -58,6 +58,7 @@ export function createHandAnimator(
         : scene.palm.opacity + (opacity - scene.palm.opacity) * blend;
       scene.palm.transparent = scene.palm.opacity < 0.999;
       let reached = false;
+      let pending = false;
       for (let i = 0; i < FINGERS.length; i++) {
         const status = state(FINGERS[i]);
         const material = scene.fingers[i];
@@ -66,7 +67,9 @@ export function createHandAnimator(
         material.opacity = scene.palm.opacity;
         material.transparent = scene.palm.transparent;
         if (status === 'reached') reached = true;
+        if (status === 'active' || status === 'assist') pending = true;
       }
+      reached &&= !pending;
       if (reached && !animator.reached && visible) animator.pulse = 0;
       animator.reached = reached;
       if (animator.pulse >= 0) animator.pulse += delta;
