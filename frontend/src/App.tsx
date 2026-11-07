@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   BrowserRouter,
@@ -17,6 +18,16 @@ import {
 } from './runtime';
 import { VoiceProvider } from './voice';
 import { StatusChip, Toasts } from './components/common';
+import {
+  Button,
+  ButtonLink,
+  EmptyState,
+  Icon,
+  type IconName,
+  PageErrorBoundary,
+  ThemeToggle,
+  ToastProvider,
+} from './design-system';
 import Home from './pages/Home';
 import Setup from './pages/Setup';
 import Calibrate from './pages/Calibrate';
@@ -29,9 +40,30 @@ import Doctor from './pages/Doctor';
 import Profile from './pages/Profile';
 import DevHand from './pages/DevHand';
 
+const DesignGallery = lazy(() => import('./design-system/gallery'));
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
+
+// Spec §4: Home · Exercise · Evaluate · History · Setup. Profile lives in the tools on the right.
+const NAV: [to: string, label: string, icon: IconName][] = [
+  ['/', 'Home', 'home'],
+  ['/exercise', 'Exercise', 'practice'],
+  ['/evaluate', 'Evaluate', 'evaluate'],
+  ['/history', 'History', 'history'],
+  ['/setup', 'Setup', 'setup'],
+];
+
+function Brand() {
+  return (
+    <Link className="app-brand" to="/" aria-label="Rehab Hub, home">
+      <Icon name="logo" size={26} />
+      <span>Rehab Hub</span>
+    </Link>
+  );
+}
+
 function Shell() {
   const location = useLocation(),
     phase = useExerciseView((v) => v.phase),
@@ -45,99 +77,129 @@ function Shell() {
     (location.pathname === '/evaluate' &&
       ['prepare', 'sweep', 'cooldown'].includes(stage));
   const doctor = location.pathname === '/doctor';
+  const mode = focus ? 'focus' : doctor ? 'doctor' : 'setup-data';
   return (
-    <div className={focus ? 'focus' : doctor ? 'doctor' : 'setup-data'}>
-      <a className="skip-link" href="#main">
-        Skip to content
-      </a>
-      {doctor && (
-        <div className="doctor-banner">
-          Doctor view · read-only
-          <Link className="button" to="/">
-            Exit doctor view
-          </Link>
-        </div>
-      )}
-      <header>
-        {focus ? (
-          <>
-            <button
-              onClick={() => {
-                void runtime.exercise.stop();
-                void runtime.evaluation.stop();
-              }}
-            >
-              End session
-            </button>
-            <span>
-              Pose {index + 1} of {total} · Rep {rep}
-            </span>
-          </>
-        ) : (
-          <>
-            <Link to="/">◐ Rehab Hub</Link>
-            {!doctor && (
-              <nav aria-label="Main navigation">
-                {[
-                  ['/', 'Home'],
-                  ['/exercise', 'Exercise'],
-                  ['/evaluate', 'Evaluate'],
-                  ['/history', 'History'],
-                  ['/setup', 'Setup'],
-                  ['/profile', 'Profile'],
-                ].map(([to, label]) => (
-                  <NavLink key={to} to={to}>
+    <ToastProvider suppress={focus}>
+      <div className={`shell shell--${mode} ${mode}`}>
+        <a className="skip-link" href="#main">
+          Skip to content
+        </a>
+        <header className="app-header">
+          {focus ? (
+            <>
+              <Button
+                icon="x"
+                onClick={() => {
+                  void runtime.exercise.stop();
+                  void runtime.evaluation.stop();
+                }}
+              >
+                End session
+              </Button>
+              <span className="app-progress">
+                Pose {index + 1} of {total} · Rep {rep}
+              </span>
+            </>
+          ) : doctor ? (
+            <>
+              <Brand />
+              <span className="doctor-label">
+                <Icon name="doctor" size="1.1em" />
+                Doctor view · read-only
+              </span>
+              <div className="app-tools">
+                <ButtonLink to="/" size="sm" icon="arrow-left">
+                  Exit doctor view
+                </ButtonLink>
+              </div>
+            </>
+          ) : (
+            <>
+              <Brand />
+              <nav className="app-nav" aria-label="Main navigation">
+                {NAV.map(([to, label, icon]) => (
+                  <NavLink key={to} to={to} end={to === '/'}>
+                    <Icon name={icon} />
                     {label}
                   </NavLink>
                 ))}
               </nav>
-            )}
-          </>
-        )}
-        <div className="statuses">
-          <StatusChip>● Glove: Simulator</StatusChip>
-          <StatusChip>● Camera: Simulated hand</StatusChip>
-          {!focus && !doctor && (
-            <Link className="button" to="/doctor">
-              Doctor view
-            </Link>
+            </>
           )}
-        </div>
-      </header>
-      <div id="safety-banner-slot" aria-live="assertive" aria-atomic="true" />
-      <main id="main" tabIndex={-1}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/setup" element={<Setup />} />
-          <Route path="/calibrate" element={<Calibrate />} />
-          <Route path="/exercise" element={<Exercise />} />
-          <Route path="/evaluate" element={<Evaluation />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/history/sessions/:id" element={<SessionReplay />} />
-          <Route
-            path="/history/evaluations/:id"
-            element={<EvaluationDetail />}
-          />
-          <Route path="/doctor" element={<Doctor />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/_dev/hand" element={<DevHand />} />
+          <div className="statuses">
+            <StatusChip>● Glove: Simulator</StatusChip>
+            <StatusChip>● Camera: Simulated hand</StatusChip>
+          </div>
+          {!focus && !doctor && (
+            <div className="app-tools">
+              <span className="app-divider" aria-hidden="true" />
+              <ButtonLink to="/doctor" variant="quiet" size="sm" icon="doctor">
+                <span className="doctor-link__label">Doctor view</span>
+              </ButtonLink>
+              <NavLink
+                to="/profile"
+                className="ds-button ds-icon-button ds-button--quiet ds-button--sm"
+                aria-label="Profile"
+                title="Profile"
+              >
+                <Icon name="user" />
+              </NavLink>
+              <ThemeToggle />
+            </div>
+          )}
+        </header>
+        <div id="safety-banner-slot" aria-live="assertive" aria-atomic="true" />
+        <main id="main" tabIndex={-1}>
+          <PageErrorBoundary resetKey={location.pathname}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/setup" element={<Setup />} />
+              <Route path="/calibrate" element={<Calibrate />} />
+              <Route path="/exercise" element={<Exercise />} />
+              <Route path="/evaluate" element={<Evaluation />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/history/sessions/:id" element={<SessionReplay />} />
+              <Route
+                path="/history/evaluations/:id"
+                element={<EvaluationDetail />}
+              />
+              <Route path="/doctor" element={<Doctor />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/_dev/hand" element={<DevHand />} />
+              <Route
+                path="/_dev/design"
+                element={
+                  <Suspense fallback={null}>
+                    <DesignGallery />
+                  </Suspense>
+                }
+              />
 
-          <Route
-            path="*"
-            element={
-              <section>
-                <h1>Page not found</h1>
-                <Link to="/">Go home</Link>
-              </section>
-            }
-          />
-        </Routes>
-      </main>
-      <Toasts />
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {focus ? `Exercise ${phase.toLowerCase()}. Evaluation ${stage}.` : ''}
+              <Route
+                path="*"
+                element={
+                  <EmptyState
+                    icon="help"
+                    title="Page not found"
+                    action={
+                      <ButtonLink to="/" variant="primary" icon="home">
+                        Go home
+                      </ButtonLink>
+                    }
+                  >
+                    This page does not exist. Your data is safe.
+                  </EmptyState>
+                }
+              />
+            </Routes>
+          </PageErrorBoundary>
+        </main>
+        <Toasts />
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {focus ? `Exercise ${phase.toLowerCase()}. Evaluation ${stage}.` : ''}
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
 export default function App() {

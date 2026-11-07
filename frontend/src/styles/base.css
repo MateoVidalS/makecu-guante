@@ -1,9 +1,19 @@
 @import './tokens.css';
+@import './shell.css';
+
+/*
+ * Global element defaults + the legacy utility classes WP0 introduced (.card, .chip, .actions, .muted,
+ * .button, button.primary). New code should use the primitives in src/design-system instead; these
+ * classes stay so in-flight pages keep working (see docs/design/DESIGN_SYSTEM.md "Migration").
+ */
 * {
   box-sizing: border-box;
 }
 html {
   font-size: var(--root);
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 body {
   margin: 0;
@@ -14,97 +24,197 @@ body {
   font-size: var(--body);
   font-variant-numeric: tabular-nums;
 }
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* ---------- Text ---------- */
+h1,
+h2,
+h3,
+h4 {
+  margin-block: 1.4em 0.5em;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+h1 {
+  font-size: var(--h1);
+  line-height: var(--leading-tight);
+  margin-block: 0 0.4em;
+}
+h2 {
+  font-size: var(--h2);
+  line-height: var(--leading-snug);
+}
+h3 {
+  font-size: var(--h3);
+  line-height: var(--leading-snug);
+}
+p,
+ul,
+ol,
+dl {
+  margin-block: 0 0.75em;
+}
+p {
+  max-width: var(--instruction-max);
+}
+:is(h1, h2, h3, h4, p, ul, ol, dl):first-child {
+  margin-block-start: 0;
+}
+:is(p, ul, ol, dl):last-child {
+  margin-block-end: 0;
+}
+small {
+  font-size: var(--small);
+}
 a {
   color: var(--accent);
-  text-underline-offset: var(--space-4);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
 }
+a:hover {
+  text-decoration-thickness: 2px;
+}
+code,
+kbd,
+pre {
+  font-family: var(--font-mono);
+}
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 var(--space-4);
+  border: var(--control-border) solid var(--border-strong);
+  border-block-end-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.85em;
+  text-align: center;
+}
+hr {
+  margin-block: var(--space-24);
+  border: 0;
+  border-block-start: var(--control-border) solid var(--border);
+}
+
+/* ---------- Form elements (legacy default; prefer design-system Field/Input/Select) ---------- */
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+  color: inherit;
 }
-button,
-.button {
+/* :where() keeps these at zero specificity so any class (design system or page CSS) wins. */
+:where(
+  input:not([type='checkbox'], [type='radio'], [type='range']),
+  select,
+  textarea
+) {
+  min-height: var(--control-md);
+  padding: var(--space-8) var(--space-12);
+  border: var(--control-border) solid var(--border-strong);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  color: var(--text);
+}
+:where(input[type='checkbox'], input[type='radio'], input[type='range']) {
+  accent-color: var(--accent);
+}
+:where(input[type='checkbox'], input[type='radio']) {
+  width: 1.3em;
+  height: 1.3em;
+  margin: 0;
+  vertical-align: middle;
+}
+:where(label:has(> input[type='checkbox'], > input[type='radio'])) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-height: var(--control-md);
+  cursor: pointer;
+}
+
+/* Bare <button> = patient-size secondary button (WP0 default, spec §4 BigButton). */
+:where(button, .button) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-8);
   min-height: var(--button-min-height);
   padding: var(--space-12) var(--space-24);
-  border: var(--control-border) solid var(--accent);
+  border: var(--control-border) solid var(--border-strong);
   border-radius: var(--radius-input);
   background: var(--surface);
   color: var(--accent);
   font-size: var(--button-label);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
   cursor: pointer;
   text-decoration: none;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
 }
-button.primary {
+:where(button:hover:not(:disabled), .button:hover) {
+  background: var(--accent-soft);
+}
+:where(button.primary, .button.primary) {
+  border-color: var(--accent);
   background: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
 }
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
+:where(button.primary:hover:not(:disabled), .button.primary:hover) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
 }
+:where(button.quiet, .button.quiet) {
+  border-color: transparent;
+  background: transparent;
+}
+:where(button:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Focus ---------- */
 :focus-visible {
-  outline: var(--focus-width) solid var(--accent);
+  outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
-h1 {
-  font-size: var(--h1);
-  line-height: 1.15;
+:focus:not(:focus-visible) {
+  outline: none;
 }
-h2 {
-  font-size: var(--h2);
+main:focus {
+  outline: none;
 }
-h3 {
-  font-size: var(--h3);
-}
-p {
-  max-width: var(--instruction-max);
-}
-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-24);
-  padding: var(--space-16) var(--space-32);
-  background: var(--surface);
-  border-bottom: var(--control-border) solid var(--border);
-}
-nav,
-.statuses,
+
+/* ---------- Legacy utility classes ---------- */
+nav:not(.app-nav),
 .actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-16);
 }
-nav a {
-  padding: var(--space-12) var(--space-4);
-}
-nav a[aria-current='page'] {
-  font-weight: bold;
-  text-decoration-thickness: var(--focus-width);
-}
-.statuses {
-  margin-inline-start: auto;
-}
 .chip {
   display: inline-flex;
   align-items: center;
+  align-self: start;
+  justify-self: start;
   gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
+  width: fit-content;
+  min-height: var(--control-sm);
+  padding: var(--space-4) var(--space-12);
   border: var(--control-border) solid var(--border);
   border-radius: var(--radius-pill);
-  background: var(--surface-2);
+  background: var(--surface);
   font-size: var(--small);
-}
-main {
-  max-width: var(--content-max);
-  margin: auto;
-  padding: var(--space-32);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 .card {
   margin-block: var(--space-24);
@@ -113,17 +223,13 @@ main {
   border-radius: var(--radius-card);
   box-shadow: var(--elevation-card);
   background: var(--surface);
+  min-width: 0;
+}
+.card > :is(h2, h3):first-child {
+  font-size: var(--h3);
 }
 .muted {
   color: var(--muted);
-}
-.doctor-banner {
-  padding: var(--space-16) var(--space-32);
-  background: var(--surface-2);
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 .focus main {
   text-align: center;
@@ -133,8 +239,10 @@ main {
 }
 .focus .instruction {
   font-size: var(--display);
+  line-height: 1.08;
   max-width: var(--instruction-max);
   margin-inline: auto;
+  text-wrap: balance;
 }
 .phase {
   font-size: var(--h2);
@@ -155,51 +263,46 @@ pre {
   color: var(--text);
   border-radius: var(--radius-card);
 }
-.skip-link {
-  position: absolute;
-  inset-block-start: var(--space-8);
-  inset-inline-start: var(--space-8);
-  transform: translateY(-200%);
-  background: var(--surface);
-  padding: var(--space-16);
-  z-index: 10;
+details > summary {
+  cursor: pointer;
+  font-weight: var(--weight-bold);
 }
-.skip-link:focus {
-  transform: none;
+table {
+  font-variant-numeric: tabular-nums;
 }
 .sr-only {
   position: absolute;
-  width: var(--control-border);
-  height: var(--control-border);
+  width: 1px;
+  height: 1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
 }
-@media (max-width: 1280px) {
-  header {
-    gap: var(--space-12);
-  }
-  .statuses {
-    margin-inline-start: 0;
-  }
-}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition: none !important;
     scroll-behavior: auto !important;
   }
 }
 @media print {
-  header,
-  nav,
-  button,
-  .skip-link {
-    display: none;
+  .app-header,
+  .skip-link,
+  .ds-toast-region,
+  button {
+    display: none !important;
   }
   main {
     max-width: none;
+    padding: 0;
+  }
+  .card,
+  .ds-card {
+    box-shadow: none;
+    break-inside: avoid;
   }
 }
