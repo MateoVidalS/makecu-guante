@@ -96,7 +96,7 @@ not the mechanical limits of this mounting.
   visual target, camera tracking, assistance labels and voice/captions.
 - [ ] End session and verify release before removal. Do not cause faults on a
   hand to prove safety. Use SimWorld Rigid index for the key demo moment.
-- [ ] Rehearse **Demo recovery → Use simulated glove / camera** and **Use simple
+- [ ] Rehearse **Demo tools → Use simulated glove / camera** and **Use simple
   voice**. Each source change ends the run; start a new run after recovery.
 - [ ] Check History/replay and flagged demo trends, Doctor view, summary fallback,
   JSON/CSV export, and print labels.

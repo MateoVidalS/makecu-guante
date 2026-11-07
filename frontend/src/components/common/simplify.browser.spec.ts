@@ -127,7 +127,7 @@ for (const viewport of [
     await shot('exercise-live');
     await page.getByRole('switch', { name: 'Show camera' }).click();
     await shot('exercise-camera');
-    await page.getByText('Demo recovery', { exact: true }).click();
+    await page.getByText('Demo tools', { exact: true }).click();
     await page
       .getByRole('button', { name: 'Press simulated STOP', exact: true })
       .click();
@@ -137,7 +137,7 @@ for (const viewport of [
       safety.getByRole('button', { name: 'Resume', exact: true }),
     ).toBeFocused();
     await expect(page.locator('.runtime-fallback')).not.toHaveAttribute('open');
-    await page.getByText('Demo recovery', { exact: true }).click();
+    await page.getByText('Demo tools', { exact: true }).click();
     const bannerBox = (await safety.boundingBox())!;
     const menuBox = (await page
       .locator('.runtime-fallback__panel')
@@ -147,7 +147,7 @@ for (const viewport of [
     await page
       .getByRole('button', { name: 'Release simulated STOP', exact: true })
       .click();
-    await page.getByText('Demo recovery', { exact: true }).click();
+    await page.getByText('Demo tools', { exact: true }).click();
     await safety.getByRole('button', { name: 'Resume', exact: true }).click();
     await expect(safety).not.toBeVisible();
     await page
