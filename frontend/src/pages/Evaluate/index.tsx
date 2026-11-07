@@ -33,7 +33,7 @@ interface Point {
 }
 const FINGER_ORDER = GLOVE_FINGERS;
 // Chart geometry (viewBox units). Current is plotted up to 900 mA.
-const CHART = { left: 56, right: 780, top: 32, bottom: 236, maxMa: 900 };
+const CHART = { left: 56, right: 980, top: 24, bottom: 168, maxMa: 900 };
 const px = (pos: number) => CHART.left + pos * (CHART.right - CHART.left);
 const py = (ma: number) =>
   CHART.bottom -
@@ -69,7 +69,7 @@ function SweepChart({ measuringFriction }: { measuringFriction: boolean }) {
     <>
       <svg
         className="hp-chart"
-        viewBox="0 0 800 290"
+        viewBox="0 0 1000 230"
         role="img"
         aria-label="Resistance estimate by finger position"
       >
