@@ -449,3 +449,28 @@ it('rejects mismatched simulator camera ranges before persisting or starting mot
   ).rejects.toThrow('over 100%');
   expect(target).not.toHaveBeenCalled();
 });
+
+it('keeps camera-source frames driving five simulated motors after glove-only fallback', async () => {
+  const { runtime, world, vision, posts } = await harness(true);
+  await runtime.sources.setGlove('sim');
+  expect(runtime.sources.glove).toBe('sim');
+  expect(runtime.sources.vision).toBe('camera');
+  expect(vision.source.kind).toBe('camera');
+  // Camera transport double supplies measured hand motion independently of
+  // runtime's simulated-patient phase commands, as a real camera would.
+  world.setIntent('full_fist', 'ATTEMPT');
+  await runtime.exercise.start(
+    [{ pose: 'full_fist', reps: 1 }],
+    DEFAULT_EXERCISE_SETTINGS,
+  );
+  until(world, () => runtime.exercise.view().phase === 'ASSIST');
+  world.advance(1000);
+  expect(world.firmware.mode).toBe('target');
+  until(world, () => runtime.exercise.view().phase === 'DONE');
+  await runtime.persistence.flush();
+  expect(runtime.sources.vision).toBe('camera');
+  expect(posts.createSession.mock.calls[0][0].is_demo).toBe(true);
+  expect(
+    posts.addAttempt.mock.calls[0][0].result.fingers.filter((f) => f.scored),
+  ).toHaveLength(5);
+});
