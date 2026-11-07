@@ -246,9 +246,9 @@ def placa_guias(n_guias=16, n_anclajes=6):
     return Part.makeCompound(shapes)
 
 
-def placa_resto(n_anclajes=5):
-    """Todo lo que falta imprimir, en una sola placa: módulo, tapa, 5 carretes y
-    los anclajes. Las 16 guías van aparte (ya impresas). Cabe en ~170 x 150 mm."""
+def placa_resto(n_anclajes=0):
+    """Todo lo que falta imprimir, en una sola placa: módulo, tapa y 5 carretes.
+    Las guías y los anclajes ya se imprimieron (placa de 16 + 6). Cabe en ~170 x 135 mm."""
     gap = 8.0
     shapes = []
     m = base(); m.translate(V(-X_BACK, -Y_PINKY, 0)); shapes.append(m)                 # x 0..80,5  y 0..80
@@ -271,5 +271,5 @@ if __name__ in ("__main__", "piezas"):
     export(guia(), "guia_tendon")
     export(guia(anclaje=True), "anclaje_punta")
     export(placa_guias(), "placa_guias_x16_anclajes_x6")
-    export(placa_resto(), "placa_modulo_tapa_carretes_anclajes")
+    export(placa_resto(), "placa_modulo_tapa_carretes")
     print(f"WALL_TOP={WALL_TOP} THREAD_Z={THREAD_Z:.1f} exits={sorted(exit_ys())}")
