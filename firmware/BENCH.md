@@ -50,8 +50,9 @@ servo angles into a patient calibration.
    `stop_released`, still faulted. Confirm target/follow/jog are rejected until
    an explicit release. Verify contact bounce does not re-enable motion.
 7. With the separate 5 V servo supply still connected and a bench fixture only,
-   pull USB while running: verify release starts within 1 s of the last valid
-   message. Observe opening at <=3 ranges/s, then PWM detach 500 ms after open.
+   pull USB while running: verify release starts on the first tick after 1000 ms
+   from the last valid message. Observe opening at <=3 ranges/s, then PWM detach
+   500 ms after open.
    Reconnect, verify a valid new move reattaches. If USB removal powers down the
    ESP32, also record that limitation and repeat by stopping host messages while
    retaining board power to isolate the firmware watchdog.
@@ -87,7 +88,7 @@ to the PR or team's hardware record. Do not mark a row passed without evidence.
 | 4. Calib/target | calib_ok, rate cap, fresh batch | Not run | Pending |
 | 5. Overcurrent/spike | 100 ms +/-5 ms after filtered crossing | Not run | Pending |
 | 6. STOP | press latches, held release refused | Not run | Pending |
-| 7. Watchdog/detach | release starts <=1 s, detach open+500 ms | Not run | Pending |
+| 7. Watchdog/detach | release starts >1000 ms, <=1005 ms, detach open+500 ms | Not run | Pending |
 | 8. INA loss | assistance refused; runtime failure releases | Not run | Pending |
 | 9. Follow/ring | slack goals, segments and colors | Not run | Pending |
 | 10. Latency/tick/heap | p95 <50 ms, max tick <2 ms, stable heap | Not run | Pending |

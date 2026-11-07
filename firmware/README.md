@@ -13,6 +13,7 @@ From this directory:
 uv tool install platformio
 pio pkg install -e esp32dev -e native
 pio test -e native
+pio test -e native-sanitized
 pio run -e esp32dev
 ```
 
@@ -90,6 +91,9 @@ to 60 degrees/second and is allowed only in idle/calibration. Send `release`
 before sending calibration ranges. Receiving the third valid range emits
 `calib_ok`. Starting a new calibration batch invalidates the old batch, requiring
 all three ranges again. Calibration is never stored in NVS.
+Rejected calibration arguments invalidate that finger's existing range in idle.
+After a jog outside a calibrated range, assistance waits for release to unwind
+back into the range, preserving the ramp speed cap on the transition.
 
 ## Safety behavior
 
@@ -116,8 +120,9 @@ all three ranges again. Calibration is never stored in NVS.
   Under TX backpressure, button release notification/re-arming waits for queue
   space; presses still latch immediately. Motion commands cannot clear faults.
 - A valid command refreshes the watchdog, including a command refused by state
-  rules. Invalid JSON/arguments do not. At 1000 ms without a valid command in
-  run/calibration, the board faults and starts release. Idle does not emit
+  rules. Invalid JSON/arguments do not. After strictly more than 1000 ms without
+  a valid command in run/calibration, the board faults and starts release
+  (1005 ms on 5 ms ticks). Idle does not emit
   watchdog events. Timer arithmetic tolerates `millis()` wraparound.
 - Missing INA219 emits `ina_missing` and refuses target/follow with `err state`.
   Jog and release remain available for setup. A runtime sensor read failure
@@ -143,7 +148,8 @@ without an existing backlog. Keep command traffic within the link capacity.
 
 Core storage, line buffers and the TX queue are fixed. ArduinoJson 7 uses an
 8 KiB static arena through its allocator API; no heap allocator is used by the
-codec. LEDC drivers are prepared without connecting PWM to servo pins. Wire,
+codec. The fixed decimal writer also avoids float `printf`/`dtoa` heap paths.
+LEDC drivers are prepared without connecting PWM to servo pins. Wire,
 UART and the ring allocate only during setup. The ring uses Adafruit's pixel
 buffer and a persistent asynchronous RMT driver with static transmission items;
 calling NeoPixel `show()` each frame would allocate on this Arduino core.

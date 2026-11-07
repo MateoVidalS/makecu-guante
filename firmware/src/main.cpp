@@ -70,6 +70,8 @@ void readSerial(uint32_t now) {
     }
     const auto parsed = protocol::parse(input.data(), input.size());
     if (!parsed) {
+      if (parsed.error == ErrorCode::BadArgs && parsed.command.type == CommandType::Calib)
+        safety.handle(parsed.command, now);  // Invalidate a rejected finger range; no keepalive.
       sendError(parsed.type, parsed.error);
       return;
     }

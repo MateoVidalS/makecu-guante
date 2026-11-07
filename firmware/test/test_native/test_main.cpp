@@ -221,6 +221,8 @@ void watchdog_boundary_idle_and_valid_message_refresh() {
   h.safety.tick(2999);
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Run), static_cast<int>(h.safety.state()));
   h.safety.tick(3000);
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Run), static_cast<int>(h.safety.state()));
+  h.safety.tick(3005);
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Fault), static_cast<int>(h.safety.state()));
   TEST_ASSERT_TRUE(h.saw(EventKind::Watchdog));
   Harness j;
@@ -231,6 +233,8 @@ void watchdog_boundary_idle_and_valid_message_refresh() {
   j.safety.tick(1800);
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Calib), static_cast<int>(j.safety.state()));
   j.safety.tick(1900);
+  TEST_ASSERT_FALSE(j.saw(EventKind::Watchdog));
+  j.safety.tick(1905);
   TEST_ASSERT_TRUE(j.saw(EventKind::Watchdog));
 }
 void invalid_messages_do_not_feed_watchdog() {
@@ -243,6 +247,8 @@ void invalid_messages_do_not_feed_watchdog() {
   TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::BadArgs),
                         static_cast<int>(h.safety.handle(bad, 999)));
   h.safety.tick(1000);
+  TEST_ASSERT_FALSE(h.saw(EventKind::Watchdog));
+  h.safety.tick(1005);
   TEST_ASSERT_TRUE(h.saw(EventKind::Watchdog));
 }
 void stop_latches_rejects_moves_and_needs_explicit_release() {
@@ -396,6 +402,8 @@ void timers_survive_millis_wrap() {
   h.advance(995, 0, false);
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Run), static_cast<int>(h.safety.state()));
   h.advance(5, 0, false);
+  TEST_ASSERT_FALSE(h.saw(EventKind::Watchdog));
+  h.advance(5, 0, false);
   TEST_ASSERT_TRUE(h.saw(EventKind::Watchdog));
   Harness c(true, UINT32_MAX - 50);
   c.calibrate();
@@ -486,6 +494,73 @@ void event_backpressure_preserves_safety_reserve() {
   TEST_ASSERT_TRUE(q.enqueue("ina_missing\n", 12));
   TEST_ASSERT_GREATER_OR_EQUAL(2, q.free());
 }
+void rejected_calibration_invalidates_that_finger_without_keepalive() {
+  Harness h;
+  h.calibrate();
+  const char* rejected = "{\"t\":\"calib\",\"i\":1,\"min\":20,\"max\":25}";
+  const auto bad = protocol::parse(rejected, std::strlen(rejected));
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::BadArgs), static_cast<int>(bad.error));
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::BadArgs),
+                        static_cast<int>(h.safety.handle(bad.command, 900)));
+  TEST_ASSERT_FALSE(h.safety.info().calib[1].valid);
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::NoCalib),
+                        static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1],\"v\":1}")));
+}
+void assistance_waits_for_out_of_range_jog_to_unwind() {
+  Harness h;
+  h.calibrate();
+  h.send("{\"t\":\"jog\",\"i\":0,\"deg\":175}");
+  h.advance(3000);
+  TEST_ASSERT_EQUAL_FLOAT(175, h.safety.angle(0));
+  h.send("{\"t\":\"release\"}");
+  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::State),
+                        static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0],\"v\":1}")));
+  h.advance(100);
+  TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0],\"v\":1}")));
+  const float angle = h.safety.angle(0);
+  h.advance(5);
+  TEST_ASSERT_FLOAT_WITHIN(0.001F, angle - 0.65F, h.safety.angle(0));
+}
+void decimal_writer_never_overruns_and_parser_survives_noise() {
+  Telemetry t{UINT32_MAX, {{1, 0.25F, 0}}, 3276, State::Fault, Mode::Target, {{0, 1, 0.5F}}};
+  for (std::size_t capacity = 0; capacity <= 202; ++capacity) {
+    char bytes[204];
+    std::memset(bytes, 'Z', sizeof(bytes));
+    protocol::format(t, bytes + 1, capacity);
+    TEST_ASSERT_EQUAL_CHAR('Z', bytes[0]);
+    TEST_ASSERT_EQUAL_CHAR('Z', bytes[capacity + 1]);
+  }
+  uint32_t seed = 12345;
+  char noise[200];
+  for (int iteration = 0; iteration < 5000; ++iteration) {
+    for (char& byte : noise) {
+      seed ^= seed << 13;
+      seed ^= seed >> 17;
+      seed ^= seed << 5;
+      byte = static_cast<char>(seed);
+    }
+    const auto parsed = protocol::parse(noise, seed % 201);
+    TEST_ASSERT_FALSE(static_cast<bool>(parsed));
+  }
+}
+
+bool sameJson(JsonVariantConst a, JsonVariantConst b) {
+  if (a.is<double>() && b.is<double>())
+    return std::fabs(a.as<double>() - b.as<double>()) < 0.000001;
+  if (a.is<JsonArrayConst>() && b.is<JsonArrayConst>()) {
+    if (a.size() != b.size()) return false;
+    for (std::size_t i = 0; i < a.size(); ++i)
+      if (!sameJson(a[i], b[i])) return false;
+    return true;
+  }
+  if (a.is<JsonObjectConst>() && b.is<JsonObjectConst>()) {
+    if (a.size() != b.size()) return false;
+    for (auto pair : a.as<JsonObjectConst>())
+      if (!sameJson(pair.value(), b[pair.key()])) return false;
+    return true;
+  }
+  return a == b;
+}
 
 // Firmware receives host commands only. Device fixture lines are independently
 // decoded, reconstructed through the firmware encoders, and compared by value.
@@ -530,7 +605,8 @@ void checkDeviceFixture(JsonDocument& input, char* output, std::size_t capacity)
   TEST_ASSERT_GREATER_THAN(0, size);
   JsonDocument formatted;
   TEST_ASSERT_FALSE(deserializeJson(formatted, output));
-  TEST_ASSERT_TRUE(input.as<JsonVariantConst>() == formatted.as<JsonVariantConst>());
+  TEST_ASSERT_TRUE_MESSAGE(sameJson(input.as<JsonVariantConst>(), formatted.as<JsonVariantConst>()),
+                           output);
 }
 void shared_serial_fixtures_match_expected() {
   std::ifstream lines("../contracts/fixtures/serial_lines.txt");
@@ -617,6 +693,9 @@ int main() {
   RUN_TEST(serial_overflow_recovers_and_queue_handles_partial_writes);
   RUN_TEST(ring_segments_colors_and_blink_are_deterministic);
   RUN_TEST(event_backpressure_preserves_safety_reserve);
+  RUN_TEST(rejected_calibration_invalidates_that_finger_without_keepalive);
+  RUN_TEST(assistance_waits_for_out_of_range_jog_to_unwind);
+  RUN_TEST(decimal_writer_never_overruns_and_parser_survives_noise);
   RUN_TEST(shared_serial_fixtures_match_expected);
   return UNITY_END();
 }

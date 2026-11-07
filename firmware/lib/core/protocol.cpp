@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdio>
 #include <cstring>
 #include <new>
 
@@ -146,14 +145,69 @@ bool numeric(JsonVariantConst value, float& out) {
   out = value.as<float>();
   return std::isfinite(out);
 }
-std::size_t finished(int count, char* out, std::size_t capacity) {
-  if (count <= 0 || static_cast<std::size_t>(count) >= capacity ||
-      static_cast<std::size_t>(count) > config::MAX_LINE_BYTES + 1) {
-    if (capacity) out[0] = '\0';
-    return 0;
+// Avoid libc float printf/dtoa: some embedded libc implementations allocate.
+class Writer {
+ public:
+  Writer(char* out, std::size_t capacity) : out_(out), capacity_(capacity) {}
+  void byte(char value) {
+    if (out_ && used_ + 1 < capacity_) out_[used_] = value;
+    ++used_;
   }
-  return static_cast<std::size_t>(count);
-}
+  void text(const char* value) {
+    while (*value) byte(*value++);
+  }
+  void integer(uint32_t value) {
+    char digits[10];
+    unsigned count = 0;
+    do {
+      digits[count++] = static_cast<char>('0' + value % 10);
+      value /= 10;
+    } while (value);
+    while (count) byte(digits[--count]);
+  }
+  void number(float value, bool decimals = true) {
+    const double scale = decimals ? 100.0 : 1.0;
+    const double magnitude = std::fabs(static_cast<double>(value)) * scale;
+    if (!std::isfinite(value) || magnitude > 4294967294.0) {
+      valid_ = false;
+      return;
+    }
+    const auto rounded = static_cast<uint32_t>(magnitude + 0.5);
+    if (value < 0 && rounded) byte('-');
+    if (!decimals) {
+      integer(rounded);
+      return;
+    }
+    integer(rounded / 100);
+    byte('.');
+    byte(static_cast<char>('0' + (rounded / 10) % 10));
+    byte(static_cast<char>('0' + rounded % 10));
+  }
+  void triple(const Triple& values) {
+    byte('[');
+    for (std::size_t i = 0; i < 3; ++i) {
+      if (i) byte(',');
+      number(values[i]);
+    }
+    byte(']');
+  }
+  std::size_t finish() {
+    text("}\n");
+    if (!out_ || !capacity_) return 0;
+    if (!valid_ || used_ >= capacity_ || used_ > config::MAX_LINE_BYTES + 1) {
+      out_[0] = '\0';
+      return 0;
+    }
+    out_[used_] = '\0';
+    return used_;
+  }
+
+ private:
+  char* out_;
+  std::size_t capacity_;
+  std::size_t used_ = 0;
+  bool valid_ = true;
+};
 bool finiteTriple(const Triple& values) {
   return std::all_of(values.begin(), values.end(), [](float f) { return std::isfinite(f); });
 }
@@ -301,8 +355,9 @@ ParseResult parse(const char* line, std::size_t length) {
     if (c.type == CommandType::Target && !numeric(doc["v"], c.v)) return result;
   }
   if (c.type == CommandType::Calib || c.type == CommandType::Jog) {
-    float index = 0;
-    if (!numeric(doc["i"], index) || index < 0 || index > 2 || std::floor(index) != index)
+    if (!doc["i"].is<double>()) return result;
+    const double index = doc["i"].as<double>();
+    if (!std::isfinite(index) || index < 0 || index > 2 || std::floor(index) != index)
       return result;
     c.i = static_cast<int>(index);
   }
@@ -315,57 +370,73 @@ ParseResult parse(const char* line, std::size_t length) {
 }
 
 std::size_t format(const Telemetry& t, char* out, std::size_t capacity) {
-  if (!out || !finiteTriple(t.a) || !finiteTriple(t.tg) || !std::isfinite(t.ma)) return 0;
-  return finished(
-      std::snprintf(out, capacity,
-                    "{\"t\":\"tel\",\"ms\":%lu,\"a\":[%.2f,%.2f,%.2f],\"ma\":%.0f,\"st\":\"%s\","
-                    "\"md\":\"%s\",\"tg\":[%.2f,%.2f,%.2f]}\n",
-                    static_cast<unsigned long>(t.ms), static_cast<double>(t.a[0]),
-                    static_cast<double>(t.a[1]), static_cast<double>(t.a[2]),
-                    static_cast<double>(t.ma), name(t.st), name(t.md), static_cast<double>(t.tg[0]),
-                    static_cast<double>(t.tg[1]), static_cast<double>(t.tg[2])),
-      out, capacity);
+  Writer writer(out, capacity);
+  writer.text("{\"t\":\"tel\",\"ms\":");
+  writer.integer(t.ms);
+  writer.text(",\"a\":");
+  writer.triple(t.a);
+  writer.text(",\"ma\":");
+  writer.number(t.ma, false);
+  writer.text(",\"st\":\"");
+  writer.text(name(t.st));
+  writer.text("\",\"md\":\"");
+  writer.text(name(t.md));
+  writer.text("\",\"tg\":");
+  writer.triple(t.tg);
+  return writer.finish();
 }
 std::size_t format(const Event& e, char* out, std::size_t capacity) {
-  if (!out || !std::isfinite(e.ma)) return 0;
-  if (e.kind == EventKind::Overcurrent)
-    return finished(std::snprintf(out, capacity, "{\"t\":\"evt\",\"e\":\"%s\",\"ma\":%.0f}\n",
-                                  name(e.kind), static_cast<double>(e.ma)),
-                    out, capacity);
-  return finished(std::snprintf(out, capacity, "{\"t\":\"evt\",\"e\":\"%s\"}\n", name(e.kind)), out,
-                  capacity);
+  Writer writer(out, capacity);
+  writer.text("{\"t\":\"evt\",\"e\":\"");
+  writer.text(name(e.kind));
+  writer.byte('"');
+  if (e.kind == EventKind::Overcurrent) {
+    writer.text(",\"ma\":");
+    writer.number(e.ma, false);
+  }
+  return writer.finish();
 }
 std::size_t format(const Info& info, char* out, std::size_t capacity) {
-  if (!out || !std::isfinite(info.limit)) return 0;
-  char ranges[3][40]{};
+  Writer writer(out, capacity);
+  writer.text("{\"t\":\"info\",\"fw\":\"");
+  writer.text(config::FW_VERSION);
+  writer.text("\",\"fingers\":3,\"limit\":");
+  writer.number(info.limit, false);
+  writer.text(",\"calib\":[");
   for (std::size_t i = 0; i < 3; ++i) {
+    if (i) writer.byte(',');
     const auto& c = info.calib[i];
-    if (c.valid && !calib::valid(c.min, c.max)) return 0;
-    if (c.valid)
-      std::snprintf(ranges[i], sizeof(ranges[i]), "[%.2f,%.2f]", static_cast<double>(c.min),
-                    static_cast<double>(c.max));
-    else
-      std::strcpy(ranges[i], "null");
+    if (!c.valid) {
+      writer.text("null");
+      continue;
+    }
+    if (!calib::valid(c.min, c.max)) {
+      if (out && capacity) out[0] = '\0';
+      return 0;
+    }
+    writer.byte('[');
+    writer.number(c.min);
+    writer.byte(',');
+    writer.number(c.max);
+    writer.byte(']');
   }
-  return finished(
-      std::snprintf(
-          out, capacity,
-          "{\"t\":\"info\",\"fw\":\"%s\",\"fingers\":3,\"limit\":%.0f,\"calib\":[%s,%s,%s]}\n",
-          config::FW_VERSION, static_cast<double>(info.limit), ranges[0], ranges[1], ranges[2]),
-      out, capacity);
+  writer.byte(']');
+  return writer.finish();
 }
 std::size_t formatError(const char* command, ErrorCode error, char* out, std::size_t capacity) {
-  if (!out || !command || error == ErrorCode::None) return 0;
-  char safe[24]{};
-  for (std::size_t i = 0; i < sizeof(safe) - 1 && command[i]; ++i) {
+  if (!command || error == ErrorCode::None) return 0;
+  Writer writer(out, capacity);
+  writer.text("{\"t\":\"err\",\"c\":\"");
+  for (std::size_t i = 0; i < 23 && command[i]; ++i) {
     const char c = command[i];
-    safe[i] =
+    writer.byte(
         ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_')
             ? c
-            : '_';
+            : '_');
   }
-  return finished(std::snprintf(out, capacity, "{\"t\":\"err\",\"c\":\"%s\",\"why\":\"%s\"}\n",
-                                safe, name(error)),
-                  out, capacity);
+  writer.text("\",\"why\":\"");
+  writer.text(name(error));
+  writer.byte('"');
+  return writer.finish();
 }
 }  // namespace rehab::protocol

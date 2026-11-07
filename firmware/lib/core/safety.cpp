@@ -76,7 +76,13 @@ void SafetyController::sensorMissing(uint32_t now) {
 
 ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
   // Validate again so callers cannot bypass the wire decoder's checks.
-  if (!protocol::validCommand(c)) return ErrorCode::BadArgs;
+  if (!protocol::validCommand(c)) {
+    if (c.type == CommandType::Calib && state_ == State::Idle && c.i >= 0 && c.i < 3) {
+      calibration_[c.i].valid = false;
+      attached_[c.i] = false;
+    }
+    return ErrorCode::BadArgs;
+  }
   lastMessage_ = now;  // Syntactically valid messages also feed the watchdog when refused.
   if ((state_ == State::Fault || stopHeld_) &&
       (c.type == CommandType::Target || c.type == CommandType::Follow ||
@@ -88,6 +94,14 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
       if (state_ != State::Idle && state_ != State::Run) return ErrorCode::State;
       if (!calibrated()) return ErrorCode::NoCalib;
       if (!sensorAvailable_) return ErrorCode::State;
+      for (std::size_t i = 0; i < 3; ++i) {
+        const auto& range = calibration_[i];
+        // A setup jog may be outside the patient range. Let release unwind it
+        // back into range before target/follow can take over without a jump.
+        if (attached_[i] && (angle(i) < std::min(range.min, range.max) ||
+                             angle(i) > std::max(range.min, range.max)))
+          return ErrorCode::State;
+      }
       startMove(now);
       state_ = State::Run;
       mode_ = c.type == CommandType::Follow ? Mode::Follow : Mode::Target;
@@ -173,7 +187,7 @@ void SafetyController::current(float ma, uint32_t now) {
 }
 void SafetyController::tick(uint32_t now) {
   if ((state_ == State::Run || state_ == State::Calib) &&
-      static_cast<uint32_t>(now - lastMessage_) >= config::WATCHDOG_MS)
+      static_cast<uint32_t>(now - lastMessage_) > config::WATCHDOG_MS)
     fault(EventKind::Watchdog, now);
   // Missed deadlines never create a large catch-up jump.
   const auto elapsed = std::min(static_cast<uint32_t>(now - lastRamp_), config::CONTROL_MS);
