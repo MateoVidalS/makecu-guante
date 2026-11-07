@@ -116,7 +116,7 @@
     break-before: auto;
   }
   .doctor-report .report-page > * + * {
-    margin-block-start: var(--space-16);
+    margin-block-start: var(--space-8);
   }
   .doctor-report h1 {
     font-size: var(--h2);
@@ -138,7 +138,9 @@
     padding-block: var(--space-8);
   }
   .doctor-report .chart-grid {
-    display: block;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8);
   }
   .doctor-report .chart-card {
     display: block;
@@ -183,14 +185,23 @@
   .doctor-report .report-patient h2 {
     font-size: var(--body);
   }
+  .doctor-report .ds-page-header__text {
+    gap: var(--space-4);
+  }
+  .doctor-report .report-glance .effort-bars {
+    gap: var(--space-8);
+  }
+  .doctor-report .report-glance .effort-bars__track {
+    height: var(--space-24);
+  }
   .doctor-report .report-glance .hand-figure {
-    width: 124px !important;
+    width: 112px !important;
   }
   .doctor-report .report-glance .hand-deltas__change {
     display: none;
   }
   .doctor-report .report-glance .hand-deltas {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     max-width: none;
     gap: var(--space-8);
   }
@@ -203,12 +214,16 @@
     grid-column: 1;
   }
   .doctor-report .report-glance .hand-deltas__value {
-    font-size: var(--body);
+    font-size: var(--caption);
   }
   /* The section description carries the shared key; legends stay. */
+  .doctor-report .chart-grid .chart-hint,
   .doctor-report .report-glance .chart-hint,
   .doctor-report .report-glance .calendar-stats {
     display: none;
+  }
+  .doctor-report .chart-grid .chart-card {
+    margin: 0;
   }
   .doctor-report .therapist-summary {
     break-inside: avoid;

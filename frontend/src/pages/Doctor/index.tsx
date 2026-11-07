@@ -82,16 +82,17 @@ export default function Doctor() {
         >
           <div className="report-glance__grid">
             <HandRangeMap
-              {...handFromOverview(overview.data)}
+              {...handFromOverview(overview.data, sessions.data)}
               {...firstAndLast(sessions.data)}
               mirror={profile.data?.affected_hand === 'left'}
               loading={overview.isPending || sessions.isPending}
               compact
             />
             <LatestEffortBars
+              timeline={sessions.data}
               rom={rom.data ?? []}
               assist={assist.data ?? []}
-              loading={rom.isPending || assist.isPending}
+              loading={rom.isPending || assist.isPending || sessions.isPending}
             />
             <ResistanceDumbbells
               points={resistance.data ?? []}
@@ -207,9 +208,10 @@ export default function Doctor() {
       >
         <DataStatus error={assist.error || rom.error}>
           <EffortSmallMultiples
+            timeline={sessions.data}
             rom={rom.data ?? []}
             assist={assist.data ?? []}
-            loading={assist.isPending || rom.isPending}
+            loading={assist.isPending || rom.isPending || sessions.isPending}
           />
         </DataStatus>
       </DataSection>

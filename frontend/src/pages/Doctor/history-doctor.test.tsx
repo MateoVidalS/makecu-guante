@@ -126,6 +126,83 @@ describe('record review pages', () => {
     );
     expect(within(table).getAllByRole('row')).toHaveLength(9);
   });
+  it('labels missing latest ring/pinky effort instead of showing an older session', async () => {
+    const latest = mockState.sessions.reduce((a, b) =>
+      a.started_at > b.started_at ? a : b,
+    );
+    latest.summary!.per_finger = latest.summary!.per_finger.filter(
+      (f) => f.finger !== 'ring' && f.finger !== 'pinky',
+    );
+    mount('/history');
+    const bars = await screen.findByRole('img', {
+      name: /Latest session per finger/,
+    });
+    expect(bars).toHaveAccessibleName(/Ring Not measured.*Pinky Not measured/);
+    expect(within(bars).getAllByText('Not measured')).toHaveLength(2);
+    for (const finger of ['Ring', 'Pinky']) {
+      const row = within(bars).getByText(finger).closest('.effort-bars__row')!;
+      expect(row.querySelectorAll('.effort-bars__seg')).toHaveLength(0);
+    }
+  });
+  it.each(['absent', 'null'] as const)(
+    'keeps legacy %s replay fingers visible as not measured',
+    async (kind) => {
+      const attempt = mockState.details[8].attempts[0];
+      attempt.fingers = attempt.fingers.flatMap((f) => {
+        if (f.finger !== 'ring' && f.finger !== 'pinky') return [f];
+        return kind === 'absent'
+          ? []
+          : [
+              {
+                ...f,
+                scored: false,
+                target: null,
+                active_max: null,
+                assist_needed: null,
+                final: null,
+              },
+            ];
+      });
+      const trace = mockState.traces[attempt.id];
+      for (const finger of ['ring', 'pinky'] as const) {
+        trace.closure[finger] = trace.t.map(() => null);
+        // F5 returns empty servo arrays for legacy fingers.
+        trace.servo[finger] = [];
+      }
+      mount('/history/sessions/8');
+      const table = await screen.findByRole('table', {
+        name: 'Per-finger estimates from the camera',
+      });
+      for (const finger of ['Ring', 'Pinky']) {
+        const row = within(table).getByRole('row', {
+          name: new RegExp(finger),
+        });
+        expect(row).toHaveTextContent('Not measured');
+        expect(row).not.toHaveTextContent('0%');
+      }
+      expect(
+        screen.getByRole('img', { name: /Hand map for this attempt/ }),
+      ).toHaveAccessibleName(/Ring: Not measured.*Pinky: Not measured/);
+    },
+  );
+  it('shows unmeasured evaluation fingers without claiming complete sweeps', async () => {
+    const evaluation = mockState.evaluations[0];
+    evaluation.fingers = evaluation.fingers.filter(
+      (f) => f.finger !== 'ring' && f.finger !== 'pinky',
+    );
+    evaluation.sweeps = evaluation.sweeps.filter(
+      (f) => f.finger !== 'ring' && f.finger !== 'pinky',
+    );
+    mount(`/history/evaluations/${evaluation.id}`);
+    const table = await screen.findByRole('table', {
+      name: /Mean excess current over 20–90% commanded position/,
+    });
+    for (const finger of ['Ring', 'Pinky']) {
+      const row = within(table).getByRole('row', { name: new RegExp(finger) });
+      expect(row).toHaveTextContent('Not measured');
+      expect(row).not.toHaveTextContent('Complete');
+    }
+  });
   it('loads and saves the optional profile', async () => {
     mount('/profile');
     const name = await screen.findByLabelText('Pseudonym');
@@ -252,10 +329,16 @@ describe('record review pages', () => {
     );
     expect(screen.getByRole('status')).toHaveTextContent('Loading chart');
     rerender(<FingerTrend finger="thumb" points={[]} />);
-    expect(screen.getByText('No measurements recorded yet.')).toBeVisible();
+    expect(
+      screen.getByText('Not measured. No measurements recorded yet.'),
+    ).toBeVisible();
     rerender(<ReplayChart />);
-    expect(screen.getByText('No measurements recorded yet.')).toBeVisible();
+    expect(
+      screen.getByText('Not measured. No measurements recorded yet.'),
+    ).toBeVisible();
     rerender(<SweepCurves finger="thumb" sweeps={[]} />);
-    expect(screen.getByText('No measurements recorded yet.')).toBeVisible();
+    expect(
+      screen.getByText('Not measured. No measurements recorded yet.'),
+    ).toBeVisible();
   });
 });

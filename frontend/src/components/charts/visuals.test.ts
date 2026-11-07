@@ -10,6 +10,7 @@ import type {
   HistoryOverview,
   ResistancePoint,
   RomPoint,
+  Session,
 } from '../../contracts/api';
 import type { FingerAttemptMetrics } from '../../contracts/engine';
 import evaluations from '../../../../contracts/fixtures/evaluations.json';
@@ -51,6 +52,20 @@ describe('hand map values', () => {
     expect(first.thumb?.own).toBe(0.35);
     expect(last.middle?.own).toBe(0.67);
     expect(handFromOverview(undefined)).toEqual({ first: {}, last: {} });
+  });
+  it('compares the actual first and latest session, not the first measured ring/pinky values', () => {
+    const history = structuredClone(sessions) as Session[];
+    const first = history.reduce((a, b) =>
+      a.started_at < b.started_at ? a : b,
+    );
+    first.summary!.per_finger = first.summary!.per_finger.filter(
+      (f) => f.finger !== 'ring' && f.finger !== 'pinky',
+    );
+    const hand = handFromOverview(overview as HistoryOverview, history);
+    expect(hand.first.ring).toBeUndefined();
+    expect(hand.first.pinky).toBeUndefined();
+    expect(hand.last.ring?.own).toBeTypeOf('number');
+    expect(hand.last.pinky?.own).toBeTypeOf('number');
   });
   it('keeps scored glove fingers and caps the glove part at 100%', () => {
     const fingers: FingerAttemptMetrics[] = [
@@ -114,6 +129,30 @@ describe('effort series', () => {
     );
     expect(effortTakeaway(rows, 'thumb')).toBe('Thumb: 35% → 63% on your own');
   });
+  it('aligns ring and pinky to legacy and unmeasured sessions without borrowing older values', () => {
+    const points = rom as RomPoint[];
+    const legacyId = points[0].session_id;
+    for (const finger of ['ring', 'pinky'] as const) {
+      const mixed = points.filter(
+        (p) => p.session_id !== legacyId || p.finger !== finger,
+      );
+      const timeline = [
+        { id: 99, started_at: '2027-01-01T00:00:00Z', is_demo: false },
+      ];
+      const rows = effortSeries(mixed, [], finger, timeline);
+      expect(rows[0]).toMatchObject({
+        sessionId: legacyId,
+        own: null,
+        glove: null,
+      });
+      expect(rows[1].own).toBeTypeOf('number');
+      expect(rows.at(-1)).toMatchObject({
+        sessionId: 99,
+        own: null,
+        glove: null,
+      });
+    }
+  });
   it('keeps sessions with only one measurement as gaps, not zeros', () => {
     const rows = effortSeries(
       [],
@@ -131,7 +170,7 @@ describe('effort series', () => {
     );
     expect(rows[0].own).toBeNull();
     expect(rows[0].glove).toBe(0.4);
-    expect(effortTakeaway(rows, 'index')).toBe('Index: no sessions yet');
+    expect(effortTakeaway(rows, 'index')).toBe('Index: not measured');
   });
 });
 
@@ -183,6 +222,21 @@ describe('resistance dumbbells', () => {
     expect(resistanceTakeaway(rows, Date.parse('2026-10-16T00:00:00Z'))).toBe(
       'Fast sweeps met more resistance than slow ones',
     );
+  });
+  it('keeps all five fingers for mixed and subset evaluations', () => {
+    const legacy = (resistance as ResistancePoint[]).filter(
+      (p) => p.finger !== 'ring' && p.finger !== 'pinky',
+    );
+    const rows = dumbbellRows(legacy);
+    expect(rows.ring).toHaveLength(3);
+    expect(rows.pinky).toHaveLength(3);
+    rows.ring.forEach((r) =>
+      expect(r).toMatchObject({ slow: null, fast: null, gap: null }),
+    );
+    expect(resistanceTakeaway(rows)).toBe(
+      'Speed-dependent resistance eased on measured fingers',
+    );
+    expect(dumbbellDomain(Object.values(rows).flat())).toEqual([50, 350]);
   });
   it('fills the gap from slow and fast when dependence is missing', () => {
     const rows = dumbbellRows([

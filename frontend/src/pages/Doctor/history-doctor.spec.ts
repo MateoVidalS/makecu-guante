@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 const routes = [
   '/history',
@@ -15,6 +16,10 @@ const routes = [
 test('all data views render without console errors across patient sizes and themes', async ({
   page,
 }, info) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() =>
+    localStorage.setItem('rehab-hub.theme', 'system'),
+  );
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (msg) => {
@@ -39,9 +44,15 @@ test('all data views render without console errors across patient sizes and them
           ),
         ).toBe(true);
         await page.screenshot({
-          path: info.outputPath(
-            `${route.replace(/[^a-z0-9]/gi, '-')}-${colorScheme}-${viewport.width}.png`,
-          ),
+          path:
+            process.env.REHAB_F8_SCREENSHOTS === '1'
+              ? resolve(
+                  '../docs/design/screenshots/five-fingers-data',
+                  `${route.replace(/[^a-z0-9]/gi, '-')}-${colorScheme}-${viewport.width}.png`,
+                )
+              : info.outputPath(
+                  `${route.replace(/[^a-z0-9]/gi, '-')}-${colorScheme}-${viewport.width}.png`,
+                ),
           fullPage: true,
         });
       }
@@ -61,7 +72,7 @@ test('history exposes fixture improvement and chart data with demo labels', asyn
   await expect(table).toContainText('37%');
   await expect(table).toContainText('65%');
   await expect(table).toContainText('Demo data');
-  await expect(page.locator('.recharts-line-curve')).toHaveCount(3);
+  await expect(page.locator('.recharts-line-curve')).toHaveCount(5);
 });
 test('profile persists, therapist summary generates, and exports contain demo flags', async ({
   page,
@@ -95,7 +106,7 @@ test('doctor report exports A4 and Letter with white pages and indivisible chart
   page,
 }, info) => {
   await page.goto('/doctor');
-  await expect(page.locator('.recharts-line-curve')).toHaveCount(3);
+  await expect(page.locator('.recharts-line-curve')).toHaveCount(5);
   await expect(page.locator('.report-glance .viz-card')).toHaveCount(4);
   await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
   await expect(page.locator('.doctor-banner')).toBeHidden();
@@ -113,7 +124,7 @@ test('doctor report exports A4 and Letter with white pages and indivisible chart
       await page.locator('.recharts-surface').evaluateAll((charts) =>
         charts.every((el) => {
           const rect = el.getBoundingClientRect();
-          return rect.width > 600 && rect.width < 720 && rect.height > 100;
+          return rect.width > 280 && rect.width < 360 && rect.height > 100;
         }),
       ),
     ).toBe(true);
@@ -132,4 +143,69 @@ test('doctor report exports A4 and Letter with white pages and indivisible chart
         cards.every((el) => getComputedStyle(el).breakInside === 'avoid'),
       ),
   ).toBe(true);
+});
+
+test('mixed three/five-finger history keeps missing measurements visible', async ({
+  page,
+}, info) => {
+  await page.goto('/profile');
+  await expect(page.getByLabel('Pseudonym')).toBeVisible();
+  await page.evaluate(async () => {
+    const modulePath = '/src/mocks/handlers.ts';
+    const { mockState } = await import(/* @vite-ignore */ modulePath);
+    const legacy = (finger: string) => finger !== 'ring' && finger !== 'pinky';
+    // Keep later sessions at five fingers, and remove only historical measurements.
+    for (const session of mockState.sessions) {
+      if (session.id <= 2) {
+        session.summary.per_finger = session.summary.per_finger.filter(
+          (f: { finger: string }) => legacy(f.finger),
+        );
+      }
+    }
+    const attempt = mockState.details[1].attempts[0];
+    attempt.fingers = attempt.fingers.filter((f: { finger: string }) =>
+      legacy(f.finger),
+    );
+    const trace = mockState.traces[attempt.id];
+    for (const finger of ['ring', 'pinky']) {
+      trace.closure[finger] = trace.t.map(() => null);
+      trace.servo[finger] = [];
+    }
+  });
+  await page.getByRole('link', { name: 'History', exact: true }).click();
+  await expect(
+    page.getByRole('img', { name: /Hand map, first session/ }),
+  ).toHaveAccessibleName(
+    /Ring Not measured then, 67% now.*Pinky Not measured then, 67% now/,
+  );
+  const screenshot = async (name: string) =>
+    page.screenshot({
+      path:
+        process.env.REHAB_F8_SCREENSHOTS === '1'
+          ? resolve(
+              '../docs/design/screenshots/five-fingers-data',
+              `${name}.png`,
+            )
+          : info.outputPath(`${name}.png`),
+      fullPage: true,
+    });
+  await screenshot('mixed-history-light-1280');
+  await page.getByRole('tab', { name: 'Assistance', exact: true }).click();
+  const ring = page.getByRole('article', { name: /^Ring:/ });
+  await ring.getByText('Show as table', { exact: true }).click();
+  await expect(ring.getByRole('table')).toContainText('Not measured');
+  await expect(ring.getByRole('table')).toContainText('67%');
+  await page.getByRole('tab', { name: 'Sessions', exact: true }).click();
+  await page.getByRole('link', { name: 'Oct 15, 2026', exact: true }).click();
+  const table = page.getByRole('table', {
+    name: 'Per-finger estimates from the camera',
+  });
+  await expect(table.getByRole('row', { name: /Ring/ })).toContainText(
+    'Not measured',
+  );
+  await expect(table.getByRole('row', { name: /Pinky/ })).toContainText(
+    'Not measured',
+  );
+  await expect(page.getByText('Loading chart…')).toHaveCount(0);
+  await screenshot('legacy-replay-light-1280');
 });
