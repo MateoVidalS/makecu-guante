@@ -35,6 +35,7 @@ export interface GloveEvent {
   t: number;
   e: GloveEventKind;
   ma?: number;
+  reset_reason?: number; // esp_reset_reason() on boot; 9 = brown-out
 }
 export interface GloveInfo {
   fw: string;
@@ -91,7 +92,7 @@ export type SerialMessage =
       md: FirmwareMode;
       tg: Quint;
     }
-  | { t: 'evt'; e: GloveEventKind; ma?: number }
+  | { t: 'evt'; e: GloveEventKind; ma?: number; reset_reason?: number }
   | ({ t: 'info' } & GloveInfo)
   | {
       t: 'err';

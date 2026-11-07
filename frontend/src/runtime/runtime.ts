@@ -1,3 +1,4 @@
+import { validateCameraRange } from './calibrationValidation';
 import { createStore } from 'zustand/vanilla';
 import * as api from '../api/client';
 import type {
@@ -154,6 +155,11 @@ export class RehabRuntime implements Runtime {
     },
     save: async (value) => {
       this.requireIdle();
+      validateCameraRange(
+        value.camera,
+        this.sources.vision === 'sim',
+        this.options.vision.latest,
+      );
       const saved = await api.createCalibration(value);
       this.requireIdle();
       this.setCalibration(saved);
@@ -222,6 +228,11 @@ export class RehabRuntime implements Runtime {
       throw new Error('Calibrate the glove and camera first');
     if (this.options.glove.client.connection() !== 'connected')
       throw new Error('Connect the glove first');
+    validateCameraRange(
+      this.calibration.current.camera,
+      this.sources.vision === 'sim',
+      this.options.vision.latest,
+    );
     return structuredClone(this.calibration.current);
   }
   exercise: Runtime['exercise'] = {
@@ -308,12 +319,19 @@ export class RehabRuntime implements Runtime {
         throw new Error('Connect the glove first');
       const calibration = {
         friction: {},
-        current_limit_ma: this.calibration.current?.current_limit_ma ?? 900,
+        current_limit_ma: this.calibration.current?.current_limit_ma ?? 1500,
       };
       if (!fingers.length) throw new Error('Choose at least one finger');
-      this.friction = frictionRun({
+      const friction = frictionRun({
         timestamp: () => new Date().toISOString(),
       });
+      // Validate before creating a pending promise or acquiring the runtime.
+      const out = friction.start(
+        { slow_v: 0.2, fast_v: 1, limit_ma: 600, fingers },
+        calibration,
+        this.clock(),
+      );
+      this.friction = friction;
       this.evaluationLimit = 600;
       this.mode = 'friction';
       const result = new Promise<Partial<Record<GloveFinger, FrictionCurve[]>>>(
@@ -321,13 +339,7 @@ export class RehabRuntime implements Runtime {
           this.finishFriction = resolve;
         },
       );
-      this.handle(
-        this.friction.start(
-          { slow_v: 0.2, fast_v: 1, limit_ma: 600, fingers },
-          calibration,
-          this.clock(),
-        ),
-      );
+      this.handle(out);
       return result;
     },
   };
@@ -420,6 +432,18 @@ export class RehabRuntime implements Runtime {
     }
   }
   private handle(out: Output) {
+    // A failed empty-glove measurement cannot supply a baseline. Unlike patient
+    // evaluation, stop the whole friction run on the first safety event.
+    if (
+      this.mode === 'friction' &&
+      out.events.some((e) => e.kind === 'safety')
+    ) {
+      const stopped = this.friction!.stop(this.clock());
+      out = {
+        commands: stopped.commands.length ? stopped.commands : out.commands,
+        events: [...out.events, ...stopped.events],
+      };
+    }
     for (const command of out.commands) {
       const client = this.options.glove.client;
       if (command.t === 'target' || command.t === 'follow') {
