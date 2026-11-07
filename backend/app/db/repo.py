@@ -342,7 +342,9 @@ def history_assist(db: DbSession) -> list[c.AssistPoint]:
             m.Session.started_at,
             m.AttemptFinger.finger,
             func.avg(m.AttemptFinger.assist_needed),
-            func.avg(case((m.AttemptFinger.assist_needed > 0, 1.0), else_=0.0)),
+            func.avg(
+                case((m.Attempt.assisted & (m.AttemptFinger.assist_needed > 0), 1.0), else_=0.0)
+            ),
             m.Session.is_demo,
         )
         .join(m.Attempt, m.Attempt.session_id == m.Session.id)
@@ -400,16 +402,17 @@ def history_resistance(db: DbSession) -> list[c.ResistancePoint]:
 
 def history_overview(db: DbSession) -> c.HistoryOverview:
     rom = history_rom(db)
-    assist = {(p.session_id, p.finger): p.assist_needed_mean for p in history_assist(db)}
+    assist = history_assist(db)
     per_finger = []
     for finger in FINGERS:
         points = [p for p in rom if p.finger == finger]
+        assistance = [p for p in assist if p.finger == finger]
         per_finger.append(
             c.OverviewFinger(
                 finger=finger,
                 active_max_first=points[0].active_max_mean if points else None,
                 active_max_last=points[-1].active_max_mean if points else None,
-                assist_needed_last=assist.get((points[-1].session_id, finger)) if points else None,
+                assist_needed_last=assistance[-1].assist_needed_mean if assistance else None,
             )
         )
     cutoff = (datetime.now(timezone.utc) - timedelta(days=6)).date().isoformat()
