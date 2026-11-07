@@ -204,7 +204,7 @@ describe('camera overlay', () => {
     const view = render(<CameraOverlay source={source} compact />);
     expect(screen.getByText('Hand not visible')).toBeDefined();
     act(() => source.emit(visible()));
-    expect(screen.getByText('Sees hand 95%')).toBeDefined();
+    expect(screen.getByText('Hand detected 95%')).toBeDefined();
     expect(screen.getAllByText('50%')).toHaveLength(5);
     act(() => source.emit({ ...visible(), closure: null }));
     expect(screen.getAllByText('—')).toHaveLength(5);
@@ -273,6 +273,6 @@ describe('camera overlay', () => {
     });
     expect(screen.getByText('Simulated camera')).toBeDefined();
     act(() => sim.emit(visible()));
-    expect(screen.getByText('Sees hand 95%')).toBeDefined();
+    expect(screen.getByText('Hand detected 95%')).toBeDefined();
   });
 });

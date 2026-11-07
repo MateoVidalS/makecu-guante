@@ -107,16 +107,20 @@ function HandScene({
   });
   return (
     <>
-      <ambientLight intensity={1.1} />
+      {/* Soft, even studio light: a matte hand with gentle form shading. */}
+      {/* Light is neutral white in both themes; only the material follows the theme. */}
+      <hemisphereLight
+        args={[tokens.light.surface, tokens.light.surface3, 1.5]}
+      />
       <directionalLight
         position={[-3, 5, 6]}
-        intensity={2.2}
+        intensity={1.6}
         color={tokens.light.surface}
       />
       <directionalLight
-        position={[4, 1, -2]}
-        intensity={1}
-        color={palette.hand}
+        position={[4, 2, 3]}
+        intensity={0.5}
+        color={tokens.light.surface}
       />
       <directionalLight
         ref={rim}
@@ -186,13 +190,12 @@ export function VirtualHand(props: VirtualHandProps) {
       </HandFallback>
       {!visible && (
         <p className="hand-message" role="status">
-          <span aria-hidden="true">▣ </span>I can't see your hand — move it into
-          view
+          I can't see your hand. Move it into view.
         </p>
       )}
       <div className="hand-legend" aria-hidden="true">
-        <span>◌ Target</span>
-        <span>● Your hand</span>
+        <span className="hand-legend__target">Target</span>
+        <span className="hand-legend__actual">You</span>
       </div>
     </div>
   );

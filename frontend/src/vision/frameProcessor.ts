@@ -3,7 +3,6 @@ import type { CameraCalibration } from '../contracts/calibration';
 import type { Handedness, VisionFrame } from '../contracts/vision';
 import { ConfidenceTracker, selectHand } from './confidence';
 import {
-  FINGERS,
   fingerMap,
   jointAngles,
   normalizeClosure,
@@ -11,6 +10,7 @@ import {
   validLandmarks,
   type Landmark,
 } from './flex';
+import { JointFilter } from './jointFilter';
 import { OneEuroFilter } from './oneEuro';
 
 export type HandResult = Pick<
@@ -34,12 +34,12 @@ export function missingFrame(t: number): VisionFrame {
 export class FrameProcessor {
   calibration: CameraCalibration | null = null;
   readonly confidence = new ConfidenceTracker();
-  private filters = fingerMap(() => new OneEuroFilter());
+  private jointFilter = new JointFilter();
   private pinchFilter = new OneEuroFilter();
   private hand: Handedness | null = null;
   private lastSeen = -Infinity;
   reset() {
-    FINGERS.forEach((finger) => this.filters[finger].reset());
+    this.jointFilter.reset();
     this.pinchFilter.reset();
     this.confidence.reset();
     this.lastSeen = -Infinity;
@@ -64,24 +64,19 @@ export class FrameProcessor {
     if (!selected || !validLandmarks(world) || !validLandmarks(image))
       return this.missing(t);
     try {
-      const joints = jointAngles(world),
+      const raw = jointAngles(world),
         pinch = pinchRatio(image);
       if (this.hand !== selected.handedness || t - this.lastSeen >= 200)
         this.reset();
       this.hand = selected.handedness;
       this.lastSeen = t;
-      const rawFlexSum = fingerMap((finger) => {
-        const { mcp, pip, dip } = joints[finger];
-        const raw = mcp + pip + dip;
-        const filtered = this.filters[finger].filter(raw, t);
-        // Keep rendered joints and normalized closure on the same filtered timeline.
-        const scale = raw > 1e-6 ? filtered / raw : 0;
-        joints[finger] =
-          raw > 1e-6
-            ? { mcp: mcp * scale, pip: pip * scale, dip: dip * scale }
-            : { mcp: filtered, pip: 0, dip: 0 };
-        return filtered;
-      });
+      // Every joint is filtered, so the rendered hand and the normalized closure
+      // share one smoothed timeline (closure derives from the same angles).
+      const joints = this.jointFilter.filter(raw, t);
+      const rawFlexSum = fingerMap(
+        (finger) =>
+          joints[finger].mcp + joints[finger].pip + joints[finger].dip,
+      );
       const c = this.calibration;
       return {
         t,

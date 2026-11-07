@@ -1,6 +1,14 @@
 .coach-panel {
   min-width: 0;
+  text-align: start;
 }
 .coach-panel .coach-caption {
   margin: 0;
+}
+/* Inside the live popover the popover is the frame; no card within a card. */
+.coach-popover .coach-panel {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: none;
 }

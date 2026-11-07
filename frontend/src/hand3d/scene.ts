@@ -12,6 +12,11 @@ import { createHandRig, FINGERS, HAND_PROPORTIONS } from './rig';
 import type { Handedness } from '../contracts/vision';
 export type HandTheme = typeof tokens.light | typeof tokens.dark;
 export type FingerState = 'idle' | 'active' | 'assist' | 'reached';
+/** The target is a quiet hint, not a second hand. */
+export const GHOST_OPACITY = 0.22;
+export const OUTLINE_RATIO = 1.1;
+/** How far an active glove finger leans towards its state colour. */
+export const STATE_TINT = 0.4;
 
 export function createHandScene(handedness: Handedness, palette: HandTheme) {
   const actual = createHandRig(handedness),
@@ -28,7 +33,7 @@ export function createHandScene(handedness: Handedness, palette: HandTheme) {
   const ghost = new MeshLambertMaterial({
     color: palette.target,
     transparent: true,
-    opacity: 0.35,
+    opacity: GHOST_OPACITY,
     depthWrite: false,
   });
   // A back-face shell frames the ghost even when the solid hand overlaps it.
@@ -36,7 +41,7 @@ export function createHandScene(handedness: Handedness, palette: HandTheme) {
     color: palette.target,
     side: BackSide,
     transparent: true,
-    opacity: 0.55,
+    opacity: GHOST_OPACITY * OUTLINE_RATIO,
     depthWrite: false,
   });
   const materials = [palm, ...fingers, ghost, outline];
