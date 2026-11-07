@@ -14,6 +14,7 @@ import { fallbackPhrase } from './fallbackCoach';
 import { TranscriptBatcher } from './transcript';
 import { dispatchTool } from './tools';
 import { decodePCM, encodePCM } from './audio';
+import { fingerName } from './fingerNames';
 
 const token: VoiceToken = {
   token: 'auth_tokens/test',
@@ -114,6 +115,45 @@ it('announces resistance without a network call', () => {
   );
   expect(s.deps.token).not.toHaveBeenCalled();
   s.controller.dispose();
+});
+it.each([
+  ['thumb', 'thumb'],
+  ['index', 'index'],
+  ['middle', 'middle'],
+  ['ring', 'ring'],
+  ['pinky', 'little finger'],
+] as const)(
+  'names %s consistently in local and Live safety phrases',
+  (finger, name) => {
+    expect(fingerName(finger)).toBe(name);
+    const s = setup();
+    s.controller.setMode('off');
+    const event = { kind: 'resistance', finger, ma: 950 } as const;
+    const phrase = `Stopping. I felt resistance in your ${name}.`;
+    s.emit(event);
+    expect(s.deps.local.speak).toHaveBeenCalledWith(
+      phrase,
+      expect.any(Function),
+    );
+    expect(eventCue(event, s.runtime.exercise.view())).toEqual({
+      text: `[safety] ${phrase} Already announced locally. The runtime paused; check if they are OK.`,
+      speak: false,
+    });
+    expect(
+      safetyPhrase({ kind: 'safety', source: 'overcurrent', finger, ma: 950 }),
+    ).toBe(phrase);
+    s.controller.dispose();
+  },
+);
+it('does not guess a finger when overcurrent attribution is unavailable', () => {
+  expect(
+    safetyPhrase({
+      kind: 'safety',
+      source: 'overcurrent',
+      finger: null,
+      ma: 1500,
+    }),
+  ).toBe('Stopping. I felt resistance.');
 });
 it('gives greeting, cues, tool round trips, interruption and batched transcripts', async () => {
   const s = setup();
