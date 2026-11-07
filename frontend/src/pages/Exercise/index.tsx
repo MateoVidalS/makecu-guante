@@ -1,3 +1,15 @@
+import {
+  Button,
+  ButtonLink,
+  Card,
+  Stack,
+  Inline,
+  PageHeader,
+  Checkbox,
+  Input,
+  Pill,
+  Switch,
+} from '../../design-system';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useStore } from 'zustand';
@@ -86,7 +98,7 @@ const Hand = memo(function Hand() {
         actual={actual}
         state={state}
         pose={pose.id}
-        zoom={compact ? 42.5 : 85}
+        zoom={compact ? 60 : 85}
         handedness={
           runtime.calibration.current?.camera.affected_hand ?? 'right'
         }
@@ -104,13 +116,12 @@ const CoachArea = memo(function CoachArea() {
             (voice.mode === 'off' ? 'Voice off' : 'Your coach is here.')}
         </p>
         <div className="actions coach-quick-controls">
-          <BigButton
-            onClick={() => voice.setMuted(!voice.muted)}
+          <Switch
+            label="Mic on"
+            checked={voice.mode === 'live' && !voice.muted}
             disabled={voice.mode !== 'live'}
-            aria-pressed={voice.mode === 'live' && !voice.muted}
-          >
-            Mic {voice.mode === 'live' && !voice.muted ? 'on' : 'off'}
-          </BigButton>
+            onCheckedChange={(on) => voice.setMuted(!on)}
+          />
           <details
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
@@ -174,12 +185,8 @@ function Summary({ onAgain }: { onAgain: () => void }) {
         <BigButton variant="primary" onClick={onAgain}>
           Practice again
         </BigButton>
-        <Link className="button" to="/history">
-          See progress
-        </Link>
-        <Link className="button" to="/">
-          Home
-        </Link>
+        <ButtonLink to="/history">See progress</ButtonLink>
+        <ButtonLink to="/">Home</ButtonLink>
       </div>
     </>
   );
@@ -206,7 +213,8 @@ export default function Exercise() {
     [confirm, setConfirm] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
-    [planning, setPlanning] = useState(false);
+    [planning, setPlanning] = useState(false),
+    [preset, setPreset] = useState('glides');
   const live = phase !== 'DONE';
   const index = useExerciseView((v) => v.index);
   const next = plan.flatMap((p) =>
@@ -285,98 +293,99 @@ export default function Exercise() {
   }
   if (!live && summary && !planning)
     return (
-      <section className="live-stack">
+      <Stack as="section" gap={24}>
         <Summary onAgain={() => setPlanning(true)} />
-      </section>
+      </Stack>
     );
   if (!live)
     return (
-      <section className="live-stack">
-        <h1>Your practice</h1>
-        <p>Choose a comfortable pace.</p>
-        <div className="actions">
-          <BigButton onClick={() => setPlan(DEFAULT_PLAN)}>
-            Tendon glides
-          </BigButton>
-          <BigButton onClick={() => setPlan(PINCH_PLAN)}>
-            Pinch practice
-          </BigButton>
-          <BigButton
-            onClick={() =>
-              setPlan(DEFAULT_PLAN.map((p) => ({ ...p, reps: 1 })))
-            }
-          >
-            Short session
-          </BigButton>
-        </div>
-        <div className="card">
-          {Object.values(POSES).map((p) => (
-            <div key={p.id} className="actions">
-              <label>
-                <input
-                  type="checkbox"
+      <Stack as="section" gap={24}>
+        <PageHeader title="Your practice" lead="Choose a comfortable pace." />
+        <Inline>
+          {[
+            { id: 'glides', label: 'Tendon glides', plan: DEFAULT_PLAN },
+            { id: 'pinch', label: 'Pinch practice', plan: PINCH_PLAN },
+            {
+              id: 'short',
+              label: 'Short session',
+              plan: DEFAULT_PLAN.map((p) => ({ ...p, reps: 1 })),
+            },
+          ].map((p) => (
+            <Pill
+              key={p.id}
+              selected={preset === p.id}
+              onClick={() => {
+                setPreset(p.id);
+                setPlan(p.plan);
+              }}
+            >
+              {p.label}
+            </Pill>
+          ))}
+        </Inline>
+        <Card>
+          <Stack gap={12}>
+            {Object.values(POSES).map((p) => (
+              <div key={p.id} className="plan-row">
+                <Checkbox
+                  label={p.name}
                   checked={plan.some((i) => i.pose === p.id)}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    setPreset('custom');
                     setPlan(
                       e.target.checked
                         ? [...plan, { pose: p.id as PoseId, reps: 3 }]
                         : plan.filter((i) => i.pose !== p.id),
-                    )
-                  }
+                    );
+                  }}
                 />
-                {p.name}
-              </label>
-              {plan.some((i) => i.pose === p.id) && (
-                <label>
-                  Repetitions for {p.name}
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={plan.find((i) => i.pose === p.id)!.reps}
-                    onChange={(e) =>
-                      setPlan(
-                        plan.map((i) =>
-                          i.pose === p.id
-                            ? { ...i, reps: Number(e.target.value) }
-                            : i,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-              )}
-            </div>
-          ))}
-        </div>
-        <label>
-          <input
-            type="checkbox"
-            checked={!settings.assist_enabled}
-            onChange={(e) =>
-              setSettings({ ...settings, assist_enabled: !e.target.checked })
-            }
-          />
-          Observation only (no glove help)
-        </label>
+                <Input
+                  label={`Repetitions for ${p.name}`}
+                  hideLabel
+                  type="number"
+                  min={1}
+                  max={10}
+                  disabled={!plan.some((i) => i.pose === p.id)}
+                  value={plan.find((i) => i.pose === p.id)?.reps ?? ''}
+                  onChange={(e) => {
+                    setPreset('custom');
+                    setPlan(
+                      plan.map((i) =>
+                        i.pose === p.id
+                          ? { ...i, reps: Number(e.target.value) }
+                          : i,
+                      ),
+                    );
+                  }}
+                />
+              </div>
+            ))}
+          </Stack>
+        </Card>
+        <Checkbox
+          label="Observation only (no glove help)"
+          checked={!settings.assist_enabled}
+          onChange={(e) =>
+            setSettings({ ...settings, assist_enabled: !e.target.checked })
+          }
+        />
         <details>
           <summary>Advanced settings</summary>
           {Object.entries(settings)
             .filter(([k]) => k !== 'assist_enabled')
             .map(([key, value]) => (
-              <label key={key}>
-                {key.replaceAll('_', ' ')}
-                <input
-                  type="number"
-                  min={key === 'tolerance' ? 0.01 : 0.1}
-                  max={key === 'assist_speed' || key === 'tolerance' ? 1 : 60}
-                  step={0.1}
-                  value={Number(value)}
-                  onChange={(e) =>
-                    setSettings({ ...settings, [key]: Number(e.target.value) })
-                  }
-                />
-              </label>
+              <Input
+                key={key}
+                label={key.replaceAll('_', ' ')}
+                type="number"
+                min={key === 'tolerance' ? 0.01 : 0.1}
+                max={key === 'assist_speed' || key === 'tolerance' ? 1 : 60}
+                step={0.1}
+                value={Number(value)}
+                onChange={(e) =>
+                  setSettings({ ...settings, [key]: Number(e.target.value) })
+                }
+              />
             ))}
         </details>
         {!runtime.calibration.current && (
@@ -389,7 +398,8 @@ export default function Exercise() {
           <Link to="/setup">Connect your glove</Link>
         )}
         {error && <p role="alert">{error}</p>}
-        <BigButton
+        <Button
+          size="lg"
           variant="primary"
           disabled={
             busy ||
@@ -406,18 +416,38 @@ export default function Exercise() {
           onClick={() => void start()}
         >
           Start practice
-        </BigButton>
-      </section>
+        </Button>
+      </Stack>
     );
   return (
     <section
-      className={`live-stack ${paused ? 'practice-paused' : ''}`}
+      className={`exercise-live ${paused ? 'practice-paused' : ''}`}
       key={location.key}
     >
       <div className="live-layout">
         <div className="live-hero">
           <Hand />
           <h1 className="instruction">{instruction}</h1>
+          <Inline justify="center" gap={12} className="practice-actions">
+            <Button
+              size="lg"
+              icon={paused ? 'play' : 'pause'}
+              variant={paused ? 'primary' : 'secondary'}
+              onClick={() =>
+                paused ? runtime.exercise.resume() : runtime.exercise.pause()
+              }
+            >
+              {paused ? 'Resume' : 'Pause'}
+            </Button>
+            <Button
+              size="lg"
+              variant="quiet"
+              iconAfter="arrow-right"
+              onClick={runtime.exercise.skip}
+            >
+              Skip pose
+            </Button>
+          </Inline>
           {hint && <p className="pose-hint">{hint}</p>}
           {(phase === 'REST' || phase === 'RELEASE') && (
             <p>
@@ -427,18 +457,6 @@ export default function Exercise() {
         </div>
         <LiveDetails />
       </div>
-      <div className="actions">
-        <BigButton
-          onClick={() =>
-            paused ? runtime.exercise.resume() : runtime.exercise.pause()
-          }
-        >
-          {paused ? 'Resume' : 'Pause'}
-        </BigButton>
-        <BigButton onClick={runtime.exercise.skip}>Skip pose</BigButton>
-        <BigButton onClick={() => setConfirm(true)}>End practice</BigButton>
-      </div>
-      <p className="muted shortcut-help">Space: pause · S: skip · Esc: end</p>
       <AttemptResultToast />
       {confirm && (
         <ConfirmDialog

@@ -4,7 +4,6 @@ import {
   useState,
   type ButtonHTMLAttributes,
   type ReactNode,
-  type CSSProperties,
 } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from 'zustand';
@@ -19,6 +18,21 @@ import type {
 } from '../../contracts/engine';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import type { PoseDef } from '../../contracts/poses';
+import {
+  Button,
+  Card,
+  StatusChip as DSStatusChip,
+  ProgressRing,
+  Icon,
+  Meter,
+  Banner,
+  Toast,
+  Stepper as DSStepper,
+  EmptyState as DSEmptyState,
+  ConfirmDialog as DSConfirmDialog,
+  KpiTile,
+  Grid,
+} from '../../design-system';
 import './live.css';
 export const percent = (v: number | null | undefined) =>
   v == null ? '—' : `${Math.round(v * 100)}%`;
@@ -32,9 +46,9 @@ export function BigButton({
   variant?: 'primary' | 'secondary' | 'quiet';
 }) {
   return (
-    <button className={`${variant} ${className}`} {...props}>
+    <Button size="md" variant={variant} className={className} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }
 export function StatusChip({ children }: { children: ReactNode }) {
@@ -49,35 +63,42 @@ export function GloveChip() {
   const label =
     connection !== 'connected'
       ? 'Not connected'
-      : state === 'fault' || phase === 'PAUSED'
+      : state === 'fault'
         ? 'Stopped'
-        : mode === 'target' || phase === 'ASSIST'
-          ? 'Helping'
-          : 'Ready';
+        : phase === 'PAUSED'
+          ? 'Paused'
+          : mode === 'target' || phase === 'ASSIST'
+            ? 'Helping'
+            : 'Ready';
+  const tone =
+    label === 'Stopped'
+      ? 'danger'
+      : label === 'Paused'
+        ? 'neutral'
+        : label === 'Helping'
+          ? 'assist'
+          : label === 'Ready'
+            ? 'reached'
+            : 'off';
   return (
-    <StatusChip>
-      <span
-        aria-hidden="true"
-        style={{
-          color:
-            label === 'Stopped'
-              ? 'var(--danger)'
-              : label === 'Helping'
-                ? 'var(--assist)'
-                : 'var(--text)',
-        }}
-      >
-        ●
-      </span>{' '}
-      Glove: {label}
-      {client.kind === 'sim' && ' · Simulator'}
-    </StatusChip>
+    <DSStatusChip
+      icon="glove"
+      label="Glove"
+      value={label}
+      tone={tone}
+      detail={client.kind === 'sim' ? 'Simulator' : undefined}
+    />
   );
 }
 export function CameraChip() {
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
   return (
-    <StatusChip>◉ Camera: {seen ? 'Sees hand' : "Can't see hand"}</StatusChip>
+    <DSStatusChip
+      icon="camera"
+      label="Camera"
+      value={seen ? 'Sees hand' : "Can't see hand"}
+      tone={seen ? 'reached' : 'caution'}
+    />
   );
 }
 export const phaseLabels: Record<ExercisePhase, string> = {
@@ -103,17 +124,25 @@ export function PhaseRing({
   waiting?: boolean;
 }) {
   const progress = duration ? Math.min(1, elapsed / duration) : 0;
+  const label = waiting ? 'Show me your hand' : phaseLabels[phase];
   return (
-    <div
-      className={`phase-ring phase-${phase.toLowerCase()}`}
-      style={{ '--progress': `${progress * 360}deg` } as CSSProperties}
-    >
-      <span aria-hidden="true">
-        {waiting ? '◉' : phase === 'PAUSED' ? 'Ⅱ' : '◔'}
-      </span>
-      <strong aria-live="polite">
-        {waiting ? 'Show me your hand' : phaseLabels[phase]}
-      </strong>
+    <div className="phase-ring" aria-live="polite">
+      <ProgressRing
+        value={waiting ? undefined : progress}
+        label={label}
+        tone={
+          phase === 'PAUSED'
+            ? 'neutral'
+            : phase.startsWith('ASSIST')
+              ? 'assist'
+              : phase === 'HOLD'
+                ? 'reached'
+                : 'active'
+        }
+      >
+        <Icon name={phase === 'PAUSED' ? 'pause' : 'hand'} />
+      </ProgressRing>
+      <strong>{label}</strong>
     </div>
   );
 }
@@ -131,54 +160,32 @@ export function FingerBars({
     <div className="finger-bars" aria-label="Finger movement estimates">
       {GLOVE_FINGERS.map((f) => {
         const value = closure?.[f],
-          active = activeMax[f],
-          target = pose.closure[f];
+          active = activeMax[f];
         return (
-          <div className="finger" key={f}>
-            <strong>{percent(value)}</strong>
-            <div
-              className="finger-track"
-              role={value == null ? 'img' : 'meter'}
-              aria-label={`${title(f)} movement`}
-              aria-valuemin={value == null ? undefined : 0}
-              aria-valuemax={value == null ? undefined : 110}
-              aria-valuenow={
-                value == null ? undefined : Math.round(value * 100)
-              }
-            >
-              <div
-                className="finger-fill"
-                style={{
-                  height: percent(Math.min(1, value ?? 0)),
-                  background: assisting ? 'var(--assist)' : 'var(--active)',
-                }}
-              />
-              {assisting && active != null && (
-                <div
-                  className="finger-fill"
-                  style={{
-                    height: percent(Math.min(1, active)),
-                    background: 'var(--active)',
-                  }}
-                />
-              )}
-              {target != null && (
-                <span
-                  className="target-mark"
-                  style={{ bottom: percent(target) }}
-                  title={`Target ${percent(target)}`}
-                />
-              )}
-              {active != null && (
-                <span
-                  className="active-mark"
-                  style={{ bottom: percent(active) }}
-                  title={`On your own ${percent(active)}`}
-                />
-              )}
-            </div>
-            <span>{title(f)}</span>
-          </div>
+          <Meter
+            key={f}
+            label={title(f)}
+            value={value ?? 0}
+            valueText={percent(value)}
+            tone={assisting ? 'assist' : 'active'}
+            target={pose.closure[f] ?? undefined}
+            segments={
+              assisting && active != null
+                ? [
+                    {
+                      value: Math.min(active, value ?? 0),
+                      tone: 'active',
+                      label: 'On your own',
+                    },
+                    {
+                      value: Math.max(0, (value ?? 0) - active),
+                      tone: 'assist',
+                      label: 'Glove helped',
+                    },
+                  ]
+                : undefined
+            }
+          />
         );
       })}
     </div>
@@ -233,31 +240,33 @@ export function SafetyBanner() {
   );
   if (!event) return null;
   return (
-    <section className="safety-banner" role="alert" aria-label="Safety stop">
-      <strong>
-        ⚠ {releasing ? 'Releasing the glove…' : safetyCopy[event.source]}
-      </strong>
-      <button
-        ref={resume}
-        disabled={releasing}
-        onClick={() => {
-          setReleasing(true);
-          runtime.exercise.resume();
-        }}
-      >
-        Resume
-      </button>
-      <details>
-        <summary>What happened?</summary>
+    <Banner
+      tone="safety"
+      title={releasing ? 'Releasing the glove…' : safetyCopy[event.source]}
+      action={
+        <Button
+          ref={resume}
+          size="lg"
+          disabled={releasing}
+          onClick={() => {
+            setReleasing(true);
+            runtime.exercise.resume();
+          }}
+        >
+          Resume
+        </Button>
+      }
+      details={
         <p>
           {event.source.replaceAll('_', ' ')}
           {event.finger ? ` · ${event.finger}` : ''}
-          {event.ma != null ? ` · ${event.ma} mA` : ''}
+          {event.ma != null ? ` · ${Math.round(event.ma)} mA` : ''}
         </p>
-      </details>
-    </section>
+      }
+    />
   );
 }
+
 export function AttemptToast({ result }: { result: AttemptResult | null }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -267,54 +276,50 @@ export function AttemptToast({ result }: { result: AttemptResult | null }) {
   }, [result]);
   if (!result || !visible) return null;
   return (
-    <div className="attempt-toast" role="status">
-      {result.fingers
+    <Toast
+      className="attempt-toast"
+      tone={result.assisted ? 'assist' : 'reached'}
+      title={result.fingers
         .filter((f) => f.scored)
-        .map((f) => (
-          <span key={f.finger}>
-            {title(f.finger)} {percent(f.active_max)} on your own · glove helped{' '}
-            {percent(f.assist_needed)}{' '}
-          </span>
-        ))}
-      {result.time_to_position_s != null && (
-        <span>Reached in {result.time_to_position_s.toFixed(1)} seconds</span>
-      )}
-    </div>
+        .map((f) => `${title(f.finger)} ${percent(f.active_max)} on your own`)
+        .join(' · ')}
+      description={
+        result.assisted
+          ? 'The glove helped with the rest.'
+          : 'You did that on your own.'
+      }
+    />
   );
 }
 export function SessionSummaryCard({ summary }: { summary: SessionSummary }) {
   return (
-    <section className="card">
-      <h2>Session complete</h2>
+    <Card title="Session complete">
       <p>
         {summary.attempts} attempts · {summary.reached_active} on your own ·{' '}
         {summary.assisted} with help
       </p>
-      <div className="summary-fingers">
+      <Grid columns={3}>
         {summary.per_finger.map((f) => {
           const previous = summary.previous?.per_finger.find(
             (p) => p.finger === f.finger,
           )?.active_max_mean;
           const delta =
             f.active_max_mean != null && previous != null
-              ? f.active_max_mean - previous
-              : null;
+              ? Math.round((f.active_max_mean - previous) * 100)
+              : undefined;
           return (
-            <div key={f.finger}>
-              <h3>{title(f.finger)}</h3>
-              <strong>{percent(f.active_max_mean)}</strong>
-              {delta != null && (
-                <p className="muted">
-                  {delta >= 0 ? '▲ +' : '▼ '}
-                  {Math.round(delta * 100)}% vs last time
-                </p>
-              )}
-            </div>
+            <KpiTile
+              key={f.finger}
+              label={title(f.finger)}
+              value={percent(f.active_max_mean)}
+              delta={delta}
+              deltaLabel="vs last time"
+            />
           );
         })}
-      </div>
+      </Grid>
       <p className="muted">Estimates of movement on your own.</p>
-    </section>
+    </Card>
   );
 }
 export function Stepper({
@@ -329,19 +334,17 @@ export function Stepper({
   onStep: (step: number) => void;
 }) {
   return (
-    <ol className="stepper" aria-label="Calibration steps">
-      {labels.map((label, i) => (
-        <li key={label} aria-current={step === i ? 'step' : undefined}>
-          <button disabled={disabled || i > step} onClick={() => onStep(i)}>
-            {i < step ? '✓' : i + 1} {label}
-          </button>
-        </li>
-      ))}
-    </ol>
+    <DSStepper
+      label="Calibration steps"
+      steps={labels.map((label, i) => ({ id: String(i), label }))}
+      current={String(step)}
+      completed={labels.flatMap((_, i) => (i < step ? [String(i)] : []))}
+      onSelect={disabled ? undefined : (id) => onStep(Number(id))}
+    />
   );
 }
 export function EmptyState({ children }: { children: ReactNode }) {
-  return <div className="card">{children}</div>;
+  return <DSEmptyState title="Ready when you are">{children}</DSEmptyState>;
 }
 export function showToast(message: string, error = false) {
   window.dispatchEvent(
@@ -390,56 +393,25 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const previousFocus = useRef(document.activeElement as HTMLElement);
-  useEffect(() => {
-    const prior = previousFocus.current;
-    if (dialog.current?.showModal) dialog.current.showModal();
-    else dialog.current?.setAttribute('open', '');
-    return () => prior?.focus();
-  }, []);
   return (
-    <dialog
-      className="confirm-dialog"
-      ref={dialog}
-      aria-labelledby="confirm-heading"
-      onCancel={(e) => {
-        e.preventDefault();
-        onCancel();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Tab') {
-          const buttons = dialog.current!.querySelectorAll('button');
-          if (e.shiftKey && document.activeElement === buttons[0]) {
-            e.preventDefault();
-            buttons[buttons.length - 1].focus();
-          } else if (
-            !e.shiftKey &&
-            document.activeElement === buttons[buttons.length - 1]
-          ) {
-            e.preventDefault();
-            buttons[0].focus();
-          }
-        }
-      }}
-    >
-      <h2 id="confirm-heading">{heading}</h2>
-      {children}
-      <div className="actions">
-        <BigButton autoFocus onClick={onCancel}>
-          Keep practicing
-        </BigButton>
-        <BigButton onClick={onConfirm}>End session</BigButton>
-      </div>
-    </dialog>
+    <DSConfirmDialog
+      open
+      title={heading}
+      description={children}
+      confirmLabel="End session"
+      cancelLabel="Keep practicing"
+      onConfirm={onConfirm}
+      onCancel={onCancel}
+      size="lg"
+    />
   );
 }
 export function BrowserSupportBanner() {
   return 'serial' in navigator ? null : (
-    <aside className="card">
+    <Banner tone="info" title="Connect with Chrome or Edge">
       Use Chrome or Edge to connect the glove.{' '}
       <Link to="/setup">Use simulator</Link> to practice here.
-    </aside>
+    </Banner>
   );
 }
 /** Page unmount and browser departure always request a runtime stop. */

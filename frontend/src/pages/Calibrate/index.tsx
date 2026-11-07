@@ -1,5 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import {
+  Banner,
+  ButtonLink,
+  Card,
+  Stack,
+  Inline,
+  PageHeader,
+  Select,
+  Input,
+  Slider,
+  Checkbox,
+  Icon,
+  ProgressRing,
+} from '../../design-system';
 import { useRuntime } from '../../runtime';
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision } from '../../vision';
@@ -221,18 +234,20 @@ export default function Calibrate() {
   }
   if (saved)
     return (
-      <section>
+      <Stack as="section">
         <h1>Your range is saved</h1>
         <p>You're ready to practice.</p>
-        <Link className="button" to="/exercise">
+        <ButtonLink variant="primary" to="/exercise">
           Start practice
-        </Link>
-      </section>
+        </ButtonLink>
+      </Stack>
     );
   return (
-    <section className="live-stack">
-      <h1>Find your comfortable range</h1>
-      <p>Your progress stays here if you leave.</p>
+    <Stack as="section" gap={24}>
+      <PageHeader
+        title="Find your comfortable range"
+        lead="Your progress stays here if you leave."
+      />
       <Stepper
         labels={['Glove range', 'Camera range', 'Glove friction', 'Review']}
         step={draft.step}
@@ -243,26 +258,29 @@ export default function Calibrate() {
           update({ step });
         }}
       />
-      <aside className="safety-strip">
-        Keep the hand relaxed. Press STOP or say 'stop' anytime.
-      </aside>
+      <Banner
+        tone="warning"
+        title="Keep the hand relaxed. Press STOP anytime."
+        action={
+          <BigButton
+            onClick={() => {
+              cancel.current();
+              client.release();
+              void runtime.evaluation.stop();
+            }}
+          >
+            Release glove now
+          </BigButton>
+        }
+      />
       {error && <p role="alert">{error}</p>}
-      <BigButton
-        onClick={() => {
-          cancel.current();
-          client.release();
-          void runtime.evaluation.stop();
-        }}
-      >
-        Release glove now
-      </BigButton>
       {draft.step === 0 && (
-        <section className="card live-stack">
+        <Card className="live-stack">
           <h2>Step 1 · Glove range: {title(finger)}</h2>
           <p>Hand relaxed. Stop if it hurts.</p>
           <p>Move gently. Find a comfortable range without pain.</p>
           <p>
-            Servo angle: {draft.angle}° · Current: {current} mA
+            Servo angle: {draft.angle}° · Current: {Math.round(current)} mA
           </p>
           {current > 400 && (
             <p role="alert">
@@ -276,20 +294,15 @@ export default function Calibrate() {
                 {Math.abs(n)}°
               </BigButton>
             ))}
-            <BigButton onClick={() => client.release()}>
-              Release glove
-            </BigButton>
           </div>
-          <label>
-            Servo angle
-            <input
-              type="range"
-              min={5}
-              max={175}
-              value={draft.angle}
-              onChange={(e) => jog(Number(e.target.value))}
-            />
-          </label>
+          <Slider
+            label="Servo angle"
+            min={5}
+            max={175}
+            value={draft.angle}
+            onValueChange={jog}
+            format={(v) => `${v}°`}
+          />
           <p>Thread just tight, finger fully open.</p>
           <BigButton onClick={() => setRange('min_deg')}>
             Set open{range?.min_deg != null ? ` ✓ ${range.min_deg}°` : ''}
@@ -308,7 +321,13 @@ export default function Calibrate() {
                   update({ finger: i, angle: 90 });
                 }}
               >
-                {title(f)} {validRange(draft.servo[f]) ? '✓' : '○'}
+                <Icon name={validRange(draft.servo[f]) ? 'check' : 'info'} />{' '}
+                {title(f)} ·{' '}
+                {validRange(draft.servo[f])
+                  ? 'Set'
+                  : i === draft.finger
+                    ? 'Editing'
+                    : 'Not set'}
               </BigButton>
             ))}
           </div>
@@ -321,15 +340,18 @@ export default function Calibrate() {
           >
             Next finger
           </BigButton>
-          <BigButton
-            variant="primary"
-            disabled={
-              busy || !GLOVE_FINGERS.every((f) => validRange(draft.servo[f]))
-            }
-            onClick={() => void action(sendRanges)}
-          >
-            Send glove ranges
-          </BigButton>
+          <Inline justify="between">
+            <ButtonLink to="/setup">Back</ButtonLink>
+            <BigButton
+              variant="primary"
+              disabled={
+                busy || !GLOVE_FINGERS.every((f) => validRange(draft.servo[f]))
+              }
+              onClick={() => void action(sendRanges)}
+            >
+              Send glove ranges
+            </BigButton>
+          </Inline>
           {ack && (
             <BigButton onClick={() => update({ step: 1 })}>
               Continue to camera range
@@ -338,10 +360,10 @@ export default function Calibrate() {
           {client.kind !== 'sim' && (
             <p>Wait for the glove to confirm its ranges.</p>
           )}
-        </section>
+        </Card>
       )}
       {draft.step === 1 && (
-        <section className="card live-stack">
+        <Card className="live-stack">
           <h2>Step 2 · Camera range</h2>
           {vision.source.kind === 'sim' && runtime.calibration.current && (
             <>
@@ -362,38 +384,33 @@ export default function Calibrate() {
             </>
           )}
 
-          <label>
-            Affected hand
-            <select
-              value={draft.hand}
-              disabled={capture}
-              onChange={(e) =>
-                update({
-                  hand: e.target.value as 'left' | 'right',
-                  open: null,
-                  closed: null,
-                  pinch: null,
-                })
-              }
-            >
-              <option value="right">Right</option>
-              <option value="left">Left</option>
-            </select>
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={mirror}
-              onChange={(e) => update({ mirror: e.target.checked })}
-            />
-            Mirror preview
-          </label>
+          <Select
+            label="Affected hand"
+            value={draft.hand}
+            disabled={capture}
+            onChange={(e) =>
+              update({
+                hand: e.target.value as 'left' | 'right',
+                open: null,
+                closed: null,
+                pinch: null,
+              })
+            }
+          >
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+          </Select>
+          <Checkbox
+            label="Mirror preview"
+            checked={mirror}
+            onChange={(e) => update({ mirror: e.target.checked })}
+          />
           <CameraOverlay mirrored={mirror} />
           <p>Keep your hand still for two seconds.</p>
           {capture && (
             <div role="status">
               {progress === 0 ? 'Get into position…' : 'Hold still…'}
-              <progress max={100} value={progress} />
+              <ProgressRing value={progress / 100} label="Hold still" />
             </div>
           )}
           <BigButton disabled={capture} onClick={() => captureRange('open')}>
@@ -435,44 +452,63 @@ export default function Calibrate() {
           <BigButton disabled={!capture} onClick={() => cancel.current()}>
             Cancel capture and release
           </BigButton>
-          <BigButton
-            variant="primary"
-            disabled={capture || !draft.open || !draft.closed || !draft.pinch}
-            onClick={() => {
-              client.release();
-              update({ step: 2 });
-            }}
-          >
-            Continue to friction
-          </BigButton>
-        </section>
+          <Inline justify="between">
+            <BigButton
+              disabled={busy || capture}
+              onClick={() => {
+                client.release();
+                update({ step: 0 });
+              }}
+            >
+              Back
+            </BigButton>
+            <BigButton
+              variant="primary"
+              disabled={capture || !draft.open || !draft.closed || !draft.pinch}
+              onClick={() => {
+                client.release();
+                update({ step: 2 });
+              }}
+            >
+              Continue to friction
+            </BigButton>
+          </Inline>
+        </Card>
       )}
       {draft.step === 2 && (
-        <section className="card live-stack">
+        <Card className="live-stack">
           <h2>Step 3 · Glove friction</h2>
           <p>Take the glove off. Let it hang freely.</p>
-          <label>
-            <input
-              type="checkbox"
-              checked={offHand}
-              disabled={busy}
-              onChange={(e) => setOffHand(e.target.checked)}
-            />
-            The glove is off the hand
-          </label>
-          <BigButton
-            variant="primary"
-            disabled={!offHand || busy}
-            onClick={() =>
-              void action(async () => {
-                const friction =
-                  await runtime.evaluation.runFriction(GLOVE_FINGERS);
-                if (mounted.current) update({ friction, step: 3 });
-              })
-            }
-          >
-            {busy ? 'Measuring friction…' : 'Measure glove friction'}
-          </BigButton>
+          <Checkbox
+            label="The glove is off the hand"
+            checked={offHand}
+            disabled={busy}
+            onChange={(e) => setOffHand(e.target.checked)}
+          />
+          <Inline justify="between">
+            <BigButton
+              disabled={busy || capture}
+              onClick={() => {
+                client.release();
+                update({ step: 1 });
+              }}
+            >
+              Back
+            </BigButton>
+            <BigButton
+              variant="primary"
+              disabled={!offHand || busy}
+              onClick={() =>
+                void action(async () => {
+                  const friction =
+                    await runtime.evaluation.runFriction(GLOVE_FINGERS);
+                  if (mounted.current) update({ friction, step: 3 });
+                })
+              }
+            >
+              {busy ? 'Measuring friction…' : 'Measure glove friction'}
+            </BigButton>
+          </Inline>
           <BigButton
             disabled={busy}
             onClick={() => update({ friction: {}, step: 3 })}
@@ -480,10 +516,10 @@ export default function Calibrate() {
             Skip friction measurement
           </BigButton>
           <p>Skipping uses estimates without glove friction correction.</p>
-        </section>
+        </Card>
       )}
       {draft.step === 3 && (
-        <section className="card live-stack">
+        <Card className="live-stack">
           <h2>Review your range</h2>
           <table>
             <caption>Glove angles</caption>
@@ -542,25 +578,34 @@ export default function Calibrate() {
           <BigButton onClick={() => update({ step: 2 })}>
             Redo friction
           </BigButton>
-          <label>
-            Current limit (mA)
-            <input
-              type="number"
-              min={100}
-              max={1400}
-              value={draft.limit}
-              onChange={(e) => update({ limit: Number(e.target.value) })}
-            />
-          </label>
-          <BigButton
-            variant="primary"
-            disabled={busy}
-            onClick={() => void action(save)}
-          >
-            Save calibration
-          </BigButton>
-        </section>
+          <Input
+            label="Current limit (mA)"
+            type="number"
+            min={100}
+            max={1400}
+            value={draft.limit}
+            onChange={(e) => update({ limit: Number(e.target.value) })}
+          />
+          <Inline justify="between">
+            <BigButton
+              disabled={busy || capture}
+              onClick={() => {
+                client.release();
+                update({ step: 2 });
+              }}
+            >
+              Back
+            </BigButton>
+            <BigButton
+              variant="primary"
+              disabled={busy}
+              onClick={() => void action(save)}
+            >
+              Save calibration
+            </BigButton>
+          </Inline>
+        </Card>
       )}
-    </section>
+    </Stack>
   );
 }
