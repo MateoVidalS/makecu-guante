@@ -68,6 +68,8 @@ Choose the actual port locally; reset the board after opening the monitor to see
 CRLF is accepted. Finger order is always thumb, index, middle. A partial or
 oversized line never feeds the watchdog. Unknown fields are ignored. Malformed
 JSON, non-finite numbers and invalid arguments cannot command motion.
+The bounded decoder accepts up to eight nesting levels. Deeper JSON is rejected
+with `bad_json`. SDK diagnostic logs are disabled to keep UART output non-blocking.
 
 Use the app's keepalive, or send a valid `ping` every 300 ms during bench motion.
 A manual monitor without keepalives is expected to trigger the watchdog after

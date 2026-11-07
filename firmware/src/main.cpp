@@ -1,5 +1,7 @@
 #include <Arduino.h>
+#include <esp_log.h>
 
+#include <algorithm>
 #include <cassert>
 
 #include "hal_current.h"
@@ -122,6 +124,8 @@ void controlTick(uint32_t now) {
 }  // namespace
 
 void setup() {
+  // SDK diagnostic printf must not block the control task or interleave JSON.
+  esp_log_level_set("*", ESP_LOG_NONE);
   // Every driver allocation and buffer reservation happens before control starts.
   Serial.setRxBufferSize(1024);
   Serial.setTxBufferSize(1024);
