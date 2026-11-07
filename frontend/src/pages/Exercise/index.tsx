@@ -39,6 +39,7 @@ import { AttemptFeedback } from '../../components/metrics';
 import type { AttemptResult } from '../../contracts/engine';
 import { liveFingerState } from './fingerState';
 import { LiveFingerMeters } from './LiveFingerMeters';
+import { GloveMotors } from './GloveMotors';
 import { SessionRecap, useSessionAttempts } from './SessionRecap';
 import {
   practicePlan,
@@ -234,6 +235,7 @@ function LiveDetails() {
         activeMax={view.activeMax}
         assisting={view.assisting}
       />
+      <GloveMotors />
       <div className="live-tools">
         <CoachArea />
       </div>

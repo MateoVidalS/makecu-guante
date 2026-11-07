@@ -64,7 +64,9 @@ export default function Setup() {
       setError(
         /comes in WP[23]/.test(message)
           ? 'Hardware connection is unavailable in this preview. Use the simulator.'
-          : message,
+          : /No port selected|requestPort|NotFoundError/i.test(message)
+            ? "No glove was selected. If the glove isn't here, choose Simulate glove: the camera still tracks your real hand and the app shows which motor would help."
+            : message,
       );
     } finally {
       setBusy(false);
@@ -132,7 +134,9 @@ export default function Setup() {
             connected
               ? fault
                 ? 'Release the glove and check it before continuing.'
-                : `Connected${simulated ? ' to the simulator' : ' over USB'}.`
+                : simulated
+                  ? 'Simulated glove: no motors move. The camera tracks your real hand and the practice screen shows which motor would help.'
+                  : 'Connected over USB.'
               : connection === 'connecting'
                 ? 'Waiting for the glove to answer.'
                 : 'Plug in the glove, choose Connect, then pick the USB device.'
@@ -155,6 +159,22 @@ export default function Setup() {
             >
               {connected ? 'Reconnect glove' : 'Connect glove'}
             </Button>
+            {!(connected && simulated) && (
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() =>
+                  void action(async () => {
+                    // Only the glove becomes simulated; the camera keeps tracking the real hand.
+                    await glove.setKind('sim');
+                    await runtime.sources.setGlove('sim');
+                    setInfo(await glove.client.connect());
+                  })
+                }
+              >
+                Simulate glove
+              </Button>
+            )}
             <Button variant="quiet" onClick={() => glove.client.release()}>
               Release glove
             </Button>
