@@ -1,4 +1,8 @@
-import type { VisionFrame, FingerId } from '../contracts/vision';
+import {
+  VISION_LOW_CONFIDENCE,
+  type VisionFrame,
+  type FingerId,
+} from '../contracts/vision';
 import { FINGERS, fingerMap } from './flex';
 const median = (values: number[]) => {
   const sorted = [...values].sort((a, b) => a - b),
@@ -6,7 +10,9 @@ const median = (values: number[]) => {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
-/** Latest continuous window; rejects missing hands, sparse captures and movement. */
+/** Latest continuous window for all five fingers, including glove-closed ring/pinky.
+ * Rejects missing hands, hand changes, sparse captures and movement.
+ */
 export function captureStats(
   frames: VisionFrame[],
   seconds: number,
@@ -28,7 +34,10 @@ export function captureStats(
       !Number.isFinite(f.t) ||
       (i > 0 && (f.t <= window[i - 1].t || f.t - window[i - 1].t > 100)) ||
       !f.detected ||
-      f.confidence < 0.6 ||
+      !Number.isFinite(f.confidence) ||
+      f.confidence < VISION_LOW_CONFIDENCE ||
+      f.handedness === null ||
+      f.handedness !== window[0].handedness ||
       !f.rawFlexSum ||
       f.pinch === null ||
       !Number.isFinite(f.pinch) ||
