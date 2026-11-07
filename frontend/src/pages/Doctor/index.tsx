@@ -1,4 +1,11 @@
 import {
+  Button,
+  Card,
+  PageHeader,
+  Inline,
+  DescriptionList,
+} from '../../design-system';
+import {
   useProfile,
   useHistoryOverview,
   useHistoryRom,
@@ -41,7 +48,21 @@ export default function Doctor() {
   return (
     <section className="data-page doctor-report">
       <section className="report-page data-section">
-        <h1>Doctor view</h1>
+        <PageHeader
+          title="Practice and movement report"
+          actions={
+            <Inline align="start">
+              <ExportButtons size="sm" />
+              <Button
+                size="sm"
+                className="no-print"
+                onClick={() => window.print()}
+              >
+                Print / Save PDF
+              </Button>
+            </Inline>
+          }
+        />
         <p className="report-label">
           Rehab Hub · read-only clinical review · {formatDate(Date.now())}
         </p>
@@ -57,23 +78,32 @@ export default function Doctor() {
         )}
         <DataStatus loading={profile.isPending} error={profile.error}>
           {profile.data && (
-            <section className="card">
+            <Card>
               <h2>{profile.data.pseudonym || 'Patient profile'}</h2>
-              <dl className="profile-details">
-                <dt>Affected hand</dt>
-                <dd>{profile.data.affected_hand}</dd>
-                <dt>Condition</dt>
-                <dd>{profile.data.condition || 'Not provided'}</dd>
-                <dt>Goals</dt>
-                <dd>{profile.data.goals || 'Not provided'}</dd>
-                <dt>Therapist</dt>
-                <dd>
-                  {profile.data.therapist_name || 'Not provided'}
-                  {profile.data.therapist_email &&
-                    ` · ${profile.data.therapist_email}`}
-                </dd>
-              </dl>
-            </section>
+              <DescriptionList
+                items={[
+                  { label: 'Affected hand', value: profile.data.affected_hand },
+                  {
+                    label: 'Condition',
+                    value: profile.data.condition || 'Not provided',
+                  },
+                  {
+                    label: 'Goals',
+                    value: profile.data.goals || 'Not provided',
+                  },
+                  {
+                    label: 'Therapist',
+                    value:
+                      [
+                        profile.data.therapist_name,
+                        profile.data.therapist_email,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || 'Not provided',
+                  },
+                ]}
+              />
+            </Card>
           )}
         </DataStatus>
         <DataStatus loading={overview.isPending} error={overview.error}>
@@ -89,8 +119,7 @@ export default function Doctor() {
             </div>
           )}
         </DataStatus>
-        <section className="card therapist-summary">
-          <h2>Therapist summary</h2>
+        <Card title="Therapist summary" className="therapist-summary">
           <DataStatus loading={summaries.isPending} error={summaries.error}>
             {latest ? (
               <>
@@ -105,13 +134,15 @@ export default function Doctor() {
               <p>No summary generated yet.</p>
             )}
           </DataStatus>
-          <button
+          <Button
+            size="sm"
+            variant="primary"
             className="no-print"
             disabled={generate.isPending || summaries.isPending}
             onClick={() => generate.mutate({ kind: 'therapist', days: 7 })}
           >
             {generate.isPending ? 'Generating…' : 'Generate (last 7 days)'}
-          </button>
+          </Button>
           {generate.isPending && (
             <p role="status">Preparing the therapist summary…</p>
           )}
@@ -120,11 +151,7 @@ export default function Doctor() {
               Summary unavailable. Check the Gemini connection and try again.
             </p>
           )}
-        </section>
-        <div className="actions no-print">
-          <ExportButtons />
-          <button onClick={() => window.print()}>Print / Save PDF</button>
-        </div>
+        </Card>
       </section>
       <section className="report-page data-section">
         <h2>Active range over sessions</h2>

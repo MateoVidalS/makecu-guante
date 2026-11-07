@@ -155,3 +155,32 @@
   border: var(--control-border) solid var(--border);
   border-radius: var(--radius-input);
 }
+
+/* Data pages use compact, consistent rhythm, including text runs. */
+.data-page {
+  gap: var(--space-16);
+}
+.data-page > :is(h1, h2, h3, p),
+.data-section > :is(h1, h2, h3, p) {
+  margin: 0;
+}
+.data-section > .ds-card > :is(p, h2) {
+  margin-block: var(--space-8);
+}
+.chart-card > .ds-card__header {
+  float: right;
+  margin: 0 0 var(--space-8) var(--space-8);
+}
+.chart-card .ds-badge {
+  white-space: nowrap;
+}
+.data-page .actions {
+  align-items: center;
+}
+.data-page :is(.ds-card, .data-section) > .ds-badge {
+  align-self: start;
+  justify-self: start;
+}
+.therapist-summary > .ds-button {
+  align-self: start;
+}

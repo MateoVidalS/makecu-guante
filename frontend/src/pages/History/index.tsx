@@ -1,3 +1,4 @@
+import { Banner, PageHeader, Tabs, Select } from '../../design-system';
 import { useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { getSession } from '../../api/client';
@@ -51,28 +52,21 @@ export default function History() {
     evaluations.data?.some((e) => e.is_demo);
   return (
     <section className="data-page">
-      <h1>History</h1>
-      <p>See what you did on your own.</p>
-      <p className="muted">
-        Estimated from the camera — not a medical measurement.
-      </p>
+      <PageHeader
+        title="History"
+        lead="See what you did on your own. Estimated from the camera."
+      />
       {demo && (
-        <p>
-          <DemoBadge /> Includes sample records. Trends may mix demo and
-          recorded data.
-        </p>
+        <Banner tone="demo" title="Includes sample records">
+          Trends may mix demo and recorded data.
+        </Banner>
       )}
-      <nav className="data-tabs" aria-label="History views">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            aria-current={selected === tab ? 'page' : undefined}
-            onClick={() => setParams({ tab: tab.toLowerCase() })}
-          >
-            {tab}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        label="History views"
+        value={selected}
+        onChange={(tab) => setParams({ tab: tab.toLowerCase() })}
+        items={tabs.map((tab) => ({ id: tab, label: tab }))}
+      />
       {selected === 'Overview' && (
         <DataStatus loading={overview.isPending} error={overview.error}>
           {overview.data && (
@@ -116,20 +110,18 @@ export default function History() {
       {selected === 'Active range' && (
         <section className="data-section">
           <h2>How far your fingers moved</h2>
-          <label>
-            Pose{' '}
-            <select
-              value={pose}
-              onChange={(e) => setPose(e.target.value as PoseId | '')}
-            >
-              <option value="">All poses</option>
-              {Object.values(POSES).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            label="Pose"
+            value={pose}
+            onChange={(e) => setPose(e.target.value as PoseId | '')}
+          >
+            <option value="">All poses</option>
+            {Object.values(POSES).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
           {!pose && (
             <p>For a clearer comparison, choose the same pose each time.</p>
           )}

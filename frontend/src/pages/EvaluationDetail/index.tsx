@@ -1,3 +1,4 @@
+import { PageHeader } from '../../design-system';
 import { Link, useParams } from 'react-router-dom';
 import { useEvaluation } from '../../api/client';
 import { GLOVE_FINGERS } from '../../contracts/glove';
@@ -9,7 +10,7 @@ import {
   formatDate,
 } from '../../components/charts';
 const ma = (value: number | null) =>
-  value == null ? 'Not recorded' : `${value.toFixed(1)} mA`;
+  value == null ? '—' : `${Math.round(value)} mA`;
 export default function EvaluationDetail() {
   const { id } = useParams(),
     evaluation = useEvaluation(Number(id));
@@ -17,7 +18,10 @@ export default function EvaluationDetail() {
   return (
     <section className="data-page">
       <Link to="/history?tab=resistance">Back to resistance</Link>
-      <h1>Evaluation detail</h1>
+      <PageHeader
+        title="Evaluation detail"
+        lead="An estimate inspired by clinical practice."
+      />
       <DataStatus loading={evaluation.isPending} error={evaluation.error}>
         {data && (
           <>

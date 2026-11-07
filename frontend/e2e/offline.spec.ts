@@ -32,7 +32,7 @@ test('finishes practice offline and saves the queued session after recovery', as
   offline = false;
   await expect(status).toHaveText('Saved', { timeout: 10_000 });
   await page.getByRole('link', { name: 'See progress', exact: true }).click();
-  await page.getByRole('button', { name: 'Sessions', exact: true }).click();
+  await page.getByRole('tab', { name: 'Sessions', exact: true }).click();
   await expect(
     page.getByRole('cell', { name: '5', exact: true }).first(),
   ).toBeVisible();

@@ -1,3 +1,15 @@
+import {
+  ButtonLink,
+  Banner,
+  Card,
+  Stack,
+  Inline,
+  PageHeader,
+  Checkbox,
+  StatusChip,
+  Meter,
+  Badge,
+} from '../../design-system';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from 'zustand';
@@ -90,7 +102,7 @@ function SweepChart() {
             {points.map((p, i) => (
               <tr key={i}>
                 <td>{percent(p.pos)}</td>
-                <td>{p.ma}</td>
+                <td>{Math.round(p.ma)}</td>
               </tr>
             ))}
           </tbody>
@@ -105,8 +117,6 @@ export default function Evaluate() {
     { store } = useGlove();
   const connected = useStore(store, (s) => s.connection === 'connected');
   const [relaxed, setRelaxed] = useState(false),
-    [calibrated, setCalibrated] = useState(false),
-    [gloveChecked, setGloveChecked] = useState(false),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [again, setAgain] = useState(false);
@@ -126,7 +136,7 @@ export default function Evaluate() {
   }
   if (running)
     return (
-      <section className="live-stack">
+      <Stack as="section" gap={24}>
         <h1>Measuring {view.finger}</h1>
         <p className="phase" aria-live="polite">
           {view.stage === 'prepare'
@@ -148,11 +158,11 @@ export default function Evaluate() {
         <BigButton onClick={() => void runtime.evaluation.stop()}>
           Stop evaluation
         </BigButton>
-      </section>
+      </Stack>
     );
   if (view.result && !again)
     return (
-      <section className="live-stack">
+      <Stack as="section" gap={24}>
         <h1>Your evaluation</h1>
         <p>An estimate inspired by clinical practice.</p>
         <p>
@@ -162,17 +172,17 @@ export default function Evaluate() {
         </p>
         <div className="summary-fingers">
           {view.result.fingers.map((f) => (
-            <section className="card" key={f.finger}>
+            <Card key={f.finger} className="live-stack">
               <h2>{title(f.finger)}</h2>
               {f.aborted && (
-                <p className="chip">
+                <Badge tone="caution">
                   Stopped safely
                   {view.result!.sweeps.find(
                     (s) => s.finger === f.finger && s.aborted_at != null,
                   )?.aborted_at != null
                     ? ` at ${percent(view.result!.sweeps.find((s) => s.finger === f.finger && s.aborted_at != null)!.aborted_at)}`
                     : ''}
-                </p>
+                </Badge>
               )}
               {[
                 ['Slow resistance', f.resistance_slow_ma],
@@ -187,11 +197,12 @@ export default function Evaluate() {
                       : `${percent(Number(value) / DEFAULT_EVAL_SETTINGS.limit_ma)} of the safety limit`}
                   </p>
                   {value != null && (
-                    <meter
-                      aria-label={String(label)}
-                      min={0}
+                    <Meter
+                      label={String(label)}
+                      showLabel={false}
                       max={600}
                       value={Math.min(600, Math.max(0, Number(value)))}
+                      tone="neutral"
                     />
                   )}
                 </div>
@@ -199,12 +210,22 @@ export default function Evaluate() {
               <details>
                 <summary>Helper details</summary>
                 <p>
-                  Slow: {f.resistance_slow_ma ?? '—'} mA · Fast:{' '}
-                  {f.resistance_fast_ma ?? '—'} mA · Difference:{' '}
-                  {f.velocity_dependence_ma ?? '—'} mA
+                  Slow:{' '}
+                  {f.resistance_slow_ma == null
+                    ? '—'
+                    : Math.round(f.resistance_slow_ma)}{' '}
+                  mA · Fast:{' '}
+                  {f.resistance_fast_ma == null
+                    ? '—'
+                    : Math.round(f.resistance_fast_ma)}{' '}
+                  mA · Difference:{' '}
+                  {f.velocity_dependence_ma == null
+                    ? '—'
+                    : Math.round(f.velocity_dependence_ma)}{' '}
+                  mA
                 </p>
               </details>
-            </section>
+            </Card>
           ))}
         </div>
         <p className="muted">Results are saved by the session runtime.</p>
@@ -217,70 +238,73 @@ export default function Evaluate() {
           >
             Evaluate again
           </BigButton>
-          <Link className="button" to="/history">
-            See evaluation history
-          </Link>
-          <Link className="button" to="/">
-            Home
-          </Link>
+          <ButtonLink to="/history">See evaluation history</ButtonLink>
+          <ButtonLink to="/">Home</ButtonLink>
         </div>
-      </section>
+      </Stack>
     );
   return (
-    <section className="live-stack">
-      <h1>Check your comfortable movement</h1>
-      <p>Relax your hand. The glove moves each finger gently.</p>
+    <Stack as="section" gap={24}>
+      <PageHeader
+        title="Check your comfortable movement"
+        lead="Relax your hand. The glove moves each finger gently."
+      />
       {view.stage === 'aborted' && (
         <p role="status">Evaluation stopped. Rest before trying again.</p>
       )}
-      <aside className="safety-strip">
-        Press STOP anytime. Stop if it hurts.
-      </aside>
-      <label>
-        <input
-          type="checkbox"
-          checked={relaxed}
-          onChange={(e) => setRelaxed(e.target.checked)}
-        />
-        Hand relaxed in the glove
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={calibrated}
-          disabled={!runtime.calibration.current}
-          onChange={(e) => setCalibrated(e.target.checked)}
-        />
-        Calibrated
-      </label>
-      {!runtime.calibration.current && (
-        <Link to="/calibrate">Calibrate first</Link>
+      <Banner tone="warning" title="Press STOP anytime. Stop if it hurts." />
+      <Card>
+        <Stack gap={16}>
+          <Checkbox
+            size="lg"
+            label="Hand relaxed in the glove"
+            checked={relaxed}
+            onChange={(e) => setRelaxed(e.target.checked)}
+          />
+          <Inline justify="between">
+            <StatusChip
+              icon="check"
+              label="Calibration"
+              value={runtime.calibration.current ? 'Ready' : 'Needed'}
+              tone={runtime.calibration.current ? 'reached' : 'caution'}
+            />
+            <Link to="/calibrate">Review calibration</Link>
+          </Inline>
+          <Inline justify="between">
+            <StatusChip
+              icon="glove"
+              label="Glove"
+              value={connected ? 'Connected' : 'Not connected'}
+              tone={connected ? 'reached' : 'off'}
+            />
+            <Link to="/setup">Check connection</Link>
+          </Inline>
+        </Stack>
+      </Card>
+      {(!relaxed || !connected || !runtime.calibration.current) && (
+        <p id="evaluation-start-hint">
+          {!connected
+            ? 'Connect your glove in Setup first.'
+            : !runtime.calibration.current
+              ? 'Calibrate your comfortable range first.'
+              : 'Confirm your hand is relaxed to start.'}
+        </p>
       )}
-      <label>
-        <input
-          type="checkbox"
-          checked={gloveChecked}
-          disabled={!connected}
-          onChange={(e) => setGloveChecked(e.target.checked)}
-        />
-        Glove connected
-      </label>
-      {!connected && <Link to="/setup">Connect the glove</Link>}
       {error && <p role="alert">{error}</p>}
       <BigButton
         variant="primary"
         disabled={
-          busy ||
-          !relaxed ||
-          !calibrated ||
-          !gloveChecked ||
-          !connected ||
-          !runtime.calibration.current
+          busy || !relaxed || !connected || !runtime.calibration.current
+        }
+        aria-describedby={
+          !relaxed || !connected || !runtime.calibration.current
+            ? 'evaluation-start-hint'
+            : undefined
         }
         onClick={() => void start()}
       >
         Start evaluation
       </BigButton>
-    </section>
+    </Stack>
   );
 }
