@@ -1,4 +1,13 @@
-import { Button, PageHeader, DescriptionList } from '../../design-system';
+import { useState } from 'react';
+import { POSES, type PoseId } from '../../contracts/poses';
+import { EvaluationList, SessionList } from '../History';
+import {
+  Button,
+  ButtonLink,
+  PageHeader,
+  DescriptionList,
+  Select,
+} from '../../design-system';
 import {
   useProfile,
   useHistoryOverview,
@@ -35,6 +44,8 @@ export default function Doctor() {
     overview = useHistoryOverview(),
     sessions = useAllSessions(),
     evaluations = useEvaluations();
+  const [pose, setPose] = useState<PoseId | ''>('');
+  const filteredRom = useHistoryRom(pose ? { pose } : {});
   const rom = useHistoryRom(),
     assist = useHistoryAssist(),
     resistance = useHistoryResistance();
@@ -55,6 +66,9 @@ export default function Doctor() {
           lead={`Prepared ${formatDate(Date.now())}. Estimates inspired by clinical practice; not validated medical measurements.${hasDemo ? ' Includes demo data.' : ''}`}
           actions={
             <div className="report-actions no-print">
+              <ButtonLink to="/evaluate" size="sm">
+                Evaluate movement
+              </ButtonLink>
               <ExportButtons size="sm" />
               <Button size="sm" onClick={() => window.print()}>
                 Print / Save PDF
@@ -62,6 +76,44 @@ export default function Doctor() {
             </div>
           }
         />
+        <DataSection
+          title="Therapist summary"
+          className="therapist-summary"
+          description={
+            latest
+              ? `Generated ${formatDate(latest.created_at)} · Last ${latest.days ?? 7} days · Model: ${latest.model}${latest.model === 'fixture' ? ' (Demo data)' : ''}`
+              : undefined
+          }
+          actions={
+            <Button
+              size="sm"
+              variant="primary"
+              className="no-print"
+              disabled={generate.isPending || summaries.isPending}
+              onClick={() => generate.mutate({ kind: 'therapist', days: 7 })}
+            >
+              {generate.isPending ? 'Generating…' : 'Generate (last 7 days)'}
+            </Button>
+          }
+        >
+          <DataStatus loading={summaries.isPending} error={summaries.error}>
+            {latest ? (
+              <p className="summary-copy">{latest.text}</p>
+            ) : (
+              <p className="footnote">No summary generated yet.</p>
+            )}
+          </DataStatus>
+          {generate.isPending && (
+            <p role="status" className="footnote">
+              Preparing the therapist summary…
+            </p>
+          )}
+          {generate.isError && (
+            <p role="status" className="footnote">
+              Summary unavailable. Check the Gemini connection and try again.
+            </p>
+          )}
+        </DataSection>
         <DataStatus loading={overview.isPending} error={overview.error}>
           {overview.data && (
             <KpiRow>
@@ -109,112 +161,104 @@ export default function Doctor() {
       </section>
       <section className="report-page">
         <DataStatus loading={profile.isPending} error={profile.error}>
-          {profile.data && (
-            <DataSection
-              title={profile.data.pseudonym || 'Patient profile'}
-              className="report-patient"
-            >
-              <DescriptionList
-                className="report-dl"
-                items={[
-                  {
-                    label: 'Affected hand',
-                    value: capitalize(profile.data.affected_hand),
-                  },
-                  {
-                    label: 'Condition',
-                    value: profile.data.condition || 'Not provided',
-                  },
-                  {
-                    label: 'Goals',
-                    value: profile.data.goals || 'Not provided',
-                  },
-                  {
-                    label: 'Therapist',
-                    value:
-                      [
-                        profile.data.therapist_name,
-                        profile.data.therapist_email,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ') || 'Not provided',
-                  },
-                ]}
-              />
-            </DataSection>
-          )}
-        </DataStatus>
-        <DataSection
-          title="Therapist summary"
-          className="therapist-summary"
-          description={
-            latest
-              ? `Generated ${formatDate(latest.created_at)} · Last ${latest.days ?? 7} days · Model: ${latest.model}${latest.model === 'fixture' ? ' (Demo data)' : ''}`
-              : undefined
-          }
-          actions={
-            <Button
-              size="sm"
-              variant="secondary"
-              className="no-print"
-              disabled={generate.isPending || summaries.isPending}
-              onClick={() => generate.mutate({ kind: 'therapist', days: 7 })}
-            >
-              {generate.isPending ? 'Generating…' : 'Generate (last 7 days)'}
-            </Button>
-          }
-        >
-          <DataStatus loading={summaries.isPending} error={summaries.error}>
-            {latest ? (
-              <p className="summary-copy">{latest.text}</p>
-            ) : (
-              <p className="footnote">No summary generated yet.</p>
+          {profile.data &&
+            [
+              profile.data.pseudonym,
+              profile.data.condition,
+              profile.data.goals,
+              profile.data.therapist_name,
+              profile.data.therapist_email,
+            ].some((value) => value?.trim()) && (
+              <DataSection
+                title={profile.data.pseudonym || 'Patient profile'}
+                className="report-patient"
+              >
+                <DescriptionList
+                  className="report-dl"
+                  items={[
+                    {
+                      label: 'Affected hand',
+                      value: capitalize(profile.data.affected_hand),
+                    },
+                    {
+                      label: 'Condition',
+                      value: profile.data.condition || 'Not provided',
+                    },
+                    {
+                      label: 'Goals',
+                      value: profile.data.goals || 'Not provided',
+                    },
+                    {
+                      label: 'Therapist',
+                      value:
+                        [
+                          profile.data.therapist_name,
+                          profile.data.therapist_email,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || 'Not provided',
+                    },
+                  ]}
+                />
+              </DataSection>
             )}
-          </DataStatus>
-          {generate.isPending && (
-            <p role="status" className="footnote">
-              Preparing the therapist summary…
-            </p>
-          )}
-          {generate.isError && (
-            <p role="status" className="footnote">
-              Summary unavailable. Check the Gemini connection and try again.
-            </p>
-          )}
-        </DataSection>
+        </DataStatus>
       </section>
-      <section className="report-page">
+      <details className="report-details">
+        <summary>Details</summary>
+        <section className="report-page">
+          <DataSection
+            title="Active range over sessions"
+            description="Mean best finger position during the active attempt, all poses. Higher is better for closing, lower for opening. Choose one pose for a clearer comparison."
+            demo={demoSessions}
+            actions={
+              <div className="history-pose">
+                <Select
+                  label="Pose"
+                  layout="inline"
+                  value={pose}
+                  onChange={(e) => setPose(e.target.value as PoseId | '')}
+                >
+                  <option value="">All poses</option>
+                  {Object.values(POSES).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            }
+          >
+            <DataStatus error={filteredRom.error || sessions.error}>
+              <TrendSmallMultiples
+                points={filteredRom.data ?? []}
+                timeline={sessions.data}
+                loading={filteredRom.isPending || sessions.isPending}
+                opening={pose === 'open'}
+                compact
+              />
+            </DataStatus>
+          </DataSection>
+        </section>
         <DataSection
-          title="Active range over sessions"
-          description="Mean best finger position during the active attempt, all poses. Higher is better for closing, lower for opening. Compare a single pose in History."
+          className="report-page"
+          title="Assistance over sessions"
+          description="Per session: best closure on its own (blue) and what the glove added to reach the target (orange). All poses."
           demo={demoSessions}
+          demoNote="Demo data is drawn hollow"
         >
-          <DataStatus error={rom.error || sessions.error}>
-            <TrendSmallMultiples
-              points={rom.data ?? []}
+          <DataStatus error={assist.error || rom.error}>
+            <EffortSmallMultiples
               timeline={sessions.data}
-              loading={rom.isPending || sessions.isPending}
-              compact
+              rom={rom.data ?? []}
+              assist={assist.data ?? []}
+              loading={assist.isPending || rom.isPending || sessions.isPending}
             />
           </DataStatus>
-        </DataSection>
-      </section>
-      <DataSection
-        className="report-page"
-        title="Assistance over sessions"
-        description="Per session: best closure on its own (blue) and what the glove added to reach the target (orange). All poses."
-        demo={demoSessions}
-        demoNote="Demo data is drawn hollow"
-      >
-        <DataStatus error={assist.error || rom.error}>
-          <EffortSmallMultiples
-            timeline={sessions.data}
-            rom={rom.data ?? []}
-            assist={assist.data ?? []}
-            loading={assist.isPending || rom.isPending || sessions.isPending}
-          />
-        </DataStatus>
-      </DataSection>
+        </DataSection>{' '}
+      </details>
+      <SessionList doctor />
+      <EvaluationList />
     </section>
   );
 }

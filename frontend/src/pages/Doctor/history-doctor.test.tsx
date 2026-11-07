@@ -109,13 +109,13 @@ describe('record review pages', () => {
     expect(
       screen.getByRole('img', { name: /Practice calendar/ }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('tab', { name: 'Active range' }));
-    fireEvent.change(screen.getByRole('combobox', { name: 'Pose' }), {
-      target: { value: 'full_fist' },
-    });
-    const tables = await screen.findAllByText('Show as table');
-    fireEvent.click(tables[1]);
-    expect(screen.getAllByRole('table', { hidden: true })).toHaveLength(5);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Overview',
+      'Sessions',
+    ]);
+    expect(
+      screen.queryByRole('button', { name: /Export/ }),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }));
     const table = await screen.findByRole('table');
     await waitFor(() =>
@@ -272,7 +272,28 @@ describe('record review pages', () => {
       name: 'Generate (last 7 days)',
     });
     await waitFor(() => expect(generate).toBeEnabled());
+    expect(screen.getByText('Details').closest('details')).not.toHaveAttribute(
+      'open',
+    );
+    const summary = screen.getByRole('heading', { name: 'Therapist summary' });
+    const glance = screen.getByRole('heading', { name: 'At a glance' });
+    expect(
+      summary.compareDocumentPosition(glance) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(screen.getByText('Details'));
     expect(await screen.findByText('Active range over sessions')).toBeVisible();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Pose' }), {
+      target: { value: 'full_fist' },
+    });
+    expect(screen.getByRole('combobox', { name: 'Pose' })).toHaveValue(
+      'full_fist',
+    );
+    expect(
+      screen.getByRole('link', { name: 'Evaluate movement' }),
+    ).toHaveAttribute('href', '/evaluate');
+    expect(screen.getByText('Saved sessions')).toBeVisible();
+    expect(screen.getByText('Saved evaluations')).toBeVisible();
     expect(screen.getByText('At a glance')).toBeVisible();
     expect(
       await screen.findByText(
@@ -286,6 +307,42 @@ describe('record review pages', () => {
       ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
+  });
+  it('hides the empty patient profile in Doctor view', async () => {
+    server.use(
+      http.get('/api/profile', () =>
+        HttpResponse.json({
+          pseudonym: '',
+          affected_hand: 'right',
+          condition: '',
+          goals: '',
+          therapist_name: '',
+          therapist_email: '',
+        }),
+      ),
+    );
+    mount('/doctor');
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Loading your records…'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole('heading', { name: 'Patient profile' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Not provided')).not.toBeInTheDocument();
+  });
+  it('keeps evaluation sweep curves collapsed until requested', async () => {
+    mount('/history/evaluations/3');
+    const toggle = await screen.findByText('Sweep curves', {
+      selector: 'summary',
+    });
+    expect(toggle.closest('details')).not.toHaveAttribute('open');
+    fireEvent.click(toggle);
+    expect(toggle.closest('details')).toHaveAttribute('open');
+    expect(
+      screen.getByRole('link', { name: /Back to doctor view/ }),
+    ).toHaveAttribute('href', '/doctor');
   });
   it('draws complete sweep curves when speeds have different position samples', async () => {
     render(
