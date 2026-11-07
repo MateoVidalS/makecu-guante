@@ -2,12 +2,16 @@
 
 #include <cmath>
 
+#include "pwm_plan.h"
+
 namespace rehab::hal {
 void ServoOut::begin() {
   // Initialize LEDC resources before the control loop without routing any PWM
   // to the glove. ESP32Servo subsequently reuses these drivers and timers.
   for (uint8_t channel = 0; channel < 16; channel += 2) ledcSetup(channel, 50, 16);
-  ESP32PWM::allocateTimer(0);
+  // Five servos need two timers; see pwm_plan.h.
+  for (std::size_t timer = 0; timer < pwm::SERVO_TIMERS; ++timer)
+    ESP32PWM::allocateTimer(static_cast<int>(timer));
   for (std::size_t i = 0; i < config::FINGERS; ++i) {
     digitalWrite(config::SERVO_PINS[i], LOW);
     pinMode(config::SERVO_PINS[i], OUTPUT);

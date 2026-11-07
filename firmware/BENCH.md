@@ -95,6 +95,9 @@ Build overrides may lower the default/maximum, never exceed 2200 mA.
    verify <=60 degrees/s. `release` must immediately detach an uncalibrated jog.
    Try 4 and 176 degrees and index 5: expect `bad_args` and no motion. Check a
    mirrored channel independently. Complete the current/speed and thumb tables.
+   Then jog all five channels so they are attached **at the same time** and
+   confirm the fifth one still moves: ESP32Servo serves four channels per LEDC
+   timer, so this proves the second timer is allocated (`lib/core/pwm_plan.h`).
 5. Establish five safe empty-glove ranges. Send `calib` for 0–3; target/follow must
    still return `no_calib`. Send index 4 and capture one `calib_ok`. Send target
    `[0.5,0.5,0.5,0.5,0.5]`, v=0.5 with valid pings every 300 ms. Confirm five-value
