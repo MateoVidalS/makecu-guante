@@ -114,7 +114,11 @@ export function SpeedDumbbell({
                     {r.abortedAt != null && (
                       <span className="mx-muted">
                         {' '}
-                        at {Math.round(r.abortedAt * 100)}%
+                        at{' '}
+                        {Math.round(
+                          Math.min(1, Math.max(0, r.abortedAt)) * 100,
+                        )}
+                        %
                       </span>
                     )}
                   </span>

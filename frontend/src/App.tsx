@@ -32,8 +32,6 @@ import {
   EmptyState,
   Icon,
   PageErrorBoundary,
-  readTheme,
-  ThemeToggle,
   ToastProvider,
 } from './design-system';
 import Home from './pages/Home';
@@ -50,7 +48,7 @@ import DevHand from './pages/DevHand';
 
 // Light by default (whatever the OS says). Applied before the first render so no route flashes dark,
 // including the focus and doctor shells, which don't mount the theme toggle.
-if (typeof document !== 'undefined') applyTheme(readTheme());
+if (typeof document !== 'undefined') applyTheme('light');
 
 const DesignGallery = lazy(() => import('./design-system/gallery'));
 
@@ -58,12 +56,10 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
 
-// Spec §4: Home · Exercise · Evaluate · History · Setup. Profile lives in the tools on the right.
+// Patient navigation stays short; planning and evaluation are reached from Home.
 // Text-only links: icons next to every nav word are decoration, not information.
 const NAV: [to: string, label: string][] = [
   ['/', 'Home'],
-  ['/exercise', 'Exercise'],
-  ['/evaluate', 'Evaluate'],
   ['/history', 'History'],
   ['/setup', 'Setup'],
 ];
@@ -107,7 +103,8 @@ function Shell() {
                   onClick={() => {
                     if (location.pathname === '/evaluate')
                       void runtime.evaluation.stop();
-                    else void runtime.exercise.stop();
+                    else
+                      window.dispatchEvent(new Event('rehab-finish-practice'));
                   }}
                 >
                   {location.pathname === '/evaluate'
@@ -169,7 +166,6 @@ function Shell() {
                 >
                   <Icon name="user" />
                 </NavLink>
-                <ThemeToggle />
               </div>
             )}
           </header>

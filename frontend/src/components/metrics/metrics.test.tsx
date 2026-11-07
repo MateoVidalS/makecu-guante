@@ -365,3 +365,12 @@ describe('metric components', () => {
     ]);
   });
 });
+
+// Camera closure may reach 1.1; patient-facing numbers stay within the calibrated range.
+it('clamps displayed percentages while retaining missing values', async () => {
+  const { pct } = await import('./format');
+  expect(pct(1.1)).toBe('100%');
+  expect(pct(-0.2)).toBe('0%');
+  expect(pct(null)).toBe('—');
+  expect(pct(Number.NaN)).toBe('—');
+});

@@ -1,23 +1,48 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Stack, Text } from '../design-system';
 import { useRuntime } from './RuntimeProvider';
 import { useVoice } from '../voice';
+import { useGlove } from '../glove';
+import { useVision } from '../vision';
+import { RuntimeSimulatorControls } from './SimulatorControls';
 import './fallback.css';
 
-/** Available in the focus shell too: recovery must not require navigation or a reload. */
+/** One recovery menu, available during a run without navigation or reload. */
 export function RuntimeFallbackControls() {
   const runtime = useRuntime();
-  const { setMode } = useVoice();
+  const glove = useGlove(),
+    vision = useVision();
+  const { setMode, mode } = useVoice();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const change = (source: 'glove' | 'vision') => {
+  const menu = useRef<HTMLDetailsElement>(null);
+  const simulated = glove.client.kind === 'sim' || vision.source.kind === 'sim';
+  useEffect(() => {
+    const close = runtime.exercise.onEvent((event) => {
+      if (event.kind === 'safety' && menu.current) menu.current.open = false;
+    });
+    const top = document.querySelector('.app-top');
+    if (!top || !menu.current) return close;
+    const position = () =>
+      menu.current?.style.setProperty(
+        '--recovery-top',
+        `${top.getBoundingClientRect().bottom}px`,
+      );
+    const observer = new ResizeObserver(position);
+    observer.observe(top);
+    position();
+    return () => {
+      close();
+      observer.disconnect();
+    };
+  }, [runtime, simulated]);
+  const change = (source: 'glove' | 'vision' | 'both') => {
     setBusy(true);
     setMessage('');
-    void (
-      source === 'glove'
-        ? runtime.sources.setGlove('sim')
-        : runtime.sources.setVision('sim')
-    )
+    void (async () => {
+      if (source !== 'vision') await runtime.sources.setGlove('sim');
+      if (source !== 'glove') await runtime.sources.setVision('sim');
+    })()
       .then(() =>
         setMessage('Simulator ready. Start a new practice when you are ready.'),
       )
@@ -28,25 +53,50 @@ export function RuntimeFallbackControls() {
       )
       .finally(() => setBusy(false));
   };
+  if (import.meta.env.VITE_DEMO !== '1' && !simulated) return null;
   return (
-    <details className="runtime-fallback">
+    <details
+      ref={menu}
+      className="runtime-fallback"
+      data-safety-popover
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          e.currentTarget.open = false;
+          e.currentTarget.querySelector('summary')?.focus();
+        }
+      }}
+    >
       <summary>Demo recovery</summary>
       <Stack className="runtime-fallback__panel" gap={8}>
         <Text>Switching sources ends and saves the current run.</Text>
-        <Button disabled={busy} onClick={() => change('glove')}>
-          Use simulated glove
+        {!simulated && (
+          <Button size="sm" disabled={busy} onClick={() => change('both')}>
+            Use simulator
+          </Button>
+        )}
+        <Button size="sm" disabled={busy} onClick={() => change('glove')}>
+          {glove.client.kind === 'sim' && glove.connection === 'connected'
+            ? 'Restart simulated glove'
+            : 'Use simulated glove'}
         </Button>
-        <Button disabled={busy} onClick={() => change('vision')}>
-          Use simulated camera
+        <Button size="sm" disabled={busy} onClick={() => change('vision')}>
+          {vision.source.kind === 'sim'
+            ? 'Restart simulated camera'
+            : 'Use simulated camera'}
         </Button>
-        <Button
-          onClick={() => {
-            setMode('simple');
-            setMessage('Simple voice ready.');
-          }}
-        >
-          Use simple voice
-        </Button>
+        {mode !== 'simple' && (
+          <Button
+            onClick={() => {
+              setMode('simple');
+              setMessage('Simple voice ready.');
+            }}
+          >
+            Use simple voice
+          </Button>
+        )}
+        <RuntimeSimulatorControls />
         <Text role="status">{message}</Text>
       </Stack>
     </details>

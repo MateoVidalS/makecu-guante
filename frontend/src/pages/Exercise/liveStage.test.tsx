@@ -73,8 +73,12 @@ function mount(
 }
 
 describe('live stage', () => {
-  it('shows the virtual hand and the camera side by side, with a bare camera overlay', () => {
+  it('keeps the camera off by default and shows a bare overlay when enabled', () => {
     mount(<LiveStage />);
+    expect(
+      screen.queryByRole('figure', { name: 'Hand camera preview' }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole('switch', { name: 'Show camera' }));
     const stage = document.querySelector('.live-stage')!;
     expect(stage).toHaveAttribute('data-camera', 'shown');
     const panels = stage.querySelectorAll(':scope > .live-panel');
@@ -92,6 +96,7 @@ describe('live stage', () => {
     ).not.toBeNull();
   });
   it('hides the camera with a small toggle and remembers the choice', () => {
+    localStorage.setItem('rehab-hub.exercise.camera', 'shown');
     mount(<LiveStage />);
     fireEvent.click(screen.getByRole('switch', { name: 'Show camera' }));
     expect(document.querySelector('.live-stage')).toHaveAttribute(
