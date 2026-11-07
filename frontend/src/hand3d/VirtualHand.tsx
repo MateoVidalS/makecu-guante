@@ -18,7 +18,7 @@ import { createHandScene, type FingerState, type HandTheme } from './scene';
 import { useHandPreferences } from './preferences';
 import { createHandAnimator } from './animation';
 import './hand.css';
-import { palmDownCamera, HAND_LOOK_AT } from './view';
+import { palmDownCamera, HAND_LOOK_AT, PALM_DOWN_ROTATION } from './view';
 export type { JointMap } from './rig';
 export interface VirtualHandProps {
   target: JointMap | null;
@@ -114,22 +114,22 @@ function HandScene({
         args={[tokens.light.surface, tokens.light.surface3, 1.5]}
       />
       <directionalLight
-        position={[handedness === 'left' ? 3 : -3, 5, -6]}
+        position={[handedness === 'left' ? 3 : -3, 6, 5]}
         intensity={1.6}
         color={tokens.light.surface}
       />
       <directionalLight
-        position={[4, 2, -3]}
+        position={[4, 3, 2]}
         intensity={0.5}
         color={tokens.light.surface}
       />
       <directionalLight
         ref={rim}
-        position={[0, 3, 4]}
+        position={[0, -4, 3]}
         color={palette.reached}
         intensity={0}
       />
-      <group>
+      <group rotation={PALM_DOWN_ROTATION}>
         <primitive object={scene.target} />
         <primitive object={scene.actual} />
       </group>

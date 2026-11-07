@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Vector3 } from 'three';
-import { palmDownCamera, HAND_LOOK_AT } from './view';
+import { Euler, Vector3 } from 'three';
+import { palmDownCamera, HAND_LOOK_AT, PALM_DOWN_ROTATION } from './view';
 import { tokens } from '../styles/tokens';
 import { contrast } from '../design-system/contrast';
 
@@ -15,7 +15,9 @@ describe('palm-down thumb-side camera', () => {
       expect(
         new Vector3(...right)
           .sub(new Vector3(...HAND_LOOK_AT))
-          .dot(new Vector3(0, 0, 1)),
+          .dot(
+            new Vector3(0, 0, 1).applyEuler(new Euler(...PALM_DOWN_ROTATION)),
+          ),
       ).toBeLessThan(0);
     }
   });
