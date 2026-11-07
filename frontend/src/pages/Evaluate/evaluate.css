@@ -1,0 +1,16 @@
+/* Evaluate: step tracker replaces the thin progress bar visually (kept for assistive tech). */
+.hp-progress.eval-progress {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+/* Live head of the measured line: a dot with a 2 px surface ring. */
+.eval-head {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 2;
+}

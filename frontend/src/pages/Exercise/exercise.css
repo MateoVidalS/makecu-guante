@@ -245,3 +245,84 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- Live finger gauges (side column) ---- */
+.exercise-live .live-details .mx-gauges {
+  gap: var(--space-8);
+}
+@media (max-height: 760px) {
+  .exercise-live .mx-gauge {
+    --gauge-h: 7rem;
+  }
+  /* The icon next to the % carries the state; the word moves to the meter's name. */
+  .exercise-live .mx-gauge__status {
+    display: none;
+  }
+  .exercise-live .live-details {
+    gap: var(--space-16);
+  }
+  .exercise-live .phase-ring {
+    padding-block-end: var(--space-16);
+  }
+  .exercise-live .live-tools {
+    padding-block-start: var(--space-16);
+  }
+}
+@media (max-width: 1100px) {
+  .exercise-live .mx-gauge {
+    --gauge-h: 5.5rem;
+  }
+  .exercise-live .mx-legend--gauge {
+    display: none;
+  }
+}
+
+/* Attempt feedback sits bottom-center, in flow, never over the hand. */
+.exercise-live .mx-attempt {
+  justify-self: center;
+  max-width: 100%;
+}
+
+/* ---- Session recap ---- */
+.recap {
+  display: grid;
+  gap: var(--space-24);
+}
+.recap__head {
+  display: grid;
+  gap: var(--space-8);
+}
+.recap__head > :is(h1, p) {
+  margin: 0;
+}
+.recap__counts {
+  color: var(--muted);
+}
+.recap__sentence {
+  font-size: var(--h2);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  max-width: var(--text-max);
+}
+.recap__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-24);
+}
+.recap__note {
+  margin: var(--space-16) 0 0;
+  font-size: var(--small);
+  color: var(--muted);
+}
+.recap > .recap__note {
+  margin: 0;
+}
+.recap__coach {
+  max-width: var(--text-max);
+  margin: 0;
+}
+@media (max-width: 960px) {
+  .recap__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
