@@ -148,6 +148,14 @@ export class CameraVision implements VisionSource {
       video.playsInline = true;
       video.srcObject = stream;
       this.video = video;
+      // Browsers pause a media element when it is removed from the document, e.g. when a camera
+      // preview unmounts on navigation. Hand tracking needs the stream running whether or not any
+      // preview shows it, so resume unless the camera itself is stopping (stop() clears the stream
+      // before pausing).
+      video.addEventListener('pause', () => {
+        if (this.video === video && this.stream)
+          void video.play().catch(() => {});
+      });
       await video.play();
       if (generation !== this.generation) return;
       try {

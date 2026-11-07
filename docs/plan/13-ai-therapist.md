@@ -26,20 +26,27 @@ feels, and **adjusts the session through tools**: more or less help per finger, 
 
 | Tool | Args | Effect (clamped) | When it applies |
 |---|---|---|---|
-| `get_live_state` | – | Returns `LiveTherapyState` (§4) | immediately |
-| `adjust_help` | `finger` (thumb…pinky \| `all`), `direction` (`more` \| `less`), `reason` | Per-finger assist speed ± 0.05/s within **[0.10, 0.30]/s** (default 0.30). "Less" also allowed during assist (immediate) | next ASSIST (less: immediate) |
+| `get_live_state` | – | Returns `LiveTherapyState` (§4), including the glove state/current, the last safety event and the highlighted finger | immediately |
+| `adjust_help` | `finger` (thumb…pinky \| `all`), `direction` (`more` \| `less` \| `gentler`), `reason` | **more** = the glove starts helping this finger sooner (per-finger assist delay −1 s, within **[1, 9] s**); **less** = later (+1 s); **gentler** = slower assist for this finger (−0.05/s within **[0.10, 0.20]/s**). **Assist speed never goes above the default 0.20/s** (spasticity is velocity dependent: faster pulling raises resistance). A `resistance` event on a finger lowers its speed automatically | next ATTEMPT (gentler/less: immediate) |
+| `assist_finger_now` | `finger`, `reason` | Starts glove help on that finger now, at its (gentle) assist speed, to the shaped target; same stagger/power rules | immediately, only in ATTEMPT |
+| `adjust_target` | `finger`, `direction` (`lower` \| `raise`), `reason` | **Shaping**: that finger's required closure = pose target × scale, scale ± 0.1 within **[0.5, 1.0]**; never above the calibrated range | next ATTEMPT |
+| `highlight_finger` | `finger` | Highlights the finger on the virtual hand for ~4 s while the coach names it (helps aphasia/neglect) | immediately |
+| `note_for_therapist` | `text` | Stores a clinical note (e.g. "reports tingling in the little finger"); shown in replay and fed to the therapist summary | immediately |
+| `repeat_pose` | `reason` | One more rep of the current pose (≤ 3 extra reps per session) | after the current attempt |
 | `set_attempt_time` | `seconds`, `reason` | Attempt time within **[4, 9] s** (default 6) | next ATTEMPT |
 | `add_rest` | `seconds`, `reason` | Extra rest before the next pose, **≤ 20 s** per call, ≤ 60 s per session | next REST |
 | `choose_next_pose` | `pose`, `reason` | Overrides the next pose from the plan's poses (not pinch); the plan length doesn't change | next PRESENT |
 | `record_feeling` | `pain` 0–10, `fatigue` 0–10, `note` | Stores a feeling entry; **pain ≥ 4 → brake + pause** (deterministic) | immediately |
 | `brake` | `reason` | `release` + PAUSED (safety source `coach_brake`) | immediately |
 | `undo_last_adjustment` | – | Reverts the last non-brake adjustment | next boundary |
-| (kept) `pause_session`, `resume_session`, `skip_pose`, `repeat_instruction`, `stop_session`, `get_progress` | | unchanged | |
+| (kept, session control) `pause_session`, `resume_session`, `skip_pose`, `repeat_instruction`, `stop_session`, `get_progress` | | unchanged | |
 
 Rejected calls (out of range, unknown finger, too frequent, session not running) return `{ok:false, reason}` to the model,
 which must say something natural and not retry blindly.
 
-## 4. Contract additions (TypeScript in `frontend/src/contracts/therapist.ts`, Pydantic in `backend/app/contracts/therapist.py`)
+**Never available to the model:** direct motor commands, raising the current limit, changing calibration, assist faster than the default speed.
+
+## 4. Contract additions (**source of truth: `frontend/src/contracts/therapist.ts`**, updated Nov 7 with the tools above; TypeScript in `frontend/src/contracts/therapist.ts`, Pydantic in `backend/app/contracts/therapist.py`)
 ```ts
 type CoachToolName = "get_live_state" | "adjust_help" | "set_attempt_time" | "add_rest" | "choose_next_pose" |
   "record_feeling" | "brake" | "undo_last_adjustment";
