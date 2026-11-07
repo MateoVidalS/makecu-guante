@@ -9,6 +9,14 @@ import type {
 export type DecodedMessage =
   GloveTelemetry | GloveEvent | GloveInfo | GloveError;
 export const codecStats = { malformedLines: 0 };
+export class UnsupportedFingerCountError extends Error {
+  constructor(readonly fingers: number) {
+    super(
+      `This glove reports ${fingers} fingers. Rehab Hub requires 5-finger firmware.`,
+    );
+    this.name = 'UnsupportedFingerCountError';
+  }
+}
 const finite = (v: unknown): v is number =>
   typeof v === 'number' && Number.isFinite(v);
 const quint = (v: unknown): v is [number, number, number, number, number] =>
@@ -48,12 +56,18 @@ export function encode(command: SerialCommand): string {
 export function decode(
   line: string,
   now = performance.now(),
+  onIncompatibleInfo?: (error: UnsupportedFingerCountError) => void,
 ): DecodedMessage | null {
   try {
     if (new TextEncoder().encode(line.replace(/\r$/, '')).length > 200)
       throw new Error();
     const v = JSON.parse(line);
     if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error();
+    // Preserve a useful compatibility error instead of waiting for the info timeout.
+    if (v.t === 'info' && finite(v.fingers) && v.fingers !== 5) {
+      onIncompatibleInfo?.(new UnsupportedFingerCountError(v.fingers));
+      return null;
+    }
     if (
       v.t === 'tel' &&
       finite(v.ms) &&
