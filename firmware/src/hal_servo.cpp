@@ -9,8 +9,8 @@ void ServoOut::begin() {
   for (uint8_t channel = 0; channel < 16; channel += 2) ledcSetup(channel, 50, 16);
   ESP32PWM::allocateTimer(0);
   for (std::size_t i = 0; i < config::FINGERS; ++i) {
-    pinMode(config::SERVO_PINS[i], OUTPUT);
     digitalWrite(config::SERVO_PINS[i], LOW);
+    pinMode(config::SERVO_PINS[i], OUTPUT);
     servos_[i].setPeriodHertz(50);
   }
 }
