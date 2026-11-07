@@ -1,0 +1,988 @@
+{
+  "durationMs": 1200010,
+  "initialBytes": 1999124,
+  "peakGrowthBytes": 1149432,
+  "errors": [],
+  "final": {
+    "sessions": 17,
+    "evaluations": 8,
+    "attempts": 255,
+    "safety": 0,
+    "failures": [],
+    "saving": {
+      "status": "Saved",
+      "pending": 0,
+      "durable": true
+    },
+    "phase": "ATTEMPT",
+    "stage": "done",
+    "diagnostics": {
+      "visionToCommandP95": 60,
+      "commandToEchoP95": 5.699999999254942,
+      "samples": 512
+    }
+  },
+  "passed": true,
+  "samples": [
+    {
+      "elapsedMs": 30008,
+      "usedBytes": 2562120,
+      "growthBytes": 562996,
+      "state": {
+        "sessions": 0,
+        "evaluations": 0,
+        "attempts": 0,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "idle",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 60025,
+      "usedBytes": 2770396,
+      "growthBytes": 771272,
+      "state": {
+        "sessions": 0,
+        "evaluations": 0,
+        "attempts": 0,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "idle",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.200000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 90041,
+      "usedBytes": 2697688,
+      "growthBytes": 698564,
+      "state": {
+        "sessions": 1,
+        "evaluations": 0,
+        "attempts": 15,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "idle",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 120066,
+      "usedBytes": 2854072,
+      "growthBytes": 854948,
+      "state": {
+        "sessions": 2,
+        "evaluations": 0,
+        "attempts": 30,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "DONE",
+        "stage": "prepare",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 150084,
+      "usedBytes": 2760856,
+      "growthBytes": 761732,
+      "state": {
+        "sessions": 2,
+        "evaluations": 1,
+        "attempts": 30,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 80,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 180099,
+      "usedBytes": 2932776,
+      "growthBytes": 933652,
+      "state": {
+        "sessions": 2,
+        "evaluations": 1,
+        "attempts": 30,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.100000001490116,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 210137,
+      "usedBytes": 2767072,
+      "growthBytes": 767948,
+      "state": {
+        "sessions": 3,
+        "evaluations": 1,
+        "attempts": 45,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.099999997764826,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 240165,
+      "usedBytes": 2952400,
+      "growthBytes": 953276,
+      "state": {
+        "sessions": 3,
+        "evaluations": 1,
+        "attempts": 45,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 270180,
+      "usedBytes": 3002536,
+      "growthBytes": 1003412,
+      "state": {
+        "sessions": 4,
+        "evaluations": 1,
+        "attempts": 60,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "DONE",
+        "stage": "sweep",
+        "diagnostics": {
+          "visionToCommandP95": 75,
+          "commandToEchoP95": 5.700000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 300191,
+      "usedBytes": 2885284,
+      "growthBytes": 886160,
+      "state": {
+        "sessions": 4,
+        "evaluations": 2,
+        "attempts": 60,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "ASSIST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.700000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 330199,
+      "usedBytes": 2997912,
+      "growthBytes": 998788,
+      "state": {
+        "sessions": 4,
+        "evaluations": 2,
+        "attempts": 60,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.699999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 360207,
+      "usedBytes": 2931192,
+      "growthBytes": 932068,
+      "state": {
+        "sessions": 5,
+        "evaluations": 2,
+        "attempts": 75,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "ASSIST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.700000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 390218,
+      "usedBytes": 3031576,
+      "growthBytes": 1032452,
+      "state": {
+        "sessions": 5,
+        "evaluations": 2,
+        "attempts": 75,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.699999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 420227,
+      "usedBytes": 2790020,
+      "growthBytes": 790896,
+      "state": {
+        "sessions": 6,
+        "evaluations": 3,
+        "attempts": 90,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 75,
+          "commandToEchoP95": 5.700000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 450235,
+      "usedBytes": 2898176,
+      "growthBytes": 899052,
+      "state": {
+        "sessions": 6,
+        "evaluations": 3,
+        "attempts": 90,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.100000001490116,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 480245,
+      "usedBytes": 2804116,
+      "growthBytes": 804992,
+      "state": {
+        "sessions": 7,
+        "evaluations": 3,
+        "attempts": 105,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 510274,
+      "usedBytes": 2952364,
+      "growthBytes": 953240,
+      "state": {
+        "sessions": 7,
+        "evaluations": 3,
+        "attempts": 105,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 9.899999998509884,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 540302,
+      "usedBytes": 2943684,
+      "growthBytes": 944560,
+      "state": {
+        "sessions": 8,
+        "evaluations": 3,
+        "attempts": 120,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "DONE",
+        "stage": "prepare",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 570350,
+      "usedBytes": 2928008,
+      "growthBytes": 928884,
+      "state": {
+        "sessions": 8,
+        "evaluations": 4,
+        "attempts": 120,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "ATTEMPT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.300000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 600371,
+      "usedBytes": 3005480,
+      "growthBytes": 1006356,
+      "state": {
+        "sessions": 8,
+        "evaluations": 4,
+        "attempts": 120,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 630416,
+      "usedBytes": 2937840,
+      "growthBytes": 938716,
+      "state": {
+        "sessions": 9,
+        "evaluations": 4,
+        "attempts": 135,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "ATTEMPT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 660462,
+      "usedBytes": 3037384,
+      "growthBytes": 1038260,
+      "state": {
+        "sessions": 9,
+        "evaluations": 4,
+        "attempts": 135,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.299999997019768,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 690493,
+      "usedBytes": 3054532,
+      "growthBytes": 1055408,
+      "state": {
+        "sessions": 10,
+        "evaluations": 4,
+        "attempts": 150,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "DONE",
+        "stage": "cooldown",
+        "diagnostics": {
+          "visionToCommandP95": 65,
+          "commandToEchoP95": 10.100000001490116,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 720520,
+      "usedBytes": 2982072,
+      "growthBytes": 982948,
+      "state": {
+        "sessions": 10,
+        "evaluations": 5,
+        "attempts": 150,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "ASSIST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 750527,
+      "usedBytes": 3056388,
+      "growthBytes": 1057264,
+      "state": {
+        "sessions": 10,
+        "evaluations": 5,
+        "attempts": 150,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 80,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 780534,
+      "usedBytes": 3002100,
+      "growthBytes": 1002976,
+      "state": {
+        "sessions": 11,
+        "evaluations": 5,
+        "attempts": 165,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "ASSIST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.200000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 810543,
+      "usedBytes": 3095224,
+      "growthBytes": 1096100,
+      "state": {
+        "sessions": 11,
+        "evaluations": 5,
+        "attempts": 165,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 840565,
+      "usedBytes": 3148556,
+      "growthBytes": 1149432,
+      "state": {
+        "sessions": 12,
+        "evaluations": 5,
+        "attempts": 180,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "DONE",
+        "stage": "cooldown",
+        "diagnostics": {
+          "visionToCommandP95": 80,
+          "commandToEchoP95": 10.199999999254942,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 870582,
+      "usedBytes": 2965600,
+      "growthBytes": 966476,
+      "state": {
+        "sessions": 12,
+        "evaluations": 6,
+        "attempts": 180,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "RELEASE",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 900593,
+      "usedBytes": 3109472,
+      "growthBytes": 1110348,
+      "state": {
+        "sessions": 12,
+        "evaluations": 6,
+        "attempts": 180,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.700000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 930625,
+      "usedBytes": 3039732,
+      "growthBytes": 1040608,
+      "state": {
+        "sessions": 13,
+        "evaluations": 6,
+        "attempts": 195,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "RELEASE",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 960657,
+      "usedBytes": 3124932,
+      "growthBytes": 1125808,
+      "state": {
+        "sessions": 13,
+        "evaluations": 6,
+        "attempts": 195,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 990668,
+      "usedBytes": 2863572,
+      "growthBytes": 864448,
+      "state": {
+        "sessions": 14,
+        "evaluations": 7,
+        "attempts": 210,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 70,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 1020694,
+      "usedBytes": 3059148,
+      "growthBytes": 1060024,
+      "state": {
+        "sessions": 14,
+        "evaluations": 7,
+        "attempts": 210,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 1050706,
+      "usedBytes": 2894284,
+      "growthBytes": 895160,
+      "state": {
+        "sessions": 15,
+        "evaluations": 7,
+        "attempts": 225,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 1080714,
+      "usedBytes": 3025960,
+      "growthBytes": 1026836,
+      "state": {
+        "sessions": 15,
+        "evaluations": 7,
+        "attempts": 225,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "REST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.700000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 1110723,
+      "usedBytes": 3110128,
+      "growthBytes": 1111004,
+      "state": {
+        "sessions": 16,
+        "evaluations": 7,
+        "attempts": 240,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "DONE",
+        "stage": "cooldown",
+        "diagnostics": {
+          "visionToCommandP95": 70,
+          "commandToEchoP95": 5.800000000745058,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 1140734,
+      "usedBytes": 3009688,
+      "growthBytes": 1010564,
+      "state": {
+        "sessions": 16,
+        "evaluations": 8,
+        "attempts": 240,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "ASSIST",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.700000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 1170743,
+      "usedBytes": 3108428,
+      "growthBytes": 1109304,
+      "state": {
+        "sessions": 16,
+        "evaluations": 8,
+        "attempts": 240,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "PRESENT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.700000002980232,
+          "samples": 512
+        }
+      }
+    },
+    {
+      "elapsedMs": 1200009,
+      "usedBytes": 3136616,
+      "growthBytes": 1137492,
+      "state": {
+        "sessions": 17,
+        "evaluations": 8,
+        "attempts": 255,
+        "safety": 0,
+        "failures": [],
+        "saving": {
+          "status": "Saved",
+          "pending": 0,
+          "durable": true
+        },
+        "phase": "ATTEMPT",
+        "stage": "done",
+        "diagnostics": {
+          "visionToCommandP95": 60,
+          "commandToEchoP95": 5.699999999254942,
+          "samples": 512
+        }
+      }
+    }
+  ]
+}
