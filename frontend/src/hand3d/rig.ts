@@ -16,8 +16,8 @@ export const JOINTS = ['mcp', 'pip', 'dip'] as const;
 export const HAND_PROPORTIONS = {
   palm: [1.9, 1.95, 0.42] as const,
   thumb: {
-    base: [-0.9, -0.15, 0.12],
-    lengths: [0.62, 0.62, 0.48],
+    base: [-0.9, 0.2, 0.2],
+    lengths: [0.7, 0.7, 0.55],
     radius: 0.19,
     spread: 0.65,
   },
@@ -101,12 +101,14 @@ export function applyJoints(rig: HandRig, joints: JointMap, alpha = 1): void {
   for (const finger of FINGERS) {
     const chain = rig.fingers[finger];
     for (let i = 0; i < 3; i++) {
-      // Thumb MCP drives metacarpal opposition; its IP is stored in pip, per contract.
+      // Thumb: metacarpal opposition, MCP, IP (the latter lives in pip).
       const source =
         finger === 'thumb'
-          ? i === 2
-            ? 0
-            : joints[finger][JOINTS[i]]
+          ? i === 0
+            ? joints.thumb.mcp * 1.2
+            : i === 1
+              ? joints.thumb.mcp
+              : joints.thumb.pip
           : joints[finger][JOINTS[i]];
       const degrees = finiteClamp(source, i === 0 ? 100 : 120);
       chain.desired[i].setFromAxisAngle(FLEX_AXIS, degrees * DEG);
@@ -119,8 +121,6 @@ export function applyJoints(rig: HandRig, joints: JointMap, alpha = 1): void {
           opposition * 1.5 -
           chain.base.rotation.z) *
         alpha;
-      chain.base.rotation.x +=
-        (opposition * 0.7 - chain.base.rotation.x) * alpha;
     }
   }
 }

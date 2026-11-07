@@ -67,6 +67,13 @@ describe('procedural hand transforms', () => {
       }
     }
   });
+  it('brings thumb and index tips together for pinch', () => {
+    const rig = createHandRig();
+    applyJoints(rig, POSES.pinch.render);
+    expect(
+      position(rig, 'thumb').distanceTo(position(rig, 'index')),
+    ).toBeLessThan(0.3);
+  });
   it('slerps by half the angle and ignores thumb dip', () => {
     const rig = createHandRig();
     applyJoints(rig, POSES.full_fist.render, 0.5);
