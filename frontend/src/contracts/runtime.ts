@@ -37,6 +37,8 @@ export interface EvaluationView {
   result: EvaluationResult | null;
 }
 export interface Runtime {
+  /** AI therapy assistant control API (docs/plan/13). Optional until A1 implements it. */
+  therapy?: import('./therapist').TherapyApi;
   sources: {
     glove: 'serial' | 'sim';
     vision: 'camera' | 'sim';
