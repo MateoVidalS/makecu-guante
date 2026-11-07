@@ -662,3 +662,36 @@ it('does not treat high total current and small settled-camera noise as resistan
   }
   expect(r.events.some((e) => e.kind === 'resistance')).toBe(false);
 });
+
+it('holds queued fingers at the first safe telemetry after ASSIST entered without telemetry', () => {
+  const r = new Run('full_fist', { attempt_s: 0.1 });
+  r.world.hand = [0.2, 0.2, 0.2, 0.2, 0.2];
+  r.until('ATTEMPT');
+  while (r.engine.state().phase === 'ATTEMPT')
+    r.step(50, (input) => {
+      input.tel = null;
+    });
+  expect(r.engine.state().phase).toBe('ASSIST');
+  expect(r.outputs.at(-1)!.commands).toEqual([]);
+  const out = r.step();
+  const target = out.commands.find((command) => command.t === 'target');
+  expect(target?.t).toBe('target');
+  if (target?.t !== 'target')
+    throw new Error('Expected first safe assist target');
+  expect(
+    target.f.filter((value, i) => Math.abs(value - r.world.tel.a[i]) > 1e-6),
+  ).toHaveLength(1);
+});
+
+it.each([3, 4])(
+  'keeps attempting while finger %i alone makes plateau-breaking progress',
+  (finger) => {
+    const r = new Run('hook', { attempt_s: 20, plateau_s: 1 });
+    r.until('ATTEMPT');
+    for (let i = 1; i <= 20; i++) {
+      r.world.hand[finger] = i * 0.04;
+      r.step(200);
+    }
+    expect(r.engine.state().phase).toBe('ATTEMPT');
+  },
+);

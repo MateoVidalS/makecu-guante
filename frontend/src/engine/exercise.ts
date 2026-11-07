@@ -518,6 +518,17 @@ class Exercise implements ExerciseEngine {
   }
   private scheduleAssist(out: Output): void {
     if (!motorSafe(this.input!)) return;
+    // ASSIST may start before telemetry/vision is usable. Freeze queued motors
+    // from the first safe sample, rather than replaying an old follow position.
+    if (!this.targetSent) {
+      this.scheduler = new AssistScheduler(
+        this.pose,
+        [...this.input!.tel!.a],
+        this.settings.assist_stagger_ms!,
+        this.settings.assist_max_parallel!,
+      );
+      this.target = [...this.scheduler.target];
+    }
     if (
       this.scheduler!.advance(
         this.now,
