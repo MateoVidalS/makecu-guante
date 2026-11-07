@@ -34,9 +34,10 @@ as required by `VisionFrame`. Filters reset on a hand change or a 200 ms gap.
 ## Provider and overlay
 
 `VisionProvider` uses camera by default and simulator with `VITE_SIM=1`. It obtains
-the simulator from the existing `createSimWorld()` export (WP0 returns its stub
-until WP2 merges). At runtime integration, pass the **same** world used by the
-glove so simulated assist and camera observations agree:
+the shared simulator from the enclosing `GloveProvider`, so the simulated glove
+and camera observe the same patient. For standalone use, inject `simSource`
+explicitly (the low-level controller uses the exported `createSimWorld()` factory
+and disposes its owned world). Runtime integration can pass the shared source:
 
 ```tsx
 <VisionProvider simSource={sharedWorld.vision} initialKind="sim">

@@ -22,6 +22,7 @@ import { CameraOverlay } from './CameraOverlay';
 import { drawOverlay, handInsideGuide } from './overlay';
 import { missingFrame } from './frameProcessor';
 import { fingerMap } from './flex';
+import { GloveProvider, useGlove } from '../glove';
 
 class TestSource implements VisionSource {
   frame: VisionFrame | null = null;
@@ -74,6 +75,36 @@ afterEach(() => {
 });
 
 describe('vision source controller', () => {
+  it('disposes the standalone simulator clock without leaking timers', async () => {
+    vi.useFakeTimers();
+    const controller = createVisionController({ initialKind: 'sim' });
+    await controller.start();
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    await vi.advanceTimersByTimeAsync(120);
+    expect(controller.latest?.detected).toBe(true);
+    controller.stop();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('uses the same simulator world as the enclosing glove provider', async () => {
+    vi.useFakeTimers();
+    let shared = false;
+    function Probe() {
+      shared = useVision().source === useGlove().world.vision;
+      return null;
+    }
+    const view = render(
+      <GloveProvider>
+        <VisionProvider initialKind="sim">
+          <Probe />
+        </VisionProvider>
+      </GloveProvider>,
+    );
+    await act(async () => {});
+    expect(shared).toBe(true);
+    view.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('switches sources, forwards persistent subscriptions and settings, and removes old listeners', async () => {
     const sim = new TestSource('sim'),
       camera = new TestSource('camera');

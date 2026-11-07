@@ -10,7 +10,8 @@ import '@fontsource/atkinson-hyperlegible/400.css';
 
 function Preview() {
   const camera = useMemo(() => new CameraVision(), []),
-    sim = useMemo(() => createSimWorld().vision, []);
+    world = useMemo(() => createSimWorld(), []);
+  const sim = world.vision;
   const [source, setSource] = useState<VisionSource>(camera);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]),
     [deviceId, setDeviceId] = useState('');
@@ -26,12 +27,12 @@ function Preview() {
     return () => {
       clearInterval(timer);
       camera.stop();
-      sim.stop();
+      world.stop();
     };
-  }, [camera, sim]);
+  }, [camera, world]);
   async function start(kind: 'camera' | 'sim') {
     camera.stop();
-    sim.stop();
+    world.stop();
     const next = kind === 'camera' ? camera : sim;
     setSource(next);
     setStatus('Starting…');
@@ -113,7 +114,8 @@ function Preview() {
         <button
           onClick={() => {
             camera.stop();
-            sim.stop();
+            world.stop();
+            setSource(camera);
             setStatus('Stopped.');
           }}
         >

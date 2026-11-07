@@ -14,11 +14,12 @@ import type {
 } from '../contracts/vision';
 import type { CameraCalibration } from '../contracts/calibration';
 import { createSimWorld } from '../glove/sim';
+import { useGlove } from '../glove';
 import { CameraVision } from './cameraVision';
 import { missingFrame } from './frameProcessor';
 
 type StartOptions = { deviceId?: string; affectedHand: Handedness };
-/** Accept a shared SimWorld.vision from the runtime; WP0's factory returns its stub until WP2 lands. */
+/** Accept shared SimWorld.vision; standalone controllers own and dispose their factory-created world. */
 export function createVisionController(
   options: {
     simSource?: VisionSource;
@@ -26,7 +27,8 @@ export function createVisionController(
     initialKind?: 'camera' | 'sim';
   } = {},
 ) {
-  const sim = options.simSource ?? createSimWorld().vision;
+  const ownedWorld = options.simSource ? null : createSimWorld();
+  const sim = options.simSource ?? ownedWorld!.vision;
   const camera = options.cameraSource ?? new CameraVision();
   const initial =
     options.initialKind ??
@@ -108,6 +110,7 @@ export function createVisionController(
       detach?.();
       detach = null;
       controller.source.stop();
+      ownedWorld?.stop();
       store.setState({ latest: null });
       const missing = missingFrame(performance.now());
       listeners.forEach((cb) => cb(missing));
@@ -118,15 +121,27 @@ export function createVisionController(
 const Context = createContext<ReturnType<typeof createVisionController> | null>(
   null,
 );
-export function VisionProvider({
-  children,
-  simSource,
-  initialKind,
-}: {
+type VisionProviderProps = {
   children: ReactNode;
   simSource?: VisionSource;
   initialKind?: 'camera' | 'sim';
-}) {
+};
+export function VisionProvider(props: VisionProviderProps) {
+  return props.simSource ? (
+    <SourceVisionProvider {...props} />
+  ) : (
+    <SharedVisionProvider {...props} />
+  );
+}
+function SharedVisionProvider(props: VisionProviderProps) {
+  const { world } = useGlove();
+  return <SourceVisionProvider {...props} simSource={world.vision} />;
+}
+function SourceVisionProvider({
+  children,
+  simSource,
+  initialKind,
+}: VisionProviderProps) {
   const value = useMemo(
     () => createVisionController({ simSource, initialKind }),
     [simSource, initialKind],
