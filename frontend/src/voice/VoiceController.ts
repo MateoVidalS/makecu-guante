@@ -396,10 +396,11 @@ export class VoiceController {
               reason:
                 'Patient brake is active. Wait for an explicit request to continue.',
             };
-            this.auditTool(call, response);
+            this.auditTool(call, response, this.batch);
             transport?.respond(call, response);
             continue;
           }
+          const batch = this.batch;
           const response = dispatchTool(this.runtime, call, this.previous);
           // Runtime braking is synchronous, even though tool responses are promises.
           const braking =
@@ -410,7 +411,7 @@ export class VoiceController {
                 call.args.pain >= 4));
           if (braking) this.brakeLatched = true;
           void response.then((response) => {
-            this.auditTool(call, response);
+            this.auditTool(call, response, batch);
             if (transport === this.transport && !this.cancelled.has(call.id)) {
               if (braking && response.ok === true)
                 this.safety.announce(
@@ -422,10 +423,14 @@ export class VoiceController {
         }
     }
   }
-  private auditTool(call: ToolCall, response: Record<string, unknown>) {
+  private auditTool(
+    call: ToolCall,
+    response: Record<string, unknown>,
+    batch: TranscriptBatcher | undefined,
+  ) {
     // Runtime mutation decisions carry applied/clamped args; transcript auditing
     // also preserves read/legacy tools and voice-level rejections for replay.
-    this.batch?.add(
+    batch?.add(
       'system',
       '[tool] ' +
         JSON.stringify({
@@ -435,6 +440,9 @@ export class VoiceController {
           response,
         }),
     );
+    // A stop tool may finish after the provider stopped or started a new session.
+    // Keep its result in the original session, including after its final flush.
+    if (batch && batch !== this.batch) void batch.flush();
   }
   private finishTranscript(role: 'coach' | 'patient') {
     const text = this.partial[role];

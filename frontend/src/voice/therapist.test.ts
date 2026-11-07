@@ -465,3 +465,32 @@ it('audits tool requests, runtime results and local rejections in the saved tran
   ]);
   s.controller.dispose();
 });
+
+it('saves a late stop tool result to its original session after voice has stopped', async () => {
+  const s = setup();
+  let finishStop!: () => void;
+  vi.spyOn(s.runtime.exercise, 'stop').mockImplementation(
+    () =>
+      new Promise<void>((resolve) => {
+        finishStop = resolve;
+      }),
+  );
+  await s.controller.start(1);
+  s.transport.emit({
+    type: 'tools',
+    calls: [{ id: 'stop-old', name: 'stop_session' }],
+  });
+  s.controller.stop();
+  finishStop();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(s.deps.save).toHaveBeenCalledWith(
+    1,
+    expect.arrayContaining([
+      expect.objectContaining({
+        role: 'system',
+        text: expect.stringContaining('stop-old'),
+      }),
+    ]),
+  );
+  s.controller.dispose();
+});
