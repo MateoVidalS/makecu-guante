@@ -60,14 +60,14 @@ export const formatDate = (value: string | number) =>
     timeZone: 'UTC',
   });
 export const percentage = (value: number | null | undefined) =>
-  value == null ? 'Not recorded' : `${Math.round(value * 100)}%`;
+  value == null ? '—' : `${Math.round(value * 100)}%`;
 const numberLabel = (
   value: number | string | boolean | null | undefined,
   unit = '',
 ) =>
   typeof value === 'number'
     ? `${unit.includes('mA') || unit === '%' ? Math.round(value) : value.toFixed(1)}${unit}`
-    : 'Not recorded';
+    : '—';
 const color = (finger: GloveFinger) => `var(--finger-${finger})`;
 export function DemoBadge() {
   return <DSDemoBadge />;

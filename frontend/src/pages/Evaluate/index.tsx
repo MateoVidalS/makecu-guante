@@ -1,4 +1,5 @@
 import {
+  ButtonLink,
   Banner,
   Card,
   Stack,
@@ -237,12 +238,8 @@ export default function Evaluate() {
           >
             Evaluate again
           </BigButton>
-          <Link className="button" to="/history">
-            See evaluation history
-          </Link>
-          <Link className="button" to="/">
-            Home
-          </Link>
+          <ButtonLink to="/history">See evaluation history</ButtonLink>
+          <ButtonLink to="/">Home</ButtonLink>
         </div>
       </Stack>
     );

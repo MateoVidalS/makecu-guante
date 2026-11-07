@@ -19,6 +19,7 @@ import type {
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import type { PoseDef } from '../../contracts/poses';
 import {
+  Heading,
   Button,
   Card,
   StatusChip as DSStatusChip,
@@ -293,7 +294,8 @@ export function AttemptToast({ result }: { result: AttemptResult | null }) {
 }
 export function SessionSummaryCard({ summary }: { summary: SessionSummary }) {
   return (
-    <Card title="Session complete">
+    <Card>
+      <Heading level={1}>Session complete</Heading>
       <p>
         {summary.attempts} attempts · {summary.reached_active} on your own ·{' '}
         {summary.assisted} with help

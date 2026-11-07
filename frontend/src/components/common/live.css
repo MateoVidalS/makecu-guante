@@ -207,3 +207,35 @@
     grid-column: 1 / -1;
   }
 }
+.live-tools {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-8);
+}
+.live-tools > details {
+  padding: var(--space-8) var(--space-16);
+  margin: 0;
+  background: var(--demo-soft);
+  border-color: var(--demo);
+}
+.live-tools > details > summary {
+  font-size: var(--small);
+}
+.practice-plan > .ds-button {
+  align-self: start;
+}
+.live-stack > .ds-button {
+  justify-self: start;
+}
+@media (max-width: 1280px) {
+  .statuses .ds-status-chip__icon {
+    display: none;
+  }
+  .statuses .ds-status-chip {
+    padding-inline: var(--space-8);
+    gap: var(--space-4);
+  }
+  .statuses > [aria-label='Session saving status'] {
+    font-size: var(--small);
+  }
+}

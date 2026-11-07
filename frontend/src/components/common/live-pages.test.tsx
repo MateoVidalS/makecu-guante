@@ -59,6 +59,14 @@ vi.mock('../../vision/CameraOverlay', () => ({
 }));
 const nativeFetch = globalThis.fetch;
 beforeAll(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    },
+  );
   server.listen({ onUnhandledRequest: 'error' });
   const intercepted = globalThis.fetch;
   vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>

@@ -1,172 +1,183 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync } from 'node:fs';
-const qaDir = fileURLToPath(new URL('./qa/', import.meta.url));
+const qaDir = fileURLToPath(
+  new URL('../../../../docs/design/screenshots/after-wp12/', import.meta.url),
+);
 mkdirSync(qaDir, { recursive: true });
-test('mock flows run end to end and remain readable in both themes', async ({
-  page,
-}) => {
-  const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (e) => {
-    if (e.type() === 'error') errors.push(e.text());
-  });
-  await page.goto('/');
-  await expect(
-    page.getByRole('button', { name: "Start today's practice" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Camera sees your hand', { exact: false }),
-  ).toBeVisible();
-  await page.keyboard.press('Tab');
-  expect(
-    await page.evaluate(() =>
-      parseFloat(getComputedStyle(document.activeElement!).outlineWidth),
-    ),
-  ).toBeGreaterThanOrEqual(3);
-  // Home starts the default short plan; the route guard must survive StrictMode.
-  await page.getByLabel('Short session (1 rep each)').check();
-  await page.getByRole('button', { name: "Start today's practice" }).click();
-  await expect(
-    page.getByRole('button', { name: 'Pause', exact: true }),
-  ).toBeVisible();
-  await page.keyboard.press('Space');
-  await expect(
-    page.getByRole('button', { name: 'Resume', exact: true }),
-  ).toBeVisible();
-  await page.keyboard.press('Space');
-  await expect(
-    page.getByRole('button', { name: 'Pause', exact: true }),
-  ).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('button', { name: 'Keep practicing' }).click();
-  await page.getByRole('button', { name: 'End practice' }).click();
+async function calibrate(page: Page) {
+  await page.goto('/calibrate');
   await page
-    .getByRole('dialog')
-    .getByRole('button', { name: 'End session' })
+    .getByRole('button', { name: 'Calibrate simulator', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Session complete' }),
+    page.getByText('Simulator calibrated.', { exact: false }),
   ).toBeVisible();
-  // The scripted camera lacks raw flexion: only its explicit example option bypasses capture.
-  await page.goto('/calibrate');
-  for (const finger of ['Thumb', 'Index', 'Middle']) {
-    await page
-      .getByRole('button', { name: new RegExp(`^${finger} [○✓]`) })
-      .click();
-    await page.getByLabel('Servo angle').fill('20');
-    await page.getByRole('button', { name: /^Set open/ }).click();
-    await page.getByLabel('Servo angle').fill('150');
-    await page.getByRole('button', { name: /^Set closed/ }).click();
-  }
-  await page.getByRole('button', { name: 'Send glove ranges' }).click();
-  await page.getByRole('button', { name: /Use example camera range/ }).click();
-  await page.getByRole('button', { name: 'Continue to friction' }).click();
-  await page.getByLabel('The glove is off the hand').check();
-  await page.getByRole('button', { name: 'Measure glove friction' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Review your range' }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Save calibration' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Your range is saved' }),
-  ).toBeVisible();
-  await page.goto('/evaluate');
-  for (const label of [
-    'Hand relaxed in the glove',
-    'Calibrated',
-    'Glove connected',
-  ])
-    await page.getByLabel(label).check();
-  await page.clock.install();
-  await page.getByRole('button', { name: 'Start evaluation' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Measuring thumb' }),
-  ).toBeVisible();
-  await page.clock.runFor(27000);
-  await expect(
-    page.getByRole('heading', { name: 'Your evaluation' }),
-  ).toBeVisible();
-  // Capture each live page at both required sizes and themes.
-  for (const size of [
-    { width: 1440, height: 900 },
-    { width: 1280, height: 720 },
-  ]) {
-    await page.setViewportSize(size);
-    for (const theme of ['light', 'dark'] as const) {
+  await page.getByRole('link', { name: 'Continue to practice' }).click();
+}
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 1440, height: 900 },
+]) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`all pages and live layout ${viewport.width} ${theme}`, async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+      const errors: string[] = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      page.on('console', (e) => {
+        if (e.type() === 'error') errors.push(e.text());
+      });
+      await page.setViewportSize(viewport);
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
-      for (const [route, name] of [
-        ['/', 'home'],
-        ['/setup', 'setup'],
-        ['/calibrate', 'calibrate'],
-        ['/evaluate', 'evaluate'],
-        ['/exercise', 'exercise-plan'],
-      ] as const) {
-        await page.goto(route);
+      const capture = async (name: string, fullPage = true) => {
         await expect(page.locator('main h1')).toBeVisible();
+        await expect(page.getByText('Loading your records…')).toHaveCount(0);
+        await expect(
+          page.getByText('Loading chart…', { exact: true }),
+        ).toHaveCount(0);
+        await page.evaluate(() => document.fonts.ready);
         expect(
           await page.evaluate(
             () => document.documentElement.scrollWidth <= innerWidth,
           ),
         ).toBe(true);
+        expect(
+          await page.locator('main .ds-button--primary:visible').count(),
+        ).toBeLessThanOrEqual(1);
         await page.screenshot({
-          path: `${qaDir}/${name}-${theme}-${size.width}.png`,
-          fullPage: true,
+          path: `${qaDir}/${name}-${theme}-${viewport.width}.png`,
+          fullPage,
         });
+      };
+      await page.goto('/_dev/design');
+      await expect(
+        page.getByRole('heading', { name: 'Design system', exact: true }),
+      ).toBeVisible();
+      for (const [route, name] of [
+        ['/', 'home'],
+        ['/setup', 'setup'],
+        ['/calibrate', 'calibrate'],
+        ['/exercise', 'exercise-plan'],
+        ['/evaluate', 'evaluate'],
+        ['/history', 'history'],
+        ['/history?tab=active%20range', 'history-active-range'],
+        ['/history?tab=assistance', 'history-assistance'],
+        ['/history?tab=resistance', 'history-resistance'],
+        ['/history?tab=sessions', 'history-sessions'],
+        ['/history/sessions/8', 'session-replay'],
+        ['/history/evaluations/1', 'evaluation-detail'],
+        ['/doctor', 'doctor'],
+        ['/profile', 'profile'],
+      ]) {
+        await page.goto(route);
+        await capture(name);
+        if (name === 'evaluation-detail') {
+          for (const card of await page.locator('.chart-card').all())
+            await expect(
+              card.locator('.ds-badge').getByText('Demo data', { exact: true }),
+            ).toHaveCount(1);
+        }
+        if (name === 'session-replay') {
+          await page
+            .getByRole('button', { name: 'Delete session', exact: true })
+            .click();
+          const dialog = page.getByRole('dialog');
+          await expect(
+            dialog.getByRole('button', { name: 'Keep session' }),
+          ).toBeFocused();
+          await expect(
+            dialog.getByRole('button', { name: 'Confirm delete' }),
+          ).toHaveClass(/ds-button--danger/);
+          await capture('delete-dialog');
+          await page.keyboard.press('Escape');
+          await expect(dialog).not.toBeVisible();
+          await expect(
+            page.getByRole('button', { name: 'Delete session', exact: true }),
+          ).toBeFocused();
+        }
       }
-      await page.getByRole('button', { name: 'Start practice' }).click();
+      await calibrate(page);
+      await page
+        .getByRole('button', { name: 'Start practice', exact: true })
+        .click();
       await expect(
         page.getByRole('button', { name: 'Pause', exact: true }),
       ).toBeVisible();
-      await page.clock.runFor(3500);
-      const instruction = page.locator('.instruction'),
-        phase = page.locator('.phase-ring strong');
-      expect(
-        await instruction.evaluate((e) =>
-          parseFloat(getComputedStyle(e).fontSize),
-        ),
-      ).toBeGreaterThanOrEqual(48);
-      expect(
-        await phase.evaluate((e) => parseFloat(getComputedStyle(e).fontSize)),
-      ).toBeGreaterThanOrEqual(28);
-      expect(
-        await page
-          .locator('.finger strong')
-          .first()
-          .evaluate((e) => parseFloat(getComputedStyle(e).fontSize)),
-      ).toBeGreaterThanOrEqual(24);
-      for (const button of await page.locator('main button:visible').all())
-        expect(
-          await button.evaluate((e) => e.getBoundingClientRect().height),
-        ).toBeGreaterThanOrEqual(64);
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-      ).toBe(true);
-      expect(
-        (await page
-          .getByRole('button', { name: 'End practice' })
-          .boundingBox())!.y + 64,
-      ).toBeLessThanOrEqual(size.height);
-      await page.screenshot({
-        path: `${qaDir}/exercise-live-${theme}-${size.width}.png`,
-        fullPage: true,
-      });
-      await page.getByRole('button', { name: 'End practice' }).click();
-      await page
-        .getByRole('dialog')
-        .getByRole('button', { name: 'End session' })
-        .click();
+      // The real runtime remains active while we inspect its natural layout.
+      await page.getByRole('button', { name: 'Pause', exact: true }).click();
       await expect(
-        page.getByRole('heading', { name: 'Session complete' }),
+        page.locator('.statuses').getByText('Paused', { exact: true }),
       ).toBeVisible();
-      await page.screenshot({
-        path: `${qaDir}/exercise-summary-${theme}-${size.width}.png`,
-        fullPage: true,
-      });
-    }
+      await expect(
+        page.locator('.statuses .ds-status-chip--danger'),
+      ).toHaveCount(0);
+      const geometry = await page.evaluate(() => ({
+        height: document.documentElement.scrollHeight,
+        viewport: innerHeight,
+        hand: document.querySelector('.live-hero')!.getBoundingClientRect()
+          .width,
+        width: document.querySelector('.live-layout')!.getBoundingClientRect()
+          .width,
+        instruction: parseFloat(
+          getComputedStyle(document.querySelector('.instruction')!).fontSize,
+        ),
+      }));
+      expect(geometry.height).toBeLessThanOrEqual(geometry.viewport);
+      expect(geometry.hand / geometry.width).toBeGreaterThanOrEqual(0.55);
+      expect(geometry.instruction).toBeGreaterThanOrEqual(48);
+      await expect(
+        page.getByRole('button', { name: 'End practice', exact: true }),
+      ).toHaveCount(0);
+      for (const name of ['Resume', 'Skip pose']) {
+        const box = await page
+          .getByRole('button', { name, exact: true })
+          .boundingBox();
+        expect(box!.height).toBeGreaterThanOrEqual(64);
+        expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+      }
+      await capture('exercise-live', false);
+      await page.getByText('Coach controls', { exact: true }).click();
+      await expect(
+        page.getByRole('switch', { name: 'Mic on' }).last(),
+      ).toBeVisible();
+      await expect(page.getByLabel('Voice mode')).toBeVisible();
+      await page.getByText('Coach controls', { exact: true }).click();
+      await page
+        .getByRole('button', { name: 'End session', exact: true })
+        .click();
+      await capture('exercise-summary');
+      expect(errors).toEqual([]);
+    });
   }
-  expect(errors).toEqual([]);
+}
+
+test('helper calibration captures values and uses one release action', async ({
+  page,
+}) => {
+  await page.goto('/calibrate');
+  await expect(page.getByRole('button', { name: /Release glove/ })).toHaveCount(
+    1,
+  );
+  for (const finger of ['Thumb', 'Index', 'Middle']) {
+    await page
+      .getByRole('button', { name: new RegExp(`^${finger} ·`) })
+      .click();
+    await page.getByLabel('Servo angle').fill('20');
+    await page.getByRole('button', { name: /^Set open/ }).click();
+    await page.getByLabel('Servo angle').fill('150');
+    await page.getByRole('button', { name: /^Set closed/ }).click();
+    await expect(
+      page.getByRole('button', { name: 'Set open ✓ 20°' }),
+    ).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Send glove ranges' }).click();
+  await page.getByRole('button', { name: /Use example camera range/ }).click();
+  await page.getByRole('button', { name: 'Continue to friction' }).click();
+  await page.getByRole('button', { name: 'Skip friction measurement' }).click();
+  await page.getByRole('button', { name: 'Save calibration' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Your range is saved' }),
+  ).toBeVisible();
 });

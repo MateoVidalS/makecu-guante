@@ -10,7 +10,7 @@ import {
   formatDate,
 } from '../../components/charts';
 const ma = (value: number | null) =>
-  value == null ? 'Not recorded' : `${Math.round(value)} mA`;
+  value == null ? '—' : `${Math.round(value)} mA`;
 export default function EvaluationDetail() {
   const { id } = useParams(),
     evaluation = useEvaluation(Number(id));

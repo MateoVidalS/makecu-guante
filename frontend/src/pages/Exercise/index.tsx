@@ -52,15 +52,15 @@ const Hand = memo(function Hand() {
   const runtime = useRuntime(),
     vision = useVision();
   const pose = useExerciseView((v) => v.pose);
-  const [compact, setCompact] = useState(
-    () => window.matchMedia?.('(max-width: 1280px)').matches ?? false,
-  );
+  const container = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(42.5);
   useEffect(() => {
-    const media = window.matchMedia?.('(max-width: 1280px)');
-    if (!media) return;
-    const update = () => setCompact(media.matches);
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
+    if (!container.current) return;
+    const resize = new ResizeObserver(([entry]) =>
+      setZoom(Math.min(85, entry.contentRect.height / 6)),
+    );
+    resize.observe(container.current);
+    return () => resize.disconnect();
   }, []);
   const actualJoints = useRef<JointMap | null>(null);
   useEffect(() => {
@@ -97,13 +97,13 @@ const Hand = memo(function Hand() {
     [runtime],
   );
   return (
-    <div role="img" aria-label={`Target pose: ${pose.name}`}>
+    <div ref={container} role="img" aria-label={`Target pose: ${pose.name}`}>
       <VirtualHand
         target={pose.render}
         actual={actual}
         state={state}
         pose={pose.id}
-        zoom={compact ? 60 : 85}
+        zoom={zoom}
         handedness={
           runtime.calibration.current?.camera.affected_hand ?? 'right'
         }
@@ -165,8 +165,10 @@ function LiveDetails() {
       <div className="camera-pip">
         <CameraOverlay compact />
       </div>
-      <CoachArea />
-      <RuntimeSimulatorControls />
+      <div className="live-tools">
+        <CoachArea />
+        <RuntimeSimulatorControls />
+      </div>
     </aside>
   );
 }
@@ -310,7 +312,7 @@ export default function Exercise() {
     );
   if (!live)
     return (
-      <Stack as="section" gap={24}>
+      <Stack as="section" gap={24} className="practice-plan">
         <PageHeader title="Your practice" lead="Choose a comfortable pace." />
         <Inline>
           {[

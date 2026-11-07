@@ -45,6 +45,7 @@ export default function Calibrate() {
     [saved, setSaved] = useState(false);
   const mirror = draft.mirror;
   const current = useGloveTelemetry((t) => t?.ma ?? 0);
+  const awaitingRanges = useRef(false);
   const cancel = useRef<() => void>(() => {}),
     mounted = useRef(true),
     draftRef = useRef(draft);
@@ -68,7 +69,8 @@ export default function Calibrate() {
   useEffect(() => {
     mounted.current = true;
     const unsub = client.onEvent((e) => {
-      if (e.e === 'calib_ok') {
+      if (e.e === 'calib_ok' && awaitingRanges.current) {
+        awaitingRanges.current = false;
         setAck(true);
         setDraft((d) => (d.step === 0 ? { ...d, step: 1 } : d));
       }
@@ -147,6 +149,7 @@ export default function Calibrate() {
     if (client.connection() !== 'connected')
       throw new Error('Connect the glove first.');
     client.release();
+    awaitingRanges.current = true;
     GLOVE_FINGERS.forEach((f, i) => {
       const r = draft.servo[f]!;
       client.calib(i as 0 | 1 | 2, r.min_deg!, r.max_deg!);
