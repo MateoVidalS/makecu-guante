@@ -7,7 +7,7 @@ const baseURL = `http://127.0.0.1:${frontendPort}`;
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  use: { baseURL, trace: 'retain-on-failure' },
+  use: { baseURL, trace: 'retain-on-failure', actionTimeout: 10_000 },
   projects: [
     {
       name: 'chromium',

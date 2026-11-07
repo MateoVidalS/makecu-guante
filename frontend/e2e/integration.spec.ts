@@ -39,10 +39,9 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
     .click();
   const sessionId = (await (await created).json()).id as number;
   await expect(page.locator('.focus')).toBeVisible();
-  await page
-    .getByLabel('Voice mode', { exact: true })
-    .first()
-    .selectOption('off');
+  await page.getByText('Coach controls', { exact: true }).click();
+  await page.getByLabel('Voice mode').selectOption('off');
+  await page.getByText('Coach controls', { exact: true }).click();
   await page.getByText('Simulator controls', { exact: true }).click();
   await page
     .getByRole('checkbox', { name: 'Rigid index', exact: true })
