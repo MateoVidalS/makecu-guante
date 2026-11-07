@@ -1,0 +1,247 @@
+/*
+ * Live exercise. Calm and flat: hairline borders, no shadows, no tinted cards.
+ * Selectors are scoped under .exercise-live so they win over the shared live.css
+ * defaults without editing it.
+ */
+.exercise-live .live-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 17rem);
+  grid-template-rows: none;
+  gap: var(--space-32);
+}
+.exercise-live .live-hero {
+  gap: var(--space-16);
+}
+
+/* ---- Heading ---- */
+.exercise-live .live-heading {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: center;
+}
+.exercise-live .live-hero .instruction {
+  font-size: var(--display);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--weight-bold);
+  margin: 0;
+}
+.exercise-live .pose-hint,
+.exercise-live .pose-next {
+  margin: 0;
+  font-size: var(--body);
+  color: var(--muted);
+}
+
+/* ---- Stage: two equal panels ---- */
+.live-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-16);
+}
+.live-stage[data-camera='hidden'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.live-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  text-align: start;
+}
+.live-panel__head {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-height: var(--control-md);
+  padding: var(--space-8) var(--space-12) 0 var(--space-16);
+  pointer-events: none;
+}
+.live-panel__head > * {
+  pointer-events: auto;
+}
+.live-panel__title {
+  margin: 0;
+  font-size: var(--small);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+.live-panel--camera .live-panel__title {
+  color: var(--vision-on-video);
+}
+.live-panel__body {
+  flex: 1;
+  min-height: 0;
+}
+.live-panel__body .hand-view {
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
+}
+/* The camera panel is a dark video well; its chrome sits on the video. */
+.live-panel--camera {
+  --vision-on-video: color-mix(in srgb, var(--on-chrome) 82%, transparent);
+  border-color: var(--border);
+  background: var(--chrome);
+}
+.live-panel--camera .camera-overlay__confidence {
+  top: auto;
+  bottom: var(--space-12);
+}
+.live-camera-toggle {
+  gap: var(--space-8);
+}
+.live-camera-toggle .ds-switch-row__label {
+  font-size: var(--small);
+  color: var(--muted);
+}
+.live-panel--camera .live-camera-toggle .ds-switch-row__label {
+  color: var(--vision-on-video);
+}
+.live-camera-toggle .ds-switch-row__text {
+  order: -1;
+}
+
+/* ---- Actions: first in DOM for tab order, last on screen ---- */
+.exercise-live .live-heading {
+  order: 1;
+}
+.exercise-live .live-stage {
+  order: 2;
+}
+.exercise-live .practice-actions {
+  order: 3;
+  flex: none;
+}
+
+/* ---- Side column: phase, fingers, coach. Quiet, unboxed. ---- */
+.exercise-live .live-details {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  align-items: stretch;
+  gap: var(--space-24);
+  text-align: start;
+}
+.exercise-live .phase-ring {
+  justify-content: flex-start;
+  gap: var(--space-16);
+  font-size: var(--h2);
+  padding-block-end: var(--space-24);
+  border-block-end: var(--control-border) solid var(--border);
+}
+.exercise-live .phase-ring strong {
+  font-size: var(--h2);
+  line-height: var(--leading-snug);
+}
+.exercise-live .live-details .finger-bars {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+}
+.exercise-live .live-details .finger-bars .ds-meter__head {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+.exercise-live .finger-bars .ds-meter__label {
+  font-size: var(--body);
+  color: var(--muted);
+}
+.exercise-live .finger-bars .ds-meter__value {
+  font-size: var(--h3);
+  font-variant-numeric: tabular-nums;
+}
+.exercise-live .live-tools {
+  gap: var(--space-12);
+  padding-block-start: var(--space-24);
+  border-block-start: var(--control-border) solid var(--border);
+}
+.exercise-live .coach-compact {
+  display: grid;
+  gap: var(--space-8);
+}
+.exercise-live .coach-compact > .coach-caption {
+  font-size: var(--body);
+  line-height: var(--leading-snug);
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  color: var(--text);
+}
+.exercise-live .coach-quick-controls {
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+.exercise-live .coach-quick-controls summary {
+  font-size: var(--small);
+  color: var(--muted);
+}
+.exercise-live .coach-popover {
+  box-shadow: none;
+  border-color: var(--border-strong);
+}
+.exercise-live .live-tools > details {
+  padding: var(--space-8) 0 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.exercise-live .live-tools > details > summary {
+  color: var(--muted);
+}
+
+/* Attempt feedback: flat, hairline, no floating shadow. */
+.exercise-live .attempt-toast,
+.exercise-live .attempt-toast.ds-toast,
+.exercise-live .attempt-toast .ds-toast {
+  box-shadow: none;
+}
+.exercise-live .coach-quick-controls .ds-switch-row__label {
+  font-size: var(--small);
+  color: var(--muted);
+}
+
+/* ---- Narrow screens: stack, keep the two panels side by side ---- */
+@media (max-width: 1100px) {
+  .exercise-live .live-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: var(--space-16);
+  }
+  .exercise-live .live-details {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: center;
+    gap: var(--space-24);
+  }
+  .exercise-live .phase-ring {
+    padding: 0;
+    border: 0;
+  }
+  .exercise-live .live-tools {
+    padding: 0;
+    border: 0;
+  }
+}
+@media (max-width: 720px) {
+  .live-stage {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: minmax(0, 1fr);
+  }
+  .exercise-live .live-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

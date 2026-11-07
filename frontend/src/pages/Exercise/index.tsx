@@ -9,6 +9,7 @@ import {
   Input,
   Pill,
   Switch,
+  VisuallyHidden,
 } from '../../design-system';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -46,6 +47,7 @@ import {
   ConfirmDialog,
   useSessionLeaveGuard,
 } from '../../components/common';
+import './exercise.css';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
 const Hand = memo(function Hand() {
@@ -56,8 +58,15 @@ const Hand = memo(function Hand() {
   const [zoom, setZoom] = useState(42.5);
   useEffect(() => {
     if (!container.current) return;
+    // The hand spans ~6 model units tall and ~4.4 wide; fit both in the panel.
     const resize = new ResizeObserver(([entry]) =>
-      setZoom(Math.min(85, entry.contentRect.height / 6)),
+      setZoom(
+        Math.min(
+          85,
+          entry.contentRect.height / 6,
+          entry.contentRect.width / 4.4,
+        ),
+      ),
     );
     resize.observe(container.current);
     return () => resize.disconnect();
@@ -97,7 +106,12 @@ const Hand = memo(function Hand() {
     [runtime],
   );
   return (
-    <div ref={container} role="img" aria-label={`Target pose: ${pose.name}`}>
+    <div
+      ref={container}
+      className="live-panel__body"
+      role="img"
+      aria-label={`Target pose: ${pose.name}`}
+    >
       <VirtualHand
         target={pose.render}
         actual={actual}
@@ -146,6 +160,60 @@ const CoachArea = memo(function CoachArea() {
     </>
   );
 });
+const CAMERA_KEY = 'rehab-hub.exercise.camera';
+function readCameraPreference() {
+  try {
+    return window.localStorage.getItem(CAMERA_KEY) !== 'hidden';
+  } catch {
+    return true;
+  }
+}
+/** Two equal panels: the virtual hand against its target, and what the camera sees. */
+export function LiveStage() {
+  const [camera, setCamera] = useState(readCameraPreference);
+  const toggle = (on: boolean) => {
+    setCamera(on);
+    try {
+      window.localStorage.setItem(CAMERA_KEY, on ? 'shown' : 'hidden');
+    } catch {
+      /* Preference is a convenience only. */
+    }
+  };
+  return (
+    <div className="live-stage" data-camera={camera ? 'shown' : 'hidden'}>
+      <section className="live-panel" aria-label="Target and your hand">
+        <header className="live-panel__head">
+          <h2 className="live-panel__title">Target &amp; your hand</h2>
+          {!camera && (
+            <Switch
+              className="live-camera-toggle"
+              label="Show camera"
+              checked={camera}
+              onCheckedChange={toggle}
+            />
+          )}
+        </header>
+        <Hand />
+      </section>
+      {camera && (
+        <section className="live-panel live-panel--camera" aria-label="Camera">
+          <header className="live-panel__head">
+            <h2 className="live-panel__title">Camera</h2>
+            <Switch
+              className="live-camera-toggle"
+              label={<VisuallyHidden>Show camera</VisuallyHidden>}
+              checked={camera}
+              onCheckedChange={toggle}
+            />
+          </header>
+          <div className="live-panel__body live-panel__body--camera">
+            <CameraOverlay bare mirrored />
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
 function LiveDetails() {
   const view = useExerciseView();
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
@@ -162,9 +230,6 @@ function LiveDetails() {
         activeMax={view.activeMax}
         assisting={view.assisting}
       />
-      <div className="camera-pip">
-        <CameraOverlay compact />
-      </div>
       <div className="live-tools">
         <CoachArea />
         <RuntimeSimulatorControls />
@@ -439,8 +504,15 @@ export default function Exercise() {
     >
       <div className="live-layout">
         <div className="live-hero">
-          <Hand />
-          <h1 className="instruction">{instruction}</h1>
+          <div className="live-heading">
+            <h1 className="instruction">{instruction}</h1>
+            {hint && <p className="pose-hint">{hint}</p>}
+            {(phase === 'REST' || phase === 'RELEASE') && (
+              <p className="pose-next">
+                Next: {next ? POSES[next].name.toLowerCase() : 'session recap'}
+              </p>
+            )}
+          </div>
           <Inline justify="center" gap={12} className="practice-actions">
             <Button
               size="lg"
@@ -461,12 +533,8 @@ export default function Exercise() {
               Skip pose
             </Button>
           </Inline>
-          {hint && <p className="pose-hint">{hint}</p>}
-          {(phase === 'REST' || phase === 'RELEASE') && (
-            <p>
-              Next: {next ? POSES[next].name.toLowerCase() : 'session recap'}
-            </p>
-          )}
+          {/* After the actions in DOM (tab order), above them on screen. */}
+          <LiveStage />
         </div>
         <LiveDetails />
       </div>

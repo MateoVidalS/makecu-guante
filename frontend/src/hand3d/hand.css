@@ -5,11 +5,7 @@
   min-height: var(--placeholder-height);
   overflow: hidden;
   border-radius: var(--radius-card);
-  background: radial-gradient(
-    ellipse at center,
-    var(--surface),
-    var(--surface-2)
-  );
+  background: var(--surface);
 }
 .hand-view canvas {
   display: block;
@@ -19,7 +15,8 @@
   inset: 50% var(--space-24) auto;
   transform: translateY(-50%);
   margin: 0;
-  padding: var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  border: var(--control-border) solid var(--border);
   border-radius: var(--radius-input);
   background: var(--surface);
   color: var(--text);
@@ -28,11 +25,28 @@
 }
 .hand-legend {
   position: absolute;
-  inset: auto var(--space-24) var(--space-16);
+  inset: auto auto var(--space-12) var(--space-16);
   display: flex;
-  justify-content: center;
-  gap: var(--space-24);
+  gap: var(--space-16);
   color: var(--muted);
-  font-size: var(--small);
+  font-size: var(--caption);
   pointer-events: none;
+}
+.hand-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.hand-legend span::before {
+  content: '';
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+}
+.hand-legend__target::before {
+  border: var(--control-border) solid var(--target);
+}
+.hand-legend__actual::before {
+  background: var(--hand);
+  box-shadow: inset 0 0 0 var(--control-border) var(--border-strong);
 }
