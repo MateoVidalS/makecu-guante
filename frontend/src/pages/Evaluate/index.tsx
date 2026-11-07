@@ -39,7 +39,7 @@ const py = (ma: number) =>
   CHART.bottom -
   (Math.min(CHART.maxMa, Math.max(0, ma)) / CHART.maxMa) *
     (CHART.bottom - CHART.top);
-function SweepChart() {
+function SweepChart({ measuringFriction }: { measuringFriction: boolean }) {
   const runtime = useRuntime(),
     { client } = useGlove(),
     view = useEvaluationView();
@@ -53,15 +53,16 @@ function SweepChart() {
       setPoints((p) => [...p, { pos: t.a[i], ma: t.ma }].slice(-600));
     });
   }, [client, runtime, view.finger, view.speed]);
-  const friction = view.finger
-    ? (runtime.calibration.current?.friction[view.finger]?.find(
-        (f) =>
-          f.v ===
-          (view.speed === 'slow'
-            ? DEFAULT_EVAL_SETTINGS.slow_v
-            : DEFAULT_EVAL_SETTINGS.fast_v),
-      )?.points ?? [])
-    : [];
+  const friction =
+    view.finger && !measuringFriction
+      ? (runtime.calibration.current?.friction[view.finger]?.find(
+          (f) =>
+            f.v ===
+            (view.speed === 'slow'
+              ? DEFAULT_EVAL_SETTINGS.slow_v
+              : DEFAULT_EVAL_SETTINGS.fast_v),
+        )?.points ?? [])
+      : [];
   const path = (values: Point[]) =>
     values.map((p) => `${px(p.pos)},${py(p.ma)}`).join(' ');
   return (
@@ -275,9 +276,9 @@ export default function Evaluate() {
     }
   }
   if (running) {
+    const activeFingers = measuringFriction ? GLOVE_FINGERS : selectedFingers;
     const sweep =
-      Math.max(0, selectedFingers.indexOf(view.finger ?? selectedFingers[0])) *
-        2 +
+      Math.max(0, activeFingers.indexOf(view.finger ?? activeFingers[0])) * 2 +
       (view.speed === 'fast' ? 2 : 1);
     return (
       <div className="hp-page hp-live">
@@ -294,7 +295,7 @@ export default function Evaluate() {
                 : view.stage === 'cooldown'
                   ? 'Relax your hand'
                   : `${title(view.speed ?? 'slow')} movement`}{' '}
-              · Sweep {sweep} of {selectedFingers.length * 2}
+              · Sweep {sweep} of {activeFingers.length * 2}
             </span>
           }
         />
@@ -313,12 +314,12 @@ export default function Evaluate() {
           max={1}
         />
         <SweepTracker
-          fingers={selectedFingers}
+          fingers={activeFingers}
           finger={view.finger}
           speed={view.speed}
           progress={view.stage === 'sweep' ? view.progress : 0}
         />
-        <SweepChart />
+        <SweepChart measuringFriction={measuringFriction} />
       </div>
     );
   }
@@ -438,7 +439,7 @@ export default function Evaluate() {
           >
             Evaluate again
           </Button>
-          <ButtonLink variant="quiet" to="/history">
+          <ButtonLink variant="quiet" to="/doctor">
             See evaluation history
           </ButtonLink>
           <ButtonLink variant="quiet" to="/">

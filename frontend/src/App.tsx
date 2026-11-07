@@ -85,6 +85,7 @@ function Shell() {
     total = useExerciseView((v) => v.total),
     rep = useExerciseView((v) => v.rep);
   const runtime = useRuntime();
+  const evaluation = useEvaluationView();
   const focus =
     (location.pathname === '/exercise' && phase !== 'DONE') ||
     (location.pathname === '/evaluate' &&
@@ -104,14 +105,21 @@ function Shell() {
                 <Button
                   icon="x"
                   onClick={() => {
-                    void runtime.exercise.stop();
-                    void runtime.evaluation.stop();
+                    if (location.pathname === '/evaluate')
+                      void runtime.evaluation.stop();
+                    else void runtime.exercise.stop();
                   }}
                 >
-                  End session
+                  {location.pathname === '/evaluate'
+                    ? 'Stop evaluation'
+                    : 'End session'}
                 </Button>
                 <span className="app-progress">
-                  Pose {index + 1} of {total} · Rep {rep}
+                  {location.pathname === '/evaluate'
+                    ? evaluation.finger
+                      ? `${evaluation.finger} · ${evaluation.speed ?? evaluation.stage}`
+                      : `Evaluation · ${evaluation.stage}`
+                    : `Pose ${index + 1} of ${total} · Rep ${rep}`}
                 </span>
               </>
             ) : doctor ? (

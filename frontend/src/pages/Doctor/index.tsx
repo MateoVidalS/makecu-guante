@@ -44,6 +44,7 @@ export default function Doctor() {
     overview = useHistoryOverview(),
     sessions = useAllSessions(),
     evaluations = useEvaluations();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [pose, setPose] = useState<PoseId | ''>('');
   const filteredRom = useHistoryRom(pose ? { pose } : {});
   const rom = useHistoryRom(),
@@ -159,103 +160,110 @@ export default function Doctor() {
           </div>
         </DataSection>
       </section>
-      <section className="report-page">
-        <DataStatus loading={profile.isPending} error={profile.error}>
-          {profile.data &&
-            [
-              profile.data.pseudonym,
-              profile.data.condition,
-              profile.data.goals,
-              profile.data.therapist_name,
-              profile.data.therapist_email,
-            ].some((value) => value?.trim()) && (
-              <DataSection
-                title={profile.data.pseudonym || 'Patient profile'}
-                className="report-patient"
-              >
-                <DescriptionList
-                  className="report-dl"
-                  items={[
-                    {
-                      label: 'Affected hand',
-                      value: capitalize(profile.data.affected_hand),
-                    },
-                    {
-                      label: 'Condition',
-                      value: profile.data.condition || 'Not provided',
-                    },
-                    {
-                      label: 'Goals',
-                      value: profile.data.goals || 'Not provided',
-                    },
-                    {
-                      label: 'Therapist',
-                      value:
-                        [
-                          profile.data.therapist_name,
-                          profile.data.therapist_email,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ') || 'Not provided',
-                    },
-                  ]}
-                />
-              </DataSection>
-            )}
-        </DataStatus>
-      </section>
-      <details className="report-details">
-        <summary>Details</summary>
-        <section className="report-page">
-          <DataSection
-            title="Active range over sessions"
-            description="Mean best finger position during the active attempt, all poses. Higher is better for closing, lower for opening. Choose one pose for a clearer comparison."
-            demo={demoSessions}
-            actions={
-              <div className="history-pose">
-                <Select
-                  label="Pose"
-                  layout="inline"
-                  value={pose}
-                  onChange={(e) => setPose(e.target.value as PoseId | '')}
-                >
-                  <option value="">All poses</option>
-                  {Object.values(POSES).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            }
-          >
-            <DataStatus error={filteredRom.error || sessions.error}>
-              <TrendSmallMultiples
-                points={filteredRom.data ?? []}
-                timeline={sessions.data}
-                loading={filteredRom.isPending || sessions.isPending}
-                opening={pose === 'open'}
-                compact
+      <DataStatus loading={profile.isPending} error={profile.error}>
+        {profile.data &&
+          [
+            profile.data.pseudonym,
+            profile.data.condition,
+            profile.data.goals,
+            profile.data.therapist_name,
+            profile.data.therapist_email,
+          ].some((value) => value?.trim()) && (
+            <DataSection
+              title={profile.data.pseudonym || 'Patient profile'}
+              className="report-patient"
+            >
+              <DescriptionList
+                className="report-dl"
+                items={[
+                  {
+                    label: 'Affected hand',
+                    value: capitalize(profile.data.affected_hand),
+                  },
+                  {
+                    label: 'Condition',
+                    value: profile.data.condition || 'Not provided',
+                  },
+                  {
+                    label: 'Goals',
+                    value: profile.data.goals || 'Not provided',
+                  },
+                  {
+                    label: 'Therapist',
+                    value:
+                      [
+                        profile.data.therapist_name,
+                        profile.data.therapist_email,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || 'Not provided',
+                  },
+                ]}
               />
-            </DataStatus>
-          </DataSection>
-        </section>
-        <DataSection
-          className="report-page"
-          title="Assistance over sessions"
-          description="Per session: best closure on its own (blue) and what the glove added to reach the target (orange). All poses."
-          demo={demoSessions}
-          demoNote="Demo data is drawn hollow"
-        >
-          <DataStatus error={assist.error || rom.error}>
-            <EffortSmallMultiples
-              timeline={sessions.data}
-              rom={rom.data ?? []}
-              assist={assist.data ?? []}
-              loading={assist.isPending || rom.isPending || sessions.isPending}
-            />
-          </DataStatus>
-        </DataSection>{' '}
+            </DataSection>
+          )}
+      </DataStatus>
+      <details
+        className="report-details"
+        onToggle={(e) => setDetailsOpen(e.currentTarget.open)}
+      >
+        <summary>Details</summary>
+        {detailsOpen && (
+          <>
+            <section className="report-page">
+              <DataSection
+                title="Active range over sessions"
+                description="Mean best finger position during the active attempt, all poses. Higher is better for closing, lower for opening. Choose one pose for a clearer comparison."
+                demo={demoSessions}
+                actions={
+                  <div className="history-pose">
+                    <Select
+                      label="Pose"
+                      layout="inline"
+                      value={pose}
+                      onChange={(e) => setPose(e.target.value as PoseId | '')}
+                    >
+                      <option value="">All poses</option>
+                      {Object.values(POSES).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                }
+              >
+                <DataStatus error={filteredRom.error || sessions.error}>
+                  <TrendSmallMultiples
+                    points={filteredRom.data ?? []}
+                    timeline={sessions.data}
+                    loading={filteredRom.isPending || sessions.isPending}
+                    opening={pose === 'open'}
+                    compact
+                  />
+                </DataStatus>
+              </DataSection>
+            </section>
+            <DataSection
+              className="report-page"
+              title="Assistance over sessions"
+              description="Per session: best closure on its own (blue) and what the glove added to reach the target (orange). All poses."
+              demo={demoSessions}
+              demoNote="Demo data is drawn hollow"
+            >
+              <DataStatus error={assist.error || rom.error}>
+                <EffortSmallMultiples
+                  timeline={sessions.data}
+                  rom={rom.data ?? []}
+                  assist={assist.data ?? []}
+                  loading={
+                    assist.isPending || rom.isPending || sessions.isPending
+                  }
+                />
+              </DataStatus>
+            </DataSection>
+          </>
+        )}
       </details>
       <SessionList doctor />
       <EvaluationList />

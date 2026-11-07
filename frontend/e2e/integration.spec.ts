@@ -130,6 +130,22 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   ).toBeVisible();
   await expect(page.getByLabel('Attempt').locator('option')).toHaveCount(15);
   await page.goto('/evaluate');
+  const measureFriction = page.getByRole('button', {
+    name: 'Measure glove friction',
+    exact: true,
+  });
+  if (await measureFriction.count()) {
+    await page
+      .getByRole('checkbox', { name: 'The glove is empty and hanging freely' })
+      .check();
+    await measureFriction.click();
+    await expect(
+      page.getByText(
+        'Recent glove friction saved. Put the glove on, then relax.',
+      ),
+    ).toBeVisible({ timeout: 60_000 });
+  }
+
   await page
     .getByRole('checkbox', { name: 'Hand relaxed in the glove' })
     .check();
@@ -169,6 +185,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
       exact: true,
     }),
   ).toBeVisible();
+  await page.getByText('Details', { exact: true }).click();
   await expect(
     page.getByText('Active range over sessions', { exact: true }),
   ).toBeVisible();
