@@ -24,6 +24,8 @@ export interface VirtualHandProps {
   actual: () => JointMap | null;
   state: (finger: FingerId) => FingerState;
   handedness?: Handedness;
+  /** Orthographic zoom for the page viewport; preserves the gallery default. */
+  zoom?: number;
   /** Optional metadata: existing three-prop callers retain pose inference. */
   pose?: PoseId;
   reducedMotion?: boolean;
@@ -47,6 +49,7 @@ function HandScene({
   actual,
   state,
   handedness = 'right',
+  zoom = 85,
   reducedMotion,
   pose,
   palette,
@@ -79,8 +82,9 @@ function HandScene({
   useEffect(() => {
     camera.position.set(pose === 'pinch' ? -5.2 : -4.2, 3.3, 7.5);
     camera.lookAt(0, 0.8, 0.4);
+    camera.zoom = zoom;
     camera.updateProjectionMatrix();
-  }, [camera, pose]);
+  }, [camera, pose, zoom]);
 
   useFrame((_frame, delta) => {
     const live = tracking.current;
