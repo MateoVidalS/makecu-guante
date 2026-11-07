@@ -160,6 +160,10 @@ for (const size of [
       await page
         .getByRole('button', { name: 'End session', exact: true })
         .click();
+      await page
+        .getByRole('dialog')
+        .getByRole('button', { name: 'End session', exact: true })
+        .click();
       await expect(
         page.getByRole('heading', { name: 'Session complete', exact: true }),
       ).toBeVisible();

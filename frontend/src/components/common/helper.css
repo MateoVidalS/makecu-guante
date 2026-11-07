@@ -416,3 +416,6 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+.app-top:has(#safety-banner-slot [role='alert']) ~ main .coach-popover {
+  display: none;
+}

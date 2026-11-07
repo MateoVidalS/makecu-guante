@@ -20,7 +20,7 @@ test('focus-shell recovery readies each simulator and simple voice within five s
     await page.getByText('Demo recovery', { exact: true }).click();
     const started = Date.now();
     await page
-      .getByRole('button', { name: `Use simulated ${source}`, exact: true })
+      .getByRole('button', { name: `Restart simulated ${source}`, exact: true })
       .click();
     await expect(
       page.getByText(
@@ -49,6 +49,9 @@ test('focus-shell recovery readies each simulator and simple voice within five s
   await page
     .getByRole('button', { name: 'Start practice', exact: true })
     .click();
+  await page.getByText('Coach controls', { exact: true }).click();
+  await page.getByLabel('Voice mode').selectOption('off');
+  await page.getByText('Coach controls', { exact: true }).click();
   await page.getByText('Demo recovery', { exact: true }).click();
   const started = Date.now();
   await page
@@ -62,7 +65,7 @@ test('focus-shell recovery readies each simulator and simple voice within five s
   await expect(page.locator('.focus')).toBeVisible();
   await expect(
     page.locator('.coach-compact').getByRole('switch', { name: 'Microphone' }),
-  ).toHaveAttribute('aria-checked', 'false');
+  ).toHaveCount(0);
   await testInfo.attach('recovery-wall-time-ms.json', {
     body: JSON.stringify(timings),
     contentType: 'application/json',
@@ -80,7 +83,7 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
     .getByRole('button', { name: 'Start practice', exact: true })
     .click();
   const safety = page.locator('#safety-banner-slot [role=alert]');
-  await page.getByText('Simulator controls', { exact: true }).click();
+  await page.getByText('Demo recovery', { exact: true }).click();
   await page
     .getByRole('button', { name: 'Press simulated STOP', exact: true })
     .click();
@@ -88,13 +91,14 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
   await expect(
     safety.getByRole('button', { name: 'Resume', exact: true }),
   ).toBeFocused();
+  await page.getByText('Demo recovery', { exact: true }).click();
   await page
     .getByRole('button', { name: 'Release simulated STOP', exact: true })
     .click();
-  await page.getByText('Simulator controls', { exact: true }).click();
+  await page.getByText('Demo recovery', { exact: true }).click();
   await safety.getByRole('button', { name: 'Resume', exact: true }).click();
   await expect(safety).not.toBeVisible();
-  await page.getByText('Simulator controls', { exact: true }).click();
+  await page.getByText('Demo recovery', { exact: true }).click();
   await page
     .getByRole('button', { name: 'Unplug simulated glove', exact: true })
     .click();
@@ -114,10 +118,9 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
     .getByRole('button', { name: 'Practice again', exact: true })
     .click();
   // A single closing pose reaches assistance promptly, where camera loss must release.
-  for (const name of ['Open hand', 'Hook', 'Tabletop', 'Straight fist']) {
-    await page.getByRole('checkbox', { name, exact: true }).uncheck();
-  }
-  await page.getByLabel('Repetitions for Full fist', { exact: true }).fill('1');
+  await page
+    .getByRole('button', { name: 'Fist only, 1 rep', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Start practice', exact: true })
     .click();
@@ -126,7 +129,7 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
       .locator('.phase-ring')
       .getByText('The glove is helping', { exact: true }),
   ).toBeVisible({ timeout: 20_000 });
-  await page.getByText('Simulator controls', { exact: true }).click();
+  await page.getByText('Demo recovery', { exact: true }).click();
   await page
     .getByRole('button', {
       name: 'Hide simulated hand for 3 seconds',
@@ -142,7 +145,6 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
   );
   expect(spoken).toContain("I can't see your hand. Pausing.");
   expect(spoken).toContain('The glove disconnected. It has released.');
-  await page.getByText('Simulator controls', { exact: true }).click();
   await safety.getByRole('button', { name: 'Resume', exact: true }).click();
   await expect(safety).not.toBeVisible();
 });

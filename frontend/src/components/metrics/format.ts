@@ -104,7 +104,10 @@ export function fingerDeltas(
       finger,
       now: n,
       then: t,
-      delta: n != null && t != null ? Math.round((n - t) * 100) : null,
+      delta:
+        n != null && t != null
+          ? Math.round((clamp01(n) - clamp01(t)) * 100)
+          : null,
     };
   });
 }

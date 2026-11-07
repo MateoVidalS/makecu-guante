@@ -14,7 +14,7 @@ import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
 import { useRuntime, RuntimeSimulatorCalibration } from '../../runtime';
 
 import { useGlove, useGloveTelemetry } from '../../glove';
-import { useVision } from '../../vision';
+import { useVision, useVisionFrame } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
 import {
   practicePlan,
@@ -46,6 +46,9 @@ export default function Calibrate() {
     [capture, setCapture] = useState(false),
     [progress, setProgress] = useState(0),
     [saved, setSaved] = useState(false);
+  const seen = useVisionFrame(
+    (frame) => !!frame?.detected && frame.confidence >= 0.6,
+  );
   const mirror = draft.mirror;
   const current = useGloveTelemetry((t) => t?.ma ?? 0);
   const awaitingRanges = useRef(false);
@@ -543,7 +546,7 @@ export default function Calibrate() {
                 </div>
                 <Button
                   size="sm"
-                  disabled={capture}
+                  disabled={capture || !seen}
                   onClick={() => captureRange('open')}
                 >
                   Capture open hand
@@ -561,7 +564,7 @@ export default function Calibrate() {
                 </div>
                 <Button
                   size="sm"
-                  disabled={capture || !draft.open}
+                  disabled={capture || !draft.open || !seen}
                   onClick={() => captureRange('closed')}
                 >
                   Glove closes the hand

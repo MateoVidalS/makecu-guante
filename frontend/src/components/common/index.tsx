@@ -340,7 +340,11 @@ export function SessionSummaryCard({ summary }: { summary: SessionSummary }) {
           )?.active_max_mean;
           const delta =
             f.active_max_mean != null && previous != null
-              ? Math.round((f.active_max_mean - previous) * 100)
+              ? Math.round(
+                  (Math.min(1, Math.max(0, f.active_max_mean)) -
+                    Math.min(1, Math.max(0, previous))) *
+                    100,
+                )
               : undefined;
           return (
             <KpiTile

@@ -22,7 +22,7 @@ import { MemoryRouter, Route, Routes, Link } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RuntimeProvider } from '../../runtime';
 import { ScriptedRuntime } from '../../runtime/ScriptedRuntime';
-import { GloveProvider } from '../../glove';
+import { GloveProvider, useGlove } from '../../glove';
 import { VisionProvider } from '../../vision';
 import { VoiceProvider } from '../../voice';
 import Home from '../../pages/Home';
@@ -129,6 +129,13 @@ async function startExercise(runtime: ScriptedRuntime) {
   });
 }
 describe('Home and Setup', () => {
+  it('keeps demo recovery out of an ordinary hardware session', () => {
+    vi.stubEnv('VITE_SIM', '0');
+    vi.stubEnv('VITE_DEMO', '0');
+    mount(<RuntimeFallbackControls />);
+    expect(screen.queryByText('Demo recovery')).toBeNull();
+  });
+
   it('loads greeting, labeled demo history and starts the short plan', async () => {
     vi.useFakeTimers({
       toFake: ['setInterval', 'clearInterval', 'performance'],
@@ -470,6 +477,28 @@ describe('Safety and accessible common controls', () => {
   });
 });
 describe('Calibration wizard', () => {
+  it('names the safety event that stopped a camera-range capture', () => {
+    function StopGlove() {
+      const { world } = useGlove();
+      return (
+        <button onClick={() => world.controls.pressStop()}>Trip STOP</button>
+      );
+    }
+    mount(
+      <>
+        <Calibrate />
+        <StopGlove />
+      </>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Trip STOP' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Glove stopped. STOP button pressed.',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Release glove now' }),
+    ).toBeVisible();
+  });
+
   it('validates each range and resumes after leaving', () => {
     const first = mount(<Calibrate />);
     expect(

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useGlove } from '../glove';
 import { useVision } from '../vision';
-import { GLOVE_FINGERS } from '../contracts/glove';
+import { GLOVE_FINGERS, type GloveFinger } from '../contracts/glove';
 import { useRuntime } from './RuntimeProvider';
 import type { PatientPreset } from '../glove/sim/patient';
 import { Button, Checkbox, Select, Stack } from '../design-system';
@@ -13,6 +13,7 @@ export function RuntimeSimulatorControls() {
   const { world, client } = useGlove();
   const vision = useVision();
   const [, refresh] = useState(0);
+  const [rigidFinger, setRigidFinger] = useState<GloveFinger>('index');
   if (client.kind !== 'sim') return null;
   return (
     <Stack gap={8}>
@@ -28,20 +29,11 @@ export function RuntimeSimulatorControls() {
         <option value="moderate">Moderate</option>
         <option value="severe">Severe</option>
       </Select>
-      {GLOVE_FINGERS.map((finger) => (
-        <Checkbox
-          key={finger}
-          label={`Rigid ${finger}`}
-          checked={world.patient.rigid[finger]}
-          onChange={(event) => {
-            world.controls.setRigid(finger, event.target.checked);
-            refresh((value) => value + 1);
-          }}
-        />
-      ))}
-      <Button onClick={() => world.controls.handOutOfFrame(3000)}>
-        Hide simulated hand for 3 seconds
-      </Button>
+      {vision.source.kind === 'sim' && (
+        <Button onClick={() => world.controls.handOutOfFrame(3000)}>
+          Hide simulated hand for 3 seconds
+        </Button>
+      )}
       <Button variant="danger" onClick={() => world.controls.pressStop()}>
         Press simulated STOP
       </Button>
@@ -51,6 +43,26 @@ export function RuntimeSimulatorControls() {
       <Button onClick={() => world.controls.unplug()}>
         Unplug simulated glove
       </Button>
+      <Select
+        label="Rigid finger"
+        value={rigidFinger}
+        onChange={(event) => setRigidFinger(event.target.value as GloveFinger)}
+      >
+        {GLOVE_FINGERS.map((finger) => (
+          <option key={finger} value={finger}>
+            {finger}
+            {world.patient.rigid[finger] ? ' (rigid)' : ''}
+          </option>
+        ))}
+      </Select>
+      <Checkbox
+        label={`Rigid ${rigidFinger}`}
+        checked={world.patient.rigid[rigidFinger]}
+        onChange={(event) => {
+          world.controls.setRigid(rigidFinger, event.target.checked);
+          refresh((value) => value + 1);
+        }}
+      />
     </Stack>
   );
 }
