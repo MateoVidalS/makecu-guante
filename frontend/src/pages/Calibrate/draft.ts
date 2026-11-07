@@ -1,3 +1,4 @@
+import { captureStats } from '../../vision/calibration';
 import type { CalibrationIn } from '../../contracts/api';
 import type { FingerId, VisionFrame } from '../../contracts/vision';
 import type { ServoCalibration } from '../../contracts/calibration';
@@ -81,7 +82,6 @@ export function stableCapture(frames: VisionFrame[]): Capture {
     valid.at(-1)!.t - valid[0].t < 1800
   )
     throw new Error('Keep your hand in view. Try again.');
-  const raw = {} as Record<FingerId, number>;
   for (const finger of fingers) {
     const values = valid.map((f) => f.rawFlexSum![finger]);
     if (
@@ -89,7 +89,6 @@ export function stableCapture(frames: VisionFrame[]): Capture {
       Math.max(...values) - Math.min(...values) > 12
     )
       throw new Error("Too much movement — let's try again.");
-    raw[finger] = values.reduce((a, b) => a + b, 0) / values.length;
   }
   const pinches = valid.map((f) => f.pinch!);
   if (
@@ -97,5 +96,6 @@ export function stableCapture(frames: VisionFrame[]): Capture {
     Math.max(...pinches) - Math.min(...pinches) > 0.08
   )
     throw new Error("Too much movement — let's try again.");
-  return { raw, pinch: pinches.reduce((a, b) => a + b, 0) / pinches.length };
+  const measured = captureStats(frames, 2);
+  return { raw: measured.rawFlexSum, pinch: measured.pinch };
 }

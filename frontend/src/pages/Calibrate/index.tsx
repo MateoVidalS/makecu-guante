@@ -46,11 +46,11 @@ export default function Calibrate() {
   }, [draft]);
   useEffect(() => {
     if (draft.step === 1) {
-      void vision.source
+      void vision
         .start({ affectedHand: draft.hand })
         .catch((e) => setError((e as Error).message));
     }
-  }, [draft.step, draft.hand, vision.source]);
+  }, [draft.step, draft.hand, vision]);
   useEffect(() => {
     mounted.current = true;
     const unsub = client.onEvent((e) => {
@@ -215,7 +215,7 @@ export default function Calibrate() {
       current_limit_ma: draft.limit,
     });
     await runtime.calibration.sendToGlove();
-    vision.source.setCalibration(camera);
+    vision.setCalibration(camera);
     saveDraft(freshDraft());
     setSaved(true);
   }
@@ -343,29 +343,24 @@ export default function Calibrate() {
       {draft.step === 1 && (
         <section className="card live-stack">
           <h2>Step 2 · Camera range</h2>
-          {vision.source.kind === 'sim' &&
-            !vision.source.latest()?.rawFlexSum &&
-            runtime.calibration.current && (
-              <>
-                <p>
-                  The scripted camera cannot capture finger angles. Use example
-                  values.
-                </p>
-                <BigButton
-                  onClick={() => {
-                    const c = runtime.calibration.current!.camera;
-                    update({
-                      open: { raw: c.open_flex, pinch: c.pinch_open },
-                      closed: { raw: c.closed_flex, pinch: c.pinch_closed },
-                      pinch: { raw: c.closed_flex, pinch: c.pinch_closed },
-                      hand: c.affected_hand,
-                    });
-                  }}
-                >
-                  Use example camera range (simulator)
-                </BigButton>
-              </>
-            )}
+          {vision.source.kind === 'sim' && runtime.calibration.current && (
+            <>
+              <p>Use example values to preview calibration without a camera.</p>
+              <BigButton
+                onClick={() => {
+                  const c = runtime.calibration.current!.camera;
+                  update({
+                    open: { raw: c.open_flex, pinch: c.pinch_open },
+                    closed: { raw: c.closed_flex, pinch: c.pinch_closed },
+                    pinch: { raw: c.closed_flex, pinch: c.pinch_closed },
+                    hand: c.affected_hand,
+                  });
+                }}
+              >
+                Use example camera range (simulator)
+              </BigButton>
+            </>
+          )}
 
           <label>
             Affected hand
@@ -393,9 +388,7 @@ export default function Calibrate() {
             />
             Mirror preview
           </label>
-          <div className={mirror ? 'preview-mirrored' : undefined}>
-            <CameraOverlay />
-          </div>
+          <CameraOverlay mirrored={mirror} />
           <p>Keep your hand still for two seconds.</p>
           {capture && (
             <div role="status">

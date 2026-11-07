@@ -47,6 +47,7 @@ const Hand = memo(function Hand() {
   }, []);
   const actualJoints = useRef<JointMap | null>(null);
   useEffect(() => {
+    vision.setCalibration(runtime.calibration.current?.camera ?? null);
     const update = (frame: VisionFrame | null) => {
       actualJoints.current =
         frame?.detected && frame.confidence >= 0.6
@@ -58,7 +59,7 @@ const Hand = memo(function Hand() {
     };
     update(vision.source.latest());
     return vision.source.onFrame(update);
-  }, [vision.source, runtime]);
+  }, [vision, vision.source, runtime]);
   const actual = useCallback(() => actualJoints.current, []);
   const state = useCallback(
     (finger: string) => {
@@ -97,28 +98,34 @@ const CoachArea = memo(function CoachArea() {
   const voice = useVoice();
   return (
     <>
-      <div className="coach-full">
-        <CoachPanel />
-      </div>
       <div className="coach-compact">
         <p className="coach-caption">
           {voice.lastCoachLine ??
             (voice.mode === 'off' ? 'Voice off' : 'Your coach is here.')}
         </p>
-        <details
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              e.currentTarget.open = false;
-              e.currentTarget.querySelector('summary')?.focus();
-            }
-          }}
-        >
-          <summary>Coach controls</summary>
-          <div className="coach-popover">
-            <CoachPanel />
-          </div>
-        </details>
+        <div className="actions coach-quick-controls">
+          <BigButton
+            onClick={() => voice.setMuted(!voice.muted)}
+            disabled={voice.mode !== 'live'}
+            aria-pressed={voice.mode === 'live' && !voice.muted}
+          >
+            Mic {voice.mode === 'live' && !voice.muted ? 'on' : 'off'}
+          </BigButton>
+          <details
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                e.currentTarget.open = false;
+                e.currentTarget.querySelector('summary')?.focus();
+              }
+            }}
+          >
+            <summary>Coach controls</summary>
+            <div className="coach-popover">
+              <CoachPanel />
+            </div>
+          </details>
+        </div>
       </div>
     </>
   );
@@ -140,7 +147,7 @@ function LiveDetails() {
         assisting={view.assisting}
       />
       <div className="camera-pip">
-        <CameraOverlay />
+        <CameraOverlay compact />
       </div>
       <CoachArea />
     </aside>

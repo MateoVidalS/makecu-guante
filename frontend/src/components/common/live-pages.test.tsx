@@ -53,6 +53,9 @@ vi.mock('../../hand3d/VirtualHand', () => ({
     return <div>Hand preview</div>;
   },
 }));
+vi.mock('../../vision/CameraOverlay', () => ({
+  CameraOverlay: () => <div>Camera preview</div>,
+}));
 const nativeFetch = globalThis.fetch;
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
@@ -115,7 +118,9 @@ async function startExercise(runtime: ScriptedRuntime) {
 }
 describe('Home and Setup', () => {
   it('loads greeting, labeled demo history and starts the short plan', async () => {
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    vi.useFakeTimers({
+      toFake: ['setInterval', 'clearInterval', 'performance'],
+    });
     server.use(
       http.get('*/api/profile', () =>
         HttpResponse.json({ ...profile, pseudonym: 'Alex' }),
@@ -126,7 +131,7 @@ describe('Home and Setup', () => {
     );
     const { runtime } = mount(<Home />);
     await act(async () => {
-      vi.advanceTimersByTime(100);
+      vi.advanceTimersByTime(500);
     });
     expect(
       await screen.findByRole('heading', { name: /Hello, / }),

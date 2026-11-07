@@ -60,8 +60,13 @@ export default function Setup() {
     }
   }
   async function camera() {
-    await runtime.sources.setVision('camera');
-    await vision.source.start({
+    await vision.setKind('camera');
+    try {
+      await runtime.sources.setVision('camera');
+    } catch (e) {
+      if (!/comes in WP3/.test((e as Error).message)) throw e;
+    }
+    await vision.start({
       deviceId: deviceId || undefined,
       affectedHand:
         runtime.calibration.current?.camera.affected_hand ?? 'right',
@@ -207,12 +212,8 @@ export default function Setup() {
             />
             Mirror preview
           </label>
-          <div className={mirror ? 'preview-mirrored' : undefined}>
-            <CameraOverlay />
-          </div>
-          <BigButton onClick={() => vision.source.stop()}>
-            Stop camera
-          </BigButton>
+          <CameraOverlay mirrored={mirror} />
+          <BigButton onClick={() => vision.stop()}>Stop camera</BigButton>
         </section>
       </div>
       <section className="card simulator">
@@ -225,8 +226,12 @@ export default function Setup() {
               await runtime.sources.setGlove('sim');
               await glove.setKind('sim');
               await runtime.sources.setVision('sim');
+              await vision.setKind('sim');
+              vision.setCalibration(
+                runtime.calibration.current?.camera ?? null,
+              );
               setInfo(await glove.client.connect());
-              await vision.source.start({ affectedHand: 'right' });
+              await vision.start({ affectedHand: 'right' });
             })
           }
         >
