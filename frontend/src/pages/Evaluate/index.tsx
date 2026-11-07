@@ -218,7 +218,7 @@ export default function Evaluate() {
                 : view.stage === 'cooldown'
                   ? 'Relax your hand'
                   : `${title(view.speed ?? 'slow')} movement`}{' '}
-              · Sweep {sweep} of 6
+              · Sweep {sweep} of {FINGER_ORDER.length * 2}
             </span>
           }
         />

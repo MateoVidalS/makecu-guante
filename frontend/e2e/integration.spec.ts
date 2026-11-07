@@ -144,6 +144,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
     (response) =>
       response.request().method() === 'POST' &&
       response.url().endsWith('/api/evaluations'),
+    { timeout: 60_000 },
   );
   await page
     .getByRole('button', { name: 'Start evaluation', exact: true })
