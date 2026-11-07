@@ -35,12 +35,12 @@
   color: var(--muted);
 }
 
-/* ---- Stage: two equal panels ---- */
+/* ---- Stage: hand with an optional small camera ---- */
 .live-stage {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
   gap: var(--space-16);
 }
 .live-stage[data-camera='hidden'] {
@@ -342,4 +342,21 @@
 }
 .exercise-live .phase-ring strong {
   font-size: calc(var(--body) * 1.75);
+}
+
+/* Keep the optional camera small; hide it before squeezing the finger meters. */
+.live-panel--camera {
+  align-self: end;
+  height: calc(var(--control-lg) * 2);
+}
+[data-voice-mode='simple'] .coach-popover .ds-switch-row {
+  display: none;
+}
+@media (max-width: 1279px) {
+  .live-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .live-panel--camera {
+    display: none;
+  }
 }

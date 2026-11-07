@@ -79,31 +79,27 @@ export function SessionRecap({
         </p>
         <p className="recap__sentence">{recapSentence(summary)}</p>
       </header>
-      <div className="recap__grid">
-        <Card
-          title={summary.previous ? 'Last time → today' : 'Your hand today'}
-          description="How far each finger closed on its own."
-        >
-          <ThenNow deltas={deltas} mirrored={mirrored} size={128} />
-          {!summary.previous && (
-            <p className="recap__note">
-              This is your starting point. Next time you will see the change.
-            </p>
-          )}
-        </Card>
-        <Card
-          title="On your own and with the glove"
-          description="Average per finger. Bar end = fully closed."
-        >
-          <SplitBars
-            rows={summary.per_finger.map((f) => ({
-              finger: f.finger,
-              own: f.active_max_mean,
-              help: f.assist_needed_mean,
-            }))}
-          />
-        </Card>
-      </div>
+      <Card
+        title={summary.previous ? 'Last time → today' : 'Your hand today'}
+        description="How far each finger closed on its own."
+      >
+        <ThenNow deltas={deltas} mirrored={mirrored} size={128} />
+        {!summary.previous && (
+          <p className="recap__note">
+            This is your starting point. Next time you will see the change.
+          </p>
+        )}
+        <p className="recap__note">
+          On your own and with the glove. Bar end = fully closed.
+        </p>
+        <SplitBars
+          rows={summary.per_finger.map((f) => ({
+            finger: f.finger,
+            own: f.active_max_mean,
+            help: f.assist_needed_mean,
+          }))}
+        />
+      </Card>
       {strip.length > 0 && (
         <Card
           title="Every attempt"

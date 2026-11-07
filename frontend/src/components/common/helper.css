@@ -404,3 +404,18 @@
 .hp-legend .hp-legend__text {
   color: var(--muted);
 }
+
+/* The recovery menu starts below the entire header, including any safety banner. */
+.app-header .runtime-fallback__panel {
+  position: fixed;
+  inset-block-start: var(--recovery-top, var(--control-lg));
+  inset-inline-end: var(--space-8);
+  max-height: calc(
+    100dvh - var(--recovery-top, var(--control-lg)) - var(--space-16)
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.app-top:has(#safety-banner-slot [role='alert']) ~ main .coach-popover {
+  display: none;
+}
