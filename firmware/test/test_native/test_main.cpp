@@ -7,6 +7,7 @@
 #include <limits>
 #include <string>
 
+#include "boot_event.h"
 #include "calib.h"
 #include "current_filter.h"
 #include "ramp.h"
@@ -97,9 +98,12 @@ void rejects_invalid_json_and_extensions() {
 }
 void rejects_bad_args_and_non_finite_values() {
   for (const char* json :
-       {"{\"t\":\"target\",\"f\":[0,1],\"v\":1}", "{\"t\":\"target\",\"f\":[0,true,1,0.3,0.2],\"v\":1}",
-        "{\"t\":\"target\",\"f\":[0,1,1,0.3,0.2],\"v\":0}", "{\"t\":\"target\",\"f\":[0,1,1,0.3,0.2],\"v\":-1}",
-        "{\"t\":\"follow\",\"f\":[0,1e999,1,0.3,0.2]}", "{\"t\":\"calib\",\"i\":5,\"min\":20,\"max\":150}",
+       {"{\"t\":\"target\",\"f\":[0,1],\"v\":1}",
+        "{\"t\":\"target\",\"f\":[0,true,1,0.3,0.2],\"v\":1}",
+        "{\"t\":\"target\",\"f\":[0,1,1,0.3,0.2],\"v\":0}",
+        "{\"t\":\"target\",\"f\":[0,1,1,0.3,0.2],\"v\":-1}",
+        "{\"t\":\"follow\",\"f\":[0,1e999,1,0.3,0.2]}",
+        "{\"t\":\"calib\",\"i\":5,\"min\":20,\"max\":150}",
         "{\"t\":\"calib\",\"i\":1.5,\"min\":20,\"max\":150}",
         "{\"t\":\"calib\",\"i\":1,\"min\":4,\"max\":150}",
         "{\"t\":\"calib\",\"i\":1,\"min\":20,\"max\":176}",
@@ -118,8 +122,9 @@ void codec_storage_survives_repeated_maximum_lines() {
                         static_cast<int>(protocol::parse(line, 201).error));
 }
 void telemetry_is_bounded_and_rounds_to_two_decimals() {
-  Telemetry t{UINT32_MAX, {{0.1234F, 0.9999F, 0.555F, 0.346F, 0.875F}},
-              32767, State::Fault, Mode::Target, {{1, 0.5F, 0, 0.95F, 0.25F}}};
+  Telemetry t{UINT32_MAX,   {{0.1234F, 0.9999F, 0.555F, 0.346F, 0.875F}},
+              32767,        State::Fault,
+              Mode::Target, {{1, 0.5F, 0, 0.95F, 0.25F}}};
   char line[202];
   const auto size = protocol::format(t, line, sizeof(line));
   TEST_ASSERT_GREATER_THAN(0, size);
@@ -139,6 +144,53 @@ void telemetry_is_bounded_and_rounds_to_two_decimals() {
   t.ma = std::numeric_limits<float>::quiet_NaN();
   TEST_ASSERT_EQUAL_INT(0, protocol::format(t, line, sizeof(line)));
 }
+void boot_reset_reason_is_bounded_and_distinguishes_brownout() {
+  // esp_reset_reason_t values in the pinned Arduino-ESP32 SDK: power-on=1,
+  // software reset=3, brown-out=9. Keep future numeric reasons representable.
+  for (const auto reason : {1U, 3U, 9U, UINT32_MAX}) {
+    char line[202];
+    const auto size = protocol::formatBoot(reason, line, sizeof(line));
+    TEST_ASSERT_GREATER_THAN(0, size);
+    TEST_ASSERT_LESS_THAN(200, size);
+    TEST_ASSERT_EQUAL_CHAR('\n', line[size - 1]);
+    JsonDocument doc;
+    TEST_ASSERT_FALSE(deserializeJson(doc, line));
+    TEST_ASSERT_EQUAL_STRING("evt", doc["t"].as<const char*>());
+    TEST_ASSERT_EQUAL_STRING("boot", doc["e"].as<const char*>());
+    TEST_ASSERT_EQUAL_UINT32(reason, doc["reset_reason"].as<uint32_t>());
+    TxQueue queue;
+    TEST_ASSERT_TRUE(queue.enqueue(line, size));
+    TEST_ASSERT_EQUAL_MEMORY(line, queue.data(), size);
+    // Check every short capacity, including the missing-NUL boundary.
+    for (std::size_t capacity = 0; capacity <= size + 1; ++capacity) {
+      char bytes[204];
+      std::memset(bytes, 'Z', sizeof(bytes));
+      const auto written = protocol::formatBoot(reason, bytes + 1, capacity);
+      TEST_ASSERT_EQUAL_UINT(capacity > size ? size : 0, written);
+      TEST_ASSERT_EQUAL_CHAR('Z', bytes[0]);
+      TEST_ASSERT_EQUAL_CHAR('Z', bytes[capacity + 1]);
+    }
+  }
+  TEST_ASSERT_EQUAL_UINT(0, protocol::formatBoot(9, nullptr, 202));
+}
+void info_reports_five_channels_and_no_calibration_after_reboot() {
+  Harness h;
+  h.calibrate();
+  h.send("{\"t\":\"target\",\"f\":[1,1,1,1,1],\"v\":1}");
+  h.advance(300);
+  h.safety.begin(true, h.now);
+  char line[202];
+  TEST_ASSERT_GREATER_THAN(0, protocol::format(h.safety.info(), line, sizeof(line)));
+  JsonDocument info;
+  TEST_ASSERT_FALSE(deserializeJson(info, line));
+  TEST_ASSERT_EQUAL_UINT(5, info["fingers"].as<unsigned>());
+  TEST_ASSERT_EQUAL_UINT(5, info["calib"].size());
+  TEST_ASSERT_EQUAL_FLOAT(config::LIMIT_DEFAULT_MA, info["limit"].as<float>());
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
+    TEST_ASSERT_TRUE(info["calib"][i].isNull());
+    TEST_ASSERT_FALSE(h.safety.attached(i));
+  }
+}
 void boot_detaches_and_never_reuses_calibration() {
   Harness h;
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Idle), static_cast<int>(h.safety.state()));
@@ -151,8 +203,9 @@ void boot_detaches_and_never_reuses_calibration() {
 }
 void moves_need_all_five_calibrations() {
   Harness h;
-  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::NoCalib),
-                        static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}")));
+  TEST_ASSERT_EQUAL_INT(
+      static_cast<int>(ErrorCode::NoCalib),
+      static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}")));
   TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::NoCalib),
                         static_cast<int>(h.send("{\"t\":\"follow\",\"f\":[1,1,1,0.3,0.2]}")));
   h.calibrate();
@@ -172,8 +225,9 @@ void ring_and_pinky_require_calibration_move_and_release_with_the_other_fingers(
     TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.safety.handle(c, 0)));
     TEST_ASSERT_FALSE(h.safety.calibrated());
   }
-  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::NoCalib),
-                       static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0,0.8,0.6],\"v\":1}")));
+  TEST_ASSERT_EQUAL_INT(
+      static_cast<int>(ErrorCode::NoCalib),
+      static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0,0.8,0.6],\"v\":1}")));
   h.send("{\"t\":\"calib\",\"i\":4,\"min\":150,\"max\":20}");
   TEST_ASSERT_TRUE(h.safety.calibrated());
   h.send("{\"t\":\"target\",\"f\":[0,0,0,0.8,0.6],\"v\":1}");
@@ -295,14 +349,15 @@ void stop_latches_rejects_moves_and_needs_explicit_release() {
   h.safety.stopReleased();
   TEST_ASSERT_TRUE(h.saw(EventKind::StopReleased));
   for (const auto* json :
-       {"{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}", "{\"t\":\"follow\",\"f\":[1,1,1,0.3,0.2]}",
-        "{\"t\":\"jog\",\"i\":1,\"deg\":90}"})
+       {"{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}",
+        "{\"t\":\"follow\",\"f\":[1,1,1,0.3,0.2]}", "{\"t\":\"jog\",\"i\":1,\"deg\":90}"})
     TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::Fault), static_cast<int>(h.send(json)));
   h.advance(1000);
   TEST_ASSERT_FALSE(h.safety.attached(0));
   TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.send("{\"t\":\"release\"}")));
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Idle), static_cast<int>(h.safety.state()));
-  TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0.1,0,0,0.3,0.2],\"v\":1}")));
+  TEST_ASSERT_EQUAL_INT(
+      0, static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0.1,0,0,0.3,0.2],\"v\":1}")));
   TEST_ASSERT_TRUE(h.safety.attached(0));
 }
 void stop_works_from_idle_calibration_and_fault() {
@@ -382,8 +437,9 @@ void jog_speed_bounds_and_state_guards() {
   TEST_ASSERT_EQUAL_INT(
       static_cast<int>(ErrorCode::State),
       static_cast<int>(h.send("{\"t\":\"calib\",\"i\":1,\"min\":20,\"max\":150}")));
-  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::State),
-                        static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}")));
+  TEST_ASSERT_EQUAL_INT(
+      static_cast<int>(ErrorCode::State),
+      static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}")));
   h.send("{\"t\":\"release\"}");
   TEST_ASSERT_FALSE(h.safety.attached(1));
   h.calibrate();
@@ -407,8 +463,9 @@ void missing_sensor_refuses_assistance_but_allows_jog() {
   Harness h(false);
   h.calibrate();
   TEST_ASSERT_TRUE(h.saw(EventKind::InaMissing));
-  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::State),
-                        static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}")));
+  TEST_ASSERT_EQUAL_INT(
+      static_cast<int>(ErrorCode::State),
+      static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}")));
   TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::State),
                         static_cast<int>(h.send("{\"t\":\"follow\",\"f\":[1,1,1,0.3,0.2]}")));
   TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.send("{\"t\":\"jog\",\"i\":1,\"deg\":95}")));
@@ -427,6 +484,21 @@ void current_limit_is_clamped_in_any_state() {
   h.safety.stopPressed(0);
   h.send("{\"t\":\"limit\",\"ma\":10000}");
   TEST_ASSERT_EQUAL_FLOAT(2200, h.safety.info().limit);
+}
+void maximum_total_limit_keeps_the_100_ms_trip_rule() {
+  Harness h;
+  h.calibrate();
+  h.send("{\"t\":\"target\",\"f\":[1,1,1,1,1],\"v\":1}");
+  h.send("{\"t\":\"limit\",\"ma\":10000}");
+  h.safety.current(2200, 0);
+  h.safety.current(2200, 200);
+  TEST_ASSERT_FALSE(h.saw(EventKind::Overcurrent));
+  h.safety.current(2201, 205);
+  h.safety.current(2400, 304);
+  TEST_ASSERT_FALSE(h.saw(EventKind::Overcurrent));
+  h.safety.current(2201, 305);
+  TEST_ASSERT_TRUE(h.saw(EventKind::Overcurrent));
+  TEST_ASSERT_EQUAL_FLOAT(2400, h.events[h.count - 1].ma);
 }
 void timers_survive_millis_wrap() {
   Harness h(true, UINT32_MAX - 500);
@@ -509,8 +581,9 @@ void ring_segments_colors_and_blink_are_deterministic() {
     t.st = state;
     t.md = Mode::Target;
     const auto frame = ringFrame(t);
-    const uint32_t color = state == State::Run ? 0xE8890C :
-                           state == State::Calib ? 0xFFBF00 : 0x202020;
+    const uint32_t color = state == State::Run     ? 0xE8890C
+                           : state == State::Calib ? 0xFFBF00
+                                                   : 0x202020;
     for (std::size_t pixel = 0; pixel < frame.size(); ++pixel)
       TEST_ASSERT_EQUAL_HEX32(pixel % 5 == 4 ? 0 : color, frame[pixel]);
   }
@@ -527,7 +600,8 @@ void ring_segments_colors_and_blink_are_deterministic() {
   }
 }
 void every_fault_unwinds_and_detaches_all_five_channels() {
-  for (auto reason : {EventKind::StopButton, EventKind::Overcurrent, EventKind::Watchdog}) {
+  for (auto reason : {EventKind::StopButton, EventKind::Overcurrent, EventKind::Watchdog,
+                      EventKind::InaMissing}) {
     Harness h;
     for (std::size_t i = 0; i < config::FINGERS; ++i) {
       Command c;
@@ -544,6 +618,8 @@ void every_fault_unwinds_and_detaches_all_five_channels() {
       TEST_ASSERT_FLOAT_WITHIN(0.001F, 0.5F, h.safety.telemetry(h.now).a[i]);
     }
     if (reason == EventKind::StopButton) h.safety.stopPressed(h.now);
+    if (reason == EventKind::InaMissing)
+      h.safety.current(std::numeric_limits<float>::quiet_NaN(), h.now);
     if (reason == EventKind::Overcurrent) {
       h.safety.current(1600, h.now);
       h.safety.current(1600, h.now + 99);
@@ -638,8 +714,9 @@ void rejected_calibration_invalidates_that_finger_without_keepalive() {
   TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::BadArgs),
                         static_cast<int>(h.safety.handle(bad.command, 900)));
   TEST_ASSERT_FALSE(h.safety.info().calib[1].valid);
-  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::NoCalib),
-                        static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}")));
+  TEST_ASSERT_EQUAL_INT(
+      static_cast<int>(ErrorCode::NoCalib),
+      static_cast<int>(h.send("{\"t\":\"target\",\"f\":[1,1,1,0.3,0.2],\"v\":1}")));
 }
 void assistance_waits_for_out_of_range_jog_to_unwind() {
   Harness h;
@@ -648,10 +725,12 @@ void assistance_waits_for_out_of_range_jog_to_unwind() {
   h.advance(3000);
   TEST_ASSERT_EQUAL_FLOAT(175, h.safety.angle(0));
   h.send("{\"t\":\"release\"}");
-  TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::State),
-                        static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0,0.3,0.2],\"v\":1}")));
+  TEST_ASSERT_EQUAL_INT(
+      static_cast<int>(ErrorCode::State),
+      static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0,0.3,0.2],\"v\":1}")));
   h.advance(100);
-  TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0,0.3,0.2],\"v\":1}")));
+  TEST_ASSERT_EQUAL_INT(
+      0, static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0,0.3,0.2],\"v\":1}")));
   const float angle = h.safety.angle(0);
   h.advance(5);
   TEST_ASSERT_FLOAT_WITHIN(0.001F, angle - 0.65F, h.safety.angle(0));
@@ -805,6 +884,8 @@ int main() {
   RUN_TEST(rejects_bad_args_and_non_finite_values);
   RUN_TEST(codec_storage_survives_repeated_maximum_lines);
   RUN_TEST(telemetry_is_bounded_and_rounds_to_two_decimals);
+  RUN_TEST(boot_reset_reason_is_bounded_and_distinguishes_brownout);
+  RUN_TEST(info_reports_five_channels_and_no_calibration_after_reboot);
   RUN_TEST(boot_detaches_and_never_reuses_calibration);
   RUN_TEST(moves_need_all_five_calibrations);
   RUN_TEST(ring_and_pinky_require_calibration_move_and_release_with_the_other_fingers);
@@ -823,6 +904,7 @@ int main() {
   RUN_TEST(jog_holds_other_channels_after_release);
   RUN_TEST(missing_sensor_refuses_assistance_but_allows_jog);
   RUN_TEST(current_limit_is_clamped_in_any_state);
+  RUN_TEST(maximum_total_limit_keeps_the_100_ms_trip_rule);
   RUN_TEST(timers_survive_millis_wrap);
   RUN_TEST(filtered_spike_is_rejected_and_sustained_load_trips);
   RUN_TEST(stop_debounce_latches_pulses_and_requires_stable_release);

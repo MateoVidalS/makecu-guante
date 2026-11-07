@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <esp_log.h>
+#include <esp_system.h>
 
 #include <algorithm>
 #include <cassert>
 
+#include "boot_event.h"
 #include "hal_current.h"
 #include "hal_ring.h"
 #include "hal_servo.h"
@@ -25,7 +27,10 @@ uint32_t lastTelemetry = 0;
 bool releaseEdgePending = false;
 
 void eventSink(void*, const Event& event) {
-  const auto size = protocol::format(event, line, sizeof(line));
+  const auto size =
+      event.kind == EventKind::Boot
+          ? protocol::formatBoot(static_cast<uint32_t>(esp_reset_reason()), line, sizeof(line))
+          : protocol::format(event, line, sizeof(line));
   // Commands leave four slots reserved. A held STOP cannot generate another
   // press; release edges wait for space. Sensor loss/watchdog each latch once.
   const bool queued = output.enqueue(line, size);
