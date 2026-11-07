@@ -150,6 +150,7 @@ export class TherapyController implements TherapyApi {
     result: CoachDecision['result'],
     reason: string,
     source: Source,
+    revert?: () => void,
   ) {
     const decision: CoachDecision = {
       id: `therapy-${Date.now()}-${++this.sequence}`,
@@ -163,6 +164,7 @@ export class TherapyController implements TherapyApi {
       source,
     };
     this.log.push(decision);
+    if (revert) this.undoStack.push({ id: decision.id, revert });
     this.context.onDecision?.(structuredClone(decision));
     for (const cb of this.listeners) cb(structuredClone(decision));
     return structuredClone(decision);
@@ -221,10 +223,7 @@ export class TherapyController implements TherapyApi {
     if (tool === 'record_feeling') {
       // A valid high pain value must brake even if the remaining payload is malformed.
       if (finite(args.pain) && args.pain >= this.bounds.pain_brake_at)
-        this.brake(
-          'Reported pain is at least 4 out of 10.',
-          source === 'patient_ui' ? source : 'local_rule',
-        );
+        this.brake('Reported pain is at least 4 out of 10.', 'local_rule');
       const snapshot = this.context.snapshot();
       if (!snapshot || snapshot.phase === 'DONE')
         return reject('No exercise session is running.');
@@ -393,15 +392,14 @@ export class TherapyController implements TherapyApi {
       default:
         return reject('Unknown therapy tool.');
     }
-    const d = this.decision(
+    return this.decision(
       tool,
       args,
       applied,
       clamped ? 'clamped' : 'applied',
       reason,
       source,
+      revert,
     );
-    this.undoStack.push({ id: d.id, revert });
-    return d;
   }
 }

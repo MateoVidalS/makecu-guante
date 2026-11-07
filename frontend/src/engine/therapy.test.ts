@@ -373,6 +373,7 @@ it('property: arbitrary tool sequences cannot bypass position, speed, calibrated
   for (const initialCap of [0.05, 0.15, 0.3, 0.8]) {
     const h = harness({ assist_speed: initialCap, assist_max_s: 3 });
     const original = structuredClone(calibration);
+    h.until(() => h.engine.state().phase === 'ASSIST');
     for (let i = 0; i < 800; i++) {
       const tools: CoachToolName[] = [
         'adjust_help',
@@ -407,6 +408,7 @@ it('property: arbitrary tool sequences cannot bypass position, speed, calibrated
         h.world.apply(h.engine.resume(h.world.now).commands);
       h.tick(100);
     }
+    expect(h.commands().some((c) => c.t === 'target')).toBe(true);
     for (const command of h.commands() as GloveCommand[]) {
       expect(command.t).not.toBe('limit');
       if (command.t === 'target') {

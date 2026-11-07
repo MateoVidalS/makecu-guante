@@ -122,9 +122,10 @@ class Exercise implements ExerciseEngine {
     for (const f of fingers)
       f.lagging = maxGap > this.settings.tolerance && gap(f) >= maxGap - 1e-6;
     const last = this.results.at(-1);
+    const { phaseElapsed, ...state } = this.state();
     return {
-      ...this.state(),
-      seconds_in_phase: this.state().phaseElapsed,
+      ...state,
+      seconds_in_phase: phaseElapsed,
       fingers,
       last_attempt: last
         ? {

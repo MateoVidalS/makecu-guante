@@ -108,3 +108,29 @@ friction abort behavior and the repeated 20-minute soak runner are documented in
 Boot `reset_reason: 9` is preserved by the serial codec and displayed in Setup
 and runtime status with capacitor/supply guidance. The optional field is additive;
 legacy boot messages remain valid, and a later normal boot clears the warning.
+
+AI therapy controls are always available on `RehabRuntime.therapy` and the UI-only
+`ScriptedRuntime.therapy`. The owned runtime module exports a `Runtime` type with
+required `therapy`; the coordinator must remove the optional marker from the
+shared contract during integration. `frontend/src/contracts/therapist.ts` is unchanged.
+
+The exercise engine owns the bounded policy. More help waits for the next ASSIST,
+attempt duration waits for ATTEMPT, extra rest for REST, and a pose override replaces
+one slot at PRESENT. Less help refreshes only the existing target immediately.
+Undo restores the last adjustment at its eligible boundary and never resumes a
+paused session. Consumed rest cannot be recovered, and undo does not refill the
+60-second session rest budget. A selected assist speed below the therapy minimum
+remains the session's upper cap; no tool raises it to the default.
+
+A brake releases synchronously before decision listeners and persistence. Pain of
+at least 4 triggers this local policy even when another feeling field is invalid.
+Braking also aborts evaluation and friction without restoring a higher current
+limit. Explicit session resume remains the existing release-first flow.
+`coach_brake` is saved in attempt safety events and decision payloads; adding it to
+the shared engine event union requires a coordinator contract update.
+
+Decisions and feelings use the existing durable persistence queue, ahead of session
+end. They wait for session creation and receive its real ID when posted to A3's
+`coach_decisions` and `feelings` endpoints. Pending feelings expose `session_id: 0`
+locally until creation succeeds; this placeholder is never sent to the backend.
+Endpoints unavailable before A3 merges leave the queue Offline and retry normally.

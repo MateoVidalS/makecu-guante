@@ -82,3 +82,13 @@ progress display. The default selection runs ten slow/fast sweeps over all five
 fingers. A subset retains selection order and removes duplicates. Friction is
 looked up independently for each finger and speed. The runtime can expose the
 additional settings and progress fields when the shared contracts are updated.
+
+The AI therapist policy lives in `therapy.ts`. Exercise phase entry consumes its
+bounded overrides before actions run. Target speeds never exceed 0.30/s or the
+session's lower selected cap. Since the wire accepts one speed per full-vector
+target, each scheduler command uses the minimum configured speed of the moving
+fingers. This conservatively slows concurrent fingers; it preserves the 150 ms
+stagger, maximum parallel count, calibrated target cap and current protections.
+`EngineOptions.onTherapyOutput` lets the runtime execute immediate release/lower
+commands synchronously. Unit tests capture that callback using the same fake world
+as normal engine outputs; generated tool sequences verify motor-command invariants.

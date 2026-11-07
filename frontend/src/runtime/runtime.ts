@@ -9,6 +9,7 @@ import type {
   Unsubscribe,
 } from '../contracts/runtime';
 import type { Calibration, FrictionCurve } from '../contracts/calibration';
+import type { TherapyApi } from '../contracts/therapist';
 import type { EngineEvent } from '../contracts/engine';
 import {
   GLOVE_FINGERS,
@@ -177,7 +178,7 @@ export class RehabRuntime implements TherapyRuntime {
         this.switchSource(kind, () => options.vision.setKind(kind)),
     };
   }
-  get therapy() {
+  get therapy(): TherapyApi {
     return this.exerciseEngine.therapy;
   }
   readonly sources: Runtime['sources'];
