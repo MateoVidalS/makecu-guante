@@ -63,6 +63,8 @@
   --finger-thumb: #7a6cc0;
   --finger-index: #2c93a8;
   --finger-middle: #b4497a;
+  --finger-ring: #86701f;
+  --finger-pinky: #586b99;
   --hand: #d9cfc4;
 
   /* ---- Color: chrome (doctor shell bar) ---- */
@@ -186,6 +188,8 @@
   --finger-thumb: #a99de0;
   --finger-index: #6cc6d6;
   --finger-middle: #e58cb1;
+  --finger-ring: #cfbb76;
+  --finger-pinky: #9eafd8;
   --hand: #bfb3a6;
   --chrome: #262f3a;
   --on-chrome: #eceef0;
@@ -239,6 +243,8 @@
     --finger-thumb: #a99de0;
     --finger-index: #6cc6d6;
     --finger-middle: #e58cb1;
+    --finger-ring: #cfbb76;
+    --finger-pinky: #9eafd8;
     --hand: #bfb3a6;
     --chrome: #262f3a;
     --on-chrome: #eceef0;

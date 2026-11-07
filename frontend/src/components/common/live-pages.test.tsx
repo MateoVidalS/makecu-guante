@@ -168,6 +168,40 @@ describe('Home and Setup', () => {
     );
     expect(screen.getByText('Calibration destination')).toBeVisible();
   });
+  it('surfaces the incompatible firmware error from a board with three fingers', async () => {
+    const close = vi.fn(async () => {});
+    const port = {
+      readable: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(
+            new TextEncoder().encode(
+              JSON.stringify({ t: 'info', fingers: 3 }) + '\n',
+            ),
+          );
+        },
+      }),
+      writable: new WritableStream<Uint8Array>(),
+      open: vi.fn(async () => {}),
+      close,
+    };
+    Object.defineProperty(navigator, 'serial', {
+      configurable: true,
+      value: { getPorts: async () => [], requestPort: async () => port },
+    });
+    try {
+      mount(<Setup />);
+      fireEvent.click(screen.getByRole('button', { name: 'Reconnect glove' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'This glove reports 3 fingers. Rehab Hub requires 5-finger firmware.',
+      );
+      expect(
+        screen.queryByRole('heading', { name: 'Glove ready' }),
+      ).not.toBeInTheDocument();
+      await waitFor(() => expect(close).toHaveBeenCalled());
+    } finally {
+      Reflect.deleteProperty(navigator, 'serial');
+    }
+  });
   it('shows diagnostics, disconnects and reconnects the simulator, and reports unsupported real sources', async () => {
     mount(<Setup />);
     expect(screen.getByRole('heading', { name: 'Glove ready' })).toBeVisible();
@@ -412,7 +446,9 @@ describe('Safety and accessible common controls', () => {
 describe('Calibration wizard', () => {
   it('validates each range and resumes after leaving', () => {
     const first = mount(<Calibrate />);
-    expect(screen.getByText('Hand relaxed. Stop if it hurts.')).toBeVisible();
+    expect(
+      screen.getByText('Rest palm down, forearm on a towel. Stop if it hurts.'),
+    ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Set open' }));
     fireEvent.click(screen.getByRole('button', { name: 'Set closed' }));
@@ -465,14 +501,14 @@ describe('Calibration wizard', () => {
       screen.getByRole('heading', { name: 'Review your range' }),
     ).toBeVisible();
     fireEvent.change(screen.getByLabelText('Current limit (mA)'), {
-      target: { value: '1500' },
+      target: { value: '2201' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save calibration' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Complete each calibration step',
     );
     fireEvent.change(screen.getByLabelText('Current limit (mA)'), {
-      target: { value: '900' },
+      target: { value: '1500' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save calibration' }));
     expect(
@@ -481,6 +517,46 @@ describe('Calibration wizard', () => {
   });
 });
 describe('Evaluation', () => {
+  it('selects only ring and pinky and numbers their four sweeps', async () => {
+    const { runtime } = mount(<Evaluate />);
+    const start = vi.spyOn(runtime.evaluation, 'start');
+    for (const name of ['Thumb', 'Index', 'Middle'])
+      fireEvent.click(screen.getByRole('checkbox', { name }));
+    expect(screen.getByText(/4 sweeps/)).toBeVisible();
+    fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
+    fireEvent.click(screen.getByRole('button', { name: 'Start evaluation' }));
+    await waitFor(() =>
+      expect(start).toHaveBeenCalledWith({
+        ...DEFAULT_EVAL_SETTINGS,
+        fingers: ['ring', 'pinky'],
+      }),
+    );
+    runtime.dispose();
+    act(() =>
+      runtime.evaluationStore.setState({
+        stage: 'sweep',
+        finger: 'pinky',
+        speed: 'fast',
+        progress: 0.4,
+      }),
+    );
+    expect(screen.getByText(/Sweep 4 of 4/)).toBeVisible();
+    expect(
+      screen.getByRole('list', { name: 'Evaluation steps' }).children,
+    ).toHaveLength(4);
+  });
+  it('blocks an empty evaluation subset', () => {
+    mount(<Evaluate />);
+    for (const name of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
+      fireEvent.click(screen.getByRole('checkbox', { name }));
+    fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
+    expect(
+      screen.getByRole('button', { name: 'Start evaluation' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText('Choose at least one finger to measure.'),
+    ).toBeVisible();
+  });
   it('requires the checklist, renders live sweep, results and safe abort', async () => {
     const { runtime } = mount(<Evaluate />);
     expect(

@@ -18,6 +18,7 @@ export function FingerGauge({
   target,
   tolerance = 0.1,
   state,
+  assisting = state === 'assist',
 }: {
   finger: string;
   /** Live closure 0..1, null when the hand isn't seen. */
@@ -28,6 +29,8 @@ export function FingerGauge({
   target: number | null;
   tolerance?: number;
   state: GaugeState;
+  /** Retain the helped segment after reaching, while other fingers finish. */
+  assisting?: boolean;
 }) {
   const free = target == null;
   const opening = target != null && target <= 0.05;
@@ -41,7 +44,13 @@ export function FingerGauge({
     target != null &&
     (opening ? v <= hi : v >= target - tolerance);
   // Glove-helped part: above their own best while assisting (closing targets only).
-  const helping = state === 'assist' && !opening && b != null && v != null;
+  const helping =
+    assisting &&
+    state !== 'idle' &&
+    !opening &&
+    b != null &&
+    b < lo &&
+    v != null;
   const own = helping ? Math.min(v!, b!) : (v ?? 0);
   const help = helping ? Math.max(0, v! - b!) : 0;
   const status = free

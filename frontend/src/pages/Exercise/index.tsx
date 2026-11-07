@@ -46,6 +46,7 @@ import {
 } from '../../components/common';
 import { AttemptFeedback } from '../../components/metrics';
 import type { AttemptResult } from '../../contracts/engine';
+import { liveFingerState } from './fingerState';
 import { LiveFingerMeters } from './LiveFingerMeters';
 import { SessionRecap, useSessionAttempts } from './SessionRecap';
 import './exercise.css';
@@ -91,18 +92,18 @@ const Hand = memo(function Hand() {
   const state = useCallback(
     (finger: string) => {
       const v = runtime.exercise.view();
-      if (
-        v.pose.closure[finger as FingerId] === null ||
-        ['PAUSED', 'PRESENT', 'REST', 'RELEASE'].includes(v.phase)
-      )
-        return 'idle';
-      return v.phase === 'HOLD' || v.phase === 'ASSIST_HOLD'
-        ? 'reached'
-        : v.assisting
-          ? 'assist'
-          : 'active';
+      return liveFingerState({
+        phase: v.phase,
+        target: v.pose.closure[finger as FingerId],
+        value:
+          vision.latest?.detected && vision.latest.confidence >= 0.6
+            ? (vision.latest.closure?.[finger as FingerId] ?? null)
+            : null,
+        best: v.activeMax[finger as FingerId] ?? null,
+        assisting: v.assisting,
+      });
     },
-    [runtime],
+    [runtime, vision],
   );
   return (
     <div
@@ -323,7 +324,7 @@ export default function Exercise() {
       ? 'Bend the top two joints'
       : pose.id === 'tabletop'
         ? 'Bend only at the knuckles'
-        : null;
+        : 'Palm down, fingers beyond the table edge';
   useSessionLeaveGuard('exercise');
   useEffect(() => {
     if (!live) return;
@@ -390,7 +391,10 @@ export default function Exercise() {
   if (!live)
     return (
       <Stack as="section" gap={24} className="practice-plan">
-        <PageHeader title="Your practice" lead="Choose a comfortable pace." />
+        <PageHeader
+          title="Your practice"
+          lead="Choose a comfortable pace. Rest palm down, fingers beyond the table edge."
+        />
         <Inline>
           {[
             { id: 'glides', label: 'Tendon glides', plan: DEFAULT_PLAN },

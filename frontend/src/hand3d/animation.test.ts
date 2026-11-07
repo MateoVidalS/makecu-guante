@@ -3,6 +3,7 @@ import { Color } from 'three';
 import { POSES } from '../contracts/poses';
 import { tokens } from '../styles/tokens';
 import { createHandScene, GHOST_OPACITY, STATE_TINT } from './scene';
+import { FINGERS } from './rig';
 import { createHandAnimator } from './animation';
 
 const resources: ReturnType<typeof createHandScene>[] = [];
@@ -31,6 +32,41 @@ describe('hand feedback', () => {
     for (const finger of scene.fingers)
       expect(finger.color.equals(scene.fingers[0].color)).toBe(true);
     expect(scene.ghost.opacity).toBe(GHOST_OPACITY);
+  });
+  it('gives ring and pinky independent state tint while other fingers stay neutral', () => {
+    const { scene, animation } = setup();
+    animation.tick(
+      POSES.open.render,
+      (finger) =>
+        finger === 'ring' ? 'assist' : finger === 'pinky' ? 'reached' : 'idle',
+      true,
+      true,
+      1 / 60,
+    );
+    for (const finger of FINGERS) {
+      const expected = new Color(tokens.light.hand);
+      if (finger === 'ring')
+        expected.lerp(new Color(tokens.light.assist), STATE_TINT);
+      if (finger === 'pinky')
+        expected.lerp(new Color(tokens.light.reached), STATE_TINT);
+      expect(
+        scene.fingers[FINGERS.indexOf(finger)].color.equals(expected),
+      ).toBe(true);
+    }
+  });
+  it('keeps the target visible until all participating fingers reach', () => {
+    const { scene, animation } = setup();
+    animation.tick(
+      POSES.full_fist.render,
+      (finger) => (finger === 'pinky' ? 'assist' : 'reached'),
+      true,
+      true,
+      1 / 60,
+    );
+    expect(scene.ghost.opacity).toBe(GHOST_OPACITY);
+    expect(animation.reached).toBe(false);
+    animation.tick(POSES.full_fist.render, () => 'reached', true, true, 1 / 60);
+    expect(animation.reached).toBe(true);
   });
   it('pulses for 400 ms once on reaching and fades the target during hold', () => {
     const { scene, animation } = setup();

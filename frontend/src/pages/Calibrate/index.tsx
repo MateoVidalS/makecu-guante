@@ -14,6 +14,7 @@ import { useRuntime, RuntimeSimulatorCalibration } from '../../runtime';
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision } from '../../vision';
 import { CameraOverlay } from '../../vision/CameraOverlay';
+import { CalibrationClosure } from './closure';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import type { ServoCalibration } from '../../contracts/calibration';
 import type { VisionFrame } from '../../contracts/vision';
@@ -43,9 +44,7 @@ export default function Calibrate() {
   const current = useGloveTelemetry((t) => t?.ma ?? 0);
   const awaitingRanges = useRef(false);
   const cancel = useRef<() => void>(() => {}),
-    mounted = useRef(true),
-    draftRef = useRef(draft);
-  draftRef.current = draft;
+    mounted = useRef(true);
   const finger = GLOVE_FINGERS[draft.finger],
     range = draft.servo[finger];
   function update(patch: Partial<Draft>) {
@@ -104,7 +103,7 @@ export default function Calibrate() {
       window.removeEventListener('beforeunload', unload);
       client.release();
       void runtime.evaluation.stop();
-      client.limit(runtime.calibration.current?.current_limit_ma ?? 900);
+      client.limit(runtime.calibration.current?.current_limit_ma ?? 1500);
     };
   }, [client, runtime]);
   async function action(fn: () => Promise<void>) {
@@ -156,29 +155,68 @@ export default function Calibrate() {
       setError('Connect the glove first.');
       return;
     }
+    if (!vision.latest?.detected || vision.latest.confidence < 0.6) {
+      setError('Keep your hand in the camera frame before capturing.');
+      return;
+    }
     setError('');
     setCapture(true);
     setProgress(0);
-    const frames: VisionFrame[] = [],
-      started = performance.now();
-    if (kind === 'closed') {
-      client.limit(400);
-      client.target([1, 1, 1, 1, 1], 0.3);
+    const frames: VisionFrame[] = [];
+    const started = performance.now();
+    let holdStarted: number | null = kind === 'closed' ? null : started;
+    let lastFrameAt = started;
+    const telemetry = client.latest();
+    if (kind === 'closed' && !telemetry) {
+      setCapture(false);
+      setError('Wait for glove readings, then try again.');
+      return;
     }
-    // Wait for the glove to settle before starting the hold interval.
-    const settle = kind === 'closed' ? 4000 : 0;
+    const closure =
+      kind === 'closed' ? new CalibrationClosure(telemetry!.a) : null;
+    if (closure) client.limit(Math.min(1500, draft.limit));
     const unsubscribe = vision.source.onFrame((frame) => {
-      const elapsed = performance.now() - started - settle;
-      if (elapsed >= 0) {
-        frames.push(frame);
-        setProgress(Math.min(100, elapsed / 20));
+      lastFrameAt = performance.now();
+      if (!frame.detected || frame.confidence < 0.6) {
+        cancel.current();
+        setError('Keep your hand in view. Try again.');
+        return;
       }
+      if (holdStarted === null) return;
+      frames.push(frame);
+      setProgress(Math.min(100, (performance.now() - holdStarted) / 20));
     });
-    const timer = setTimeout(() => {
+    const cleanup = () => {
+      clearInterval(timer);
       unsubscribe();
       client.release();
-      setCapture(false);
+      if (mounted.current) setCapture(false);
       cancel.current = () => {};
+    };
+    const timer = setInterval(() => {
+      const now = performance.now();
+      if (now - lastFrameAt > 500) {
+        cleanup();
+        setError(
+          'Camera readings stopped. Reconnect the camera and try again.',
+        );
+        return;
+      }
+      const position = client.latest()?.a;
+      if (closure && holdStarted === null && position) {
+        if (closure.advance(now, position))
+          client.target([...closure.target], 0.3);
+        if (closure.settled(position)) holdStarted = now;
+      }
+      if (holdStarted === null) {
+        if (now - started > 20_000) {
+          cleanup();
+          setError('The glove could not settle. Check the fit and try again.');
+        }
+        return;
+      }
+      if (now - holdStarted < 2100) return;
+      cleanup();
       try {
         const value = stableCapture(frames);
         if (frames.some((f) => f.handedness !== draft.hand))
@@ -195,14 +233,10 @@ export default function Calibrate() {
       } catch (e) {
         setError((e as Error).message);
       }
-    }, settle + 2100);
-    cancel.current = () => {
-      clearTimeout(timer);
-      unsubscribe();
-      client.release();
-      if (mounted.current) setCapture(false);
-    };
+    }, 50);
+    cancel.current = cleanup;
   }
+
   async function save() {
     if (
       !draft.open ||
@@ -211,7 +245,7 @@ export default function Calibrate() {
       !GLOVE_FINGERS.every((f) => validRange(draft.servo[f])) ||
       !Number.isFinite(draft.limit) ||
       draft.limit < 100 ||
-      draft.limit > 1400
+      draft.limit > 2200
     )
       throw new Error('Complete each calibration step before saving.');
     const camera = {
@@ -301,7 +335,7 @@ export default function Calibrate() {
           <Section
             flush
             title={`Step 1 · Glove range: ${title(finger)}`}
-            description="Hand relaxed. Stop if it hurts."
+            description="Rest palm down, forearm on a towel. Stop if it hurts."
           >
             <div
               className="hp-finger-tabs"
@@ -328,6 +362,11 @@ export default function Calibrate() {
                 </Button>
               ))}
             </div>
+            <p className="hp-note">
+              Five servos share a 5 V, 2.5 A supply. Adjust one finger at a
+              time. The normal limit is 1500 mA; never exceed 2200 mA. Keep the
+              wrist module at the table edge, fingers free.
+            </p>
             <Readouts
               label="Live glove readings"
               items={[
@@ -431,7 +470,7 @@ export default function Calibrate() {
           <Section
             flush
             title="Step 2 · Camera range"
-            description="Keep your hand still for two seconds during each capture."
+            description="Palm down. Keep still for two seconds during each capture."
             actions={
               vision.source.kind === 'sim' && runtime.calibration.current ? (
                 <Button
@@ -515,8 +554,8 @@ export default function Calibrate() {
               <div className="hp-set-row">
                 <div>
                   <p>
-                    Relax while the glove closes your hand. Make your best fist
-                    with your free fingers.
+                    Relax while the glove closes all five fingers in stages.
+                    Close only as far as the glove goes, without pain.
                   </p>
                   <p className="hp-set-row__value">
                     {draft.closed ? 'Captured' : 'Not captured'}
@@ -545,28 +584,6 @@ export default function Calibrate() {
                   Capture pinch
                 </Button>
               </div>
-            </div>
-            <div className="hp-actions">
-              <Button
-                size="sm"
-                variant="quiet"
-                disabled={capture || !draft.closed || !draft.open}
-                onClick={() => {
-                  const d = draftRef.current;
-                  update({
-                    closed: {
-                      ...d.closed!,
-                      raw: {
-                        ...d.closed!.raw,
-                        ring: d.open!.raw.ring + 180,
-                        pinky: d.open!.raw.pinky + 180,
-                      },
-                    },
-                  });
-                }}
-              >
-                Use estimates for ring and pinky
-              </Button>
             </div>
             <div className="hp-wizard__footer">
               {back(0)}
@@ -598,7 +615,8 @@ export default function Calibrate() {
               onChange={(e) => setOffHand(e.target.checked)}
             />
             <p className="hp-note">
-              Skipping uses estimates without glove friction correction.
+              Measure all five fingers for Evaluation. Skipping leaves out
+              friction correction.
             </p>
             <div className="hp-wizard__footer">
               {back(1)}
@@ -717,10 +735,10 @@ export default function Calibrate() {
             </div>
             <Input
               label="Current limit (mA)"
-              hint="Between 100 and 1400 mA. The glove stops above this current."
+              hint="Between 100 and 2200 mA. The glove stops above this current."
               type="number"
               min={100}
-              max={1400}
+              max={2200}
               value={draft.limit}
               onChange={(e) => update({ limit: Number(e.target.value) })}
             />

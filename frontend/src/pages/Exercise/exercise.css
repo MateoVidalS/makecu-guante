@@ -4,7 +4,10 @@
  * defaults without editing it.
  */
 .exercise-live .live-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 20rem);
+  grid-template-columns: minmax(0, 1fr) minmax(
+      calc(var(--body) * 20),
+      calc(var(--body) * 22)
+    );
   grid-template-rows: none;
   gap: var(--space-32);
 }
@@ -325,4 +328,18 @@
   .recap__grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Five values stay readable at 1 m without crowding the thumb/middle labels. */
+.exercise-live .mx-gauges__row {
+  gap: var(--space-8);
+}
+.exercise-live .mx-gauge__name {
+  font-size: var(--small);
+}
+.exercise-live .mx-gauge__value {
+  font-size: calc(var(--body) * 1.5);
+}
+.exercise-live .phase-ring strong {
+  font-size: calc(var(--body) * 1.75);
 }

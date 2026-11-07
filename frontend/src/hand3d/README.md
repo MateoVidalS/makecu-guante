@@ -15,7 +15,9 @@ or unreliable. Do not put vision frames in React state for this component.
 ```
 
 `handedness` defaults to `right`. `pose` is optional: the six library targets are
-recognized from their angles for the accessible name and fixed camera view.
+recognized from their angles for the accessible name. The camera shows the back
+of the palm-down hand from a front diagonal on the thumb side, mirrored for
+the left hand (`view.ts`).
 Custom targets receive a generic accessible name. `reducedMotion` can additionally
 disable animation; it cannot override an OS reduced-motion preference.
 `onFps` receives a rolling one-second frame-rate measurement for diagnostics.
@@ -34,7 +36,7 @@ closure. Free fingers and open targets use the generic closing shape. This is a
 visual estimate, not measured per-joint motion or an actuator command.
 
 The target is a 1.03× translucent matte shell with a contour; the actual hand is
-solid clay. Only thumb, index, and middle receive state tint. Entering reached
+solid clay. All five fingers receive individual state tint. Entering reached
 starts one 400 ms rim-light pulse and fades the ghost for the hold. Returning to a
 non-reached state restores the ghost. Missing tracking retains the last joint
 pose and fades the actual hand to 30%. OS reduced motion makes all state and

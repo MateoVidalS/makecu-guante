@@ -1,0 +1,49 @@
+.setup-placement {
+  margin: 0;
+  padding-block: var(--space-16);
+  border-block: var(--control-border) solid var(--border);
+}
+.setup-placement figcaption,
+.setup-detection h3 {
+  margin: 0 0 var(--space-8);
+  font-size: var(--body);
+  font-weight: var(--weight-semibold);
+}
+.setup-placement svg {
+  display: block;
+  width: 100%;
+  max-height: calc(var(--space-64) * 3);
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+.setup-placement text {
+  fill: var(--text);
+  stroke: none;
+  font-size: var(--small);
+}
+.setup-placement__hand {
+  fill: var(--surface-3);
+}
+.setup-placement__module,
+.setup-placement__camera rect {
+  fill: var(--surface-2);
+}
+.setup-placement__sight {
+  stroke: var(--accent);
+  stroke-dasharray: 4 4;
+}
+.setup-placement p {
+  margin: var(--space-8) 0 0;
+  font-size: var(--small);
+  color: var(--muted);
+}
+.setup-detection {
+  border-block-start: var(--control-border) solid var(--border);
+  padding-block-start: var(--space-16);
+}
+.setup-detection dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
