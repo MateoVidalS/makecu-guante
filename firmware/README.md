@@ -214,7 +214,9 @@ without an existing backlog. Keep command traffic within the link capacity.
 Core storage, line buffers and the TX queue are fixed. ArduinoJson 7 uses an
 8 KiB static arena through its allocator API; no heap allocator is used by the
 codec. The fixed decimal writer also avoids float `printf`/`dtoa` heap paths.
-LEDC drivers are prepared without connecting PWM to servo pins. Wire,
+LEDC drivers are prepared without connecting PWM to servo pins. ESP32Servo
+serves four channels per LEDC timer, so the five servos reserve two timers
+(`lib/core/pwm_plan.h`); with one, the fifth attach would fail silently. Wire,
 UART and the ring allocate only during setup. The ring uses Adafruit's pixel
 buffer and a persistent asynchronous RMT driver with static transmission items;
 calling NeoPixel `show()` each frame would allocate on this Arduino core.
