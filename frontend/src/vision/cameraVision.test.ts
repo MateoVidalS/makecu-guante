@@ -104,6 +104,20 @@ afterEach(() => {
 });
 
 describe('CameraVision lifecycle', () => {
+  it('keeps the camera running when a preview removes the video from the page', async () => {
+    await source.start({ affectedHand: 'right' });
+    const video = source.videoElement()!;
+    const play = vi.mocked(HTMLMediaElement.prototype.play);
+    play.mockClear();
+    // Browsers pause a media element removed from the document (a preview unmounting).
+    video.dispatchEvent(new Event('pause'));
+    expect(play).toHaveBeenCalledTimes(1);
+    // Stopping the camera pauses it on purpose and must not restart it.
+    play.mockClear();
+    source.stop();
+    video.dispatchEvent(new Event('pause'));
+    expect(play).not.toHaveBeenCalled();
+  });
   it('uses selected device, local assets and VIDEO mode, publishes observations and stats', async () => {
     await source.start({ affectedHand: 'right', deviceId: 'camera-1' });
     expect(getUserMedia).toHaveBeenCalledWith(
