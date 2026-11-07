@@ -39,7 +39,9 @@ import {
 import './live.css';
 import './helper.css';
 export const percent = (v: number | null | undefined) =>
-  v == null ? '—' : `${Math.round(v * 100)}%`;
+  v == null || !Number.isFinite(v)
+    ? '—'
+    : `${Math.round(Math.min(1, Math.max(0, v)) * 100)}%`;
 export const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function BigButton({
   children,
@@ -235,7 +237,14 @@ export function SafetyBanner() {
     [runtime],
   );
   useEffect(() => {
-    if (event) resume.current?.focus();
+    if (event) {
+      document
+        .querySelectorAll<HTMLDetailsElement>('[data-safety-popover]')
+        .forEach((menu) => {
+          menu.open = false;
+        });
+      resume.current?.focus();
+    }
   }, [event]);
   useEffect(
     () =>

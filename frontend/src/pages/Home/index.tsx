@@ -5,7 +5,7 @@ import { useProfile, useSessions } from '../../api/client';
 import { useRuntime } from '../../runtime';
 import { useGlove } from '../../glove';
 import { useVisionFrame } from '../../vision';
-import { DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
+import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
 import { Section, StatusList } from '../../components/common';
 import {
   Button,
@@ -17,6 +17,10 @@ import {
 import { formatDate } from '../../components/charts';
 import { ThenNow, WeekStrip, lastSevenDays } from '../../components/metrics';
 import { rangeComparison } from './range';
+import {
+  practicePlan,
+  useShortPractice,
+} from '../../components/common/practice';
 import './home.css';
 export default function Home() {
   const profile = useProfile(),
@@ -26,8 +30,8 @@ export default function Home() {
     { store } = useGlove();
   const connected = useStore(store, (s) => s.connection === 'connected');
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
-  const [short, setShort] = useState(false),
-    [busy, setBusy] = useState(false),
+  const [short, setShort] = useShortPractice();
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const calibrated = !!runtime.calibration.current;
   async function start() {
@@ -42,7 +46,7 @@ export default function Home() {
     setBusy(true);
     try {
       await runtime.exercise.start(
-        DEFAULT_PLAN.map((p) => ({ ...p, reps: short ? 1 : p.reps })),
+        practicePlan(short),
         DEFAULT_EXERCISE_SETTINGS,
       );
       navigate('/exercise');
@@ -79,6 +83,7 @@ export default function Home() {
           >
             Start today's practice
           </Button>
+          <Link to="/exercise">Customize plan</Link>
           <Checkbox
             label="Short session (1 rep each)"
             checked={short}

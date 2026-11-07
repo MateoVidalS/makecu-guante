@@ -4,40 +4,54 @@ import { useGlove } from '../glove';
 import { useVision } from '../vision';
 import { GLOVE_FINGERS } from '../contracts/glove';
 import { useRuntime } from './RuntimeProvider';
-import { Button, Checkbox, Stack } from '../design-system';
+import type { PatientPreset } from '../glove/sim/patient';
+import { Button, Checkbox, Select, Stack } from '../design-system';
 import './fallback.css';
 
 /** Simulator-only controls for the resistance demo; no hardware commands. */
 export function RuntimeSimulatorControls() {
   const { world, client } = useGlove();
+  const vision = useVision();
   const [, refresh] = useState(0);
   if (client.kind !== 'sim') return null;
   return (
-    <details className="card runtime-simulator">
-      <summary>Simulator controls</summary>
-      <Stack className="runtime-simulator__panel" gap={8}>
+    <Stack gap={8}>
+      <Select
+        label="Patient preset"
+        value={world.patient.preset}
+        onChange={(event) => {
+          world.controls.setPreset(event.target.value as PatientPreset);
+          refresh((value) => value + 1);
+        }}
+      >
+        <option value="mild">Mild</option>
+        <option value="moderate">Moderate</option>
+        <option value="severe">Severe</option>
+      </Select>
+      {GLOVE_FINGERS.map((finger) => (
         <Checkbox
-          label="Rigid index"
-          checked={world.patient.rigid.index}
+          key={finger}
+          label={`Rigid ${finger}`}
+          checked={world.patient.rigid[finger]}
           onChange={(event) => {
-            world.controls.setRigid('index', event.target.checked);
+            world.controls.setRigid(finger, event.target.checked);
             refresh((value) => value + 1);
           }}
         />
-        <Button onClick={() => world.controls.handOutOfFrame(3000)}>
-          Hide simulated hand for 3 seconds
-        </Button>
-        <Button variant="danger" onClick={() => world.controls.pressStop()}>
-          Press simulated STOP
-        </Button>
-        <Button onClick={() => world.controls.releaseStop()}>
-          Release simulated STOP
-        </Button>
-        <Button onClick={() => world.controls.unplug()}>
-          Unplug simulated glove
-        </Button>
-      </Stack>
-    </details>
+      ))}
+      <Button onClick={() => world.controls.handOutOfFrame(3000)}>
+        Hide simulated hand for 3 seconds
+      </Button>
+      <Button variant="danger" onClick={() => world.controls.pressStop()}>
+        Press simulated STOP
+      </Button>
+      <Button onClick={() => world.controls.releaseStop()}>
+        Release simulated STOP
+      </Button>
+      <Button onClick={() => world.controls.unplug()}>
+        Unplug simulated glove
+      </Button>
+    </Stack>
   );
 }
 
@@ -80,7 +94,7 @@ export function RuntimeSimulatorCalibration() {
                 pinch_closed: 0.1,
               },
               friction: {},
-              current_limit_ma: 900,
+              current_limit_ma: 1500,
             })
             .then(() => setSaved(true))
             .catch((e: unknown) =>

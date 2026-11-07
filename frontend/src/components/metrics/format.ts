@@ -9,7 +9,7 @@ export const clamp01 = (v: number) =>
   Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
 /** Whole percent, or "—" for missing data (never 0). */
 export const pct = (v: number | null | undefined) =>
-  v == null || !Number.isFinite(v) ? '—' : `${Math.round(v * 100)}%`;
+  v == null || !Number.isFinite(v) ? '—' : `${Math.round(clamp01(v) * 100)}%`;
 export const fingerName = (f: string) => f.charAt(0).toUpperCase() + f.slice(1);
 
 /** One finger's share of the goal, the way the engine scores `active_ratio` (06-session §4). */
