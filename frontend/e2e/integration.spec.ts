@@ -90,6 +90,25 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   const stored = await page.request.get(`/api/sessions/${sessionId}`);
   const detail = (await stored.json()) as SessionDetail;
   expect(detail.attempts).toHaveLength(15);
+  const fist = detail.attempts.find((a) => a.pose === 'full_fist')!;
+  expect(fist.fingers.map((f) => f.finger)).toEqual([
+    'thumb',
+    'index',
+    'middle',
+    'ring',
+    'pinky',
+  ]);
+  expect(fist.fingers.every((f) => f.scored)).toBe(true);
+  const trace = await (
+    await page.request.get(`/api/attempts/${fist.id}/trace`)
+  ).json();
+  expect(Object.keys(trace.servo)).toEqual([
+    'thumb',
+    'index',
+    'middle',
+    'ring',
+    'pinky',
+  ]);
   expect(
     detail.attempts.some(
       (a) =>
@@ -121,12 +140,21 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await expect(
     page.locator('main .ds-status-chip').filter({ hasText: 'Glove:' }),
   ).toContainText('Connected');
+  const evaluated = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/evaluations'),
+    { timeout: 60_000 },
+  );
   await page
     .getByRole('button', { name: 'Start evaluation', exact: true })
     .click();
   await expect(
     page.getByRole('heading', { name: 'Your evaluation', exact: true }),
   ).toBeVisible({ timeout: 45_000 });
+  const evaluation = await (await evaluated).json();
+  expect(evaluation.sweeps).toHaveLength(10);
+  expect(evaluation.fingers).toHaveLength(5);
   await expect(
     page.getByRole('status', { name: 'Session saving status' }),
   ).toHaveText('Saved');

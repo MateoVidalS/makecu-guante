@@ -36,7 +36,7 @@ def test_session_summary_persists_and_supplies_previous_and_evaluation_trend(
     assert saved.model == settings.gemini_text_model and saved.text == "Steady effort today."
     context = json.loads(model.call_args.kwargs["contents"])
     assert context["summary"]["previous"]["active_ratio_mean"] == summary["active_ratio_mean"]
-    assert len(context["evaluation_trend"]) == 3
+    assert len(context["evaluation_trend"]) == 5
     assert client.get("/api/summaries?kind=session&limit=1").json() == [saved.model_dump()]
 
 

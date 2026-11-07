@@ -1,6 +1,6 @@
 import type { ExercisePhase } from '../../contracts/engine';
 import type { PoseId } from '../../contracts/poses';
-import type { GloveFinger, Triple } from '../../contracts/glove';
+import type { GloveFinger, Quint } from '../../contracts/glove';
 import { Signal } from '../clientBase';
 import { FW, SimFirmware } from './simFirmware';
 import { SimPatient, type PatientPreset } from './patient';
@@ -93,15 +93,15 @@ export class SimWorld {
       this.patient.tick(this.now, tickMs / 1000);
       const f = this.firmware;
       // Use the actual ramp velocity (including requested target speed), not just the cap.
-      const before: Triple = [...f.position];
-      const beforeAngles: Triple = [...f.angles];
+      const before: Quint = [...f.position];
+      const beforeAngles: Quint = [...f.angles];
       f.tick(
         this.now,
         this.patient.current(f.position, this.lastVelocity, this.random),
       );
       this.lastVelocity = f.position.map(
         (p, i) => (p - before[i]) / (tickMs / 1000),
-      ) as Triple;
+      ) as Quint;
       // Jog has no normalized velocity before calibration; account for its moving servo.
       if (f.mode === 'jog')
         this.lastVelocity = f.angles.map(
@@ -109,7 +109,7 @@ export class SimWorld {
             (a - beforeAngles[i]) /
             (FW.HARD_MAX - FW.HARD_MIN) /
             (tickMs / 1000),
-        ) as Triple;
+        ) as Quint;
       if (this.tickIndex % (FW.CONTROL_HZ / FW.TEL_HZ) === 0)
         this.telemetry.emit(this.now);
       if (this.now + 1e-8 >= this.nextCamera) {
@@ -119,7 +119,7 @@ export class SimWorld {
       this.vision.deliver(this.now);
     }
   }
-  private lastVelocity: Triple = [0, 0, 0];
+  private lastVelocity: Quint = [0, 0, 0, 0, 0];
   stop() {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;

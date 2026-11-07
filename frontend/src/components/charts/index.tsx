@@ -846,7 +846,7 @@ export function ReplayChart({
               ? `Motor current peaked at ${Math.round(peak)} mA while the glove helped`
               : 'Motor current stayed low: the glove did not need to help'
           }
-          hint="Total current of the three servos. Spikes mean the finger pushed back."
+          hint="Total current of the five servos. Spikes mean the finger pushed back."
           rows={reduced}
           series={[
             {

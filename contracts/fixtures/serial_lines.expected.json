@@ -229,5 +229,26 @@
     "valid": false,
     "type": "jog",
     "why": "bad_args"
+  },
+  {
+    "line": 34,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "calib",
+    "why": null
+  },
+  {
+    "line": 35,
+    "direction": "host_to_device",
+    "valid": true,
+    "type": "jog",
+    "why": null
+  },
+  {
+    "line": 36,
+    "direction": "host_to_device",
+    "valid": false,
+    "type": "target",
+    "why": "bad_args"
   }
 ]

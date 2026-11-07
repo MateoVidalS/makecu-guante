@@ -15,7 +15,7 @@ void SafetyController::begin(bool sensorAvailable, uint32_t now) {
   state_ = State::Idle;
   mode_ = Mode::None;
   calibration_ = {};
-  angles_ = {{90, 90, 90}};
+  angles_ = {{90, 90, 90, 90, 90}};
   attached_ = {};
   goals_ = {};
   sensorAvailable_ = sensorAvailable;
@@ -31,7 +31,7 @@ bool SafetyController::calibrated() const {
                      [](const Calibration& c) { return c.valid; });
 }
 float SafetyController::angle(std::size_t i) const {
-  return i < 3 ? calib::clampAngle(angles_[i]) : config::HARD_MIN;
+  return i < config::FINGERS ? calib::clampAngle(angles_[i]) : config::HARD_MIN;
 }
 void SafetyController::startMove(uint32_t now) {
   if (state_ != State::Run && state_ != State::Calib) lastRamp_ = now;
@@ -44,7 +44,7 @@ void SafetyController::release(uint32_t now) {
   releasing_ = true;
   releaseComplete_ = false;
   lastRamp_ = now;
-  for (std::size_t i = 0; i < 3; ++i) {
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
     // A pre-calibration jog has no known safe opening direction. Go limp rather
     // than invent an open angle (in particular for a mirrored mount).
     if (!calibration_[i].valid) attached_[i] = false;
@@ -77,7 +77,7 @@ void SafetyController::sensorMissing(uint32_t now) {
 ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
   // Validate again so callers cannot bypass the wire decoder's checks.
   if (!protocol::validCommand(c)) {
-    if (c.type == CommandType::Calib && state_ == State::Idle && c.i >= 0 && c.i < 3) {
+    if (c.type == CommandType::Calib && state_ == State::Idle && c.i >= 0 && c.i < static_cast<int>(config::FINGERS)) {
       calibration_[c.i].valid = false;
       attached_[c.i] = false;
     }
@@ -94,7 +94,7 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
       if (state_ != State::Idle && state_ != State::Run) return ErrorCode::State;
       if (!calibrated()) return ErrorCode::NoCalib;
       if (!sensorAvailable_) return ErrorCode::State;
-      for (std::size_t i = 0; i < 3; ++i) {
+      for (std::size_t i = 0; i < config::FINGERS; ++i) {
         const auto& range = calibration_[i];
         // A setup jog may be outside the patient range. Let release unwind it
         // back into range before target/follow can take over without a jump.
@@ -106,7 +106,7 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
       state_ = State::Run;
       mode_ = c.type == CommandType::Follow ? Mode::Follow : Mode::Target;
       speed_ = mode_ == Mode::Follow ? config::V_FOLLOW : std::min(c.v, config::V_MAX);
-      for (std::size_t i = 0; i < 3; ++i) {
+      for (std::size_t i = 0; i < config::FINGERS; ++i) {
         goals_[i] =
             calib::clampClosure(c.f[i] - (mode_ == Mode::Follow ? config::FOLLOW_SLACK : 0));
         // A detached actuator has no feedback; the first commanded position is open.
@@ -140,7 +140,7 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
     case CommandType::Jog:
       if (state_ != State::Idle && state_ != State::Calib) return ErrorCode::State;
       if (mode_ != Mode::Jog) {
-        for (std::size_t i = 0; i < 3; ++i) goals_[i] = angle(i);
+        for (std::size_t i = 0; i < config::FINGERS; ++i) goals_[i] = angle(i);
       }
       startMove(now);
       state_ = State::Calib;
@@ -194,7 +194,7 @@ void SafetyController::tick(uint32_t now) {
   lastRamp_ = now;
   const float seconds = static_cast<float>(elapsed) / 1000.0F;
   bool opened = true;
-  for (std::size_t i = 0; i < 3; ++i) {
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
     if (!attached_[i]) continue;
     const auto& c = calibration_[i];
     if (releasing_) {
@@ -230,7 +230,7 @@ Telemetry SafetyController::telemetry(uint32_t now) const {
   t.ma = ma_;
   t.st = state_;
   t.md = mode_;
-  for (std::size_t i = 0; i < 3; ++i) {
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
     t.a[i] = calib::toClosure(angle(i), calibration_[i]);
     t.tg[i] = mode_ == Mode::Jog ? calib::toClosure(goals_[i], calibration_[i]) : goals_[i];
   }

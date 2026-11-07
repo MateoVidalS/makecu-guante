@@ -4,7 +4,7 @@
  * defaults without editing it.
  */
 .exercise-live .live-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(15rem, 17rem);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 20rem);
   grid-template-rows: none;
   gap: var(--space-32);
 }

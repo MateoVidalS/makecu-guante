@@ -3,7 +3,7 @@ import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
 import type { HandValue, HandValues } from './visuals';
 import { VisualCard, type LegendEntry } from './VisualCard';
 
-type FingerKey = GloveFinger | 'ring' | 'pinky';
+type FingerKey = GloveFinger;
 interface Geometry {
   x: number;
   y: number;
@@ -25,7 +25,7 @@ const PALM =
   'M82 114 H144 Q168 116 167 144 L162 194 Q158 216 136 218 H90 Q68 216 64 194 L59 146 Q58 116 82 114 Z';
 const WRIST = 'M88 208 H138 Q141 230 139 252 H87 Q85 230 88 208 Z';
 const pct = (v: number | null | undefined) =>
-  v == null ? '—' : `${Math.round(v * 100)}%`;
+  v == null ? 'Not measured' : `${Math.round(v * 100)}%`;
 const fingerName = (f: string) => f.charAt(0).toUpperCase() + f.slice(1);
 
 function place(g: Geometry, mirror: boolean): Geometry {
@@ -116,27 +116,10 @@ export function HandFigure({
       </g>
     );
   };
-  const passive = (f: 'ring' | 'pinky') => {
-    const g = place(FINGERS[f], mirror);
-    return (
-      <rect
-        key={f}
-        className="hand-passive"
-        transform={`translate(${g.x} ${g.y}) rotate(${g.angle})`}
-        x={-g.width / 2}
-        y={-g.length}
-        width={g.width}
-        height={g.length + 16}
-        rx={g.width / 2}
-      />
-    );
-  };
   const flip = mirror ? `translate(${2 * CENTER} 0) scale(-1 1)` : undefined;
   return (
     <figure className="hand-figure" style={{ width }}>
       <svg viewBox="-26 -10 278 264" aria-hidden="true">
-        {passive('ring')}
-        {passive('pinky')}
         <g className="hand-palm" transform={flip}>
           <path d={WRIST} className="hand-wrist" />
         </g>
@@ -206,13 +189,13 @@ export function HandRangeMap({
       label={`Hand map, first session compared with the latest. ${GLOVE_FINGERS.map(
         (f) =>
           `${fingerName(f)} ${pct(first[f]?.own)} then, ${pct(last[f]?.own)} now`,
-      ).join('; ')}. Ring and pinky are not in the glove.`}
+      ).join('; ')}.`}
       loading={loading}
       empty={!has}
       legend={[
         OWN,
         {
-          label: 'Not in the glove',
+          label: 'Not measured',
           mark: 'hollow',
           color: 'var(--border-strong)',
         },

@@ -1,7 +1,7 @@
 import {
   GLOVE_FINGERS,
   type GloveFinger,
-  type Triple,
+  type Quint,
 } from '../../contracts/glove';
 import { POSES, type PoseId } from '../../contracts/poses';
 import type { ExercisePhase } from '../../contracts/engine';
@@ -10,32 +10,34 @@ import { clamp } from './simFirmware';
 export type PatientPreset = 'mild' | 'moderate' | 'severe';
 export const PATIENT_PRESETS = {
   mild: {
-    active_max: [0.8, 0.75, 0.85] as Triple,
+    active_max: [0.8, 0.75, 0.85, 0.85, 0.85] as Quint,
     active_speed: 0.6,
     reaction_s: 0.4,
     stiffness: { k0: 80, kv: 60 },
   },
   moderate: {
-    active_max: [0.5, 0.4, 0.6] as Triple,
+    active_max: [0.5, 0.4, 0.6, 0.6, 0.6] as Quint,
     active_speed: 0.6,
     reaction_s: 0.4,
     stiffness: { k0: 130, kv: 100 },
   },
   severe: {
-    active_max: [0.25, 0.2, 0.3] as Triple,
+    active_max: [0.25, 0.2, 0.3, 0.3, 0.3] as Quint,
     active_speed: 0.6,
     reaction_s: 0.4,
     stiffness: { k0: 200, kv: 150 },
   },
 };
 export class SimPatient {
-  position: Triple = [0, 0, 0];
+  position: Quint = [0, 0, 0, 0, 0];
   readonly rigid: Record<GloveFinger, boolean> = {
     thumb: false,
     index: false,
     middle: false,
+    ring: false,
+    pinky: false,
   };
-  private desired: Triple = [0, 0, 0];
+  private desired: Quint = [0, 0, 0, 0, 0];
   private reactAt = 0;
   constructor(public preset: PatientPreset = 'moderate') {}
   setPreset(preset: PatientPreset) {
@@ -57,10 +59,10 @@ export class SimPatient {
               (random() - 0.5) * 0.04,
           ),
         ),
-      ) as Triple;
+      ) as Quint;
       this.reactAt = now + PATIENT_PRESETS[this.preset].reaction_s * 1000;
     } else if (['REST', 'RELEASE', 'DONE', 'PAUSED'].includes(phase)) {
-      this.desired = [0, 0, 0];
+      this.desired = [0, 0, 0, 0, 0];
       this.reactAt = now;
     }
   }
@@ -69,9 +71,9 @@ export class SimPatient {
     const amount = PATIENT_PRESETS[this.preset].active_speed * dt;
     this.position = this.position.map((p, i) =>
       clamp(p + clamp(this.desired[i] - p, -amount, amount)),
-    ) as Triple;
+    ) as Quint;
   }
-  realPosition(servo: Triple, random: () => number): Triple {
+  realPosition(servo: Quint, random: () => number): Quint {
     return servo.map((p, i) =>
       clamp(
         (this.rigid[GLOVE_FINGERS[i]]
@@ -79,9 +81,9 @@ export class SimPatient {
           : Math.max(p, this.position[i])) +
           (random() - 0.5) * 0.02,
       ),
-    ) as Triple;
+    ) as Quint;
   }
-  current(servo: Triple, velocity: Triple, random: () => number) {
+  current(servo: Quint, velocity: Quint, random: () => number) {
     const {
       active_max,
       stiffness: { k0, kv },

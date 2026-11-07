@@ -125,7 +125,7 @@ export default function Calibrate() {
     }
     client.limit(400);
     const bounded = Math.max(5, Math.min(175, angle));
-    client.jog(draft.finger as 0 | 1 | 2, bounded);
+    client.jog(draft.finger as 0 | 1 | 2 | 3 | 4, bounded);
     update({ angle: bounded });
   }
   function setRange(key: 'min_deg' | 'max_deg') {
@@ -148,7 +148,7 @@ export default function Calibrate() {
     awaitingRanges.current = true;
     GLOVE_FINGERS.forEach((f, i) => {
       const r = draft.servo[f]!;
-      client.calib(i as 0 | 1 | 2, r.min_deg!, r.max_deg!);
+      client.calib(i as 0 | 1 | 2 | 3 | 4, r.min_deg!, r.max_deg!);
     });
   }
   function captureRange(kind: 'open' | 'closed' | 'pinch') {
@@ -163,7 +163,7 @@ export default function Calibrate() {
       started = performance.now();
     if (kind === 'closed') {
       client.limit(400);
-      client.target([1, 1, 1], 0.3);
+      client.target([1, 1, 1, 1, 1], 0.3);
     }
     // Wait for the glove to settle before starting the hold interval.
     const settle = kind === 'closed' ? 4000 : 0;
@@ -405,7 +405,10 @@ export default function Calibrate() {
                     onClick={() => {
                       client.release();
                       update({
-                        finger: Math.min(2, draft.finger + 1),
+                        finger: Math.min(
+                          GLOVE_FINGERS.length - 1,
+                          draft.finger + 1,
+                        ),
                         angle: 90,
                       });
                     }}

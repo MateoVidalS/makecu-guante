@@ -259,8 +259,8 @@ describe('cue table and scheduler', () => {
       {
         kind: 'assist_started',
         fingers: ['index'],
-        from: [0, 0.4, 0],
-        to: [0, 0.6, 0],
+        from: [0, 0.4, 0, 0, 0],
+        to: [0, 0.6, 0, 0, 0],
       },
       { kind: 'attempt_done', result },
       { kind: 'session_done', summary },

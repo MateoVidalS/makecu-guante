@@ -191,7 +191,7 @@ export default function Setup() {
                   </dd>
                 </>
               )}
-              {['thumb', 'index', 'middle'].map((f, i) => (
+              {['thumb', 'index', 'middle', 'ring', 'pinky'].map((f, i) => (
                 <Fragment key={f}>
                   <dt>{title(f)}</dt>
                   <dd>

@@ -182,7 +182,7 @@ export class RehabRuntime implements Runtime {
     for (const [i, finger] of GLOVE_FINGERS.entries()) {
       const servo = c.servo.find((s) => s.finger === finger);
       if (!servo) throw new Error(`Missing ${finger} servo calibration`);
-      client.calib(i as 0 | 1 | 2, servo.min_deg, servo.max_deg);
+      client.calib(i as 0 | 1 | 2 | 3 | 4, servo.min_deg, servo.max_deg);
     }
     client.limit(
       this.mode === 'evaluation' || this.mode === 'friction'

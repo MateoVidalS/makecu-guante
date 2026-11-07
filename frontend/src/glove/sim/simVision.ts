@@ -44,7 +44,7 @@ export class SimVision implements VisionSource {
       const closure = Object.fromEntries(
         fingers.map((f, i) => [
           f,
-          clamp(real[Math.min(i, 2)] + (world.random() - 0.5) * 0.04, 0, 1.1),
+          clamp(real[i] + (world.random() - 0.5) * 0.04, 0, 1.1),
         ]),
       ) as Record<FingerId, number>;
       const joints = jointsFromClosure(closure);

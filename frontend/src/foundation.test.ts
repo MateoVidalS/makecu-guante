@@ -75,10 +75,10 @@ describe('shared contracts', () => {
     expect(POSES.tabletop.render.index).toEqual({ mcp: 90, pip: 0, dip: 0 });
     expect(POSES.full_fist.closure).toEqual({
       thumb: 0.7,
-      index: 1,
-      middle: 1,
-      ring: 1,
-      pinky: 1,
+      index: 0.95,
+      middle: 0.95,
+      ring: 0.95,
+      pinky: 0.95,
     });
     expect(calibratedPinch(0.2).pinch!.max_ratio).toBeCloseTo(0.26);
   });
@@ -159,8 +159,8 @@ describe('MSW REST client', () => {
     expect(
       await api.getHistoryRom({ finger: 'index', pose: 'full_fist' }),
     ).toHaveLength(8);
-    expect(await api.getHistoryAssist()).toHaveLength(24);
-    expect(await api.getHistoryResistance()).toHaveLength(12);
+    expect(await api.getHistoryAssist()).toHaveLength(40);
+    expect(await api.getHistoryResistance()).toHaveLength(20);
     expect((await api.createSummary({ kind: 'therapist', days: 7 })).kind).toBe(
       'therapist',
     );
@@ -196,7 +196,7 @@ describe('scripted runtime', () => {
       expect(
         result.fingers
           .filter((f) => f.finger === 'ring' || f.finger === 'pinky')
-          .every((f) => !f.scored),
+          .every((f) => f.scored),
       ).toBe(true);
       expect(result.trace.t.length).toBe(result.trace.phase.length);
     }
@@ -242,14 +242,14 @@ describe('scripted runtime', () => {
     expect(session.summary!.attempts).toBe(1);
     expect(session.is_demo).toBe(true);
   });
-  it('plays six evaluation sweeps and can abort and run fake friction calibration', async () => {
+  it('plays ten evaluation sweeps and can abort and run fake friction calibration', async () => {
     vi.useFakeTimers();
     const runtime = new ScriptedRuntime({ persist: false });
     await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
-    vi.advanceTimersByTime(30_000);
+    vi.advanceTimersByTime(50_000);
     expect(runtime.evaluation.view().stage).toBe('done');
-    expect(runtime.evaluation.view().result!.sweeps).toHaveLength(6);
-    expect(runtime.evaluation.view().result!.fingers).toHaveLength(3);
+    expect(runtime.evaluation.view().result!.sweeps).toHaveLength(10);
+    expect(runtime.evaluation.view().result!.fingers).toHaveLength(5);
     expect(vi.getTimerCount()).toBe(0);
     await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
     await runtime.evaluation.stop();

@@ -1,5 +1,5 @@
 import type { Calibration } from '../../contracts/calibration';
-import type { GloveEvent, GloveTelemetry, Triple } from '../../contracts/glove';
+import type { GloveEvent, GloveTelemetry, Quint } from '../../contracts/glove';
 import type { VisionFrame } from '../../contracts/vision';
 import type { EngineInput, GloveCommand } from '../types';
 import calibrationFixture from '../../../../contracts/fixtures/calibration.json';
@@ -22,18 +22,18 @@ export class FakeWorld {
   detected = true;
   connected = true;
   pinch: number | null = 0.1;
-  hand: Triple = [0, 0, 0];
+  hand: Quint = [0, 0, 0, 0, 0];
   ma = 100;
   tel: GloveTelemetry = {
     t: 0,
     ms: 0,
-    a: [0, 0, 0],
+    a: [0, 0, 0, 0, 0],
     ma: 100,
     st: 'idle',
     md: 'none',
-    tg: [0, 0, 0],
+    tg: [0, 0, 0, 0, 0],
   };
-  private goal: Triple = [0, 0, 0];
+  private goal: Quint = [0, 0, 0, 0, 0];
   private speed = 1;
   private scripts: { at: number; event: GloveEvent['e']; ma?: number }[] = [];
 
@@ -41,14 +41,14 @@ export class FakeWorld {
     for (const cmd of commands) {
       if (cmd.t === 'limit') continue;
       if (cmd.t === 'release') {
-        this.goal = [0, 0, 0];
+        this.goal = [0, 0, 0, 0, 0];
         this.speed = 2;
         this.tel.st = 'idle';
         this.tel.md = 'none';
       } else if (this.tel.st !== 'fault') {
         this.goal =
           cmd.t === 'follow'
-            ? (cmd.f.map((v) => Math.max(0, v - 0.03)) as Triple)
+            ? (cmd.f.map((v) => Math.max(0, v - 0.03)) as Quint)
             : [...cmd.f];
         this.speed = cmd.t === 'follow' ? 2 : cmd.v;
         this.tel.st = 'run';
@@ -68,7 +68,7 @@ export class FakeWorld {
         v +
         Math.sign(this.goal[i] - v) *
           Math.min(Math.abs(this.goal[i] - v), (this.speed * ms) / 1000),
-    ) as Triple;
+    ) as Quint;
     const gloveEvents: GloveEvent[] = this.scripts
       .filter((s) => s.at > before && s.at <= this.now)
       .map((s) => ({ t: s.at, e: s.event, ma: s.ma }));
@@ -78,7 +78,7 @@ export class FakeWorld {
       )
     ) {
       this.tel.st = 'fault';
-      this.goal = [0, 0, 0];
+      this.goal = [0, 0, 0, 0, 0];
     }
     this.tel = { ...this.tel, t: this.now, ms: this.now, a, ma: this.ma };
     const vision: VisionFrame = {
@@ -89,8 +89,8 @@ export class FakeWorld {
         thumb: this.hand[0],
         index: this.hand[1],
         middle: this.hand[2],
-        ring: 1,
-        pinky: 1,
+        ring: this.hand[3],
+        pinky: this.hand[4],
       },
       handedness: 'right',
       rawFlexSum: null,

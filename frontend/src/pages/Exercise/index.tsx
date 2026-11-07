@@ -92,8 +92,6 @@ const Hand = memo(function Hand() {
     (finger: string) => {
       const v = runtime.exercise.view();
       if (
-        finger === 'ring' ||
-        finger === 'pinky' ||
         v.pose.closure[finger as FingerId] === null ||
         ['PAUSED', 'PRESENT', 'REST', 'RELEASE'].includes(v.phase)
       )

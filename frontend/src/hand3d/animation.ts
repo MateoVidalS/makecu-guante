@@ -59,7 +59,7 @@ export function createHandAnimator(
       scene.palm.transparent = scene.palm.opacity < 0.999;
       let reached = false;
       for (let i = 0; i < FINGERS.length; i++) {
-        const status = i < 3 ? state(FINGERS[i]) : 'idle';
+        const status = state(FINGERS[i]);
         const material = scene.fingers[i];
         material.color.copy(colors.idle);
         if (status !== 'idle') material.color.lerp(colors[status], STATE_TINT);

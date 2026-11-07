@@ -188,8 +188,8 @@ export function replayRows(trace: AttemptTrace | undefined, isDemo = false) {
       current: trace.ma[i] ?? null,
       ...Object.fromEntries(
         GLOVE_FINGERS.flatMap((f) => [
-          [`${f}Closure`, percent(trace.closure[f][i])],
-          [`${f}Servo`, percent(trace.servo[f][i])],
+          [`${f}Closure`, percent(trace.closure[f]?.[i])],
+          [`${f}Servo`, percent(trace.servo[f]?.[i])],
         ]),
       ),
     })) ?? []

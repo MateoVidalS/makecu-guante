@@ -5,7 +5,7 @@ import { clamp01, type FingerFill } from './format';
 /**
  * A flat hand pictogram (palm facing you, fingers up). Each glove finger fills from the
  * knuckle toward the tip: blue = on your own, orange = the glove helped on top.
- * The full finger outline is the goal. Ring and pinky stay neutral (not in the glove).
+ * The full finger outline is the goal. Unscored or unmeasured fingers stay neutral.
  */
 interface Shape {
   x: number;
@@ -15,7 +15,7 @@ interface Shape {
   rotate?: number;
 }
 // viewBox 0 0 120 150. Fingers are drawn over the palm so every fill is fully visible.
-const SHAPES: Record<GloveFinger | 'ring' | 'pinky', Shape> = {
+const SHAPES: Record<GloveFinger, Shape> = {
   thumb: { x: 20, y: 72, w: 17, h: 48, rotate: -36 },
   index: { x: 31, y: 18, w: 17, h: 62 },
   middle: { x: 51, y: 8, w: 17, h: 72 },
@@ -60,10 +60,7 @@ export function HandGlyph({
         />
         {(Object.keys(SHAPES) as (keyof typeof SHAPES)[]).map((key) => {
           const s = SHAPES[key];
-          const fill =
-            key === 'ring' || key === 'pinky'
-              ? undefined
-              : fills[key as GloveFinger];
+          const fill = fills[key];
           const r = s.w / 2;
           const transform = s.rotate
             ? `rotate(${s.rotate} ${s.x + s.w / 2} ${s.y + s.h})`
