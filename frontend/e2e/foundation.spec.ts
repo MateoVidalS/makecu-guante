@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-const routes: [string, string][] = [
-  ['/', 'Rehab Hub'],
+import { calibrateSimulator, silenceCoach } from './helpers';
+const routes: [string, string | RegExp][] = [
+  ['/', /^Hello/],
   ['/setup', 'Connect glove and camera'],
-  ['/calibrate', 'Calibration'],
-  ['/exercise', 'Exercise'],
-  ['/evaluate', 'Evaluation'],
+  ['/calibrate', 'Find your comfortable range'],
+  ['/exercise', 'Your practice'],
+  ['/evaluate', 'Check your comfortable movement'],
   ['/history', 'History'],
   ['/history/sessions/8', 'Session replay'],
   ['/history/evaluations/3', 'Evaluation detail'],
@@ -26,22 +27,27 @@ test('every route renders with its shell and accessibility slots', async ({
   }
   expect(errors).toEqual([]);
 });
-test('scripted exercise enters focus shell, pauses, and stops', async ({
-  page,
-}) => {
-  await page.goto('/exercise');
-  await page.getByRole('button', { name: 'Play scripted exercise' }).click();
+test('real exercise enters focus, pauses and ends safely', async ({ page }) => {
+  await silenceCoach(page);
+  await calibrateSimulator(page);
+  await page
+    .getByRole('button', { name: 'Start practice', exact: true })
+    .click();
   await expect(page.locator('.focus')).toBeVisible();
   await expect(page.getByRole('navigation')).toHaveCount(0);
-  await expect(page.locator('.phase')).toHaveText('PRESENT');
   await page.getByRole('button', { name: 'Pause', exact: true }).click();
-  await expect(page.locator('.phase')).toHaveText('PAUSED');
+  await expect(
+    page.getByRole('button', { name: 'Resume', exact: true }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  await page.getByRole('button', { name: 'End practice', exact: true }).click();
   await page
+    .getByRole('dialog')
     .getByRole('button', { name: 'End session', exact: true })
-    .last()
     .click();
-  await expect(page.locator('.phase')).toHaveText('DONE');
+  await expect(
+    page.getByRole('heading', { name: 'Session complete', exact: true }),
+  ).toBeVisible();
   await expect(page.getByRole('navigation')).toBeVisible();
 });
 
@@ -49,7 +55,8 @@ test('browser health and mock writes use the configured API', async ({
   page,
 }) => {
   await page.goto('/');
-  await expect(page.getByText('API connected', { exact: false })).toBeVisible();
+  const health = await page.request.get('/api/health');
+  expect(health.ok()).toBe(true);
   if (process.env.REHAB_E2E_MOCK === '1') {
     const value = await page.evaluate(async () => {
       const profile = await (await fetch('/api/profile')).json();
@@ -75,9 +82,7 @@ test('theme tokens and page layout at patient viewport sizes', async ({
     for (const theme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
       await page.goto('/');
-      await expect(
-        page.getByRole('heading', { name: 'Rehab Hub', exact: true }),
-      ).toBeVisible();
+      await expect(page.getByRole('heading', { name: /^Hello/ })).toBeVisible();
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,

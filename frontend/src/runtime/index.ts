@@ -7,3 +7,7 @@ export {
 export { ScriptedRuntime } from './ScriptedRuntime';
 export { RehabRuntime } from './runtime';
 export { RuntimeStatus, RuntimeDiagnostics } from './RuntimeStatus';
+export {
+  RuntimeSimulatorControls,
+  RuntimeSimulatorCalibration,
+} from './SimulatorControls';

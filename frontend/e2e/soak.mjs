@@ -1,3 +1,4 @@
+/* global process, window, setTimeout, console, URL */
 import { chromium } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 
