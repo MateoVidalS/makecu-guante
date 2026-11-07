@@ -1,8 +1,8 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
+from sqlmodel import Session as DbSession
 
-from app.api.stub import not_implemented
 from app.contracts.types import (
     ApiError,
     Attempt,
@@ -14,58 +14,88 @@ from app.contracts.types import (
     SessionIn,
     TranscriptIn,
 )
+from app.db import repo
+from app.db.session import get_session
+
+Db = Annotated[DbSession, Depends(get_session)]
 
 router = APIRouter()
 
 
-@router.post("/sessions", response_model=Session, responses={501: {"model": ApiError}})
-def post_sessions(body: SessionIn) -> Session:
-    not_implemented()
-
-
-@router.get("/sessions", response_model=list[Session], responses={501: {"model": ApiError}})
-def get_sessions(
-    mode: Literal["exercise"] | None = None, limit: int = 50, offset: int = 0
-) -> list[Session]:
-    not_implemented()
-
-
 @router.post(
-    "/sessions/{id}/attempts", response_model=Attempt, responses={501: {"model": ApiError}}
+    "/sessions",
+    response_model=Session,
+    responses={404: {"model": ApiError}, 422: {"model": ApiError}},
 )
-def post_sessions_id_attempts(id: int, body: AttemptResult) -> Attempt:
-    not_implemented()
-
-
-@router.post("/sessions/{id}/end", response_model=Session, responses={501: {"model": ApiError}})
-def post_sessions_id_end(id: int, body: SessionEndIn) -> Session:
-    not_implemented()
-
-
-@router.get("/sessions/{id}", response_model=SessionDetail, responses={501: {"model": ApiError}})
-def get_sessions_id(id: int) -> SessionDetail:
-    not_implemented()
-
-
-@router.delete(
-    "/sessions/{id}", response_model=None, status_code=204, responses={501: {"model": ApiError}}
-)
-def delete_sessions_id(id: int) -> None:
-    not_implemented()
+def post_sessions(db: Db, body: SessionIn) -> Session:
+    return repo.create_session(db, body)
 
 
 @router.get(
-    "/attempts/{id}/trace", response_model=AttemptTrace, responses={501: {"model": ApiError}}
+    "/sessions",
+    response_model=list[Session],
+    responses={404: {"model": ApiError}, 422: {"model": ApiError}},
 )
-def get_attempts_id_trace(id: int) -> AttemptTrace:
-    not_implemented()
+def get_sessions(
+    db: Db,
+    mode: Literal["exercise"] | None = None,
+    limit: Annotated[int, Query(ge=1)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[Session]:
+    return repo.list_sessions(db, mode, limit, offset)
+
+
+@router.post(
+    "/sessions/{id}/attempts",
+    response_model=Attempt,
+    responses={404: {"model": ApiError}, 422: {"model": ApiError}},
+)
+def post_sessions_id_attempts(db: Db, id: int, body: AttemptResult) -> Attempt:
+    return repo.create_attempt(db, id, body)
+
+
+@router.post(
+    "/sessions/{id}/end",
+    response_model=Session,
+    responses={404: {"model": ApiError}, 422: {"model": ApiError}},
+)
+def post_sessions_id_end(db: Db, id: int, body: SessionEndIn) -> Session:
+    return repo.end_session(db, id, body.summary)
+
+
+@router.get(
+    "/sessions/{id}",
+    response_model=SessionDetail,
+    responses={404: {"model": ApiError}, 422: {"model": ApiError}},
+)
+def get_sessions_id(db: Db, id: int) -> SessionDetail:
+    return repo.get_session(db, id)
+
+
+@router.delete(
+    "/sessions/{id}",
+    response_model=None,
+    status_code=204,
+    responses={404: {"model": ApiError}, 422: {"model": ApiError}},
+)
+def delete_sessions_id(db: Db, id: int) -> None:
+    return repo.delete_session(db, id)
+
+
+@router.get(
+    "/attempts/{id}/trace",
+    response_model=AttemptTrace,
+    responses={404: {"model": ApiError}, 422: {"model": ApiError}},
+)
+def get_attempts_id_trace(db: Db, id: int) -> AttemptTrace:
+    return repo.get_trace(db, id)
 
 
 @router.post(
     "/sessions/{id}/transcript",
     response_model=None,
     status_code=204,
-    responses={501: {"model": ApiError}},
+    responses={404: {"model": ApiError}, 422: {"model": ApiError}},
 )
-def post_sessions_id_transcript(id: int, body: TranscriptIn) -> None:
-    not_implemented()
+def post_sessions_id_transcript(db: Db, id: int, body: TranscriptIn) -> None:
+    return repo.add_transcript(db, id, body.lines)

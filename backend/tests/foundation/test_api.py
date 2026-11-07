@@ -15,7 +15,7 @@ def fixture(name):
 
 @pytest.fixture
 def client():
-    # No lifespan needed: stub API endpoints never read the database.
+    # These foundation checks cover health, schemas, validation, and the voice stub.
     return TestClient(app)
 
 
@@ -78,9 +78,8 @@ CASES = [
 ]
 
 
-@pytest.mark.parametrize("method,path,body", CASES)
-def test_every_stub_returns_contract_error(client, method, path, body):
-    response = client.request(method, f"/api{path}", json=body)
+def test_voice_stub_returns_contract_error(client):
+    response = client.post("/api/voice/token", json={"session_id": None})
     assert response.status_code == 501, response.text
     assert response.json()["error"]["code"] == "not_implemented"
     assert isinstance(response.json()["error"]["message"], str)
@@ -102,7 +101,7 @@ def test_all_documented_operations_have_a_test_case(client):
         for method in item:
             if path != "/api/health":
                 assert (method, path.removeprefix("/api")) in operations
-                assert "501" in item[method]["responses"]
+                assert "200" in item[method]["responses"] or "204" in item[method]["responses"]
 
 
 def test_errors_and_spa_fallback(client, tmp_path, monkeypatch):
