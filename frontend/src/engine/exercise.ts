@@ -587,11 +587,7 @@ class Exercise implements ExerciseEngine {
       this.gaps.push({
         now: this.now,
         gaps: GLOVE_FINGERS.map(
-          (f, i) =>
-            ((this.phase === 'ASSIST' || this.phase === 'ASSIST_HOLD') &&
-            this.targetSent
-              ? this.target[i]
-              : input.tel!.a[i]) - input.vision!.closure![f],
+          (f, i) => input.tel!.a[i] - input.vision!.closure![f],
         ) as Quint,
       });
   }
@@ -632,7 +628,13 @@ class Exercise implements ExerciseEngine {
     const threshold = profile
       ? Math.min(250, profile.stall_ma * (250 / 800))
       : 250;
-    if (tel.ma <= baseline + threshold || !finger) {
+    const gap = finger
+      ? tel.a[GLOVE_FINGERS.indexOf(finger)] -
+        this.input!.vision!.closure![finger]
+      : 0;
+    // Stagger changes total current as each motor starts. Require real pulling
+    // lag, rather than classifying a settled finger's camera noise as a stall.
+    if (tel.ma <= baseline + threshold || !finger || gap <= 0.05) {
       this.high = null;
       return false;
     }

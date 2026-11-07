@@ -1,5 +1,10 @@
 import type { VisionFrame } from '../contracts/vision';
-import type { GloveTelemetry, GloveEvent, Quint } from '../contracts/glove';
+import type {
+  GloveTelemetry,
+  GloveEvent,
+  GloveFinger,
+  Quint,
+} from '../contracts/glove';
 import type { Calibration } from '../contracts/calibration';
 import type {
   ExercisePlanItem,
@@ -67,7 +72,7 @@ export interface EngineOptions {
   /** Bench-measured stall currents can replace the provisional engine profiles. */
   servoProfiles?: Partial<
     Record<
-      import('../contracts/glove').GloveFinger,
+      GloveFinger,
       {
         stall_ma: number;
       }

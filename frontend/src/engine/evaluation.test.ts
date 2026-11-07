@@ -368,3 +368,98 @@ it('preserves evaluation motion safety over seeded random input sequences', () =
   }
   expect(targets).toBeGreaterThan(10);
 });
+
+it('evaluates only a deduplicated ring/pinky subset and reports overall progress', () => {
+  const r = new EvalRun(
+    undefined,
+    { ...DEFAULT_EVAL_SETTINGS, fingers: ['pinky', 'ring', 'pinky'] },
+    false,
+  );
+  const progress: number[] = [];
+  const targets: number[][] = [];
+  while (r.engine.state().stage !== 'done') {
+    const out = r.step();
+    progress.push(r.engine.state().overallProgress);
+    for (const command of out.commands)
+      if (command.t === 'target') targets.push(command.f);
+  }
+  expect(targets).toEqual([
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+  ]);
+  expect(
+    progress.every(
+      (value, i) =>
+        value >= 0 && value <= 1 && (i === 0 || value >= progress[i - 1]),
+    ),
+  ).toBe(true);
+  expect(r.engine.state()).toMatchObject({
+    completedSweeps: 4,
+    totalSweeps: 4,
+    overallProgress: 1,
+  });
+  expect(r.engine.state().result!.fingers.map((f) => f.finger)).toEqual([
+    'pinky',
+    'ring',
+  ]);
+});
+
+it('rejects invalid evaluation finger names before sending any commands', () => {
+  expect(() =>
+    createEvaluationEngine().start(
+      { ...DEFAULT_EVAL_SETTINGS, fingers: ['invalid'] as never },
+      calibration,
+      0,
+    ),
+  ).toThrow('five-finger');
+});
+
+it("stores independent friction curves for all five fingers and subtracts each finger's own baseline", () => {
+  const engine = frictionRun();
+  const r = new EvalRun(engine);
+  r.until('done');
+  expect(Object.keys(engine.curves())).toEqual([
+    'thumb',
+    'index',
+    'middle',
+    'ring',
+    'pinky',
+  ]);
+  expect(
+    Object.values(engine.curves()).every((curves) => curves.length === 2),
+  ).toBe(true);
+  const fingers = DEFAULT_EVAL_SETTINGS.fingers;
+  const friction = Object.fromEntries(
+    fingers.map((finger, i) => [
+      finger,
+      [0.2, 1].map((v) => ({
+        v,
+        points: [
+          { pos: 0, ma: i * 10 },
+          { pos: 1, ma: i * 10 },
+        ],
+      })),
+    ]),
+  );
+  const evalEngine = createEvaluationEngine();
+  const evaluation = new EvalRun(evalEngine);
+  evaluation.accept(
+    evalEngine.start(
+      DEFAULT_EVAL_SETTINGS,
+      { ...calibration, friction },
+      evaluation.world.now,
+    ),
+  );
+  while (evalEngine.state().stage !== 'done') {
+    const index = fingers.indexOf(evalEngine.state().finger ?? 'thumb');
+    evaluation.world.ma = 100 + index * 10;
+    evaluation.step();
+  }
+  expect(evalEngine.state().result!.friction_used).toBe(true);
+  for (const result of evalEngine.state().result!.fingers) {
+    expect(result.resistance_slow_ma).toBeCloseTo(100);
+    expect(result.resistance_fast_ma).toBeCloseTo(100);
+  }
+});

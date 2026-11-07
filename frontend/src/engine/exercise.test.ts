@@ -648,3 +648,17 @@ describe('five-finger assist semantics', () => {
       ).toThrow();
   });
 });
+
+it('does not treat high total current and small settled-camera noise as resistance', () => {
+  const r = new Run('hook', { attempt_s: 0.1, assist_max_s: 15 });
+  r.until('ASSIST');
+  for (let i = 0; i < 7; i++) r.step();
+  r.world.ma = 500;
+  for (let i = 0; i < 20; i++) {
+    r.world.hand = [0, 0.58, 0.58, 0.58, 0.3];
+    r.step(50, (input) => {
+      input.tel!.a = [0, 0.6, 0.6, 0.6, 0.3];
+    });
+  }
+  expect(r.events.some((e) => e.kind === 'resistance')).toBe(false);
+});

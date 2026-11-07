@@ -14,7 +14,7 @@ const ARRIVED_EPSILON = 1e-6;
 export const SERVO_PROFILES: Record<GloveFinger, { stall_ma: number }> = {
   thumb: { stall_ma: 650 },
   index: { stall_ma: 800 },
-  middle: { stall_ma: 700 },
+  middle: { stall_ma: 750 },
   ring: { stall_ma: 650 },
   pinky: { stall_ma: 650 },
 };
