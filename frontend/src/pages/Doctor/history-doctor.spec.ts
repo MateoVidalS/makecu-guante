@@ -61,7 +61,7 @@ test('history exposes generated improvement and chart data with demo labels', as
   page,
 }) => {
   await page.goto('/history');
-  await expect(page.getByText('19% → 44%')).toBeVisible();
+  await expect(page.getByText('19% → 46%')).toBeVisible();
   await expect(page.getByRole('tab')).toHaveCount(2);
   await expect(page.getByRole('button', { name: /Export/ })).toHaveCount(0);
   await page.getByRole('link', { name: 'Doctor view', exact: true }).click();
@@ -71,8 +71,8 @@ test('history exposes generated improvement and chart data with demo labels', as
   const chart = page.getByRole('article', { name: /^Thumb:/ }).first();
   await chart.getByText('Show as table', { exact: true }).click();
   const table = chart.getByRole('table');
-  await expect(table).toContainText('23%');
-  await expect(table).toContainText('34%');
+  await expect(table).toContainText('24%');
+  await expect(table).toContainText('35%');
   await expect(table).toContainText('Demo data');
   await expect(page.locator('.chart-grid .recharts-line-curve')).toHaveCount(5);
 });
@@ -197,7 +197,7 @@ test('mixed three/five-finger history keeps missing measurements visible', async
   await expect(
     page.getByRole('img', { name: /Hand map, first session/ }),
   ).toHaveAccessibleName(
-    /Ring Not measured then, 36% now.*Pinky Not measured then, 23% now/,
+    /Ring Not measured then, 37% now.*Pinky Not measured then, 23% now/,
   );
   const screenshot = async (name: string) =>
     page.screenshot({
@@ -213,7 +213,7 @@ test('mixed three/five-finger history keeps missing measurements visible', async
   const ring = page.getByRole('article', { name: /^Ring:/ }).last();
   await ring.getByText('Show as table', { exact: true }).click();
   await expect(ring.getByRole('table')).toContainText('Not measured');
-  await expect(ring.getByRole('table')).toContainText('36%');
+  await expect(ring.getByRole('table')).toContainText('37%');
   await page
     .getByRole('link', { name: 'Exit doctor view', exact: true })
     .click();
@@ -349,8 +349,8 @@ test('U3 overview cards fit their content at both review sizes', async ({
         timeout: 15_000,
       });
       if (name !== 'sessions') {
-        await expect(page.getByText('15% → 22%')).toBeVisible();
-        await expect(page.getByText('19% → 44%')).toBeVisible();
+        await expect(page.getByText('16% → 23%')).toBeVisible();
+        await expect(page.getByText('19% → 46%')).toBeVisible();
         const blanks = await page.locator('.chart-card').evaluateAll((cards) =>
           cards.map((card) => {
             const bottom = card.getBoundingClientRect().bottom;

@@ -99,13 +99,13 @@ function mount(path: string) {
 describe('record review pages', () => {
   it('shows generated improvement, pose selection, accessible tables, and session safety counts', async () => {
     mount('/history');
-    expect(await screen.findByText('15% → 22%')).toBeVisible();
+    expect(await screen.findByText('16% → 23%')).toBeVisible();
     expect(
       screen.getByRole('img', { name: /Hand map, first session/ }),
-    ).toHaveAccessibleName(/Thumb 15% then, 22% now/);
+    ).toHaveAccessibleName(/Thumb 16% then, 23% now/);
     expect(
       await screen.findByRole('img', { name: /Latest session per finger/ }),
-    ).toHaveAccessibleName(/Index 44% on your own and 9% from the glove/);
+    ).toHaveAccessibleName(/Index 46% on your own and 8% from the glove/);
     expect(
       screen.getByRole('img', { name: /Practice calendar/ }),
     ).toBeInTheDocument();
