@@ -27,6 +27,11 @@ export function liveFingerState({
   const reached = (v: number) =>
     target <= 0.05 ? v <= target + tolerance : v >= target - tolerance;
   if (reached(value)) return 'reached';
-  if (assisting && (best === null || !reached(best))) return 'assist';
+  if (
+    assisting &&
+    value > target + tolerance &&
+    (best === null || best > target + tolerance)
+  )
+    return 'assist';
   return 'active';
 }

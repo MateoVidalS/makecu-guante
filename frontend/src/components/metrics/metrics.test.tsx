@@ -132,7 +132,7 @@ describe('metric math', () => {
     );
     expect(d.map((x) => x.delta)).toEqual([3, 15, null, null, null]);
     expect(recapSentence(summary())).toBe(
-      'Your index closed further on its own than last time.',
+      'You reached most poses on your own. Steady work.',
     );
     expect(
       recapSentence(summary({ previous: null, reached_active: 2 })),
@@ -166,24 +166,24 @@ describe('metric components', () => {
     render(
       <FingerGauge
         finger="index"
-        value={0.65}
-        best={0.4}
-        target={0.8}
+        value={0.35}
+        best={0.6}
+        target={0}
         state="assist"
       />,
     );
     const meter = screen.getByRole('meter', { name: 'Index' });
-    expect(meter).toHaveAttribute('aria-valuenow', '0.65');
+    expect(meter).toHaveAttribute('aria-valuenow', '0.35');
     expect(meter).toHaveAttribute(
       'aria-valuetext',
-      '65%, goal 80%, best on your own 40%, glove helping',
+      '35%, goal 0%, best on your own 60%, glove helping',
     );
     expect(meter.querySelector('.mx-gauge__band')).not.toBeNull();
     expect(meter.querySelector('.mx-gauge__best')).toHaveStyle({
-      bottom: '40%',
+      bottom: '60%',
     });
     expect(meter.querySelector('.mx-fill--help')).toHaveStyle({
-      bottom: '40%',
+      bottom: '35%',
       height: '25%',
     });
     expect(screen.getByText('Glove helping')).toBeVisible();
@@ -192,9 +192,9 @@ describe('metric components', () => {
     render(
       <FingerGauge
         finger="ring"
-        value={0.95}
-        best={0.4}
-        target={0.95}
+        value={0.05}
+        best={0.6}
+        target={0}
         state="reached"
         assisting
       />,
@@ -373,4 +373,23 @@ it('clamps displayed percentages while retaining missing values', async () => {
   expect(pct(-0.2)).toBe('0%');
   expect(pct(null)).toBe('—');
   expect(pct(Number.NaN)).toBe('—');
+});
+
+it('reports load shedding as a calm protection notice without a safety stop', () => {
+  render(
+    <AttemptFeedback
+      result={attempt({
+        safety_events: [
+          { source: 'load_shed', t_rel: 3, finger: 'index', ma: 1200 },
+        ],
+      })}
+    />,
+  );
+  expect(screen.getByText('Eased off to protect the glove')).toHaveClass(
+    'mx-load-shed',
+  );
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(
+    screen.getByText('Good effort. The glove helped with the rest.'),
+  ).toBeVisible();
 });

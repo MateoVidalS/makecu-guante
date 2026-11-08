@@ -29,7 +29,7 @@ const WORDS: Record<MotorState, string> = {
   releasing: 'Letting go',
 };
 
-/** One motor's state from telemetry: `a` is the ramped servo position, `tg` its goal. */
+/** One motor's state from telemetry: `a` is ramped tendon pull, `tg` its pull goal. */
 export function motorState(tel: GloveTelemetry | null, i: number): MotorState {
   if (!tel) return 'off';
   if (tel.st === 'fault') return 'stopped';
@@ -69,22 +69,32 @@ export function GloveMotors() {
     (m) => m.state === 'pulling' || m.state === 'holding',
   );
   return (
-    <section className="glove-motors" aria-label="Glove motors">
+    <section className="glove-motors" aria-label="Glove opening help">
       <header className="glove-motors__head">
-        <h2 className="glove-motors__title">Glove motors</h2>
+        <h2 className="glove-motors__title">Glove opening help</h2>
         {simulated && <span className="glove-motors__tag">Simulated</span>}
       </header>
       <ul className="glove-motors__row">
         {motors.map((m) => (
           <li key={m.finger} className="glove-motor" data-state={m.state}>
-            <span className="glove-motor__bar" aria-hidden="true">
+            <span
+              className="glove-motor__bar"
+              role="meter"
+              aria-label={`${NAMES[m.finger]} opening help`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={m.position}
+              aria-valuetext={`${m.position}% opening help, ${WORDS[m.state]}`}
+            >
               <span
                 className="glove-motor__fill"
                 style={{ blockSize: `${m.position}%` }}
               />
             </span>
             <span className="glove-motor__name">{NAMES[m.finger]}</span>
-            <span className="glove-motor__state">{WORDS[m.state]}</span>
+            <span className="glove-motor__state">
+              {m.position}% · {WORDS[m.state]}
+            </span>
           </li>
         ))}
       </ul>

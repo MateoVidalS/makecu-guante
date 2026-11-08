@@ -682,12 +682,14 @@ describe('Evaluation', () => {
     act(() => runtime.advance(1));
     expect(
       screen.getByRole('img', {
-        name: 'Resistance estimate by finger position',
+        name: 'Resistance estimate by opening help',
       }),
     ).toBeVisible();
     for (let i = 0; i < 100; i++) act(() => runtime.advance(0.5));
     expect(
-      screen.getByRole('heading', { name: 'Your evaluation' }),
+      screen.getByRole('heading', {
+        name: 'Resistance to opening (flexor tone)',
+      }),
     ).toBeVisible();
     expect(
       screen.getByText('An estimate inspired by clinical practice.'),

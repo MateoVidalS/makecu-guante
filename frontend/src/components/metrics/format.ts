@@ -114,21 +114,9 @@ export function fingerDeltas(
 
 /** One encouraging sentence that stays true to the numbers. */
 export function recapSentence(summary: SessionSummary): string {
-  const deltas = fingerDeltas(
-    summary.per_finger,
-    summary.previous?.per_finger ?? null,
-  ).filter((d) => d.delta != null);
-  const best = deltas.reduce<FingerDelta | null>(
-    (a, d) => (a == null || (d.delta ?? 0) > (a.delta ?? 0) ? d : a),
-    null,
-  );
-  if (best && (best.delta ?? 0) >= 3)
-    return `Your ${best.finger} closed further on its own than last time.`;
   const done = summary.attempts - summary.interrupted;
   if (done > 0 && summary.reached_active / done >= 0.5)
     return 'You reached most poses on your own. Steady work.';
-  if (deltas.length && deltas.every((d) => Math.abs(d.delta ?? 0) < 3))
-    return 'About the same as last time. Steady practice helps.';
   if (summary.attempts === 0) return 'Thanks for starting. Every try counts.';
   return 'Good effort today. The glove helped where needed.';
 }

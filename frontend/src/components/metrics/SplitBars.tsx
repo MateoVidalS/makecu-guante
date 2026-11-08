@@ -7,8 +7,8 @@ export interface SplitRow {
 }
 
 /**
- * Per finger: one bar from open (0%) to fully closed (100%).
- * Blue = how far it closed on its own, orange on top = what the glove added.
+ * Per finger: one bar showing active opening plus the opening the glove completed.
+ * Blue = active opening, orange on top = what the glove added.
  */
 export function SplitBars({
   rows,

@@ -429,3 +429,15 @@
   :is(.mx-gauge__status, .mx-legend--gauge, .live-panel--camera) {
   display: none;
 }
+
+.live-direction-note {
+  margin: 0;
+  font-size: var(--small);
+}
+@media (max-width: 1280px) {
+  .exercise-live .live-direction-note {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    text-align: center;
+  }
+}

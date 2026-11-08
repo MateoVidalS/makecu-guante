@@ -127,7 +127,7 @@ export const phaseLabels: Record<ExercisePhase, string> = {
   PRESENT: 'Get ready',
   ATTEMPT: 'Try now',
   HOLD: 'Hold it',
-  ASSIST: 'The glove is helping',
+  ASSIST: 'The glove is helping you open',
   ASSIST_HOLD: 'Hold it',
   RELEASE: 'Relax your hand',
   REST: 'Relax your hand',

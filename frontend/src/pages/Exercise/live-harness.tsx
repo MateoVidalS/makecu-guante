@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Shell } from '../../App';
-import { GloveProvider } from '../../glove';
-import { VisionProvider } from '../../vision';
+import { useEffect } from 'react';
+import { GloveProvider, useGlove } from '../../glove';
+import { VisionProvider, useVision } from '../../vision';
 import { RuntimeProvider } from '../../runtime';
 import { ScriptedRuntime } from '../../runtime/ScriptedRuntime';
 import { VoiceProvider } from '../../voice';
@@ -14,6 +15,7 @@ import {
   DEFAULT_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
 } from '../../contracts/poses';
+import { mockState } from '../../mocks/handlers';
 import type { EngineEvent, ExercisePhase } from '../../contracts/engine';
 import { worker } from '../../mocks/browser';
 import '../../styles/base.css';
@@ -34,7 +36,7 @@ const setPhase = (phase: ExercisePhase) => {
     phase,
     paused: phase === 'PAUSED',
     assisting: phase.startsWith('ASSIST'),
-    pose: POSES.hook,
+    pose: phase.startsWith('ASSIST') ? POSES.open : POSES.hook,
     index: 3,
     rep: 1,
     total: 15,
@@ -66,6 +68,67 @@ Object.assign(window, {
   },
 });
 setPhase('PRESENT');
+// Freeze display-only simulator telemetry for reproducible opening-help screenshots.
+function DisplayFixture() {
+  const glove = useGlove();
+  const vision = useVision();
+  useEffect(() => {
+    Object.assign(window.u4Layout, {
+      opening() {
+        glove.world.stop();
+        vision.stop();
+        glove.store.setState({
+          connection: 'connected',
+          latest: {
+            t: performance.now(),
+            ms: 1000,
+            a: [0.4, 0.6, 0.5, 0.3, 0.2],
+            tg: [0.95, 0.95, 0.95, 0.95, 0.95],
+            ma: 500,
+            st: 'run',
+            md: 'target',
+          },
+        });
+        vision.store.setState({
+          latest: {
+            t: performance.now(),
+            detected: true,
+            confidence: 1,
+            handedness: 'right',
+            closure: {
+              thumb: 0.6,
+              index: 0.4,
+              middle: 0.5,
+              ring: 0.7,
+              pinky: 0.8,
+            },
+            rawFlexSum: null,
+            joints: null,
+            pinch: null,
+            landmarks: null,
+          },
+        });
+        setPhase('ASSIST');
+        runtime.exerciseStore.setState({
+          activeMax: {
+            thumb: 0.8,
+            index: 0.8,
+            middle: 0.8,
+            ring: 0.8,
+            pinky: 0.9,
+          },
+        });
+      },
+      evaluationResult() {
+        runtime.evaluationStore.setState({
+          stage: 'done',
+          result: mockState.evaluations[0],
+        });
+      },
+    });
+  }, [glove, vision]);
+  return null;
+}
 await worker.start({ onUnhandledRequest: 'bypass' });
 createRoot(document.getElementById('root')!).render(
   <QueryClientProvider
@@ -75,7 +138,15 @@ createRoot(document.getElementById('root')!).render(
       <VisionProvider>
         <RuntimeProvider runtime={runtime}>
           <VoiceProvider>
-            <MemoryRouter initialEntries={['/exercise']}>
+            <DisplayFixture />
+            <MemoryRouter
+              initialEntries={[
+                new URLSearchParams(location.search).get('view') ===
+                'evaluation'
+                  ? '/evaluate'
+                  : '/exercise',
+              ]}
+            >
               <SessionProgressProvider>
                 <Shell />
               </SessionProgressProvider>

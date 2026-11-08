@@ -57,6 +57,9 @@ export function AttemptFeedbackCard({
           </span>
           {sentence}
         </strong>
+        {result.safety_events.some((e) => e.source === 'load_shed') && (
+          <span className="mx-load-shed">Eased off to protect the glove</span>
+        )}
         {outcome !== 'paused' && (
           <span className="mx-legend mx-legend--inline" aria-hidden="true">
             <span>
