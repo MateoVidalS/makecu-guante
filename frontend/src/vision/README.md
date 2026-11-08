@@ -9,10 +9,14 @@ callbacks while fallback is pending, and callbacks arriving above 30 Hz are skip
 ```ts
 const source = new CameraVision();
 const devices = await CameraVision.devices(); // Labels appear after permission.
-source.setMirrorHandedness(true); // Only for disambiguating two hands.
+source.setMirrorHandedness(false); // Labels match the unmirrored MediaPipe Tasks input.
 source.setCalibration(cameraCalibration);
 const unsubscribe = source.onFrame((frame) => consume(frame));
-await source.start({ affectedHand: 'right', deviceId: devices[0]?.deviceId });
+await source.start({
+  affectedHand: 'right',
+  view: 'front_upright',
+  deviceId: devices[0]?.deviceId,
+});
 console.log(source.stats());
 // On page/runtime disposal:
 unsubscribe();
@@ -33,7 +37,14 @@ as required by `VisionFrame`. Filters reset on a configured hand change or a
 200 ms gap. With one visible hand, its published handedness is always the configured
 affected hand, regardless of MediaPipe's label (including an unknown label).
 The score must still be at least 0.6. With two hands, labels select the configured
-hand; the mirror preference only changes this disambiguation. Flipping a lone
+hand. In `front_upright`, a recognized label is also a lone-hand cross-check;
+`source.diagnostics().handednessMismatch` reports disagreement without changing
+the configured hand, geometry or smoothing. Unknown labels and the legacy view
+report `null`. The label inversion preference affects this cross-check and
+multiple-hand selection; it is independent of CSS preview mirroring.
+[MediaPipe Tasks labels refer to the subject's hands](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker?tab=Web).
+Inference receives the unmirrored video element, without rotation; mirror the
+preview with `CameraOverlay mirrored` to match a laptop selfie view. Flipping a lone
 hand's MediaPipe label does not reset joint smoothing. Loading a saved affected-hand
 calibration also updates an already running camera's configured hand.
 
@@ -69,16 +80,33 @@ Subscriptions survive source switches and receive an invalid observation on stop
 draws the 21 points and bones, and displays gaps until calibration is available.
 Mount one overlay per source, since a video element has one DOM parent.
 
-The frozen `CameraCalibration` has no mirror field. The optional two-hand mirror setting is kept
+The frozen `CameraCalibration` has no mirror field. The optional label inversion setting is kept
 separately in localStorage (`rehab-hub.camera.mirror-handedness`) until a contract
 revision adds one. Changing it invalidates the frame and resets the filters.
+
+## Camera view and flexion
+
+`CameraVision.start({ view })` and controller `start` / `setKind` accept
+`front_upright` (default) or legacy `front_diagonal`. View settings survive source
+switches. Upright long-finger MCP is the angle of the proximal bone out of the
+plane formed by knuckles 5, 9, 13 and 17, using that arch's area normal. Wrist
+position and in-plane splay do not count as MCP flexion. PIP/DIP and thumb math
+are unchanged. Every flexion calculation uses world landmarks; image landmarks
+serve the overlay, pinch ratio and exposure region. Degenerate palms produce a
+missing frame rather than fabricated flexion. The legacy view retains the old
+wrist-to-MCP bone reference. A view change resets smoothing.
+
+A calibration only normalizes closure when its affected hand and camera view
+match the current observation. Missing `camera_view` means `front_diagonal`;
+upright observations retain joints and raw flexion but have null closure until a
+compatible calibration is supplied.
 
 ## Setup robustness API
 
 F7 can import `useVisionRobustness()` from `../vision` alongside `useVision()`.
 It returns a reactive `VisionRobustnessStats` on every source frame. For polling or
 non-React use, call `vision.robustness()`; for standalone sources, subscribe frames
-to `new VisionRobustnessTracker().add(frame)` and call `tracker.stats(performance.now())`.
+to `new VisionRobustnessTracker().add(frame, camera.diagnostics())` and call `tracker.stats(performance.now())`.
 A restart, source switch, affected-hand calibration change or stop clears the
 provider's window. The API stays in
 `vision/`; no frozen `VisionSource` or `VisionFrame` contract additions are needed.
@@ -91,6 +119,8 @@ const check = useVisionRobustness();
 const label = `Hand detected: ${Math.round(check.detectionRate * 100)}% of the last 5 s`;
 // check.meanConfidence, check.perFingerVisibility.ring, check.status,
 // check.guidance (English strings), ROBUSTNESS_THRESHOLDS
+// check.lighting?.status, check.lighting?.meanLuminance,
+// check.handednessMismatchRate (null when unmeasured)
 ```
 
 Rates are time-weighted over the latest 5000 ms (the elapsed partial window while
@@ -100,16 +130,27 @@ is also over elapsed time, including zero for missing/low-confidence intervals.
 Confidence is MediaPipe's handedness score, a heuristic rather than a calibrated
 probability of correct tracking. `status` stays `collecting` until 5 s have elapsed,
 then is `ready` when detection ≥90%, mean confidence ≥75%, and every finger's
-visibility ≥85%; otherwise it is `poor`. Exported thresholds are provisional
+visibility ≥85%, no exposure warning, and handedness mismatch rate ≤20%
+(when measured); otherwise it is `poor`. Exported thresholds are provisional
 Setup heuristics for the team's day-1 glove check, not clinical thresholds.
 
 Per-finger visibility is the fraction of time with finite joints and all four
 finger landmarks within the image. It is a **usable skeleton estimate, not an
 occlusion detector**: MediaPipe can infer hidden joints. Check the overlay by eye
 while opening and closing the glove. `CAMERA_PLACEMENT_GUIDANCE` and the returned
-`guidance` cover palm-down posture, front diagonal thumb-side placement above the
-hand at 30–40 cm, lighting, light thin gloves, and the team-assisted exposed-tip or
-bare-hand demo fallback. Setup's layout and diagram belong to F7.
+`guidance` cover the upright palm-to-screen posture, elbow support, front webcam
+at 40–60 cm, lighting, light thin gloves, and the team-assisted exposed-tip or
+bare-hand demo fallback. Setup's layout and diagram belong to V2.
+
+Exposure is sampled from a reusable 64×48 canvas of the actual video frame. It
+reports normalized RGB luminance for the frame and, when a complete skeleton is
+in frame, the hand bounding region and remaining background. Low hand/frame
+luminance (<0.18) warns about low light. A dark hand (<0.28) against a background
+at least 0.25 brighter warns about backlight. These are provisional heuristics;
+the bounding box includes non-hand pixels. Warnings give lighting guidance even
+while collecting. Values are time-weighted and expire with frame observations.
+Unavailable canvas/video, stalls and simulators report null rather than a good
+exposure measurement. No image pixels are retained or uploaded.
 
 ## Five-finger calibration
 
@@ -132,7 +173,7 @@ application. Real closure percentages still require the calibration wizard.
 
 For the team's real-glove fixtures:
 
-1. Arrange the palm-down hand and camera as described on the preview. Choose the
+1. Raise the hand upright, palm to the laptop, elbow supported as on the preview. Choose the
    affected hand, camera and actual covering (glove, exposed fingertips or bare).
 2. Start the camera; check the overlay and the five-second robustness stats.
 3. Select a pose, click **Record 30 seconds**, hold the pose, then **Download
@@ -158,12 +199,14 @@ for (const { t, result } of recording.frames) {
 }
 ```
 
-The six `fixtures/palm-down_*.json` clips are **synthetic**, not webcam or glove
-recordings. Each contains 30 frames from a forward-kinematic model, projected
-through a diagonal thumb-side camera 36 cm above/in front of the palm-down hand.
-Tests mirror this view for the left hand, verify five-finger open/closed endpoints,
+The six `fixtures/front_upright_*.json` and six legacy
+`fixtures/palm-down_*.json` clips are **synthetic**, not webcam or glove recordings. Each contains 30 frames from the same forward-kinematic model. Upright fixtures
+project toward a front camera 50 cm away, fingers curling toward the lens with no
+rotation. Legacy fixtures retain the diagonal thumb-side camera 36 cm away.
+Tests mirror each view for the left hand, verify five-finger open/closed endpoints,
 long-finger tendon-glide closure ordering, pinch contact, calibration capture, and
-smoothing through lone-hand label flips. The thumb is free in hook/tabletop and
+smoothing through lone-hand label flips, wrist-tilt invariance, exposure guidance,
+and calibration view compatibility. The thumb is free in hook/tabletop and
 therefore does not have the same closure ordering as the four long fingers.
 Regenerate only these owned fixtures from the repository root:
 

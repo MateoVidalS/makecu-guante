@@ -31,7 +31,7 @@ export function selectHand(
       )
         return null;
       const reported = label === 'left' || label === 'right' ? label : null;
-      const handedness =
+      const handedness: Handedness | null =
         reported && mirror
           ? reported === 'left'
             ? 'right'
