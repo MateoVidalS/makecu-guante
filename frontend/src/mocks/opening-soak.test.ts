@@ -21,6 +21,12 @@ import type { PatientPreset } from '../glove/sim/patient';
 import { RehabRuntime } from '../runtime/runtime';
 import type { RuntimeApi } from '../runtime/persistence';
 
+/** These runs test the help mechanics end to end; production waits for the patient to ask. */
+const AUTO_HELP_SETTINGS = {
+  ...DEFAULT_EXERCISE_SETTINGS,
+  help_on_request: false,
+} as typeof DEFAULT_EXERCISE_SETTINGS;
+
 const cleanups: (() => void)[] = [];
 afterEach(() => {
   cleanups.splice(0).forEach((fn) => fn());
@@ -98,7 +104,7 @@ async function run(
   await runtime.calibration.reload();
   world.advance(200);
   await runtime.exercise.start(plan, {
-    ...DEFAULT_EXERCISE_SETTINGS,
+    ...AUTO_HELP_SETTINGS,
     tolerance,
     assist_max_s: 15,
     hold_s: 5,

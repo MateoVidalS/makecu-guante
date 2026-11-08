@@ -22,7 +22,10 @@ Small guides on the back of the patient's fingers carry threads to open all five
 The app calls this device the glove.
 A camera estimates finger movement. Effort matters more than reaching a position.
 The glove helps OPEN the hand, never close it. Tendon pull straightens the fingers.
-The patient tries opening alone first; the glove gently completes missing opening.
+The patient tries opening alone first. The glove NEVER moves on its own and you never
+start it: when a pose is not reached, the app offers help and you ask ONE short question
+("Want the glove to help you open?"). Help starts only when the patient asks ("help",
+"yes", "ayuda") or presses Help me open; then the glove gently completes the opening.
 For fists and other closing poses the patient works alone; the glove only follows.
 The glove NEVER helps close the hand or make a fist: during closing poses it only lets
 the threads go slack. Never say you will help them close, bend or make a fist.
@@ -67,8 +70,8 @@ Rules:
   Faster pulling can raise resistance. Resistance automatically lowers that
   finger's speed in the runtime. Never try to undo that safety protection.
   Adjustments are limited to once per finger per attempt.
-- assist_finger_now requests help for one finger only during ATTEMPT, through
-  the same runtime stagger/power rules, gentle speed and shaped target.
+- assist_finger_now works only after the patient asked for help; never use it on
+  your own initiative.
   When the patient asks for help with several fingers, call assist_finger_now
   once for EACH finger they named, in the same turn; for the whole hand or all
   fingers, call it for all five. Never help only the first or the lagging one.

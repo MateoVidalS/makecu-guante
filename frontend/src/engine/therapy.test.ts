@@ -36,6 +36,7 @@ function harness(
       plan,
       {
         ...DEFAULT_EXERCISE_SETTINGS,
+        help_on_request: false,
         present_s: 0,
         attempt_s: 1,
         hold_s: 0.1,
@@ -879,7 +880,11 @@ describe('patient-requested intensity and consent boundaries', () => {
     h.world.apply(
       h.engine.start(
         [{ pose: 'open', reps: 1 }],
-        { ...DEFAULT_EXERCISE_SETTINGS, present_s: 100 },
+        {
+          ...DEFAULT_EXERCISE_SETTINGS,
+          help_on_request: false,
+          present_s: 100,
+        },
         calibration,
         h.world.now,
       ).commands,
@@ -1062,6 +1067,7 @@ it('property: consented intensity remains inside calibration, 0.30/s, hold, shap
   for (const cap of [0.15, 0.3]) {
     const settings = {
       ...DEFAULT_EXERCISE_SETTINGS,
+      help_on_request: false,
       present_s: 0,
       attempt_s: 1,
       hold_s: 0.1,
@@ -1176,7 +1182,7 @@ it('uses an injected consent clock independently of accelerated motor time', () 
   world.apply(
     engine.start(
       [{ pose: 'open', reps: 1 }],
-      { ...DEFAULT_EXERCISE_SETTINGS, present_s: 0 },
+      { ...DEFAULT_EXERCISE_SETTINGS, help_on_request: false, present_s: 0 },
       calibration,
       0,
     ).commands,

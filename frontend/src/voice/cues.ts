@@ -69,6 +69,15 @@ export function eventCue(
         text: `[safety] ${safetyPhrase(event)} Already announced locally. The runtime paused; check if they are OK.`,
         speak: false,
       };
+    case 'help_offered':
+      return {
+        text: `[session] Not reached alone yet (${event.fingers
+          .map(fingerName)
+          .join(
+            ', ',
+          )} still closed). Offer the glove's help in ONE short question, e.g. "Want the glove to help you open?". Never start help yourself: it starts only when the patient asks ("help", "yes", "ayuda").`,
+        speak: true,
+      };
     case 'session_done':
       return {
         text: `[session] Session complete. Summary: ${summaryContext(event.summary)} In one or two short sentences, recap and say goodbye. The session is over: do not start new exercises or ask questions.`,

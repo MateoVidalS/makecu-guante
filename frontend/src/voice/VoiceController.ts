@@ -86,6 +86,8 @@ export class VoiceController {
   private patientBraked = false;
   /** After an on-screen Brake, the coach stays quiet until the patient speaks. */
   private quietUntilPatient = false;
+  /** Attempt index the patient already asked help for (once per attempt). */
+  private helpAskedFor = -1;
   /** Outbox: context and the next spoken cue wait until nobody is speaking. */
   private context: string[] = [];
   private spoken: Cue | null = null;
@@ -399,6 +401,7 @@ export class VoiceController {
         this.partial[event.role] += event.text;
         if (event.role === 'patient') {
           this.checkPatientSafety(this.partial.patient);
+          this.checkHelpRequest(this.partial.patient);
           this.runtime.therapy?.notePatientSpeech?.(this.partial.patient);
           this.scheduler.setTalking(!event.finished);
         }
@@ -593,6 +596,24 @@ export class VoiceController {
     this.coachTalking = false;
     this.flushOutbox();
   }
+  /**
+   * The glove only moves when the patient asks. "help" / "ayuda" always counts during an
+   * attempt; a plain "yes" / "si" / "dale" counts right after help was offered.
+   */
+  private checkHelpRequest(text: string) {
+    const view = this.runtime.exercise.view();
+    if (view.phase !== 'ATTEMPT' || this.helpAskedFor === view.index) return;
+    const said = normalizePatientText(text);
+    const asks =
+      /\b(help|ayuda|ayudame|ayudar|ayudes)\b/.test(said) ||
+      (!!view.helpOffered &&
+        /^(yes|yeah|yep|sure|please|si|dale|bueno|ok|okay|por favor)\b/.test(
+          said,
+        ));
+    if (!asks) return;
+    this.helpAskedFor = view.index;
+    this.runtime.exercise.requestHelp();
+  }
   private checkPatientSafety(text: string) {
     const awaitingPain = performance.now() < this.awaitingPainUntil;
     const reason = patientBrakeReason(text, awaitingPain);
@@ -621,6 +642,7 @@ export class VoiceController {
       this.partial.patient = text;
       if (text.trim()) this.quietUntilPatient = false;
       this.checkPatientSafety(text);
+      this.checkHelpRequest(text);
       this.runtime.therapy?.notePatientSpeech?.(text);
       this.update({ lastPatientLine: text });
       if (finished) this.finishTranscript('patient');

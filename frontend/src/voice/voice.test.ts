@@ -903,3 +903,66 @@ it('a Simple voice the user chose stays chosen', async () => {
   expect(s.deps.token).not.toHaveBeenCalled();
   s.controller.dispose();
 });
+
+describe('asking for help by voice', () => {
+  const inAttempt = (s: ReturnType<typeof setup>, helpOffered: boolean) =>
+    vi.spyOn(s.runtime.exercise, 'view').mockReturnValue({
+      ...s.runtime.exercise.view(),
+      phase: 'ATTEMPT',
+      index: 0,
+      helpOffered,
+    });
+  it('"ayudame" or "help" asks for the glove during an attempt, once', async () => {
+    const s = setup();
+    await s.controller.start(8);
+    const t = s.transports[0];
+    inAttempt(s, false);
+    const ask = vi.spyOn(s.runtime.exercise, 'requestHelp');
+    t.emit({ type: 'transcript', role: 'patient', text: 'Ayúdame por favor' });
+    expect(ask).toHaveBeenCalledTimes(1);
+    t.emit({
+      type: 'transcript',
+      role: 'patient',
+      text: ' help',
+      finished: true,
+    });
+    expect(ask).toHaveBeenCalledTimes(1);
+    s.controller.dispose();
+  });
+  it('a plain "yes" counts only after help was offered', async () => {
+    const s = setup();
+    await s.controller.start(8);
+    const t = s.transports[0];
+    const view = inAttempt(s, false);
+    const ask = vi.spyOn(s.runtime.exercise, 'requestHelp');
+    t.emit({
+      type: 'transcript',
+      role: 'patient',
+      text: 'yes',
+      finished: true,
+    });
+    expect(ask).not.toHaveBeenCalled();
+    view.mockReturnValue({
+      ...s.runtime.exercise.view(),
+      phase: 'ATTEMPT',
+      index: 0,
+      helpOffered: true,
+    });
+    t.emit({ type: 'transcript', role: 'patient', text: 'Sí', finished: true });
+    expect(ask).toHaveBeenCalledTimes(1);
+    s.controller.dispose();
+  });
+  it('the offer is one spoken question and the coach is told never to start help itself', () => {
+    const s = setup();
+    const cue = eventCue(
+      { kind: 'help_offered', fingers: ['index', 'middle'] },
+      s.runtime.exercise.view(),
+    );
+    expect(cue?.speak).toBe(true);
+    expect(cue?.text).toContain('Never start help yourself');
+    expect(
+      fallbackPhrase({ kind: 'help_offered', fingers: ['index'] }),
+    ).toContain('Help me open');
+    s.controller.dispose();
+  });
+});
