@@ -7,6 +7,7 @@ import { useJson } from '../useJson';
 import { cameraAt, fitViewport, type CameraKeyframe, type CameraTransform, type Viewport } from './camera';
 import { mockManifest, mockSafetySource, mockSources } from './mock/manifest';
 import { Cursor } from './Cursor';
+import { clipFrameAt, recordingForScreen, type PlaybackKeyframe } from './recording';
 
 type ScreenContext = { clip: RecordingClip; camera: CameraTransform; frame: number; mock: boolean };
 const Context = createContext<ScreenContext | null>(null);
@@ -22,26 +23,27 @@ export const ScreenFrame: React.FC<{
   camera: CameraKeyframe[];
   area?: Viewport;
   fit?: 'contain' | 'cover';
+  playback?: PlaybackKeyframe[];
   cursor?: boolean;
   children?: React.ReactNode;
-}> = ({ clip: id, from = 0, camera: keys, area = { x: space.s64, y: space.s64, w: 1792, h: 800 }, fit = 'contain', cursor = true, children }) => {
+}> = ({ clip: id, from = 0, camera: keys, area = { x: space.s64, y: space.s64, w: 1792, h: 800 }, fit = 'contain', playback, cursor = true, children }) => {
   const sceneFrame = useCurrentFrame();
   const manifest = useJson<RecordingManifest>('recordings/manifest.json');
   const real = manifest?.clips.find((item) => item.id === id);
-  const clip = real ?? mockManifest.clips.find((item) => item.id === id);
+  const clip = real ? recordingForScreen(real) : mockManifest.clips.find((item) => item.id === id);
   if (!clip) throw new Error(`Missing recording: ${id}`);
-  const frame = Math.min(clip.durationFrames - 1, from + sceneFrame * clip.fps / 30);
+  const frame = clipFrameAt(clip, sceneFrame, from, real ? playback : undefined);
   const viewport = fit === 'cover' ? area : fitViewport(clip, area);
   const camera = cameraAt(clip, keys, sceneFrame, frame, viewport);
   const mock = !real;
   const source = mockSources[id]?.filter((shot) => shot.at <= frame).at(-1);
   return (
     <Context.Provider value={{ clip, camera, frame, mock }}>
-      <div style={{ position: 'absolute', inset: 0 }}>
+      <div style={{ position: 'absolute', inset: 0, clipPath: 'inset(64px 0 0 0)' }}>
         <div style={{ position: 'absolute', left: viewport.x, top: viewport.y, width: viewport.w, height: viewport.h, borderRadius: radius.card, boxShadow: shadow, overflow: 'hidden', background: c.surface, border: `1px solid ${c.border}` }}>
           <div style={{ position: 'absolute', width: clip.width, height: clip.height, transformOrigin: '0 0', transform: `translate(${camera.x - viewport.x}px, ${camera.y - viewport.y}px) scale(${camera.scale})` }}>
-            {real ? <Freeze frame={Math.min(sceneFrame, Math.floor((clip.durationFrames - from - 1) * 30 / clip.fps))}>
-              <OffthreadVideo src={staticFile(clip.file)} trimBefore={from} muted style={{ width: clip.width, height: clip.height }} />
+            {real ? <Freeze frame={Math.round(frame * 30 / clip.fps)}>
+              <OffthreadVideo src={staticFile(clip.file)} muted style={{ width: clip.width, height: clip.height }} />
             </Freeze> : source ? <>
               <Img src={source.src} style={{ position: 'absolute', width: source.sourceWidth ?? clip.width, left: -(source.left ?? 0), top: -source.top }} />
               {id === 'coach-panel' ? <MockCoachDecision /> : null}

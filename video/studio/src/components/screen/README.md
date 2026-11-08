@@ -1,25 +1,23 @@
 # Screen scenes
 
-`ScreenFrame` loads `public/recordings/manifest.json` through the frozen `RecordingManifest` contract. A clip with the requested ID replaces its screenshot adapter automatically. The mock uses real screenshots from `docs/design/screenshots/ux-u4/`, `five-fingers-data/`, and `metrics-data/`; source screenshots remain unmodified. Tall-page crops are CSS viewports, with their own recording coordinates. Every mock shot says “Screenshot preview · recording pending”. The coach card carries only the Simulated badge, per coordinator review. The summary is the screenshot's stored fixture, labeled Demo data.
+All seven shots now use V1's committed 3840×2160 recordings from `public/recordings/manifest.json`. The temporary local copies were removed before merging PR #162; V5 does not modify recordings or the frozen manifest. Screenshot adapters remain only as a fallback when a clip is absent. Drawn copy uses memo/device; original app UI text stays unchanged.
 
-```tsx
-<ScreenFrame clip="session-main" from={0} camera={[
-  { at: 0, target: 'focus:virtual-hand', zoom: 1 },
-  { at: 36, target: 'focus:virtual-hand', zoom: 1.6 },
-]}>
-  <Callout point="focus:ghost" label="Ghost = the goal" dotColor={c.target} side="left" at={40} />
-</ScreenFrame>
-```
+`ScreenFrame` preserves recording-pixel coordinates across camera motion, attached callouts, click cursor and source highlights. A shot fits inside a caption-safe area at zoom 1, then eases between camera targets over 15–24 frames with zoom clamped to 1..2.2 and no empty recording edges. `fit="cover"` fills the coach split window. Every screen overlay and its shadow is clipped below y=64, reserving the chapter-label area. All content ends above y=900.
 
-`at` starts a 24-frame eased move (optionally `transition: 15..24`). Box targets and callout points are in recording pixels, with no 1920/3840 assumption. The camera fits the complete recording at zoom 1 inside a caption-safe area (64 px minimum horizontal margin; everything ends before y=900), then clamps both axes. This means portrait-ish mocks have wider paper gutters. Zoom is clamped to 1..2.2. Focus anchors interpolate between successive events with the same label. Callouts, cursor, and source highlights share that exact camera transform. Missing callout/highlight anchors are omitted safely.
+`recording.ts` adapts V1 event names in memory without changing the contract. It aliases the decision panel, derives ghost/solid anchors from the hand canvas, follows the recorded history scroll and derives camera regions for replay/current, summary and export. `focus:then-now` combines both hand boxes, keeping the hands centered. The hand-plus-meters camera uses the hand's occupied region so all five meters remain visible.
 
-The coach app window uses `fit="cover"` to fill the complete split height, with a 1.8× camera on the decision card. `focus:then-now` derives the union of the manifest's `focus:then` and `focus:now` boxes, keeping both history hands centered without requiring a new V1 event. Replay holds all three lines for 96 frames before the camera moves to the current spike.
+Optional playback keyframes map scene time onto V1's actual phase events. Session's ATTEMPT, ASSIST and reached hold coincide with their callouts, with resistance appearing at the coach line. Both video playback and overlays use the same mapped clip frame. Approximate hand anchors are derived layout anchors, not measured tracking telemetry.
 
-Expected focus labels are listed in `mock/manifest.ts`: `virtual-hand`, `ghost`, `solid`, `index`, `helped-fingers`, `finger-meters`, `hand-and-meters`, `safety-and-coach`, `coach-panel`, `coach-decision`, `then`, `now`, `per-finger`, `phase-bands`, `vision-servo`, `current`, `summary`, `summary-sentence`, `export` (all prefixed `focus:`). Case and punctuation differences are tolerated. Cursor events use any `kind: 'click'` event with a box or point. Clip IDs are exactly the V1 shot list. No contract shapes are changed.
+## Timing
 
-Footage at `public/footage/session-hand.mp4` or `coach-talk.mp4` replaces the corresponding slate placeholder. Only coach-talk retains its audio, inside frames 144–468. The session inset is exactly 480×270 and remains above captions. Legend pulse estimates use the actual `session-4` VO duration when V2's manifest exists, with the planned slot as fallback.
+The current 5328-frame cut starts Session at 1080, Coach at 2376 and Doctor at 3312. Main evidence frames are derived from `src/timeline.ts` rather than duplicated starts.
 
-Drawn copy uses “memo”, “the wrist module” or “the threads”, including the Simulated device and camera badge imported from the shared brand component. Text inside source app screenshots and recordings remains unchanged. The team-first 5256-frame cut starts Session at 1152, Coach at 2520 and Doctor at 3096; the Main evidence offsets match those starts.
+- Session: 1296 frames. The innovation line shows a fading passive-movement icon beside memo's ghost-and-solid hand. During 162–342, an illustrative 21-point MediaPipe diagram uses `COPY.session.vision`; the hand-footage inset moves right for that beat so both insets stay above captions. The final statement holds during 1152–1295.
+- Coach: 504 frames. Team conversation/audio remains exactly 144–468. Camera follows the real decision card and Undo, then the decision timeline when it opens. There is no closing motor-rule card; the Gemini scene owns that explanation.
+- Doctor: history 0–200, replay 200–300 (complete chart held for 66 frames before moving to current), summary 300–560, export 560–600, honest statement 600–720.
+- Summary: begins at source frame 72 with the stored real Gemini summary already visible. Cursor is disabled; no generation click is implied. One existing active-range line receives a soft marker. Export starts at source frame 48 so the actual CSV click at 60 is visible.
+
+`footage/session-hand.mp4` and `footage/coach-talk.mp4` replace team placeholders automatically. Only coach-talk retains audio, inside its reserved slot. Legend pulses estimate timing from V2's line duration and word count.
 
 ## Verification
 
@@ -28,13 +26,10 @@ Run from `video/studio/`:
 ```sh
 pnpm check
 node src/components/screen/test-camera.mjs
+node capture/check.mjs
 pnpm exec remotion bundle src/index.ts --out-dir=out/v5-bundle
 node src/components/screen/render-evidence.mjs
 python src/components/screen/contact-sheet.py
 ```
 
-The renderer writes four review stills in `evidence/V5/`, three mid-zoom frames plus extra scene/Main checks in ignored `out/v5-review/`. The two contact sheets complete the six committed images: a three-frame zoom proof with original-pixel endpoint crops, and a full-resolution doctor review covering both hands, the complete replay chart, the current spike and the unchanged summary. Pillow is only needed to assemble those sheets, not to run or render the video.
-
-The session mock now uses `ux-u4/before-paused-1440.png`, which shows the opening plan, “Open your hand wide”. It is a static layout preview, not a recording of the phases. The resistance preview combines that opening view with the existing safety banner and coach-caption regions from `ux-u4/after-overcurrent-1440.png`; the hook title and hand from that source are never displayed. Session ends at frame 1368; its last 144 frames (1224–1367) hold “Resist, and it lets go.”, with the updated session-6 VO ending at 1362.
-
-Doctor screenshots still contain older closing-copy wording, intentionally unchanged per coordinator review. V1's current-copy recordings replace these mocks automatically when merged. Verify event labels, phase/VO alignment, sharpness and the real summary crop again after V1 lands. No recording, Gemini request, hardware interaction, or patient measurement is fabricated here.
+The six committed images in `evidence/V5/` cover the innovation/callouts/vision storyboard, legend, resistance, coach split, doctor review, and three-frame zoom proof. The doctor sheet preserves full-resolution frames of both hands, complete replay, current and the real summary. Main images include the chapter label. Additional standalone and boundary frames live in ignored `out/v5-review/`. Pillow is needed only to assemble contact sheets, not to render the video. Tests cover camera clamps, moving anchors, native 4K coordinates, paired-hand centering, immutable manifest adaptation and phase retiming.

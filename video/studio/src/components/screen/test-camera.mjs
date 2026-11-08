@@ -18,6 +18,7 @@ async function loadTs(file) {
   return `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`;
 }
 const { cameraAt, findEvent, fitViewport, mapPoint, targetBox } = await import(await loadTs(fileURLToPath(new URL('./camera.ts', import.meta.url))));
+const { recordingForScreen, clipFrameAt } = await import(await loadTs(fileURLToPath(new URL('./recording.ts', import.meta.url))));
 const clip = { width: 1440, height: 900, events: [
   { frame: 0, kind: 'focus', label: 'focus:hand', point: { x: 400, y: 300 }, box: { x: 300, y: 200, w: 200, h: 200 } },
   { frame: 60, kind: 'focus', label: 'focus:hand', point: { x: 520, y: 360 }, box: { x: 420, y: 260, w: 200, h: 200 } },
@@ -58,4 +59,32 @@ const coachArea = { x: 940, y: 96, w: 884, h: 750 };
 const filled = cameraAt(clip, [{ at: 0, target: 'focus:hand', zoom: 1.8 }], 0, 0, coachArea);
 assert.ok(filled.x + clip.width * filled.scale >= coachArea.x + coachArea.w);
 assert.ok(filled.y + clip.height * filled.scale >= coachArea.y + coachArea.h);
+const recording = { ...hd, fps: 30, durationFrames: 1350, events: [
+  { frame: 0, kind: 'phase', label: 'phase:PRESENT' },
+  { frame: 374, kind: 'phase', label: 'phase:ATTEMPT' },
+  { frame: 600, kind: 'phase', label: 'phase:ASSIST' },
+  { frame: 1051, kind: 'phase', label: 'phase:ASSIST_HOLD' },
+  { frame: 0, kind: 'focus', label: 'focus:virtual-hand', box: { x: 50, y: 353, w: 2910, h: 1621 } },
+  { frame: 0, kind: 'focus', label: 'focus:index-fingertip-approximate', point: { x: 1476, y: 985 } },
+  { frame: 0, kind: 'focus', label: 'focus:coach-adjustment', box: { x: 3010, y: 1682, w: 782, h: 254 } },
+] };
+const original = JSON.stringify(recording);
+const adapted = recordingForScreen(recording);
+assert.equal(JSON.stringify(recording), original);
+assert.deepEqual(findEvent(adapted, 'focus:index', 0).point, { x: 1476, y: 985 });
+assert.equal(findEvent(adapted, 'focus:coach-decision', 0).box.w, 782);
+assert.ok(findEvent(adapted, 'focus:ghost', 0).point);
+const timing = [
+  { at: 0, event: 'phase:PRESENT', fallback: 0 },
+  { at: 144, event: 'phase:ATTEMPT', fallback: 144 },
+  { at: 360, event: 'phase:ASSIST', fallback: 360 },
+  { at: 540, event: 'phase:ASSIST_HOLD', fallback: 540 },
+  { at: 612, event: 'phase:ASSIST_HOLD', fallback: 540, offset: 90 },
+];
+assert.equal(clipFrameAt(adapted, 144, 0, timing), 374);
+assert.equal(clipFrameAt(adapted, 360, 0, timing), 600);
+assert.equal(clipFrameAt(adapted, 540, 0, timing), 1051);
+assert.equal(clipFrameAt(adapted, 612, 0, timing), 1141);
+assert.equal(clipFrameAt(adapted, 900, 0, timing), 1141);
+assert.equal(clipFrameAt(adapted, 2000, 0), 1349);
 console.log('camera checks passed: eased zoom, moving anchors, edge clamps, 4K viewport, zoom limits');
