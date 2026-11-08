@@ -22,7 +22,7 @@ def test_profile_and_calibration_roundtrip(client, payload):
     body = {k: v for k, v in payload("calibration").items() if k not in ("id", "created_at")}
     first = client.post("/api/calibrations", json=body).json()
     second = client.post("/api/calibrations", json=body).json()
-    assert c.Calibration.model_validate(first).model_dump(exclude={"id", "created_at"}) == body
+    assert c.Calibration.model_validate(first).model_dump(exclude={"id", "created_at"}, exclude_none=True) == body
     assert client.get("/api/calibrations/latest").json() == second
     assert client.get("/api/calibrations").json() == [second, first]
 
