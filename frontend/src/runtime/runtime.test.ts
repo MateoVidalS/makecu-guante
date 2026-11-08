@@ -41,6 +41,7 @@ function sourceKind<T extends object>(source: T, kind: string): T {
 }
 async function harness(stubHardware = false) {
   const calibration: Calibration = structuredClone(fixture);
+  calibration.assist_direction = 'open';
   calibration.camera.closed_flex = {
     thumb: 100,
     index: 270,
@@ -638,4 +639,40 @@ it('resets therapy limits, feelings, undo and rate limits between sessions witho
   expect(audit.addCoachDecisions.mock.lastCall?.[0]).toBe(88);
   expect(runtime.therapy.decisions().at(-1)?.session_id).toBe(88);
   until(world, () => runtime.exercise.view().phase === 'ATTEMPT');
+});
+
+it.each([undefined, 'close'] as const)(
+  'never sends legacy %s ranges or starts motion with them',
+  async (assist_direction) => {
+    const { runtime, world, calibration } = await harness();
+    const calib = vi.spyOn(world.glove, 'calib');
+    vi.mocked(api.getLatestCalibration).mockResolvedValue({
+      ...calibration,
+      assist_direction,
+    });
+    await runtime.calibration.reload();
+    await runtime.calibration.sendToGlove();
+    expect(calib).not.toHaveBeenCalled();
+    await expect(
+      runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS),
+    ).rejects.toThrow('The glove now helps the hand open. Calibrate it again.');
+    await expect(
+      runtime.evaluation.start(DEFAULT_EVAL_SETTINGS),
+    ).rejects.toThrow('The glove now helps the hand open. Calibrate it again.');
+  },
+);
+it('always saves the current opening direction even if the caller supplies a legacy value', async () => {
+  const { runtime, calibration } = await harness();
+  const create = vi
+    .spyOn(api, 'createCalibration')
+    .mockImplementation(async (value) => ({
+      ...value,
+      id: 2,
+      created_at: calibration.created_at,
+    }));
+  await runtime.calibration.save({ ...calibration, assist_direction: 'close' });
+  expect(create).toHaveBeenCalledWith(
+    expect.objectContaining({ assist_direction: 'open' }),
+  );
+  expect(runtime.calibration.current?.assist_direction).toBe('open');
 });

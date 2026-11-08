@@ -1,14 +1,26 @@
 import { useState } from 'react';
+import {
+  CURRENT_ASSIST_DIRECTION,
+  CURRENT_CAMERA_VIEW,
+} from '../contracts/calibration';
 import { Link } from 'react-router-dom';
 import { useGlove } from '../glove';
 import { useVision } from '../vision';
 import { GLOVE_FINGERS, type GloveFinger } from '../contracts/glove';
 import { useRuntime } from './RuntimeProvider';
-import type { PatientPreset } from '../glove/sim/patient';
+import { PATIENT_PRESETS, type PatientPreset } from '../glove/sim/patient';
 import { Button, Checkbox, Select, Stack } from '../design-system';
 import './fallback.css';
 
 /** Simulator-only controls for the resistance demo; no hardware commands. */
+const OPEN_PRESETS = [
+  'demo',
+  'mild',
+  'moderate',
+  'spastic',
+  'rigid_index',
+] as const;
+
 export function RuntimeSimulatorControls() {
   const { world, client } = useGlove();
   const vision = useVision();
@@ -21,13 +33,26 @@ export function RuntimeSimulatorControls() {
         label="Patient preset"
         value={world.patient.preset}
         onChange={(event) => {
-          world.controls.setPreset(event.target.value as PatientPreset);
+          const selected = event.target.value;
+          // O2 supplies the opening model. Until then, unsupported ids use moderate.
+          const preset = selected in PATIENT_PRESETS ? selected : 'moderate';
+          world.controls.setPreset(preset as PatientPreset);
           refresh((value) => value + 1);
         }}
       >
-        <option value="mild">Mild</option>
-        <option value="moderate">Moderate</option>
-        <option value="severe">Severe</option>
+        {OPEN_PRESETS.map((id) => (
+          <option key={id} value={id} disabled={!(id in PATIENT_PRESETS)}>
+            {
+              {
+                demo: 'Demo',
+                mild: 'Mild',
+                moderate: 'Moderate',
+                spastic: 'Spastic',
+                rigid_index: 'Rigid index',
+              }[id]
+            }
+          </option>
+        ))}
       </Select>
       {vision.source.kind === 'sim' && (
         <Button size="sm" onClick={() => world.controls.handOutOfFrame(3000)}>
@@ -91,6 +116,7 @@ export function RuntimeSimulatorCalibration() {
           setError('');
           void runtime.calibration
             .save({
+              assist_direction: CURRENT_ASSIST_DIRECTION,
               servo: GLOVE_FINGERS.map((finger) => ({
                 finger,
                 min_deg: 20,
@@ -98,6 +124,7 @@ export function RuntimeSimulatorCalibration() {
               })),
               camera: {
                 affected_hand: 'right',
+                camera_view: CURRENT_CAMERA_VIEW,
                 open_flex: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
                 closed_flex: {
                   thumb: 100,

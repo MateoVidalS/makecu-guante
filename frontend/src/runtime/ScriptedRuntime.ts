@@ -20,7 +20,11 @@ import type {
   EvalSweep,
 } from '../contracts/evaluation';
 import type { GloveFinger } from '../contracts/glove';
-import type { Calibration, FrictionCurve } from '../contracts/calibration';
+import {
+  CURRENT_ASSIST_DIRECTION,
+  type Calibration,
+  type FrictionCurve,
+} from '../contracts/calibration';
 import { GLOVE_FINGERS } from '../contracts/glove';
 import { POSES, DEFAULT_EXERCISE_SETTINGS } from '../contracts/poses';
 import * as fixture from '../contracts/fixtures.check';
@@ -188,7 +192,10 @@ export class ScriptedRuntime implements TherapyRuntime {
       this.calibration.current = await api.getLatestCalibration();
     },
     save: async (c) => {
-      const saved = await api.createCalibration(c);
+      const saved = await api.createCalibration({
+        ...c,
+        assist_direction: CURRENT_ASSIST_DIRECTION,
+      });
       this.calibration.current = saved;
       return saved;
     },

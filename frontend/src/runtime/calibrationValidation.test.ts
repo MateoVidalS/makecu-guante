@@ -11,6 +11,7 @@ import {
 } from './calibrationValidation';
 const calibration = {
   ...legacyCalibration,
+  assist_direction: 'open' as const,
   camera: { ...legacyCalibration.camera, camera_view: CURRENT_CAMERA_VIEW },
 };
 const camera = {
@@ -144,5 +145,29 @@ it.each([undefined, 'front_diagonal'] as const)(
       href: '/calibrate?step=camera',
     });
     expect(value.servo).toEqual(calibration.servo);
+  },
+);
+
+it.each([undefined, 'close', 'open'] as const)(
+  'requires recalibration for assist direction %s unless it is open',
+  (assist_direction) => {
+    const value = { ...calibration, camera, assist_direction };
+    const status = selectCalibrationStatus(value, true, null);
+    if (assist_direction === 'open') expect(status.state).toBe('ok');
+    else {
+      expect(status).toMatchObject({
+        state: 'invalid',
+        issues: [
+          {
+            step: 'glove',
+            message: 'The glove now helps the hand open. Calibrate it again.',
+          },
+        ],
+      });
+      expect(calibrationReadiness(status)).toMatchObject({
+        value: 'Needed',
+        href: '/calibrate?step=glove',
+      });
+    }
   },
 );

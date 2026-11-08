@@ -1,5 +1,8 @@
 import type { TherapyRuntime } from './therapy';
-import { validateCameraRange } from './calibrationValidation';
+import {
+  ASSIST_DIRECTION_RECALIBRATE_MESSAGE,
+  validateCameraRange,
+} from './calibrationValidation';
 import { createStore } from 'zustand/vanilla';
 import * as api from '../api/client';
 import type {
@@ -8,7 +11,11 @@ import type {
   EvaluationView,
   Unsubscribe,
 } from '../contracts/runtime';
-import type { Calibration, FrictionCurve } from '../contracts/calibration';
+import {
+  CURRENT_ASSIST_DIRECTION,
+  type Calibration,
+  type FrictionCurve,
+} from '../contracts/calibration';
 import type { TherapyApi } from '../contracts/therapist';
 import type { EngineEvent } from '../contracts/engine';
 import {
@@ -205,7 +212,10 @@ export class RehabRuntime implements TherapyRuntime {
         this.sources.vision === 'sim',
         this.options.vision.latest,
       );
-      const saved = await api.createCalibration(value);
+      const saved = await api.createCalibration({
+        ...value,
+        assist_direction: CURRENT_ASSIST_DIRECTION,
+      });
       this.requireIdle();
       this.setCalibration(saved);
       return saved;
@@ -233,7 +243,12 @@ export class RehabRuntime implements TherapyRuntime {
   private sendCalibration() {
     const c = this.calibration.current,
       client = this.options.glove.client;
-    if (!c || client.connection() !== 'connected') return;
+    if (
+      !c ||
+      c.assist_direction !== CURRENT_ASSIST_DIRECTION ||
+      client.connection() !== 'connected'
+    )
+      return;
     client.release();
     for (const [i, finger] of GLOVE_FINGERS.entries()) {
       const servo = c.servo.find((s) => s.finger === finger);
@@ -276,6 +291,8 @@ export class RehabRuntime implements TherapyRuntime {
     this.requireIdle();
     if (!this.calibration.current)
       throw new Error('Calibrate the glove and camera first');
+    if (this.calibration.current.assist_direction !== CURRENT_ASSIST_DIRECTION)
+      throw new Error(ASSIST_DIRECTION_RECALIBRATE_MESSAGE);
     if (this.options.glove.client.connection() !== 'connected')
       throw new Error('Connect the glove first');
     validateCameraRange(
