@@ -44,7 +44,7 @@ export const ScreenFrame: React.FC<{
             </Freeze> : source ? <>
               <Img src={source.src} style={{ position: 'absolute', width: source.sourceWidth ?? clip.width, left: -(source.left ?? 0), top: -source.top }} />
               {id === 'coach-panel' ? <MockCoachDecision /> : null}
-              {id === 'doctor-summary' && frame < 54 ? <div style={{ position: 'absolute', left: 0, top: 140, width: clip.width, height: 90, background: c.bg }} /> : null}
+              {id === 'doctor-summary' && frame < 54 ? <div style={{ position: 'absolute', left: 0, top: 95, width: clip.width, height: 70, background: c.bg }} /> : null}
             </> : null}
           </div>
         </div>
