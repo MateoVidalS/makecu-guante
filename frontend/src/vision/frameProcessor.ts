@@ -1,5 +1,9 @@
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision';
-import type { CameraCalibration } from '../contracts/calibration';
+import {
+  CURRENT_CAMERA_VIEW,
+  type CameraView,
+  type CameraCalibration,
+} from '../contracts/calibration';
 import type { Handedness, VisionFrame } from '../contracts/vision';
 import { ConfidenceTracker, selectHand } from './confidence';
 import {
@@ -33,10 +37,12 @@ export function missingFrame(t: number): VisionFrame {
 /** Shared by the camera and fixture tests, independent of the DOM and MediaPipe runtime. */
 export class FrameProcessor {
   calibration: CameraCalibration | null = null;
+  handednessMismatch: boolean | null = null;
   readonly confidence = new ConfidenceTracker();
   private jointFilter = new JointFilter();
   private pinchFilter = new OneEuroFilter();
   private hand: Handedness | null = null;
+  private view: CameraView | null = null;
   private lastSeen = -Infinity;
   reset() {
     this.jointFilter.reset();
@@ -44,14 +50,17 @@ export class FrameProcessor {
     this.confidence.reset();
     this.lastSeen = -Infinity;
     this.hand = null;
+    this.view = null;
+    this.handednessMismatch = null;
   }
   process(
     result: HandResult,
     t: number,
     affected: Handedness,
     mirror = false,
+    view: CameraView = CURRENT_CAMERA_VIEW,
   ): VisionFrame {
-    const selected = selectHand(result.handedness, affected, mirror);
+    const selected = selectHand(result.handedness, affected, mirror, view);
     const tuples = (
       points: { x: number; y: number; z: number }[] | undefined,
     ) => points?.map((p): Landmark => [p.x, p.y, p.z]) ?? [];
@@ -64,10 +73,17 @@ export class FrameProcessor {
     if (!selected || !validLandmarks(world) || !validLandmarks(image))
       return this.missing(t);
     try {
-      const raw = jointAngles(world),
+      const raw = jointAngles(world, view),
         pinch = pinchRatio(image);
-      if (this.hand !== affected || t - this.lastSeen >= 200) this.reset();
+      if (
+        this.hand !== affected ||
+        this.view !== view ||
+        t - this.lastSeen >= 200
+      )
+        this.reset();
+      this.handednessMismatch = selected.mismatch;
       this.hand = affected;
+      this.view = view;
       this.lastSeen = t;
       // Every joint is filtered, so the rendered hand and the normalized closure
       // share one smoothed timeline (closure derives from the same angles).
@@ -83,7 +99,9 @@ export class FrameProcessor {
         confidence: this.confidence.update(selected.score, t),
         handedness: selected.handedness,
         closure:
-          c && c.affected_hand === affected
+          c &&
+          c.affected_hand === affected &&
+          (c.camera_view ?? 'front_diagonal') === view
             ? fingerMap((finger) =>
                 normalizeClosure(
                   rawFlexSum[finger],
@@ -102,6 +120,7 @@ export class FrameProcessor {
     }
   }
   missing(t: number): VisionFrame {
+    this.handednessMismatch = null;
     this.confidence.update(null, t);
     if (t - this.lastSeen >= 200) this.reset();
     return missingFrame(t);
