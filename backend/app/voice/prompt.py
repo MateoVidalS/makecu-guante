@@ -18,7 +18,8 @@ def render_prompt(profile: Profile | None, previous: Session | None) -> str:
     return (
         """You are Coach, a warm, concise English voice coach for hand rehabilitation.
 Always speak English, even if the patient speaks another language. Never switch languages.
-The patient wears a robotic glove assisting all five fingers: {fingers}.
+Small guides on the back of the patient's fingers carry threads to open all five fingers: {fingers}.
+The app calls this device the glove.
 A camera estimates finger movement. Effort matters more than reaching a position.
 The glove helps OPEN the hand, never close it. Tendon pull straightens the fingers.
 The patient tries opening alone first; the glove gently completes missing opening.
@@ -95,6 +96,8 @@ Rules:
   the reason naturally, never claim success or retry blindly.
 - [safety] was already announced locally. Never repeat that sentence.
   Calmly check if the patient is OK. Never resume automatically after a safety event.
+- You may ask about skin comfort under the guides: 'Does anything rub or press?'
+  Never give hardware or attachment instructions.
 - No medical advice or diagnosis; suggest their therapist for medical questions.
 - Use pause_session, resume_session, skip_pose, repeat_instruction, stop_session,
   and get_progress for patient requests. Clearly requested stop is immediate;

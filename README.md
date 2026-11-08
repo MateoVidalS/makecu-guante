@@ -50,7 +50,7 @@ a virtual hand shows the target, and a voice coach guides practice.
 After a stroke, a hand may close into a fist but struggle to open. The patient
 first makes a fist alone, then tries to open. The glove supplies only the missing
 opening. Evaluation estimates **resistance to opening (flexor tone)** at slow and
-fast speeds, with empty-glove friction subtracted. These are estimates inspired
+fast speeds, with thread friction (threads unhooked from the fingertip anchors) subtracted. These are estimates inspired
 by clinical practice, not validated clinical measurements.
 
 ## 2. A practice session
@@ -67,7 +67,36 @@ by clinical practice, not validated clinical measurements.
 A calibration from the earlier closing glove (direction absent or `close`) must
 be replaced. Its endpoints are unsuitable for dorsal routing.
 
-## 3. Hardware and direction
+## 3. Hardware: mano descubierta y asistencia de apertura
+
+**Decisión del 8 de noviembre:** no hay guante de tela. Las guías son puntos
+pequeños **NEGROS** en el dorso de las falanges proximales y medias; los anclajes
+son puntos **AMARILLOS** en el dorso de cada punta de dedo. Se fijan directamente
+a la piel con cinta apta para la piel; el equipo de hardware debe confirmar el
+método de fijación, las posiciones y los tamaños exactos. Los hilos recorren el
+dorso y abren la mano, según [15-open-assist.md](docs/plan/15-open-assist.md).
+La app conserva el nombre **glove** para el dispositivo.
+
+La cámara ve la palma descubierta, el mejor caso de MediaPipe. Los puntos y la
+cinta no deben cubrir los pliegues articulares del lado de la palma. Usar buena
+luz frontal, manga levantada, sin anillos ni reloj. El primer día, comprobar la
+detección en Setup y guardar una grabación real de landmarks con
+`frontend/src/vision/recorder.ts` que cubra `bare-hand-points`; registrar evidencia
+en la sección **points** del banco (su incorporación corresponde al equipo).
+
+**Seguridad:** probar primero en un soporte con forma de mano, antes de fijar
+cualquier pieza a una persona. Revisar la piel antes y después de cada sesión:
+enrojecimiento, marcas o dolor; una persona tras un ictus puede no sentir el roce.
+Si se vuelve a fijar una guía o un anclaje, repetir la calibración de servos
+antes de practicar: la tracción máxima se fija con los dedos rectos y un anclaje
+movido puede extender un dedo demasiado.
+
+Para evaluar, medir **Thread friction (unhooked)** con cada hilo desenganchado de
+su anclaje amarillo y la mano relajada; alternativa: un soporte con forma de mano
+con las guías fijadas del mismo modo. Volver a enganchar antes de evaluar.
+Ver [16-bare-hand.md](docs/plan/16-bare-hand.md) para la decisión y sus pendientes.
+Las referencias anteriores a fricción del guante vacío en las secciones 1 y 4
+quedan superseded por este procedimiento de hilos desenganchados.
 
 Existing CAD and wrist module: `hardware/`. The upright mounting, thread exits,
 friction, usable travel and extension strength still require team validation.
@@ -152,7 +181,7 @@ loss do not prove the mechanism can open a spastic hand.
 
 - **Fuente de laboratorio Facmogu en 5 V con límite de 2,5 A** (5 servos). Los servos **no** se alimentan desde la ESP32.
 - **Capacitor de 470–1000 µF** entre 5 V y GND en la línea de los servos: amortigua el pico cuando arrancan varios a la vez, que si no puede resetear la ESP32.
-- Firmware releases on total filtered current above the limit for 100 ms: **1500 mA default, 2200 mA maximum**, below the 2.5 A supply limit. Measure each actual servo and empty-glove friction on the bench; provisional profiles are not measured force limits.
+- Firmware releases on total filtered current above the limit for 100 ms: **1500 mA default, 2200 mA maximum**, below the 2.5 A supply limit. Measure each actual servo and thread friction with fingertip anchors unhooked on the bench; provisional profiles are not measured force limits.
 - El límite de corriente es un **corte físico**: aunque el software falle, la fuente no deja pasar más.
 - **GND común** entre la fuente, los servos y la ESP32.
 - Verificar los 5 V con el multímetro **antes** de conectar los servos.
@@ -170,7 +199,7 @@ loss do not prove the mechanism can open a spastic hand.
 - **Laptop delante del paciente; cámara = webcam frontal de la laptop.** Levantar la mano afectada junto a la cara, vertical, con la **palma hacia la pantalla**, como al saludar en una videollamada. Abrir y cerrar los dedos hacia la cámara.
 - **Codo apoyado en la mesa**, con una toalla o almohadilla cómoda; antebrazo vertical. Mantener la muñeca, la mano completa y las cinco puntas dentro del encuadre, a unos **40–60 cm de la laptop**. Ajustar la pantalla para encuadrar sin levantar el codo.
 - **Luz difusa de frente o de costado, sin ventana detrás del paciente.** Comprobar en la vista de cámara que la palma y los dedos se vean iluminados, sin contraluz.
-- **Thin, light glove and thread:** the camera sees the palm; check whether dorsal guides or anchors occlude any joints. El primer día, comprobar la detección en Setup durante cinco segundos al abrir y cerrar con el guante real y la luz del lugar; registrar el porcentaje y las oclusiones. Si falla, ajustar luz/encuadre y pedir revisión al equipo antes de usarlo.
+- **Palma descubierta con puntos negros y amarillos:** comprobar la detección en Setup durante cinco segundos al abrir y cerrar con la luz del lugar; registrar el porcentaje, las oclusiones y una grabación real de landmarks. Si falla, ajustar luz/encuadre y pedir revisión al equipo antes de usarlo.
 - **Calibración nueva en esta postura:** no reutilizar las capturas con la palma hacia abajo y cámara diagonal. Hacer series cortas, descansar y pausar si sostener la mano levantada cansa.
 
 **Hallazgos del banco real — leer [`hardware/BANCO.md`](hardware/BANCO.md) antes de conectar:** la primera sesión de Matias fue sin tendones ni guante y no reemplaza la aceptación de [`firmware/BENCH.md`](firmware/BENCH.md).
@@ -247,7 +276,7 @@ Una app web local (**Rehab Hub**) que corre en la laptop:
 |---|---|
 | `/` | Inicio |
 | `/setup` | Elegir guante (USB o simulado), cámara y mano afectada |
-| `/calibrate` | Wizard: five servo ranges (jog) → open / closed / pinch camera range → review. Empty-glove friction is in Evaluate preflight. |
+| `/calibrate` | Wizard: five servo ranges (jog) → open / closed / pinch camera range → review. Thread friction (unhooked) is in Evaluate preflight. |
 | `/exercise` | Sesión de ejercicio (modo foco, sin navegación) |
 | `/evaluate` | Evaluación de resistencia |
 | `/history` | Tendencias de rango, ayuda y resistencia; repetición de cada sesión (`/history/sessions/:id`) y evaluación |
@@ -312,7 +341,7 @@ Motor determinista en TypeScript (`frontend/src/engine/`), sin reloj propio, tes
 - Assistance begins after the attempt timeout or plateau. Unreached fingers start at least **150 ms apart**, with at most **three moving at once**. Glove-assisted targets are capped at **0.95 of the calibrated range**; 100% calibration means a straight, neutral finger; never hyperextension. Only fingers lacking opening are assisted.
 - All five fingers are scored in fist/open practice; closing poses receive follow only; pinch uses thumb and index. Evaluation accepts any subset, with one slow and one fast sweep per selected finger. Old three-finger sessions remain readable with missing ring/little-finger measurements.
 - The simulator exposes rigid-finger resistance. Detection also covers a stall already present in the initial assist baseline; a single stall need not exceed the aggregate firmware current limit. See `docs/DEV.md` for the browser and unit regressions.
-- **Evaluation:** from a relaxed, curled hand, sweep opening pull slowly and quickly. Subtract recent empty-glove friction measured in Evaluate preflight; fast − slow estimates velocity dependence of flexor tone.
+- **Evaluation:** from a relaxed, curled hand, sweep opening pull slowly and quickly. Subtract recent thread friction (threads unhooked from the yellow fingertip anchors) measured in Evaluate preflight; fast − slow estimates velocity dependence of flexor tone.
 
 **Métricas por intento:** cierre activo máximo por dedo, tiempo hasta la posición, ayuda necesaria, corriente pico y media, eventos de seguridad, y una traza a 20 Hz para repetir el intento después.
 

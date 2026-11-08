@@ -73,10 +73,14 @@ to keep the header recovery controls available. Complete the hardware gate first
 - [ ] **Backlight check:** no window or bright light behind the presenter. Use
   diffuse light from in front or the side and a steady background; check the
   preview shows a clearly lit palm and fingers.
-- [ ] **Day 1, then recheck at the venue:** use Setup’s five-second glove detection
-  check while opening/closing with the actual thin light glove, thin light threads
+- [ ] **Day 1, then recheck at the venue:** use Setup’s five-second bare-hand-with-points detection
+  check while opening/closing with BLACK dorsal proximal/middle-phalange guides,
+  YELLOW dorsal fingertip anchors and dorsal threads
   and upright posture. Check whether dorsal guides or anchors occlude the palm view;
-  record detection percentage, light and occlusions in
+  Keep points/tape off palm-side joint creases, sleeve up, no rings/watch, good
+  front light. Record real landmarks with `frontend/src/vision/recorder.ts` covering
+  `bare-hand-points` (see DEV for metadata support); record results in the bench’s
+  new **points** section (team to add/complete). Record detection percentage, light and occlusions in
   [HARDWARE_CHECKLIST.md](HARDWARE_CHECKLIST.md). If detection stays low, use the
   simulated camera for the pitch and have the team review the physical setup.
 - [ ] The hardware team has resolved and recorded the **upright wrist-module
@@ -84,6 +88,13 @@ to keep the header recovery controls available. Complete the hardware gate first
   table. Check strap fit, weight, thread exit angle, elastic return and servo pull
   on an empty fixture before any hand mounting; keep the physical glove off a
   person while that decision is pending.
+- [ ] No fabric glove: points attach directly to skin with skin-safe tape; hardware
+  must confirm the method. The app still calls the device "glove". Test hardware on
+  a hand-shaped fixture before anything is attached to a person. Check skin before
+  and after every session for redness, marks or pain; post-stroke patients may not
+  feel rubbing. Re-attaching guides/anchors requires fresh glove (servo) calibration
+  before practice: full pull is set at straight fingers, and moved anchors can
+  over-straighten a finger.
 - [ ] If using hardware: recorded bench gate, accessible physical STOP and supply
   switch, helper present, fresh calibration for this hand and mounting. Seeded
   model ranges must never substitute for physical calibration. Capture the camera
@@ -121,9 +132,11 @@ The default total-current cut-off is 1500 mA (hard maximum 2200 mA), sustained
 100 ms. A single stalled servo can stay below that total, so also verify the
 current-plus-stalled-vision resistance stop. Host tests do not prove real force.
 
-For an evaluation demo, first measure empty-glove friction for all five fingers
+For an evaluation demo, first measure **Thread friction (unhooked)** for all five fingers
 when prompted (missing or older than 24 hours). Stop/reject incomplete or aborted
-measurements. Put the glove back on, reconfirm Hand relaxed, and select any finger
+measurements. Unhook each thread from its YELLOW fingertip anchor with the hand
+relaxed during measurement; alternatively use a hand-shaped fixture with guides
+attached the same way. Re-hook before evaluating, reconfirm Hand relaxed, and select any finger
 subset. The glove opens from a curled resting hand; fast − slow estimates velocity
 dependence (spasticity), not a diagnosis. Two selected fingers produce four
 slow/fast sweeps; all five produce ten.

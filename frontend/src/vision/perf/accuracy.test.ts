@@ -141,7 +141,7 @@ describe(
   SLOW,
   () => {
     // `severe` is left out here: calibration refuses it (see the calibration capture test).
-    const levels: NoiseModel[] = [NOISE.bench, NOISE.glove];
+    const levels: NoiseModel[] = [NOISE.bench, NOISE.poorLight];
     const table = (patient: Patient, view: CameraView, noise: NoiseModel) => {
       const seeds = [1, 2, 3];
       const runs = seeds.map((seed) =>
@@ -168,19 +168,19 @@ describe(
       front_upright: {
         healthy: [0.01, 0.007, 0.012, 0.013, 0.016],
         spastic: [0.015, 0.018, 0.022, 0.034, 0.046],
-        glove: [0.065, 0.052, 0.065, 0.123, 0.142],
+        poorLight: [0.065, 0.052, 0.065, 0.123, 0.142],
       },
       front_diagonal: {
         healthy: [0.011, 0.008, 0.005, 0.014, 0.017],
         spastic: [0.023, 0.012, 0.009, 0.035, 0.044],
-        glove: [0.084, 0.036, 0.031, 0.129, 0.118],
+        poorLight: [0.084, 0.036, 0.031, 0.129, 0.118],
       },
     };
     const checkJitter = (rows: ReturnType<typeof table>) => {
       for (const r of rows) {
         const group =
-          r.noise === NOISE.glove.label
-            ? 'glove'
+          r.noise === NOISE.poorLight.label
+            ? 'poorLight'
             : r.patient === PATIENTS.healthy.name
               ? 'healthy'
               : 'spastic';
@@ -287,7 +287,7 @@ describe(
           ),
         );
         expect(p95[0]).toBeLessThanOrEqual(p95[1]);
-        // Gloved/poor-light noise: still usable, but no longer inside the tolerance everywhere.
+        // Poor-light noise: still usable, but no longer inside the tolerance everywhere.
         expect(p95[1], view).toBeLessThan(0.25);
       }
     });
@@ -340,7 +340,7 @@ describe(
       // Signed joint angles should preserve low closures despite near-zero landmark noise.
       const levels = [0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1];
       const rows = VIEWS.flatMap((view) =>
-        [NOISE.ideal, NOISE.bench, NOISE.glove].map((noise) => {
+        [NOISE.ideal, NOISE.bench, NOISE.poorLight].map((noise) => {
           const scene: Scene = { view, hand: 'right', noise };
           const camera = mustCalibrate(PATIENTS.healthy, scene, 1);
           const cells: Record<string, number> = {};
@@ -415,10 +415,10 @@ describe(
   'calibration capture (Calibrate page: 2 s hold, ≤ 8° movement)',
   SLOW,
   () => {
-    it('succeeds at the benchmarked and gloved noise, and reports where it starts refusing', () => {
+    it('succeeds at the benchmarked and poor-light noise, and reports where it starts refusing', () => {
       const rows = VIEWS.flatMap((view) =>
         Object.values(PATIENTS).flatMap((patient) =>
-          [NOISE.bench, NOISE.glove, NOISE.severe].map((noise) => {
+          [NOISE.bench, NOISE.poorLight, NOISE.severe].map((noise) => {
             const seeds = Array.from({ length: 10 }, (_, i) => i + 1);
             const ok = seeds.filter(
               (seed) =>
@@ -452,7 +452,7 @@ describe(
             'error' in
             calibrate(
               PATIENTS.spastic,
-              { view: 'front_upright', hand: 'right', noise: NOISE.glove },
+              { view: 'front_upright', hand: 'right', noise: NOISE.poorLight },
               seed,
             )
           ),

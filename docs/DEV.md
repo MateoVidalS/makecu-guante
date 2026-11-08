@@ -30,7 +30,7 @@ telemetry and labels simulated motors.
 | Command | Behavior |
 | --- | --- |
 | `make dev` | FastAPI :8000 + Vite :5173, physical glove/camera selected |
-| `make dev-sim` | Same API, simulated glove + the real webcam (default for local work) |
+| `make dev-sim` | Same API, simulated glove + the real webcam (default for local work; bare-hand-with-points detection checks) |
 | `make dev-sim-all` | Simulated glove and simulated patient/camera (no webcam; used by e2e) |
 | `make dev-camera` | Alias of `dev-sim` (simulated glove + real webcam) |
 | `make dev-mock` | Frontend only, browser MSW fixtures; writes last until reload |
@@ -48,9 +48,9 @@ normal development or production. See [DEMO.md](DEMO.md) for a rehearsable flow.
 
 ## Laptop webcam and upright-hand checks
 
-Use `make dev-camera` for the day-1 glove detection check with simulated motors
+Use `make dev-camera` for the day-1 bare-hand-with-points detection check with simulated motors
 and the real laptop front webcam. Keep physical servo power off for this camera
-check; fitting the actual glove to a hand still requires the recorded hardware
+check; attaching guides and anchors to skin still requires the recorded hardware
 gate in [HARDWARE_CHECKLIST.md](HARDWARE_CHECKLIST.md).
 
 Sit facing the laptop, raise the affected hand beside the face with the palm
@@ -62,8 +62,16 @@ with no window or bright light behind the person. Check the preview for a clearl
 lit palm. Use short sets and rests if holding the hand up causes fatigue.
 
 On day 1, check Setup's five-second detection fraction while opening and closing
-with the real thin light glove and thin light threads. The front view exposes
-palm-side threads, guides and anchors. Record the percentage, occlusions,
+with a bare hand and small BLACK guide points on the backs of proximal and middle
+phalanges, YELLOW anchors on the backs of fingertips, and dorsal threads. Attach
+directly with skin-safe tape; the hardware team must confirm the attachment method.
+The app keeps the device name "glove". MediaPipe sees a bare palm, its best case.
+Keep points/tape off palm-side joint creases; sleeve up, no rings/watch, good front light.
+Save a real landmark recording using `frontend/src/vision/recorder.ts`, covering
+`bare-hand-points`, alongside the Setup detection check. The current recorder metadata
+only offers `bare-hand`; record the points condition in the evidence until the
+coordinator lands recorder support. Compare in the bench’s new **points** section
+(team-owned evidence; do not treat it as already measured). Record the percentage, occlusions,
 configured affected hand, posture and lighting in the hardware checklist; repeat
 when event conditions change. Low detection needs light/framing adjustment and
 team review before a physical-camera demo.
@@ -92,7 +100,7 @@ files are optional. Keep backend keys out of `VITE_*` variables.
 | `REHAB_PORT` / `REHAB_FRONTEND_PORT` | Backend / Vite port (defaults 8000 / 5173); the dev launcher configures the proxy |
 | `VITE_SIM=1` | Start with simulated sources |
 | `VITE_DEMO=1` | Keep header recovery controls available with physical sources |
-| `VITE_VISION=camera` | Override vision only, useful for real gloved-hand detection |
+| `VITE_VISION=camera` | Override vision only, useful for real bare-hand-with-points detection |
 | `VITE_SIM_SPEED` | Simulation clock multiplier; normal use 1, browser tests 3 |
 | `VITE_MOCK_API=1` | Enable browser MSW; unset for real backend integration |
 | `GEMINI_API_KEY` | Backend-only Gemini access; absent key leaves simple voice available |
@@ -124,7 +132,11 @@ Camera ranges are validated before saving or starting motion. Simulator validati
 uses the known model flex range; physical-camera validation uses visible observed
 raw flex. An undersized range that implies more than 105% is flagged rather than
 accepted as extra patient movement. The tolerance accommodates endpoint noise;
-it is not a physical safety limit. Remounting/rerouting still requires calibration.
+it is not a physical safety limit. Remounting/rerouting or re-attaching any guide or anchor requires fresh glove
+(servo) calibration before practice. Full pull is set at straight fingers; a moved
+anchor can over-straighten a finger. Check skin before and after every session for
+redness, marks or pain; post-stroke patients may not feel rubbing. Test hardware on
+a hand-shaped fixture before anything is attached to a person.
 
 Boot events retain optional `reset_reason`. Code 9 shows the exact capacitor/
 supply guidance in Setup and runtime status; normal/unknown boots do not claim a
@@ -133,7 +145,9 @@ brown-out. A new shared line fixture lives at
 The status notice uses its own banner below the header to keep its full message
 readable without widening the status row.
 
-Empty-glove friction runs without camera visibility, off the hand. Any safety
+**Thread friction (unhooked)** runs without camera visibility, with every thread
+unhooked from its YELLOW fingertip anchor and the hand relaxed. Alternatively use
+a hand-shaped fixture with guides attached the same way. Re-hook before evaluation. Any safety
 event aborts that whole measurement; stop, disconnect, source replacement and
 runtime disposal settle its promise with no curves and an aborted stage. Patient
 evaluation retains its distinct per-finger overcurrent behavior. A disconnected

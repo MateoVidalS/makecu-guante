@@ -148,8 +148,8 @@ provider's window. The API stays in
 ```tsx
 const vision = useVision();
 const check = useVisionRobustness();
-// Only present this as a real glove check when vision.source.kind === 'camera'.
-// SimVision has no camera landmarks, so it cannot validate glove visibility.
+// Only present this as a bare-hand-with-points check when vision.source.kind === 'camera'.
+// SimVision has no camera landmarks, so it cannot validate hand/point visibility.
 const label = `Hand detected: ${Math.round(check.detectionRate * 100)}% of the last 5 s`;
 // check.meanConfidence, check.perFingerVisibility.ring, check.status,
 // check.guidance (English strings), ROBUSTNESS_THRESHOLDS
@@ -166,15 +166,18 @@ probability of correct tracking. `status` stays `collecting` until 5 s have elap
 then is `ready` when detection ≥90%, mean confidence ≥75%, and every finger's
 visibility ≥85%, no exposure warning, and handedness mismatch rate ≤20%
 (when measured); otherwise it is `poor`. Exported thresholds are provisional
-Setup heuristics for the team's day-1 glove check, not clinical thresholds.
+Setup heuristics for the team's day-1 bare-hand-with-points detection check, not clinical thresholds.
 
 Per-finger visibility is the fraction of time with finite joints and all four
 finger landmarks within the image. It is a **usable skeleton estimate, not an
 occlusion detector**: MediaPipe can infer hidden joints. Check the overlay by eye
-while opening and closing the glove. `CAMERA_PLACEMENT_GUIDANCE` and the returned
+while opening and closing the hand. `CAMERA_PLACEMENT_GUIDANCE` and the returned
 `guidance` cover the upright palm-to-screen posture, elbow support, front webcam
-at 40–60 cm, lighting, light thin gloves, and the team-assisted exposed-tip or
-bare-hand demo fallback. Setup's layout and diagram belong to V2.
+at 40–60 cm, good front lighting with no window behind, a rolled-up sleeve,
+no rings/watch/bracelet, and the whole hand in frame. Keep the small black guides
+and yellow fingertip anchors on the back of the fingers, attached with skin-safe
+tape and clear of palm-side joint creases. If detection stays low, check lighting
+and point size/placement. Setup's layout and diagram belong to V2.
 
 Exposure is sampled from a reusable 64×48 canvas of the actual video frame. It
 reports normalized RGB luminance for the frame and, when a complete skeleton is
@@ -207,11 +210,16 @@ inversion, simulator, theme toggle, stop, latency stats and the robustness check
 It does not connect to or move a physical glove. It is not part of the production
 application. Real closure percentages still require the calibration wizard.
 
-For the team's real-glove fixtures:
+For the team's day-1 bare-hand-with-points detection check and real recording:
 
 1. Raise the hand upright, palm to the laptop, elbow supported as on the preview. Choose the
-   affected hand, camera and actual covering (glove, exposed fingertips or bare).
-2. Start the camera; check the overlay and the five-second robustness stats.
+   affected hand and camera. Choose **Bare hand with points** (the default).
+   There is no hand covering: small black guides and yellow fingertip anchors
+   attach directly to the back of the fingers with skin-safe tape. Keep palm-side
+   joint creases clear, roll up your sleeve, remove rings/watch/bracelet, and use
+   good front light with no window behind you.
+2. Start the camera; use **Hand detection check** to check the overlay and the
+   five-second robustness stats while opening and closing all five fingers.
 3. Select a pose, click **Record 30 seconds**, hold the pose, then **Download
    landmarks**. Repeat for open, hook, tabletop, straight fist, full fist and pinch.
    **Finish recording** saves a shorter clip; stop/source switch ends the capture.
@@ -220,7 +228,9 @@ For the team's real-glove fixtures:
    source and covering metadata; never relabel synthetic fixtures as real.
 
 The exported `recordLandmarks(camera, { pose, affectedHand, glove })` helper also
-works in a development harness. It captures raw image/world landmarks and labels
+works in a development harness. Omit `glove` to default to `bare-hand-points`;
+explicit `glove`, `bare-hand` and `exposed-fingertips` metadata remain supported
+for existing recordings. It captures raw image/world landmarks and labels
 before smoothing, including missed detections and low scores. It copies MediaPipe
 buffers, caps recording at 30 s / 1800 samples, unsubscribes on completion, and
 returns `{ stop(), finished }`. Nothing is sent to a server; explicit Download
@@ -236,7 +246,7 @@ for (const { t, result } of recording.frames) {
 ```
 
 The six `fixtures/front_upright_*.json` and six legacy
-`fixtures/palm-down_*.json` clips are **synthetic**, not webcam or glove recordings. Each contains 30 frames from the same forward-kinematic model. Upright fixtures
+`fixtures/palm-down_*.json` clips are **synthetic**, not real webcam recordings. Each contains 30 frames from the same forward-kinematic model. Upright fixtures
 project toward a front camera 50 cm away, fingers curling toward the lens with no
 rotation. Legacy fixtures retain the diagonal thumb-side camera 36 cm away.
 Tests mirror each view for the left hand, verify five-finger open/closed endpoints,
@@ -257,7 +267,7 @@ tests reflect their inputs into an anatomical right hand. The owned upright
 and palm-down fixtures now have correct anatomical chirality and thumb
 opposition across the palm with a palmar component. Performance ground truth
 uses an independent unsigned angle oracle on exact geometry, not production
-`jointAngles`. Real glove detection, physical
+`jointAngles`. Real bare-hand-with-points detection, physical
 camera-to-display lag and the target laptop benchmark remain team hardware
 acceptance work. `fixtures/browser-benchmark.json` records the prior automated
 browser measurements and their workload limits.

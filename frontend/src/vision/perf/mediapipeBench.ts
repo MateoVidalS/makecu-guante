@@ -5,7 +5,7 @@
  *
  * The rendered hand is a smooth skin-toned capsule model built on the virtual
  * hand's rig, so it is not a photo of a person: detection rate and accuracy on
- * it are a proxy for, not a replacement of, recordings with the real glove.
+ * it are a proxy for recordings of a real bare hand with points.
  */
 import {
   FilesetResolver,
@@ -36,6 +36,7 @@ import {
   HAND_PROPORTIONS,
 } from '../../hand3d/rig';
 import { jointAngles, pinchRatio } from '../flex';
+import { addHandPoints } from './handPoints';
 
 type Joints = Record<FingerId, JointAngles>;
 export interface BenchShot {
@@ -52,6 +53,8 @@ export interface BenchShot {
   videoMs?: number;
   /** Render a geometrically correct hand for `hand` (default: the legacy rig chirality). */
   anatomical?: boolean;
+  /** Small black dorsal guides and yellow dorsal fingertip anchors (default: false). */
+  points?: boolean;
 }
 export interface BenchResult {
   detected: boolean;
@@ -117,7 +120,7 @@ function skinnedRig(hand: Handedness) {
       rig.fingers[finger].joints[i].add(knuckle);
     });
   }
-  return rig;
+  return { rig, points: addHandPoints(rig) };
 }
 // createHandRig('right') has the thumb at -x with +Y distal and +Z palmar: geometrically a
 // left hand. Anatomical rigs swap them so a "right" shot is a real right hand.
@@ -138,7 +141,8 @@ function rand(seed: number) {
 
 function pose(shot: BenchShot) {
   holder.clear();
-  const rig = (shot.anatomical ? anatomical : rigs)[shot.hand];
+  const { rig, points } = (shot.anatomical ? anatomical : rigs)[shot.hand];
+  for (const point of points) point.visible = shot.points ?? false;
   applyJoints(rig, shot.joints, 1);
   holder.add(rig);
   holder.rotation.set(0, 0, 0);
