@@ -67,9 +67,9 @@ configured affected hand, posture and lighting in the hardware checklist; repeat
 when event conditions change. Low detection needs light/framing adjustment and
 team review before a physical-camera demo.
 
-The committed camera contract uses `CameraView = 'front_upright' |
-'front_diagonal'`, with `CURRENT_CAMERA_VIEW = 'front_upright'` and optional
-`VisionSource.start({ view })`. Missing `CameraCalibration.camera_view` means
+The committed camera contract defines `CameraView` as `'front_upright'` or
+`'front_diagonal'`, with `CURRENT_CAMERA_VIEW = 'front_upright'` and an optional
+`view` option in `VisionSource.start`. Missing `CameraCalibration.camera_view` means
 legacy `front_diagonal`. Capture fresh open/closed/pinch references for the upright
 view instead of reusing old palm-down/diagonal calibration. The configured
 affected hand remains authoritative; selfie handedness is a cross-check.
