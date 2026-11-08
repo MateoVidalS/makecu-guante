@@ -26,7 +26,10 @@ export function recapStatus({
   if (saving !== 'Saved')
     return { kind: 'status', text: 'Saving your session…' };
   if (failed)
-    return { kind: 'status', text: 'Summary unavailable. Your session is saved.' };
+    return {
+      kind: 'status',
+      text: 'Summary unavailable. Your session is saved.',
+    };
   return null;
 }
 

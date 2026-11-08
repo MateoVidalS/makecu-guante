@@ -9,11 +9,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from 'zustand';
-import {
-  useRuntime,
-  useEvaluationView,
-  useSavingStatus,
-} from '../../runtime';
+import { useRuntime, useEvaluationView, useSavingStatus } from '../../runtime';
 import { savedNote } from '../Exercise/recapStatus';
 import { useGlove } from '../../glove';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';

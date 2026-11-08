@@ -181,16 +181,15 @@ function DataError({ error }: { error: unknown }) {
       <p>
         {missing
           ? 'Records are unavailable. This record was not found.'
-          : error instanceof ApiRequestError && error.detail.code === 'unreachable'
+          : error instanceof ApiRequestError &&
+              error.detail.code === 'unreachable'
             ? `Records are unavailable. ${error.message}`
             : 'Records are unavailable. Please try again.'}
       </p>
       {!missing && (
         <Button
           variant="secondary"
-          onClick={() =>
-            void queryClient.refetchQueries({ type: 'active' })
-          }
+          onClick={() => void queryClient.refetchQueries({ type: 'active' })}
         >
           Try again
         </Button>

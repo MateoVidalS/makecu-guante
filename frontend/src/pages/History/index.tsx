@@ -235,7 +235,10 @@ function SessionRows({ sessions }: { sessions: Session[] }) {
           <th scope="row">
             <Link to={`/history/sessions/${s.id}`}>
               {formatDate(s.started_at)}
-              <span className="session-time"> · {formatTime(s.started_at)}</span>
+              <span className="session-time">
+                {' '}
+                · {formatTime(s.started_at)}
+              </span>
             </Link>
           </th>
           <td>
