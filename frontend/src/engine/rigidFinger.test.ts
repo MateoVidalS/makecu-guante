@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EngineEvent } from '../contracts/engine';
 import { GLOVE_FINGERS, type GloveEvent } from '../contracts/glove';
 import { DEFAULT_EXERCISE_SETTINGS } from '../contracts/poses';
@@ -89,6 +89,10 @@ async function run(
 }
 
 describe('rigid finger safety with clean five-finger simulator calibration', () => {
+  beforeEach(() => {
+    // Keep the manually advanced simulator independent of wall-clock startup time.
+    vi.spyOn(performance, 'now').mockReturnValue(0);
+  });
   for (const limit of [900, 1500, 2200]) {
     it.each(GLOVE_FINGERS)(
       `stops %s during full-fist assist at ${limit} mA`,
