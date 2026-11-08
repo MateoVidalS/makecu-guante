@@ -4,9 +4,14 @@ import type {
   VisionFrame,
   Handedness,
 } from '../contracts/vision';
-import type { CameraCalibration } from '../contracts/calibration';
+import {
+  CURRENT_CAMERA_VIEW,
+  type CameraView,
+  type CameraCalibration,
+} from '../contracts/calibration';
 import { FrameProcessor, missingFrame } from './frameProcessor';
 import type { LandmarkCapture } from './recorder';
+import { VideoLightingSampler, type VisionDiagnostics } from './lighting';
 
 type Delegate = 'GPU' | 'CPU';
 export interface LatencyStats {
@@ -56,6 +61,12 @@ export class CameraVision implements VisionSource {
   private watchdog: ReturnType<typeof setInterval> | null = null;
   private affectedHand: Handedness = 'right';
   private mirror = savedMirror();
+  private view: CameraView = CURRENT_CAMERA_VIEW;
+  private lightingSampler = new VideoLightingSampler();
+  private quality: VisionDiagnostics = {
+    lighting: null,
+    handednessMismatch: null,
+  };
   private busy = false;
   private previousMediaTime = -1;
   private lastInference = -Infinity;
@@ -107,10 +118,12 @@ export class CameraVision implements VisionSource {
   async start(options: {
     deviceId?: string;
     affectedHand: Handedness;
+    view?: CameraView;
   }): Promise<void> {
     this.stop();
     const generation = this.generation;
     this.affectedHand = options.affectedHand;
+    this.view = options.view ?? CURRENT_CAMERA_VIEW;
     this.inference = [];
     this.latency = [];
     this.frames = 0;
@@ -247,7 +260,12 @@ export class CameraVision implements VisionSource {
         started,
         this.affectedHand,
         this.mirror,
+        this.view,
       );
+      this.quality = {
+        lighting: this.lightingSampler.sample(this.video, frame.landmarks),
+        handednessMismatch: this.processor.handednessMismatch,
+      };
       this.lastResult = ended;
       this.inference.push(ended - started);
       this.latency.push(Math.max(0, performance.now() - captured));
@@ -323,7 +341,19 @@ export class CameraVision implements VisionSource {
     this.processor.reset();
     this.publish(missingFrame(performance.now()));
   }
+  diagnostics(): VisionDiagnostics {
+    return performance.now() - this.lastResult < 100
+      ? this.quality
+      : { lighting: null, handednessMismatch: null };
+  }
   private publish(frame: VisionFrame) {
+    if (!frame.detected)
+      this.quality = {
+        lighting: this.quality.lighting,
+        handednessMismatch: null,
+      };
+    if (!this.stream)
+      this.quality = { lighting: null, handednessMismatch: null };
     this.frame = frame;
     this.listeners.forEach((cb) => cb(frame));
   }

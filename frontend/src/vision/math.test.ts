@@ -60,6 +60,7 @@ const flex = (pose: string) => {
 };
 const calibration = {
   affected_hand: 'right' as const,
+  camera_view: 'front_upright' as const,
   open_flex: flex('open'),
   closed_flex: flex('full_fist'),
   pinch_open: 1.5,
