@@ -14,7 +14,7 @@ export interface LandmarkRecording {
   source: 'webcam landmarks; not synthetic; no video or audio';
   pose: PoseId;
   affectedHand: Handedness;
-  glove: 'glove' | 'bare-hand' | 'exposed-fingertips';
+  glove: 'bare-hand-points' | 'glove' | 'bare-hand' | 'exposed-fingertips';
   requestedSetup: string;
   durationMs: number;
   frames: LandmarkCapture[];
@@ -25,7 +25,8 @@ export interface LandmarkRecording {
  */
 export function recordLandmarks(
   source: LandmarkResultSource,
-  options: Pick<LandmarkRecording, 'pose' | 'affectedHand' | 'glove'> & {
+  options: Pick<LandmarkRecording, 'pose' | 'affectedHand'> & {
+    glove?: LandmarkRecording['glove'];
     durationMs?: number;
   },
 ) {
@@ -63,7 +64,7 @@ export function recordLandmarks(
       source: 'webcam landmarks; not synthetic; no video or audio',
       pose: options.pose,
       affectedHand: options.affectedHand,
-      glove: options.glove,
+      glove: options.glove ?? 'bare-hand-points',
       requestedSetup: CAMERA_PLACEMENT_GUIDANCE,
       durationMs: Math.min(
         durationMs,

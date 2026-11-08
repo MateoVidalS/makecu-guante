@@ -233,7 +233,7 @@ describe('Web Serial connection lifecycle', () => {
     expect(provider.latest).toBeNull();
     expect(provider.connectionError).toContain('requires 5-finger firmware');
     expect(errors).toEqual([
-      'This glove reports 3 fingers. Rehab Hub requires 5-finger firmware.',
+      'This glove reports 3 fingers. memo requires 5-finger firmware.',
     ]);
     provider.dispose();
   });

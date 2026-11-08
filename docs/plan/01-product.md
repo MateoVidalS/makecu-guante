@@ -18,7 +18,7 @@ Concept: `README.md` (robotic tendon glove + webcam + assist-as-needed). This do
 | # | Story | Acceptance |
 |---|---|---|
 | U1 | The helper connects the glove and camera | Setup page: Connect glove (Web Serial), pick the camera, see live telemetry + the hand overlay; "Use simulator" for both |
-| U2 | The helper calibrates for this patient | 3-step wizard: servo ranges → camera range → empty-glove friction (skippable); saved and sent to the glove |
+| U2 | The helper calibrates for this patient | 3-step wizard: servo ranges → camera range → thread friction, threads unhooked (skippable; see 16-bare-hand.md); saved and sent to the glove |
 | U3 | The patient sees the target pose | The virtual hand shows the target (ghost) and the real hand (solid) overlaid, with < 150 ms visible lag |
 | U4 | The patient tries alone, and the glove helps only if needed | Follow mode during the attempt (no pulling); assist to the target after a timeout or plateau; the hand turns green on reaching |
 | U5 | The coach guides by voice | Gemini Live says the instruction, encourages, debriefs each attempt, and answers questions; voice commands work: pause, continue, skip, repeat, stop, how am I doing |
@@ -42,7 +42,7 @@ and the doctor view, and sets the affected hand for vision (which is also editab
 | Voice | **Gemini Live** coach + a **local safety net** (Web Speech + earcons) + a fixed-phrase fallback |
 | Summaries | Gemini text: patient session summary (automatic at session end) + therapist summary (on demand) |
 | Poses | Tendon glides (open, hook, tabletop, straight fist, full fist) + thumb–index pinch |
-| Calibration | Guided wizard: servo ranges (jog) → camera open/closed (closed = glove-closed relaxed hand) + pinch → empty-glove friction |
+| Calibration | Guided wizard: servo ranges (jog) → camera open/closed (closed = the patient's own fist, see 15/16) + pinch → thread friction (unhooked) |
 | Firmware | Written by a Codex worker (PlatformIO), with native unit tests for all safety logic |
 | Simulator | A TS `SimWorld`: a firmware-faithful SimGlove + a patient model + SimVision |
 | Carried over | Patient-first, doctor view button, history trends + replay + per-finger breakdown, optional profile, English |

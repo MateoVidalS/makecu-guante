@@ -29,7 +29,8 @@ function Preview() {
   const [recording, setRecording] = useState(false);
   const [clip, setClip] = useState<LandmarkRecording | null>(null);
   const [pose, setPose] = useState<PoseId>('open');
-  const [glove, setGlove] = useState<LandmarkRecording['glove']>('glove');
+  const [glove, setGlove] =
+    useState<LandmarkRecording['glove']>('bare-hand-points');
   const [robustness, setRobustness] = useState(() =>
     tracker.stats(performance.now()),
   );
@@ -183,8 +184,8 @@ function Preview() {
       <p role="status">{status}</p>
       <CameraOverlay source={source} />
       {source.kind === 'camera' && (
-        <section aria-label="Glove detection check">
-          <h2>Glove detection check</h2>
+        <section aria-label="Hand detection check">
+          <h2>Hand detection check</h2>
           <p>
             Hand detected: {Math.round(robustness.detectionRate * 100)}% of the
             last 5 s · Mean confidence:{' '}
@@ -208,7 +209,7 @@ function Preview() {
         </section>
       )}
       <section aria-label="Record real landmarks">
-        <h2>Record real glove landmarks</h2>
+        <h2>Record real hand landmarks</h2>
         <p>
           Hold each pose for 30 seconds in the placement above. Save one clip
           per pose and hand. Only landmark results are saved, including missed
@@ -238,7 +239,8 @@ function Preview() {
                 setGlove(e.target.value as LandmarkRecording['glove'])
               }
             >
-              <option value="glove">Glove</option>
+              <option value="bare-hand-points">Bare hand with points</option>
+              <option value="glove">Glove (legacy)</option>
               <option value="exposed-fingertips">Exposed fingertips</option>
               <option value="bare-hand">Bare hand</option>
             </select>

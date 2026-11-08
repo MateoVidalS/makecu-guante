@@ -1,4 +1,4 @@
-/* Rehab Hub design system — component styles. Tokens only (src/styles/tokens.css). Class prefix: ds-. */
+/* memo design system — component styles. Tokens only (src/styles/tokens.css). Class prefix: ds-. */
 
 /* ---------- Resets for button-like primitives (base.css styles bare <button> for legacy pages) ---------- */
 .ds-button,
@@ -1386,4 +1386,16 @@ button.ds-stepper__button:hover {
   .ds-spinner {
     animation: none;
   }
+}
+
+/* ---- Logo (docs/brand/BRAND.md) ---- */
+.ds-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.ds-logo-mark,
+.ds-wordmark {
+  display: block;
+  flex: none;
 }
