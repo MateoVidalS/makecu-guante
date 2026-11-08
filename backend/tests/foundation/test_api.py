@@ -75,6 +75,9 @@ CASES = [
     ("POST", "/summaries", {"kind": "therapist", "days": 7}),
     ("GET", "/summaries", None),
     ("POST", "/voice/token", {"session_id": None}),
+    ("POST", "/chat", {"messages": [{"role": "user", "text": "How is the index finger?"}]}),
+    ("POST", "/chat/voice-token", None),
+    ("POST", "/chat/tools/{name}", {"args": {"query": "pain"}}),
     ("GET", "/export?format=json", None),
     ("GET", "/export?format=csv", None),
 ]

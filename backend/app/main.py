@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException
 
 from app.api import (
     calibrations,
+    chat,
     evaluations,
     export,
     health,
@@ -29,6 +30,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="memo", version="0.1.0", lifespan=lifespan)
 for module in [
     health,
+    chat,
     profile,
     calibrations,
     sessions,
