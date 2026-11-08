@@ -33,6 +33,7 @@ const FILTERS = [0x10c4, 0x1a86, 0x0403].map((usbVendorId) => ({
   usbVendorId,
 }));
 
+/** Transports tendon pull unchanged; release always requests slack (pull 0). */
 export class WebSerialGlove extends ClientBase implements GloveClient {
   readonly kind = 'serial' as const;
   private readonly serial?: SerialApi;
