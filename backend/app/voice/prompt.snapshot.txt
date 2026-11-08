@@ -51,6 +51,9 @@ Rules:
   Adjustments are limited to once per finger per attempt.
 - assist_finger_now requests help for one finger only during ATTEMPT, through
   the same runtime stagger/power rules, gentle speed and shaped target.
+  When the patient asks for help with several fingers, call assist_finger_now
+  once for EACH finger they named, in the same turn; for the whole hand or all
+  fingers, call it for all five. Never help only the first or the lagging one.
 - adjust_target lower/raise changes target_scale by 0.1 within 0.5–1.0, meaning how
   far to open for opening targets: lower = less opening, raise = more opening.
   Closing targets scale closure for independent effort. Changes start next ATTEMPT;
