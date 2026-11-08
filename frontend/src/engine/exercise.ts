@@ -36,6 +36,10 @@ type Safety = Extract<EngineEvent, { kind: 'safety' }>;
 type Gap = { now: number; gaps: Quint };
 
 const DWELL_GAP_MS = 200;
+/** PRESENT waits for the coach to finish the pose invitation, at most this much longer. */
+export const PRESENT_VOICE_MAX_S = 6;
+/** The help offer counts only quiet time (the question heard, the answer spoken), capped. */
+export const OFFER_VOICE_MAX_S = 10;
 
 class Exercise implements ExerciseEngine {
   private phase: ExercisePhase = 'DONE';
@@ -85,6 +89,14 @@ class Exercise implements ExerciseEngine {
   /** Fingers the patient's request covers; null means every finger that needs opening. */
   private helpScope: Set<GloveFinger> | null = null;
   private helpOfferedAt: number | null = null;
+  /**
+   * The voice coach is talking, about to talk, or listening to the patient. PRESENT waits
+   * for it and the help offer pauses its countdown, both capped (PRESENT_VOICE_MAX_S,
+   * OFFER_VOICE_MAX_S). Never set without a live voice: timings then stay as configured.
+   */
+  private voiceBusy = false;
+  private offerQuietMs = 0;
+  private offerTickAt = 0;
   private get onRequest(): boolean {
     return this.settings.help_on_request !== false;
   }
@@ -262,6 +274,16 @@ class Exercise implements ExerciseEngine {
 
   hasAssistance(): boolean {
     return !!this.metrics?.assisted;
+  }
+  setVoiceBusy(now: number, busy: boolean): void {
+    this.accrueOffer(now);
+    this.voiceBusy = busy;
+  }
+  /** Count offer time only while nobody is speaking: it starts once the offer is heard. */
+  private accrueOffer(now: number): void {
+    if (this.helpOfferedAt !== null && !this.voiceBusy)
+      this.offerQuietMs += Math.max(0, now - this.offerTickAt);
+    this.offerTickAt = Math.max(this.offerTickAt, now);
   }
   helpOffered(): boolean {
     return (
@@ -493,12 +515,20 @@ class Exercise implements ExerciseEngine {
         else this.visibleAt = null;
         if (
           elapsed >= this.settings.present_s &&
+          // Start once the invitation has been heard, so the instruction never lands mid-attempt.
+          (!this.voiceBusy ||
+            elapsed >= this.settings.present_s + PRESENT_VOICE_MAX_S) &&
           this.visibleAt !== null &&
           this.now - this.visibleAt >= 500
         ) {
           this.enter('ATTEMPT', out);
           this.follow(out);
-        } else if (this.now - this.repromptAt >= 8000) {
+        } else if (
+          // Re-prompt only for a hand the camera cannot see; waiting for the coach to
+          // finish speaking is not a reason to ask the patient to raise the hand.
+          (this.visibleAt === null || this.now - this.visibleAt < 500) &&
+          this.now - this.repromptAt >= 8000
+        ) {
           this.repromptAt = this.now;
           this.phaseEvent(out);
         }
@@ -548,10 +578,13 @@ class Exercise implements ExerciseEngine {
           this.enter(this.metrics!.assisted ? 'ASSIST_HOLD' : 'HOLD', out);
         } else if (this.helpOfferedAt !== null) {
           // Help offered: wait for the patient to reach it alone (dwell above) or to ask
-          // (requestHelp). Only the end of the offer ends the attempt.
+          // (requestHelp). Only the end of the offer ends the attempt. The offer runs on
+          // quiet time: from when the question has been heard, paused while they answer.
+          const offerS = this.settings.help_offer_s ?? 8;
+          this.accrueOffer(this.now);
           if (
-            this.now - this.helpOfferedAt >=
-            (this.settings.help_offer_s ?? 8) * 1000
+            this.offerQuietMs >= offerS * 1000 ||
+            this.now - this.helpOfferedAt >= (offerS + OFFER_VOICE_MAX_S) * 1000
           )
             this.enter('RELEASE', out);
         } else if (
@@ -563,6 +596,8 @@ class Exercise implements ExerciseEngine {
           if (canHelp && this.onRequest) {
             // Never move on its own: offer help and wait for the patient to ask.
             this.helpOfferedAt = this.now;
+            this.offerQuietMs = 0;
+            this.offerTickAt = this.now;
             out.events.push({
               kind: 'help_offered',
               fingers: GLOVE_FINGERS.filter((_, i) => this.assistable()[i]),

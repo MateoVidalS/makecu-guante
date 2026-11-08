@@ -60,6 +60,12 @@ export interface Runtime {
     skip(): void;
     /** The patient asks for the glove's help. The glove never moves without it. */
     requestHelp(fingers?: readonly GloveFinger[]): void;
+    /**
+     * The live voice coach is talking, about to talk, or hearing the patient. The session
+     * waits for it before an attempt and pauses the help offer, both capped. Optional:
+     * without a live voice nothing calls it and timings stay as configured.
+     */
+    voiceBusy?(busy: boolean): void;
     stop(): Promise<void>;
     view(): ExerciseView;
     subscribe(cb: (v: ExerciseView) => void): Unsubscribe;
