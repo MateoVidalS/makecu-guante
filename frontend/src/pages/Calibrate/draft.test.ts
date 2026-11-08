@@ -6,7 +6,9 @@ import {
   draftFromCalibration,
   loadDraft,
 } from './draft';
-import { calibration } from '../../contracts/fixtures.check';
+import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
+import { calibration as fixture } from '../../contracts/fixtures.check';
+const calibration = { ...fixture, assist_direction: 'open' as const };
 import type { VisionFrame, FingerId } from '../../contracts/vision';
 function frames(): VisionFrame[] {
   return Array.from({ length: 61 }, (_, i) => ({
@@ -64,8 +66,11 @@ describe('view-aware calibration drafts', () => {
     (camera_view) => {
       const saved = {
         ...calibration,
-        assist_direction: 'open' as const,
-        camera: { ...calibration.camera, camera_view },
+        camera: {
+          ...calibration.camera,
+          camera_view,
+          flex_model: CURRENT_FLEX_MODEL,
+        },
       };
       const draft = draftFromCalibration(saved);
       expect(draft).toMatchObject({
@@ -83,8 +88,11 @@ describe('view-aware calibration drafts', () => {
   it('retains current-view captures for review', () => {
     const draft = draftFromCalibration({
       ...calibration,
-      assist_direction: 'open' as const,
-      camera: { ...calibration.camera, camera_view: 'front_upright' },
+      camera: {
+        ...calibration.camera,
+        camera_view: 'front_upright',
+        flex_model: CURRENT_FLEX_MODEL,
+      },
     });
     expect(draft.step).toBe(2);
     expect(draft.open?.raw).toEqual(calibration.camera.open_flex);
@@ -93,8 +101,11 @@ describe('view-aware calibration drafts', () => {
   it('migrates a resumed legacy draft without relabeling its old captures', () => {
     const draft = draftFromCalibration({
       ...calibration,
-      assist_direction: 'open' as const,
-      camera: { ...calibration.camera, camera_view: 'front_upright' },
+      camera: {
+        ...calibration.camera,
+        camera_view: 'front_upright',
+        flex_model: CURRENT_FLEX_MODEL,
+      },
     });
     sessionStorage.setItem(
       'rehab-calibration',
@@ -111,6 +122,80 @@ describe('view-aware calibration drafts', () => {
     });
     expect(resumed.servo).toEqual(draft.servo);
     sessionStorage.clear();
+  });
+});
+
+describe('flex-model-aware calibration drafts', () => {
+  it.each([undefined, 1, 3])(
+    'clears saved model %s captures, retaining glove data',
+    (flex_model) => {
+      const draft = draftFromCalibration({
+        ...calibration,
+        camera: {
+          ...calibration.camera,
+          camera_view: 'front_upright',
+          flex_model,
+        },
+      });
+      expect(draft).toMatchObject({
+        step: 1,
+        cameraView: 'front_upright',
+        flexModel: CURRENT_FLEX_MODEL,
+        open: null,
+        closed: null,
+        pinch: null,
+        friction: calibration.friction,
+        limit: calibration.current_limit_ma,
+      });
+      expect(Object.values(draft.servo)).toEqual(calibration.servo);
+    },
+  );
+  it.each([undefined, 1, 3])(
+    'discards resumed model %s captures without relabeling them',
+    (flexModel) => {
+      const draft = draftFromCalibration({
+        ...calibration,
+        camera: {
+          ...calibration.camera,
+          camera_view: 'front_upright',
+          flex_model: CURRENT_FLEX_MODEL,
+        },
+      });
+      sessionStorage.setItem(
+        'rehab-calibration',
+        JSON.stringify({ ...draft, flexModel, edited: true }),
+      );
+      try {
+        expect(loadDraft()).toMatchObject({
+          step: 1,
+          cameraView: 'front_upright',
+          flexModel: CURRENT_FLEX_MODEL,
+          open: null,
+          closed: null,
+          pinch: null,
+          servo: draft.servo,
+          edited: true,
+        });
+      } finally {
+        sessionStorage.clear();
+      }
+    },
+  );
+  it('retains current-model captures when resuming a stored draft', () => {
+    const draft = draftFromCalibration({
+      ...calibration,
+      camera: {
+        ...calibration.camera,
+        camera_view: 'front_upright',
+        flex_model: CURRENT_FLEX_MODEL,
+      },
+    });
+    sessionStorage.setItem('rehab-calibration', JSON.stringify(draft));
+    try {
+      expect(loadDraft()).toEqual(draft);
+    } finally {
+      sessionStorage.clear();
+    }
   });
 });
 

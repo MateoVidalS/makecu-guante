@@ -1,3 +1,7 @@
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+} from '../contracts/calibration';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   act,
@@ -125,6 +129,8 @@ describe('vision source controller', () => {
     expect(controller.robustness(50).detectionRate).toBe(1);
     controller.setCalibration({
       affected_hand: 'left',
+      camera_view: CURRENT_CAMERA_VIEW,
+      flex_model: CURRENT_FLEX_MODEL,
       open_flex: fingerMap(() => 0),
       closed_flex: fingerMap(() => 200),
       pinch_open: 1,
@@ -187,6 +193,8 @@ describe('vision source controller', () => {
     });
     const calibration: CameraCalibration = {
       affected_hand: 'left',
+      camera_view: CURRENT_CAMERA_VIEW,
+      flex_model: CURRENT_FLEX_MODEL,
       open_flex: fingerMap(() => 0),
       closed_flex: fingerMap(() => 180),
       pinch_open: 1,

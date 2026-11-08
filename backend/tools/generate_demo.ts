@@ -36,7 +36,11 @@ import {
   DEFAULT_EVAL_SETTINGS,
 } from "../../frontend/src/contracts/poses";
 import calibrationFixture from "../../contracts/fixtures/calibration.json";
-import type { Calibration } from "../../frontend/src/contracts/calibration";
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+  type Calibration,
+} from "../../frontend/src/contracts/calibration";
 
 const DAY = 86_400_000;
 const SHORT_PLAN: ExercisePlanItem[] = DEFAULT_PLAN.map((p) => ({
@@ -234,6 +238,8 @@ export async function generateDemo(endDate: string) {
   const midnight = Math.floor(end / DAY) * DAY;
   const random = mulberry32(20261107);
   const calibration = structuredClone(calibrationFixture) as Calibration;
+  calibration.camera.camera_view = CURRENT_CAMERA_VIEW;
+  calibration.camera.flex_model = CURRENT_FLEX_MODEL;
   calibration.camera.closed_flex = {
     thumb: 100,
     index: 270,

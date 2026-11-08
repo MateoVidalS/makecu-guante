@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   act,
@@ -26,6 +27,7 @@ afterEach(() => {
 function mount({ fresh = false } = {}) {
   const runtime = new ScriptedRuntime({ persist: false });
   runtime.calibration.current!.camera.camera_view = 'front_upright';
+  runtime.calibration.current!.camera.flex_model = CURRENT_FLEX_MODEL;
   if (fresh) runtime.calibration.current!.created_at = new Date().toISOString();
   runtime.calibration.current!.camera.closed_flex = {
     thumb: 100,
@@ -228,6 +230,7 @@ describe('evaluation preflight', () => {
 it('accepts only complete, recent slow/fast baselines, including ring and pinky', () => {
   const runtime = new ScriptedRuntime({ persist: false });
   runtime.calibration.current!.camera.camera_view = 'front_upright';
+  runtime.calibration.current!.camera.flex_model = CURRENT_FLEX_MODEL;
   const calibration = runtime.calibration.current!;
   calibration.created_at = new Date().toISOString();
   expect(hasCompleteFriction(calibration.friction)).toBe(true);

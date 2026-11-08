@@ -1,9 +1,10 @@
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   HandLandmarker,
   HandLandmarkerResult,
 } from '@mediapipe/tasks-vision';
-import open from '../../../contracts/fixtures/landmarks_open.json';
+import open from './fixtures/front_upright_open.json';
 import { CameraVision } from './cameraVision';
 const mp = vi.hoisted(() => ({
   create: vi.fn(),
@@ -206,6 +207,7 @@ describe('CameraVision lifecycle', () => {
     source.setCalibration({
       affected_hand: 'left',
       camera_view: 'front_upright',
+      flex_model: CURRENT_FLEX_MODEL,
       open_flex: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
       closed_flex: {
         thumb: 100,
@@ -231,7 +233,7 @@ describe('CameraVision lifecycle', () => {
   });
   it('honors upright and legacy views without rotating inference input, and reports label and exposure diagnostics', async () => {
     const tilted = structuredClone(result);
-    tilted.worldLandmarks[0][0].z += 0.08;
+    tilted.worldLandmarks[0][0].z -= 0.08;
     tilted.handedness[0][0].categoryName = 'Left';
     detect.mockReturnValue(tilted);
     const data = new Uint8ClampedArray(64 * 48 * 4).fill(20);

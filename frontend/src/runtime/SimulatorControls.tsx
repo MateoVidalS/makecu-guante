@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   CURRENT_ASSIST_DIRECTION,
   CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
 } from '../contracts/calibration';
 import { Link } from 'react-router-dom';
 import { useGlove } from '../glove';
@@ -109,6 +110,7 @@ export function RuntimeSimulatorCalibration() {
               camera: {
                 affected_hand: 'right',
                 camera_view: CURRENT_CAMERA_VIEW,
+                flex_model: CURRENT_FLEX_MODEL,
                 open_flex: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
                 closed_flex: {
                   thumb: 100,

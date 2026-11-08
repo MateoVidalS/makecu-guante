@@ -5,10 +5,12 @@ import {
   CURRENT_CAMERA_VIEW,
   CURRENT_ASSIST_DIRECTION,
   type AssistDirection,
+  CURRENT_FLEX_MODEL,
   type CameraView,
   type Calibration,
   type ServoCalibration,
 } from '../../contracts/calibration';
+import { isCurrentCameraCalibration } from '../../vision/calibrationCompatibility';
 export const fingers: FingerId[] = [
   'thumb',
   'index',
@@ -23,6 +25,7 @@ export interface Capture {
 export interface Draft {
   sourceId?: number;
   cameraView?: CameraView;
+  flexModel?: number;
   assistDirection?: AssistDirection;
   edited?: boolean;
   step: number;
@@ -43,8 +46,9 @@ export interface Draft {
   limit: number;
 }
 export const freshDraft = (): Draft => ({
-  assistDirection: CURRENT_ASSIST_DIRECTION,
   cameraView: CURRENT_CAMERA_VIEW,
+  flexModel: CURRENT_FLEX_MODEL,
+  assistDirection: CURRENT_ASSIST_DIRECTION,
   step: 0,
   finger: 0,
   angle: 90,
@@ -57,15 +61,19 @@ export const freshDraft = (): Draft => ({
   friction: {},
   limit: 1500,
 });
-/** Routing changes reset every range; posture changes reset camera captures only. */
-function currentViewDraft(draft: Draft): Draft {
+/** Routing changes reset every range; posture or math changes reset camera captures only. */
+function currentCameraDraft(draft: Draft): Draft {
   if (draft.assistDirection !== CURRENT_ASSIST_DIRECTION)
     return { ...freshDraft(), sourceId: draft.sourceId };
-  return draft.cameraView === CURRENT_CAMERA_VIEW
+  return isCurrentCameraCalibration({
+    camera_view: draft.cameraView,
+    flex_model: draft.flexModel,
+  })
     ? draft
     : {
         ...draft,
         cameraView: CURRENT_CAMERA_VIEW,
+        flexModel: CURRENT_FLEX_MODEL,
         step: fingers.every((finger) => validRange(draft.servo[finger]))
           ? 1
           : 0,
@@ -82,9 +90,10 @@ export function loadDraft(): Draft {
     if (value) {
       const parsed = JSON.parse(value) as Draft;
       const saved = { ...freshDraft(), ...parsed };
-      return currentViewDraft({
+      return currentCameraDraft({
         ...saved,
         cameraView: parsed.cameraView,
+        flexModel: parsed.flexModel,
         assistDirection: parsed.assistDirection,
         step: Math.min(2, saved.step),
       });
@@ -92,7 +101,7 @@ export function loadDraft(): Draft {
   } catch {
     /* Storage may be disabled. */
   }
-  return currentViewDraft(memory);
+  return currentCameraDraft(memory);
 }
 export function saveDraft(draft: Draft) {
   memory = draft;
@@ -144,9 +153,10 @@ export function stableCapture(frames: VisionFrame[]): Capture {
 
 /** Saved values are a complete starting point for review or a focused redo. */
 export function draftFromCalibration(calibration: Calibration): Draft {
-  return currentViewDraft({
+  return currentCameraDraft({
     ...freshDraft(),
     cameraView: calibration.camera.camera_view,
+    flexModel: calibration.camera.flex_model,
     assistDirection: calibration.assist_direction,
     step: 2,
     sourceId: calibration.id,

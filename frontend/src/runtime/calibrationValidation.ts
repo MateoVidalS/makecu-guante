@@ -1,6 +1,6 @@
+import { isCurrentCameraCalibration } from '../vision/calibrationCompatibility';
 import { useCallback, useSyncExternalStore } from 'react';
 import {
-  CURRENT_CAMERA_VIEW,
   CURRENT_ASSIST_DIRECTION,
   type Calibration,
   type CameraCalibration,
@@ -15,7 +15,7 @@ export const ASSIST_DIRECTION_RECALIBRATE_MESSAGE =
   'The glove now helps the hand open. Calibrate it again.';
 
 export const CAMERA_VIEW_RECAPTURE_MESSAGE =
-  'Your camera range was captured in the old position. Recapture it with your hand raised.';
+  'Your camera range needs to be updated. Redo the camera step with your hand raised, palm to the screen.';
 
 export interface CalibrationIssue {
   /** Absent when a whole calibration step needs redoing. */
@@ -104,7 +104,7 @@ export function selectCalibrationStatus(
     )
       add(finger, 'glove');
   }
-  if (calibration.camera.camera_view !== CURRENT_CAMERA_VIEW) {
+  if (!isCurrentCameraCalibration(calibration.camera)) {
     issues.push({
       step: 'camera',
       message: CAMERA_VIEW_RECAPTURE_MESSAGE,
