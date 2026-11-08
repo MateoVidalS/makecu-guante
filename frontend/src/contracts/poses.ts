@@ -232,9 +232,9 @@ export const POSES: Record<PoseId, PoseDef> = {
     },
     render: {
       index: {
-        mcp: 50,
-        pip: 50,
-        dip: 20,
+        mcp: 60,
+        pip: 60,
+        dip: 30,
       },
       middle: {
         mcp: 0,
@@ -253,7 +253,7 @@ export const POSES: Record<PoseId, PoseDef> = {
       },
       thumb: {
         mcp: 30,
-        pip: 30,
+        pip: 60,
         dip: 0,
       },
     },
