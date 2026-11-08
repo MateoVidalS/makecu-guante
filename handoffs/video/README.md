@@ -9,6 +9,7 @@ A ~2:53 launch video for memo (MakeCU 2026, healthcare track), in the style of a
 | V2 | [V2-audio.md](V2-audio.md) | `video/studio/audio/**`, `video/studio/public/audio/**`, `video/studio/src/audio/**` | – |
 | V3 | [V3-story.md](V3-story.md) | `src/scenes/{Hook,Problem,Reveal,Close}.tsx`, `src/components/story/**` | V4 `HardwareTurntable` (placeholder until merged) |
 | V4 | [V4-hardware-hood.md](V4-hardware-hood.md) | `src/components/hardware/**`, `src/scenes/UnderHood.tsx` | – |
+| V6 | [V6-gemini.md](V6-gemini.md) | `src/scenes/Gemini.tsx`, `src/components/gemini/**` | – |
 | V5 | [V5-screen.md](V5-screen.md) | `src/components/screen/**`, `src/scenes/{Session,Coach,Doctor}.tsx` | V1 recordings (mock until merged) |
 | – | coordinator | everything else in `video/studio/` (timeline, script, contracts, brand, Main, Team, Next) | – |
 
@@ -54,3 +55,9 @@ Ghost-and-solid is the visual metaphor: a faint target shape, a solid shape reac
 | STL renders of the wrist module, spools and anchors | Soft studio light on paper, slow turntable, not a dark void |
 | End card: lockup, "Your hand remembers.", "Try first. memo helps with the rest.", disclaimer, music credit | Same content; lockup on paper; disclaimer at caption size |
 | Six-word counter, campus "REC" frames, "INTRODUCING" all-caps, dark gradients | **Dropped** (gimmicky / off-brand) |
+
+## Judging criteria (MakeCU Hacker Handbook): the video must make each one obvious
+A 3-minute Devpost video that covers **problem solving, innovation, technology, design, completion**. `CHAPTER` in `src/timeline.ts`
+maps every scene to one; `Chapters` draws it as a small label at the top-left, so **keep the top 64 px of every frame clear**
+(scene titles start at y ≥ 72). Credit every library and asset (`COPY.close.credits`). Completion is proven by the team's real
+bench footage (`bench` scene) and by honest labels everywhere else.
