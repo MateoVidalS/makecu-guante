@@ -130,6 +130,27 @@ describe('CameraVision lifecycle', () => {
     video.dispatchEvent(new Event('pause'));
     expect(play).not.toHaveBeenCalled();
   });
+  it('keeps the measured capture and detection settings (vision/perf/README.md, "Detection settings")', async () => {
+    await source.start({ affectedHand: 'right' });
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: false,
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        frameRate: { ideal: 30, max: 30 },
+      },
+    });
+    expect(mp.create).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        runningMode: 'VIDEO',
+        numHands: 2,
+        minHandDetectionConfidence: 0.6,
+        minHandPresenceConfidence: 0.6,
+        minTrackingConfidence: 0.6,
+      }),
+    );
+  });
   it('uses selected device, local assets and VIDEO mode, publishes observations and stats', async () => {
     await source.start({ affectedHand: 'right', deviceId: 'camera-1' });
     expect(getUserMedia).toHaveBeenCalledWith(

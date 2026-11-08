@@ -5,6 +5,9 @@ MediaPipe task and WASM files documented in `public/models/README.md`, requests
 640×480 at 30 Hz, and uses video frame callbacks (animation frames on older
 browsers). Inference is synchronous in MediaPipe VIDEO mode; duplicate frames,
 callbacks while fallback is pending, and callbacks arriving above 30 Hz are skipped.
+The capture size, `numHands: 2` and the 0.6 detection, presence and tracking
+confidences were measured against alternatives and kept; see "Detection settings"
+in `perf/README.md` before changing them.
 
 ```ts
 const source = new CameraVision();

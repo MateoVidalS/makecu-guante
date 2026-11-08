@@ -214,6 +214,61 @@ check with the points on, and a real upright recording (`bare-hand-points`). If
 detection drops in a fist, try smaller or skin-coloured guides and keep the yellow
 anchors on the very tip, then record again.
 
+## Detection settings (camera resolution, MediaPipe thresholds), Nov 8
+
+The settings in `cameraVision.ts` were measured and **kept**: 640×480 (4:3), VIDEO
+mode, `numHands: 2`, and all three confidences at 0.6. Evidence: the rendered hand
+(bare, with points, violet glove repainted; both hands; IMAGE shots and 30 Hz VIDEO
+sequences with 1 s reaches), 120 real violet-glove frames, and three real webcam
+recordings of the device on the right hand (r5–r7, about 240 labelled frames each,
+not in the repo). On the device recordings a detection only counts if it is the
+device hand. The free left hand and bystanders sitting next to the user count as
+"other". Numbers are app-published frames (production `selectHand`).
+
+| Device recordings (VIDEO, device / other hand) | r5     | r6     | r7      |
+| ---------------------------------------------- | ------ | ------ | ------- |
+| 0.6 / 0.6 (kept)                               | 38 / 6 | 7 / 87 | 17 / 68 |
+| detection and presence 0.5                     | 38 / 6 | 7 / 95 | 26 / 79 |
+| detection 0.75 (presence 0.6)                  | –      | 7 / 49 | 3 / 68  |
+| detection and presence 0.75                    | 11 / 1 | 5 / 46 | –       |
+
+- **Lower thresholds (0.5)** find the device hand more often only on r7. They add
+  other-hand detections on r6 and r7 (IMAGE r6: 47 → 74 frames), so they were not
+  adopted.
+- **Higher thresholds** remove some bystander hands but lose the device hand (r7
+  17 → 3 at detection 0.7 or 0.75; r5 38 → 11 at 0.75/0.75). They also lose the
+  rendered hand: at detection 0.75, IMAGE detection drops from 0.84 to 0.66, and
+  VIDEO calibration fails with points. At 0.75/0.75, real violet frames drop from
+  55/54 to 46/45 of 60.
+- **Resolution.** MediaPipe letterboxes the whole frame into its palm detector, so a
+  16:9 1280×720 frame with the same vertical view makes the hand 25% smaller there.
+  On the rendered hand, IMAGE detection fell from 0.89 to 0.55 and a fist with points
+  was lost in VIDEO. At 960×720, bare-hand precision barely changed (closure MAE
+  0.11 → 0.10), but the violet glove lost its fist in VIDEO. The repaint costs scale
+  with pixels: about 7, 16 and 22 ms per frame at 640×480, 960×720 and 1280×720
+  (headless CPU, loaded machine). Upscaling the real 640×480 frames did not help.
+- **`numHands: 1`** skips palm detection while a hand is tracked (VIDEO inference
+  about 27 vs 66 ms on the CPU bench) and found the same device-hand frames. It was
+  not adopted: with one hand, whichever hand is tracked first is published as the
+  affected hand, and labels can no longer choose it.
+- **VIDEO tracking** is what keeps the hand through hard poses. For example, on r5 the
+  'peace' pose was found in 4 of 20 frames in IMAGE mode and 20 of 20 in VIDEO mode.
+  No duplicate hands were seen at `minTrackingConfidence` 0.6, so it was not changed.
+
+Two findings belong to hand selection (`confidence.ts`), not to these settings:
+
+1. **Most wrong frames come from the lone-hand rule.** When only another hand is
+   found, the app publishes it as the affected hand. Examples are a bystander's hand
+   at the image edge, or the user's free left hand. Dropping a lone hand that MediaPipe
+   labels as the other hand with a score of at least 0.9 kept every device-hand frame
+   on r5–r7. It cut the other-hand frames: r5 6 → 0, r6 87 → 32, r7 68 → 1 (VIDEO).
+   On the violet frames it lost 1 of 111 lone-hand IMAGE frames and none in VIDEO.
+   Because the rendered hand's labels are unreliable, decide this with real recordings.
+2. **The 0.6 handedness gate.** On the rendered hand, MediaPipe still tracks the open
+   palm in VIDEO mode, but its handedness score falls to 0.50–0.65. The palm is mirror
+   symmetric, so a third of the tracked frames are dropped. Real device-hand frames
+   mostly score 0.9–0.99, so this mostly affects the proxy's detection rates.
+
 ## Results (real MediaPipe bench)
 
 Last full run (`mediapipe-bench.result.json` has every row; CPU delegate,

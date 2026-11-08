@@ -197,6 +197,9 @@ export class CameraVision implements VisionSource {
     const files = await FilesetResolver.forVisionTasks(
       `${import.meta.env.BASE_URL}models/wasm`,
     );
+    // Measured on Nov 8 (vision/perf/README.md, "Detection settings"): 0.5 found more
+    // bystander hands on real recordings, 0.7+ lost the device hand. Two hands let the
+    // affected hand be chosen by label; VIDEO mode keeps it tracked through a fist.
     return HandLandmarker.createFromOptions(files, {
       baseOptions: {
         modelAssetPath: `${import.meta.env.BASE_URL}models/hand_landmarker.task`,
@@ -232,6 +235,8 @@ export class CameraVision implements VisionSource {
         throw new Error(
           'Use Chrome or Edge with camera access on HTTPS or localhost',
         );
+      // Keep 4:3 at 640×480: the palm detector letterboxes the whole frame, so 16:9 shrinks
+      // the hand, and larger frames cost more to repaint without better detection.
       stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
