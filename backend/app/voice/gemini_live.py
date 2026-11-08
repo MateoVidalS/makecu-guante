@@ -11,8 +11,12 @@ from app.db import repo
 from app.voice.prompt import render_prompt
 from app.voice.tools import TOOLS
 
-# The scaffold's retired default is translated locally; contracts/config stay frozen.
-CURRENT_MODEL = "gemini-3.8-live-extended-thinking"
+# Retired or unusable Live models are translated locally, so an old .env keeps working.
+CURRENT_MODEL = "gemini-3.8-live"
+# gemini-3.8-live-extended-thinking speaks but never delivers tool calls (checked Nov 8 2026 on
+# v1beta and v1alpha, thinking low and medium): the coach would claim to help, rest or brake while
+# nothing happens. Re-test with `uv run python -m tools.coach_check` before re-enabling it.
+RETIRED_MODELS = {"gemini-live-2.5-flash-preview", "gemini-3.8-live-extended-thinking"}
 
 
 class VoiceUnavailable(Exception):
@@ -53,7 +57,7 @@ def create_token(session_id: int | None, db: DbSession) -> VoiceToken:
     profile, previous = read_context(db, session_id)
     prompt = render_prompt(profile, previous)
     model = settings.gemini_live_model
-    if model == "gemini-live-2.5-flash-preview":
+    if model in RETIRED_MODELS:
         model = CURRENT_MODEL
     now = datetime.now(timezone.utc)
     expires = now + timedelta(minutes=30)
