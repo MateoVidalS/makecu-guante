@@ -1,0 +1,25 @@
+import type React from 'react';
+import type { SceneId } from '../timeline';
+import { Close } from './Close';
+import { Coach } from './Coach';
+import { Doctor } from './Doctor';
+import { Hook } from './Hook';
+import { Next } from './Next';
+import { Problem } from './Problem';
+import { Reveal } from './Reveal';
+import { Session } from './Session';
+import { Team } from './Team';
+import { UnderHood } from './UnderHood';
+
+export const SCENE_COMPONENTS: Record<SceneId, React.FC> = {
+  hook: Hook,
+  team: Team,
+  problem: Problem,
+  reveal: Reveal,
+  session: Session,
+  coach: Coach,
+  doctor: Doctor,
+  underHood: UnderHood,
+  next: Next,
+  close: Close,
+};

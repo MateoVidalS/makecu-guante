@@ -1,0 +1,26 @@
+{
+  "name": "memo-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render Main out/memo.mp4",
+    "still": "remotion still",
+    "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit && node scripts/check-timeline.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
+    "@remotion/cli": "4.0.541",
+    "@remotion/media-utils": "4.0.541",
+    "@remotion/paths": "4.0.541",
+    "@remotion/shapes": "4.0.541",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.541"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "typescript": "5.6.3"
+  }
+}
