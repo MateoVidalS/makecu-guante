@@ -1,6 +1,6 @@
 import React from 'react';
-import { interpolate, Sequence, useCurrentFrame } from 'remotion';
-import { c, ease, safe } from '../brand/tokens';
+import { Sequence, useCurrentFrame } from 'remotion';
+import { c, safe } from '../brand/tokens';
 import { useVoDurations } from '../audio/AudioLayer';
 import { Fill, Words } from '../components/brand';
 import { Callout } from '../components/screen/Callout';
@@ -9,18 +9,17 @@ import { FootageSlot } from '../components/screen/FootageSlot';
 import { ScreenFrame } from '../components/screen/ScreenFrame';
 import { InnovationSplit } from '../components/screen/InnovationSplit';
 import { VisionInset } from '../components/screen/VisionInset';
+import { SESSION_PIP, sessionLayout } from '../components/screen/sessionLayout';
 import { COPY } from '../script';
 
 export const Session: React.FC = () => {
   const frame = useCurrentFrame();
   const durations = useVoDurations();
   const legendDuration = Math.min(durations['session-4'] ?? 216, 216);
-  const legend = interpolate(frame, [612, 636], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: ease });
-  const innovation = interpolate(frame, [96, 120], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: ease });
-  const sidePanel = Math.max(innovation, legend);
-  return <Fill style={{ clipPath: 'inset(64px 0 0 0)' }}>
+  const { innovation, area, align, handZoom } = sessionLayout(frame);
+  return <Fill style={{ clipPath: 'inset(64px 0 200px 0)' }}>
     <Sequence durationInFrames={840} layout="none">
-      <ScreenFrame clip="session-main" area={{ x: 64 + 680 * sidePanel, y: 64, w: 1792 - 680 * sidePanel, h: 800 }} playback={[
+      <ScreenFrame clip="session-main" area={area} align={align} playback={[
         { at: 0, event: 'phase:PRESENT', fallback: 0 },
         { at: 144, event: 'phase:ATTEMPT', fallback: 144 },
         { at: 360, event: 'phase:ASSIST', fallback: 360 },
@@ -29,9 +28,9 @@ export const Session: React.FC = () => {
         { at: 840, event: 'phase:ASSIST_HOLD', fallback: 540, offset: 120 },
       ]} camera={[
         { at: 0, target: 'focus:virtual-hand', zoom: 1 },
-        { at: 36, target: 'focus:virtual-hand', zoom: 1.6 },
-        { at: 360, target: 'focus:helped-fingers', zoom: 1.6 },
-        { at: 540, target: 'focus:virtual-hand', zoom: 1.6 },
+        { at: 36, target: 'focus:virtual-hand', zoom: handZoom },
+        { at: 360, target: 'focus:virtual-hand', zoom: handZoom },
+        { at: 540, target: 'focus:virtual-hand', zoom: handZoom },
         { at: 612, target: 'focus:hand-and-meters', zoom: 1.2 },
       ]}>
         <Callout point="focus:ghost" label={COPY.session.ghost} dotColor={c.target} side="left" at={40} until={156} position={{ x: 96 + 704 * innovation, y: 180 + 60 * innovation }} />
@@ -45,7 +44,7 @@ export const Session: React.FC = () => {
       </ScreenFrame>
     </Sequence>
     <InnovationSplit />
-    <Sequence from={120} durationInFrames={480} layout="none"><FootageSlot id="session-hand" area={{ x: frame >= 162 && frame < 342 ? 1344 : 96, y: 600, w: 480, h: 270 }} /></Sequence>
+    <Sequence from={120} durationInFrames={480} layout="none"><FootageSlot id="session-hand" area={SESSION_PIP} /></Sequence>
     <Sequence from={162} durationInFrames={180} layout="none"><VisionInset /></Sequence>
     <Sequence from={840} durationInFrames={312} layout="none">
       <ScreenFrame clip="session-resist" playback={[

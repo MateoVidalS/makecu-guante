@@ -17,8 +17,9 @@ async function loadTs(file) {
   }
   return `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`;
 }
-const { cameraAt, findEvent, fitViewport, mapPoint, targetBox } = await import(await loadTs(fileURLToPath(new URL('./camera.ts', import.meta.url))));
+const { cameraAt, cardAt, findEvent, fitViewport, mapPoint, targetBox } = await import(await loadTs(fileURLToPath(new URL('./camera.ts', import.meta.url))));
 const { recordingForScreen, clipFrameAt } = await import(await loadTs(fileURLToPath(new URL('./recording.ts', import.meta.url))));
+const { SESSION_PIP, sessionLayout } = await import(await loadTs(fileURLToPath(new URL('./sessionLayout.ts', import.meta.url))));
 const clip = { width: 1440, height: 900, events: [
   { frame: 0, kind: 'focus', label: 'focus:hand', point: { x: 400, y: 300 }, box: { x: 300, y: 200, w: 200, h: 200 } },
   { frame: 60, kind: 'focus', label: 'focus:hand', point: { x: 520, y: 360 }, box: { x: 420, y: 260, w: 200, h: 200 } },
@@ -87,4 +88,32 @@ assert.equal(clipFrameAt(adapted, 540, 0, timing), 1051);
 assert.equal(clipFrameAt(adapted, 612, 0, timing), 1141);
 assert.equal(clipFrameAt(adapted, 900, 0, timing), 1141);
 assert.equal(clipFrameAt(adapted, 2000, 0), 1349);
-console.log('camera checks passed: eased zoom, moving anchors, edge clamps, 4K viewport, zoom limits');
+for (let frame = 120; frame < 600; frame++) {
+  const { area } = sessionLayout(frame);
+  const window = fitViewport(hd, area);
+  assert.ok(window.x + window.w < SESSION_PIP.x, `PiP overlaps app pixels at ${frame}`);
+}
+assert.deepEqual([SESSION_PIP.w, SESSION_PIP.h], [400, 225]);
+assert.ok(SESSION_PIP.y >= 64 && SESSION_PIP.y + SESSION_PIP.h <= 880);
+const manifest = JSON.parse(await readFile(new URL('../../../public/recordings/manifest.json', import.meta.url), 'utf8'));
+for (const [id, label, frame] of [
+  ['doctor-history', 'focus:history-card', 270],
+  ['doctor-replay', 'focus:position-card', 0],
+  ['doctor-replay', 'focus:current-card', 72],
+  ['doctor-summary', 'focus:summary-card', 72],
+  ['doctor-export', 'focus:export-card', 48],
+]) {
+  const source = recordingForScreen(manifest.clips.find((item) => item.id === id));
+  const box = targetBox(source, label, frame);
+  assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.w <= source.width && box.y + box.h <= source.height, `${label} exceeds recorded pixels`);
+  const { camera, viewport, content } = cardAt(box, { x: 64, y: 64, w: 1792, h: 800 });
+  const top = mapPoint(box, camera);
+  const bottom = mapPoint({ x: box.x + box.w, y: box.y + box.h }, camera);
+  assert.ok(Math.abs(top.x - viewport.x - 32) < 1e-8);
+  assert.ok(Math.abs(top.y - viewport.y - 32) < 1e-8);
+  assert.ok(Math.abs(viewport.x + viewport.w - bottom.x - 32) < 1e-8);
+  assert.ok(Math.abs(viewport.y + viewport.h - bottom.y - 32) < 1e-8);
+  assert.ok(viewport.y >= 64 - 1e-8 && viewport.y + viewport.h <= 880 + 1e-8);
+  assert.ok(Math.abs(content.w - box.w * camera.scale) < 1e-8);
+}
+console.log('camera checks passed: motion, native coordinates, phase retiming, 480 PiP frames disjoint, whole cards with 32 px padding');
