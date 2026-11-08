@@ -24,6 +24,10 @@ import { StubGlove } from './glove';
 import { StubVision } from './vision';
 import type { EngineEvent } from './contracts/engine';
 import type { Runtime } from './contracts/runtime';
+import {
+  CURRENT_ASSIST_DIRECTION,
+  type Calibration,
+} from './contracts/calibration';
 import { tokens } from './styles/tokens';
 import { server } from './mocks/server';
 import { mockState, resetMocks } from './mocks/handlers';
@@ -58,7 +62,15 @@ describe('shared contracts', () => {
           'utf8',
         ),
       );
-      expect(data).toEqual(disk);
+      // The frozen literal remains a valid legacy calibration; O5 marks the JSON as open.
+      const expected =
+        name === 'calibration'
+          ? ({
+              ...fixtures.calibration,
+              assist_direction: CURRENT_ASSIST_DIRECTION,
+            } satisfies Calibration)
+          : data;
+      expect(expected).toEqual(disk);
     }
   });
   it('exports the exact poses, default plans, and patient-specific pinch threshold', () => {
