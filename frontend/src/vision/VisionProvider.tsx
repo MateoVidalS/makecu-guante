@@ -7,12 +7,11 @@ import {
 } from 'react';
 import { createStore } from 'zustand/vanilla';
 import { useStore } from 'zustand';
-import type {
-  VisionFrame,
-  VisionSource,
-  Handedness,
-} from '../contracts/vision';
-import type { CameraCalibration } from '../contracts/calibration';
+import type { VisionFrame, VisionSource } from '../contracts/vision';
+import {
+  CURRENT_CAMERA_VIEW,
+  type CameraCalibration,
+} from '../contracts/calibration';
 import { createSimWorld } from '../glove/sim';
 import { useGlove } from '../glove';
 import { CameraVision } from './cameraVision';
@@ -22,7 +21,7 @@ import {
   type VisionRobustnessStats,
 } from './robustness';
 
-type StartOptions = { deviceId?: string; affectedHand: Handedness };
+type StartOptions = Parameters<VisionSource['start']>[0];
 /** Accept shared SimWorld.vision; standalone controllers own and dispose their factory-created world. */
 export function createVisionController(
   options: {
@@ -81,7 +80,7 @@ export function createVisionController(
     },
     async start(opts: StartOptions = settings) {
       const request = ++generation;
-      settings = opts;
+      settings = { ...opts, view: opts.view ?? CURRENT_CAMERA_VIEW };
       detach?.();
       detach = null;
       const source = controller.source;
@@ -95,7 +94,10 @@ export function createVisionController(
       source.setCalibration(calibration);
       detach = source.onFrame((latest) => {
         if (request !== generation) return;
-        robustnessTracker.add(latest);
+        robustnessTracker.add(
+          latest,
+          source instanceof CameraVision ? source.diagnostics() : undefined,
+        );
         store.setState({ latest, robustness: controller.robustness(latest.t) });
         listeners.forEach((cb) => cb(latest));
       });

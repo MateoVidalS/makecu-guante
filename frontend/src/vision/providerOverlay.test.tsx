@@ -157,6 +157,7 @@ describe('vision source controller', () => {
     expect(camera.start).toHaveBeenCalledWith({
       affectedHand: 'left',
       deviceId: 'preferred',
+      view: 'front_upright',
     });
     expect(controller.latest).toBeNull();
     expect(listener).toHaveBeenLastCalledWith(
@@ -196,7 +197,10 @@ describe('vision source controller', () => {
     await controller.start();
     expect(controller.error).toBeNull();
     expect(camera.setCalibration).toHaveBeenLastCalledWith(calibration);
-    expect(camera.start).toHaveBeenLastCalledWith({ affectedHand: 'left' });
+    expect(camera.start).toHaveBeenLastCalledWith({
+      affectedHand: 'left',
+      view: 'front_upright',
+    });
     controller.stop();
     await controller.start();
     expect(camera.listeners.size).toBe(1);

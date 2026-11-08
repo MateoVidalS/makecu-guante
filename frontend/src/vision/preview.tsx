@@ -41,8 +41,10 @@ function Preview() {
     [stats, setStats] = useState(camera.stats());
   useEffect(() => {
     tracker.reset(performance.now());
-    return source.onFrame((frame) => tracker.add(frame));
-  }, [source, tracker]);
+    return source.onFrame((frame) =>
+      tracker.add(frame, source === camera ? camera.diagnostics() : undefined),
+    );
+  }, [source, tracker, camera]);
   useEffect(() => {
     void CameraVision.devices()
       .then(setDevices)
@@ -141,7 +143,7 @@ function Preview() {
               camera.setMirrorHandedness(event.target.checked);
             }}
           />{' '}
-          Invert labels when two hands are visible
+          Invert camera hand labels
         </label>
       </div>
       <div className="actions">
