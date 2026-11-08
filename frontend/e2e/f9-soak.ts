@@ -1,3 +1,4 @@
+import { askForHelpWhenOffered } from './askForHelp';
 import { createGloveController } from '../src/glove/GloveProvider';
 import { createVisionController } from '../src/vision/VisionProvider';
 import { SimWorld } from '../src/glove/sim';
@@ -36,6 +37,7 @@ async function main() {
   await vision.start();
   const runtime = new RehabRuntime({ glove, vision, storage: localStorage });
   runtime.mount();
+  askForHelpWhenOffered(runtime, world);
   await runtime.calibration.reload();
   let running = true;
   const state = {

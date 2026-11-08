@@ -1,11 +1,16 @@
 import { test, expect } from '@playwright/test';
-import { calibrateSimulator, silenceCoach } from './helpers';
+import {
+  calibrateSimulator,
+  silenceCoach,
+  askForHelpWhenOffered,
+} from './helpers';
 
 test('finishes practice offline and saves the queued session after recovery', async ({
   page,
 }) => {
   test.setTimeout(90_000);
   await silenceCoach(page);
+  await askForHelpWhenOffered(page);
   await calibrateSimulator(page);
   let offline = true;
   await page.route('**/api/sessions', async (route) => {

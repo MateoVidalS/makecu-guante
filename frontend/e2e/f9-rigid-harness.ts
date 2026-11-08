@@ -1,3 +1,4 @@
+import { askForHelpWhenOffered } from './askForHelp';
 import { createGloveController } from '../src/glove/GloveProvider';
 import { createVisionController } from '../src/vision/VisionProvider';
 import { SimWorld } from '../src/glove/sim';
@@ -75,6 +76,7 @@ export async function probeRigidFinger(
   runtime.calibration.current!.current_limit_ma = 2200;
   await runtime.calibration.sendToGlove();
   runtime.exercise.onEvent((event) => events.push(event));
+  askForHelpWhenOffered(runtime, world);
   try {
     await runtime.exercise.start(
       [{ pose: 'open', reps: finger ? 3 : 1 }],
