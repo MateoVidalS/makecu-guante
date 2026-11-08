@@ -38,6 +38,7 @@ import {
   type ChartRow,
   type TimelineEntry,
 } from './transforms';
+import type { TherapyMarker } from '../therapy/data';
 import { PhaseStrip } from './PhaseStrip';
 import './charts.css';
 import './visuals.css';
@@ -738,11 +739,13 @@ const safetyLabel = (e: AttemptResult['safety_events'][number]) =>
 export function ReplayChart({
   trace,
   safety = [],
+  therapyMarkers = [],
   isDemo = false,
   loading = false,
 }: {
   trace?: AttemptTrace;
   safety?: AttemptResult['safety_events'];
+  therapyMarkers?: TherapyMarker[];
   isDemo?: boolean;
   loading?: boolean;
 }) {
@@ -834,7 +837,13 @@ export function ReplayChart({
         yDomain={[0, 110]}
         loading={loading}
         tall
-        prelude={<PhaseStrip trace={trace} safety={safety} />}
+        prelude={
+          <PhaseStrip
+            trace={trace}
+            safety={safety}
+            therapyMarkers={therapyMarkers}
+          />
+        }
       >
         {faintBands}
         {markers(() => 104)}

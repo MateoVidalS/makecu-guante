@@ -36,6 +36,7 @@ import {
   Grid,
   type StatusTone,
 } from '../../design-system';
+import { tokens } from '../../styles/tokens';
 import './live.css';
 import './helper.css';
 export const percent = (v: number | null | undefined) =>
@@ -138,17 +139,20 @@ export function PhaseRing({
   elapsed,
   duration,
   waiting = false,
+  compact = false,
 }: {
   phase: ExercisePhase;
   elapsed: number;
   duration: number | null;
   waiting?: boolean;
+  compact?: boolean;
 }) {
   const progress = duration ? Math.min(1, elapsed / duration) : 0;
   const label = waiting ? 'Show me your hand' : phaseLabels[phase];
   return (
     <div className="phase-ring" aria-live="polite">
       <ProgressRing
+        size={compact ? parseFloat(tokens.controlLg) : undefined}
         value={waiting ? undefined : progress}
         label={label}
         tone={

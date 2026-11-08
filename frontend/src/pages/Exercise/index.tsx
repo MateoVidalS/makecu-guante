@@ -46,12 +46,30 @@ import {
   useShortPractice,
 } from '../../components/common/practice';
 import './exercise.css';
+import { CoachDecisions } from './CoachDecisions';
+import type { Runtime } from '../../contracts/runtime';
+import type { LiveTherapyState } from '../../contracts/therapist';
+import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
 const Hand = memo(function Hand() {
   const runtime = useRuntime(),
     vision = useVision();
+  const therapy = (runtime as Runtime).therapy;
+  const highlighted = useHighlightedFinger(therapy);
+  const phase = useExerciseView((v) => v.phase);
   const pose = useExerciseView((v) => v.pose);
+  const therapyState = useRef<LiveTherapyState | null>(
+    therapy?.state() ?? null,
+  );
+  useEffect(() => {
+    // Shaping and patient-requested reach must share the meters' reached threshold.
+    const update = () => {
+      therapyState.current = therapy?.state() ?? null;
+    };
+    update();
+    return therapy?.onDecision(update);
+  }, [therapy, phase, pose]);
   const container = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(42.5);
   useEffect(() => {
@@ -88,9 +106,15 @@ const Hand = memo(function Hand() {
   const state = useCallback(
     (finger: string) => {
       const v = runtime.exercise.view();
+      const liveFinger =
+        therapyState.current?.pose === v.pose.id
+          ? therapyState.current.fingers.find((f) => f.finger === finger)
+          : undefined;
       return liveFingerState({
         phase: v.phase,
-        target: v.pose.closure[finger as FingerId],
+        target: liveFinger
+          ? liveFinger.target
+          : v.pose.closure[finger as FingerId],
         value:
           vision.latest?.detected && vision.latest.confidence >= 0.6
             ? (vision.latest.closure?.[finger as FingerId] ?? null)
@@ -109,6 +133,7 @@ const Hand = memo(function Hand() {
       aria-label={`Target pose: ${pose.name}`}
     >
       <VirtualHand
+        highlight={highlighted}
         target={pose.render}
         actual={actual}
         state={state}
@@ -224,6 +249,7 @@ function LiveDetails() {
   return (
     <aside className="live-details">
       <PhaseRing
+        compact
         phase={view.phase}
         elapsed={view.phaseElapsed}
         duration={view.phaseDuration}
@@ -289,7 +315,17 @@ export default function Exercise() {
   const runtime = useRuntime(),
     voice = useVoice(),
     location = useLocation(),
-    { store } = useGlove();
+    { store, client: glove } = useGlove();
+  const therapy = (runtime as Runtime).therapy;
+  const brake = () => {
+    glove.release();
+    runtime.exercise.pause();
+    try {
+      therapy?.brake('You pressed Brake.', 'patient_ui');
+    } catch {
+      // Audit failures must not prevent the patient from braking.
+    }
+  };
   const { start: startVoice, stop: stopVoice, setMode: setVoiceMode } = voice;
   const voiceMode = useRef(voice.mode);
   voiceMode.current = voice.mode;
@@ -512,6 +548,14 @@ export default function Exercise() {
               {paused ? 'Resume' : 'Pause'}
             </Button>
             <Button
+              className="therapy-brake"
+              size="lg"
+              variant="danger"
+              onClick={brake}
+            >
+              Brake
+            </Button>
+            <Button
               size="lg"
               variant="quiet"
               iconAfter="arrow-right"
@@ -525,6 +569,11 @@ export default function Exercise() {
         </div>
         <LiveDetails />
       </div>
+      <CoachDecisions
+        therapy={therapy}
+        sessionId={voiceSessionId}
+        onBrake={brake}
+      />
       <AttemptResultToast />
       {confirm && (
         <ConfirmDialog
@@ -536,6 +585,16 @@ export default function Exercise() {
           }}
         >
           Your practice so far will be saved.
+          <Button
+            size="lg"
+            variant="danger"
+            onClick={() => {
+              brake();
+              setConfirm(false);
+            }}
+          >
+            Brake
+          </Button>
         </ConfirmDialog>
       )}
     </section>

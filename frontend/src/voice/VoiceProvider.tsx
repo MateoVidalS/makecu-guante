@@ -36,6 +36,7 @@ export function VoiceProvider({
         transport: browserVoiceDependencies.transport,
         audio: browserVoiceDependencies.audio(),
         local,
+        patient: browserVoiceDependencies.patient(),
       },
     );
     setController(value);
