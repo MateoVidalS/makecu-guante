@@ -1,3 +1,4 @@
+import type { TherapyRuntime } from './therapy';
 import { validateCameraRange } from './calibrationValidation';
 import { createStore } from 'zustand/vanilla';
 import * as api from '../api/client';
@@ -8,14 +9,15 @@ import type {
   Unsubscribe,
 } from '../contracts/runtime';
 import type { Calibration, FrictionCurve } from '../contracts/calibration';
-import type { EngineEvent, ExerciseSettings } from '../contracts/engine';
+import type { TherapyApi } from '../contracts/therapist';
+import type { EngineEvent } from '../contracts/engine';
 import {
   GLOVE_FINGERS,
   type GloveFinger,
   type GloveTelemetry,
   type GloveEvent,
 } from '../contracts/glove';
-import { POSES, calibratedPinch } from '../contracts/poses';
+import { POSES } from '../contracts/poses';
 import type { createGloveController } from '../glove/GloveProvider';
 import type { createVisionController } from '../vision/VisionProvider';
 import {
@@ -66,7 +68,7 @@ export interface RuntimeOptions {
 }
 
 /** One real-time loop shared by the UI, voice, simulator and hardware transports. */
-export class RehabRuntime implements Runtime {
+export class RehabRuntime implements TherapyRuntime {
   readonly exerciseStore = createStore<ExerciseView>(initialExercise);
   readonly evaluationStore = createStore<EvaluationView>(initialEvaluation);
   readonly diagnosticsStore = createStore<{
@@ -87,7 +89,6 @@ export class RehabRuntime implements Runtime {
   private clientDetach: Unsubscribe[] = [];
   private timer: ReturnType<typeof setInterval> | null = null;
   private sessionKey = '';
-  private settings: ExerciseSettings | null = null;
   private runCalibration: Calibration | null = null;
   private keyCounter = 0;
   private visionLatencies: number[] = [];
@@ -113,6 +114,40 @@ export class RehabRuntime implements Runtime {
           : performance.now());
     const epoch = Date.now() - this.clock();
     const engineOptions = {
+      therapy: {
+        now: options.now ?? (() => performance.now()),
+        simulated: () => this.options.glove.client.kind === 'sim',
+        sessionId: () => this.exerciseStore.getState().sessionId,
+        onDecision: (
+          decision: import('../contracts/therapist').CoachDecision,
+        ) => {
+          if (this.mode === 'exercise')
+            this.persistence.enqueue({
+              kind: 'decision',
+              key: this.sessionKey,
+              value: decision,
+            });
+        },
+        onFeeling: (feeling: import('../contracts/therapist').FeelingEntry) => {
+          if (this.mode === 'exercise')
+            this.persistence.enqueue({
+              kind: 'feeling',
+              key: this.sessionKey,
+              value: feeling,
+            });
+        },
+      },
+      onTherapyOutput: (out: Output) => {
+        if (this.mode === 'evaluation' || this.mode === 'friction') {
+          const stopped = (this.friction ?? this.evaluationEngine).stop(
+            this.clock(),
+          );
+          // Braking must never raise even an evaluation's lower current limit.
+          stopped.commands = stopped.commands.filter((c) => c.t === 'release');
+          this.handle(stopped);
+        }
+        this.handle(out);
+      },
       timestamp: (now: number) => new Date(epoch + now).toISOString(),
     };
     this.exerciseEngine = createExerciseEngine(engineOptions);
@@ -151,6 +186,9 @@ export class RehabRuntime implements Runtime {
       setVision: (kind) =>
         this.switchSource(kind, () => options.vision.setKind(kind)),
     };
+  }
+  get therapy(): TherapyApi {
+    return this.exerciseEngine.therapy;
   }
   readonly sources: Runtime['sources'];
   calibration: Runtime['calibration'] = {
@@ -259,7 +297,6 @@ export class RehabRuntime implements Runtime {
       );
       this.mode = 'exercise';
       this.runCalibration = calibration;
-      this.settings = settings;
       this.sessionKey = `${Date.now()}-${++this.keyCounter}-${Math.random()}`;
       this.exerciseStore.setState(initialExercise(), true);
       this.persistence.enqueue({
@@ -531,28 +568,18 @@ export class RehabRuntime implements Runtime {
   }
   private publishViews() {
     if (this.mode === 'exercise') {
-      const state = this.exerciseEngine.state(),
-        settings = this.settings!;
-      const duration = {
-        PRESENT: settings.present_s,
-        ATTEMPT: settings.attempt_s,
-        HOLD: settings.hold_s,
-        ASSIST: settings.assist_max_s,
-        ASSIST_HOLD: settings.hold_s,
-        RELEASE: 0.5,
-        REST: settings.rest_s,
-        PAUSED: null,
-        DONE: null,
-      }[state.phase];
+      const state = this.exerciseEngine.state();
+      const duration = this.exerciseEngine.phaseDuration();
+      const pose = this.exerciseEngine.poseDef();
       this.exerciseStore.setState({
         ...state,
-        pose:
-          state.pose === 'pinch'
-            ? calibratedPinch(this.runCalibration!.camera.pinch_closed)
-            : POSES[state.pose],
+        pose,
         phaseDuration: duration,
         paused: state.phase === 'PAUSED',
-        assisting: state.phase === 'ASSIST' || state.phase === 'ASSIST_HOLD',
+        assisting:
+          state.phase === 'ASSIST' ||
+          state.phase === 'ASSIST_HOLD' ||
+          (state.phase === 'ATTEMPT' && this.exerciseEngine.hasAssistance()),
       });
     } else if (this.mode)
       this.evaluationStore.setState(
