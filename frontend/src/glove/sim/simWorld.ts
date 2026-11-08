@@ -47,7 +47,16 @@ export class SimWorld {
   private wallStart = 0;
   private simStart = 0;
   private readonly autoStart: boolean;
+  /**
+   * Test mode (simulated glove, real camera): there is no physical hand in the simulator, so
+   * its patient model must not create load. Motors draw idle current only: commands still
+   * show what the motors would do, but nothing can trip overcurrent or resistance.
+   */
+  private displayOnly = false;
   readonly controls = {
+    setDisplayOnly: (on: boolean) => {
+      this.displayOnly = on;
+    },
     pressStop: () => this.firmware.setStop(true, this.now),
     releaseStop: () => this.firmware.setStop(false, this.now),
     unplug: () => this.glove.unplug(),
@@ -109,13 +118,17 @@ export class SimWorld {
         c ? Math.abs(c[1] - c[0]) : FW.HARD_MAX - FW.HARD_MIN,
       ) as Quint;
       this.power = supplyPower(
-        this.patient.servoCurrents(
-          f.position,
-          this.lastVelocity,
-          this.random,
-          f.attached,
-          ranges,
-        ),
+        this.displayOnly
+          ? (GLOVE_FINGERS.map((finger, i) =>
+              f.attached[i] ? SERVO_PROFILES[finger].idle_ma : 0,
+            ) as Quint)
+          : this.patient.servoCurrents(
+              f.position,
+              this.lastVelocity,
+              this.random,
+              f.attached,
+              ranges,
+            ),
       );
       f.tick(this.now, this.power.totalMa);
       this.servoPosition = this.servoPosition.map((position, i) => {

@@ -269,6 +269,13 @@ export class RehabRuntime implements TherapyRuntime {
         : c.current_limit_ma;
     client.limit(this.activeCurrentLimit);
   }
+  /** Simulated glove + real camera = test mode: the simulator only shows the motors. */
+  private syncTestMode() {
+    this.options.glove.world?.controls.setDisplayOnly(
+      this.options.glove.client.kind === 'sim' &&
+        this.options.vision.source.kind === 'camera',
+    );
+  }
   private async switchSource(
     kind: 'serial' | 'camera' | 'sim',
     change: () => Promise<void>,
@@ -287,6 +294,7 @@ export class RehabRuntime implements TherapyRuntime {
       await change();
     } finally {
       this.switching = false;
+      this.syncTestMode();
     }
   }
   private requireIdle() {
@@ -420,6 +428,7 @@ export class RehabRuntime implements TherapyRuntime {
   mount() {
     if (this.mounted) return;
     this.mounted = true;
+    this.syncTestMode();
     this.options.vision.setCalibration(
       this.calibration.current?.camera ?? null,
     );
@@ -478,6 +487,8 @@ export class RehabRuntime implements TherapyRuntime {
       return;
     }
     this.ticking = true;
+    // Sources can also change from Setup; keep the simulator's test-mode flag current.
+    this.syncTestMode();
     try {
       const input = {
         now: this.clock(),

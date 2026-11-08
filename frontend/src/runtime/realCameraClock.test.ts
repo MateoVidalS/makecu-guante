@@ -117,3 +117,70 @@ it('a simulated glove with a real camera follows the camera clock, so practice l
   }
   expect(runtime.exercise.view().phase).not.toBe('PRESENT');
 });
+
+it('test mode (simulated glove, real camera) never trips overcurrent from the simulated patient', async () => {
+  let wall = 10_000;
+  vi.spyOn(performance, 'now').mockImplementation(() => wall);
+  const calibration: Calibration = structuredClone(fixture);
+  calibration.assist_direction = 'open';
+  calibration.current_limit_ma = 1500;
+  calibration.camera.camera_view = CURRENT_CAMERA_VIEW;
+  calibration.camera.flex_model = CURRENT_FLEX_MODEL;
+  vi.spyOn(api, 'getLatestCalibration').mockResolvedValue(calibration);
+  // After a page reload the simulator is back to its default patient, with muscle tone.
+  const world = new SimWorld({ autoStart: false, seed: 3, preset: 'spastic' });
+  const glove = createGloveController({ world, kind: 'sim' });
+  const camera = fakeCamera();
+  const vision = createVisionController({
+    simSource: world.vision,
+    cameraSource: camera.source,
+    initialKind: 'camera',
+  });
+  const noop = vi.fn().mockResolvedValue({ id: 1 });
+  const runtime = new RehabRuntime({
+    glove,
+    vision,
+    api: {
+      createSession: noop,
+      addAttempt: noop,
+      endSession: noop,
+      addCoachDecisions: noop,
+      addFeelings: noop,
+      createEvaluation: noop,
+    } as never,
+  });
+  glove.mount();
+  await vision.start();
+  runtime.mount();
+  await runtime.calibration.reload();
+  cleanups.push(() => {
+    runtime.dispose();
+    vision.stop();
+    glove.dispose();
+  });
+  const events: string[] = [];
+  runtime.exercise.onEvent((e) => {
+    if (e.kind === 'safety' || e.kind === 'resistance') events.push(e.kind);
+  });
+  camera.emit(0.9);
+  // The real hand stays closed: the glove would have to open every finger.
+  await runtime.exercise.start(
+    [{ pose: 'open', reps: 1 }],
+    DEFAULT_EXERCISE_SETTINGS,
+  );
+  let assisted = false;
+  for (
+    let step = 0;
+    step < 600 && runtime.exercise.view().phase !== 'DONE';
+    step++
+  ) {
+    wall += 50;
+    world.advance(50);
+    camera.emit(0.9);
+    assisted ||= runtime.exercise.view().assisting;
+  }
+  expect(assisted).toBe(true);
+  expect(events).toEqual([]);
+  expect(world.firmware.state).not.toBe('fault');
+  expect(runtime.exercise.view().phase).toBe('DONE');
+});
