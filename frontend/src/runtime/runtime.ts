@@ -113,10 +113,13 @@ export class RehabRuntime implements TherapyRuntime {
   private beforeRelease: GloveTelemetry | null = null;
   private readonly clock: () => number;
   constructor(private readonly options: RuntimeOptions) {
+    // The engine compares its clock with camera frame times. A real camera stamps frames with
+    // performance.now(); the simulator's clock only advances in a 5 ms timer, which falls behind
+    // while hand tracking blocks the main thread, so real frames would look "from the future"
+    // and never count as visible (practice stuck at "Make a fist"). Follow the camera's clock.
     this.clock =
       options.now ??
       (() =>
-        options.glove.client.kind === 'sim' ||
         options.vision.source.kind === 'sim'
           ? options.glove.world.timestamp()
           : performance.now());
@@ -266,6 +269,13 @@ export class RehabRuntime implements TherapyRuntime {
         : c.current_limit_ma;
     client.limit(this.activeCurrentLimit);
   }
+  /** Simulated glove + real camera = test mode: the simulator only shows the motors. */
+  private syncTestMode() {
+    this.options.glove.world?.controls.setDisplayOnly(
+      this.options.glove.client.kind === 'sim' &&
+        this.options.vision.source.kind === 'camera',
+    );
+  }
   private async switchSource(
     kind: 'serial' | 'camera' | 'sim',
     change: () => Promise<void>,
@@ -284,6 +294,7 @@ export class RehabRuntime implements TherapyRuntime {
       await change();
     } finally {
       this.switching = false;
+      this.syncTestMode();
     }
   }
   private requireIdle() {
@@ -417,6 +428,7 @@ export class RehabRuntime implements TherapyRuntime {
   mount() {
     if (this.mounted) return;
     this.mounted = true;
+    this.syncTestMode();
     this.options.vision.setCalibration(
       this.calibration.current?.camera ?? null,
     );
@@ -475,6 +487,8 @@ export class RehabRuntime implements TherapyRuntime {
       return;
     }
     this.ticking = true;
+    // Sources can also change from Setup; keep the simulator's test-mode flag current.
+    this.syncTestMode();
     try {
       const input = {
         now: this.clock(),
