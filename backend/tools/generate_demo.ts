@@ -20,9 +20,11 @@ import {
   OPEN_ASSIST_PLAN,
   MAX_ASSIST_PULL,
 } from "../../frontend/src/contracts/poses";
-import type {
-  Calibration,
-  AssistDirection,
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+  type Calibration,
+  type AssistDirection,
 } from "../../frontend/src/contracts/calibration";
 import { summarizeSession } from "../../frontend/src/engine/metrics";
 import calibrationFixture from "../../contracts/fixtures/calibration.json";
@@ -270,7 +272,8 @@ export async function generateDemo(end: string) {
   );
   const calibration = structuredClone(calibrationFixture) as Calibration;
   calibration.assist_direction = "open";
-  calibration.camera.camera_view = "front_upright";
+  calibration.camera.camera_view = CURRENT_CAMERA_VIEW;
+  calibration.camera.flex_model = CURRENT_FLEX_MODEL;
   calibration.friction = Object.fromEntries(
     GLOVE_FINGERS.map((f) => [
       f,

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CURRENT_CAMERA_VIEW } from '../contracts/calibration';
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+} from '../contracts/calibration';
 import { calibration as legacyCalibration } from '../contracts/fixtures.check';
 import type { VisionFrame } from '../contracts/vision';
 import {
@@ -11,7 +14,11 @@ import {
 } from './calibrationValidation';
 const calibration = {
   ...legacyCalibration,
-  camera: { ...legacyCalibration.camera, camera_view: CURRENT_CAMERA_VIEW },
+  camera: {
+    ...legacyCalibration.camera,
+    camera_view: CURRENT_CAMERA_VIEW,
+    flex_model: CURRENT_FLEX_MODEL,
+  },
 };
 const camera = {
   ...calibration.camera,
@@ -144,5 +151,24 @@ it.each([undefined, 'front_diagonal'] as const)(
       href: '/calibrate?step=camera',
     });
     expect(value.servo).toEqual(calibration.servo);
+  },
+);
+
+it.each([undefined, 1, 0, 3])(
+  'requires camera recapture for stale flex model %s in the current view',
+  (flex_model) => {
+    const status = selectCalibrationStatus(
+      { ...calibration, camera: { ...camera, flex_model } },
+      true,
+      null,
+    );
+    expect(status).toEqual({
+      state: 'invalid',
+      issues: [{ step: 'camera', message: CAMERA_VIEW_RECAPTURE_MESSAGE }],
+    });
+    expect(calibrationReadiness(status)).toMatchObject({
+      value: 'Needed',
+      href: '/calibrate?step=camera',
+    });
   },
 );

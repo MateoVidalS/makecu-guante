@@ -1,3 +1,7 @@
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+} from '../../contracts/calibration';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SimWorld } from './simWorld';
 import { PATIENT_PRESETS } from './patient';
@@ -8,6 +12,8 @@ import type { CameraCalibration } from '../../contracts/calibration';
 const zeros = { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 };
 const calibration: CameraCalibration = {
   affected_hand: 'left',
+  camera_view: CURRENT_CAMERA_VIEW,
+  flex_model: CURRENT_FLEX_MODEL,
   open_flex: zeros,
   closed_flex: { thumb: 100, index: 270, middle: 270, ring: 270, pinky: 270 },
   pinch_closed: 0.1,

@@ -162,6 +162,36 @@ describe(
       }));
     };
 
+    // Static jitterStd measured on #62 (7b0092e), in POSES order. Retain a
+    // per-row limit so improvements in one pose cannot hide regressions in another.
+    const jitterBaseline = {
+      front_upright: {
+        healthy: [0.01, 0.007, 0.012, 0.013, 0.016],
+        spastic: [0.015, 0.018, 0.022, 0.034, 0.046],
+        glove: [0.065, 0.052, 0.065, 0.123, 0.142],
+      },
+      front_diagonal: {
+        healthy: [0.011, 0.008, 0.005, 0.014, 0.017],
+        spastic: [0.023, 0.012, 0.009, 0.035, 0.044],
+        glove: [0.084, 0.036, 0.031, 0.129, 0.118],
+      },
+    };
+    const checkJitter = (rows: ReturnType<typeof table>) => {
+      for (const r of rows) {
+        const group =
+          r.noise === NOISE.glove.label
+            ? 'glove'
+            : r.patient === PATIENTS.healthy.name
+              ? 'healthy'
+              : 'spastic';
+        const before = jitterBaseline[r.view][group][POSES.indexOf(r.pose)];
+        expect(
+          r.jitterStd,
+          `${r.view} ${r.patient} ${r.noise} ${r.pose} jitter`,
+        ).toBeLessThanOrEqual(before * 1.2);
+      }
+    };
+
     it('keeps every held pose inside the reach tolerance (0.10) at the benchmarked noise', () => {
       const rows = VIEWS.flatMap((view) =>
         Object.values(PATIENTS).flatMap((patient) =>
@@ -172,6 +202,7 @@ describe(
         'Static accuracy at benchmarked MediaPipe noise (closure units, 1 = calibrated range)',
         rows,
       );
+      checkJitter(rows);
       for (const row of rows) {
         const name = `${row.view} ${row.patient} ${row.pose}`;
         expect(row.p95AbsErr, name).toBeLessThan(0.1);
@@ -180,7 +211,7 @@ describe(
       }
     });
 
-    it('reports the thumb separately: small angles near zero read low (noise rectification)', () => {
+    it('reports thumb and long-finger bias separately', () => {
       const rows = VIEWS.flatMap((view) =>
         POSES.map((pose, k) => {
           const runs = [1, 2, 3].map(
@@ -215,7 +246,7 @@ describe(
         expect(Math.abs(row.thumbBias), `${row.view} ${row.pose}`).toBeLessThan(
           0.075,
         );
-      // Regression guard. The tighter 0.03 goal is a known gap since V1 (see the it.fails below).
+      // Keep the broad per-view guard alongside the tighter upright regression.
       for (const row of rows)
         expect(
           Math.abs(row.longFingerBias),
@@ -223,24 +254,20 @@ describe(
         ).toBeLessThan(0.04);
     });
 
-    // Known gap since V1's palm-plane MCP (upright tabletop long-finger bias 0.033).
-    it.fails(
-      'long-finger bias stays under 0.03 for every pose (upright view)',
-      () => {
-        for (const seed of [1, 2, 3]) {
-          const rows = holdErrors(
-            PATIENTS.healthy,
-            { view: 'front_upright', hand: 'right', noise: NOISE.bench },
-            seed,
-          );
-          for (const r of rows)
-            expect(
-              Math.abs(mean(FINGERS.slice(1).map((f) => r.fingerBias[f]))),
-              r.pose,
-            ).toBeLessThan(0.03);
-        }
-      },
-    );
+    it('long-finger bias stays under 0.03 for every pose (upright view)', () => {
+      for (const seed of [1, 2, 3]) {
+        const rows = holdErrors(
+          PATIENTS.healthy,
+          { view: 'front_upright', hand: 'right', noise: NOISE.bench },
+          seed,
+        );
+        for (const r of rows)
+          expect(
+            Math.abs(mean(FINGERS.slice(1).map((f) => r.fingerBias[f]))),
+            r.pose,
+          ).toBeLessThan(0.03);
+      }
+    });
 
     it('degrades gracefully as noise grows (report + ordering)', () => {
       const rows = VIEWS.flatMap((view) =>
@@ -250,6 +277,7 @@ describe(
         'Static accuracy vs noise level (spastic patient: small range, so noise weighs more)',
         rows,
       );
+      checkJitter(rows);
       for (const view of VIEWS) {
         const p95 = levels.map((noise) =>
           Math.max(
@@ -309,8 +337,7 @@ describe(
     });
 
     it('linearity: measured vs true closure over the whole range (every joint flexed alike)', () => {
-      // Noise makes near-zero joint angles read high (acos is never negative), which inflates the
-      // open-hand calibration and compresses low closures. A partly closed spastic hand lives there.
+      // Signed joint angles should preserve low closures despite near-zero landmark noise.
       const levels = [0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1];
       const rows = VIEWS.flatMap((view) =>
         [NOISE.ideal, NOISE.bench, NOISE.glove].map((noise) => {
@@ -333,16 +360,14 @@ describe(
               { seed: 5 },
             );
             const frames = runVision(samples, scene, camera).slice(SETTLE);
-            cells[`long@${level}`] = round(
+            cells[`long@${level}`] =
               mean(
                 frames.flatMap((f) =>
                   FINGERS.slice(1).map((x) => f.closure![x]),
                 ),
-              ) - level,
-            );
-            cells[`thumb@${level}`] = round(
-              mean(frames.map((f) => f.closure!.thumb)) - level,
-            );
+              ) - level;
+            cells[`thumb@${level}`] =
+              mean(frames.map((f) => f.closure!.thumb)) - level;
           }
           return { view, noise: noise.label, ...cells } as {
             view: CameraView;
@@ -352,25 +377,34 @@ describe(
       );
       report(
         'Closure error (measured − true) vs true closure, all joints flexed alike',
-        rows,
+        rows.map((r) =>
+          Object.fromEntries(
+            Object.entries(r).map(([key, value]) => [
+              key,
+              typeof value === 'number' ? round(value) : value,
+            ]),
+          ),
+        ),
       );
       for (const r of rows) {
         const name = `${r.view} ${r.noise}`;
         if (r.noise === NOISE.ideal.label)
           for (const level of levels)
-            expect(Math.abs(r[`long@${level}`] as number), name).toBeLessThan(
-              0.005,
-            );
+            for (const finger of ['long', 'thumb'])
+              expect(
+                Math.abs(r[`${finger}@${level}`] as number),
+                name,
+              ).toBeLessThan(0.005);
         if (r.noise === NOISE.bench.label)
           for (const level of levels) {
             expect(
               Math.abs(r[`long@${level}`] as number),
               `${name} long@${level}`,
-            ).toBeLessThan(0.075);
+            ).toBeLessThanOrEqual(0.02);
             expect(
               Math.abs(r[`thumb@${level}`] as number),
               `${name} thumb@${level}`,
-            ).toBeLessThan(0.12);
+            ).toBeLessThanOrEqual(0.04);
           }
       }
     });
@@ -407,33 +441,23 @@ describe(
         expect(
           row.successRate,
           `${row.view} ${row.patient} ${row.noise}`,
-        ).toBeGreaterThanOrEqual(
-          // Known gap since V1 (70%): see the it.fails below. Everything else must stay ≥ 90%.
-          row.view === 'front_upright' &&
-            row.patient === PATIENTS.spastic.name &&
-            row.noise === NOISE.glove.label
-            ? 0.6
-            : 0.9,
-        );
+        ).toBeGreaterThanOrEqual(0.9);
     });
 
-    it.fails(
-      'captures the spastic hand at 2x noise in ≥ 90% of tries (upright view)',
-      () => {
-        const seeds = Array.from({ length: 10 }, (_, i) => i + 1);
-        const ok = seeds.filter(
-          (seed) =>
-            !(
-              'error' in
-              calibrate(
-                PATIENTS.spastic,
-                { view: 'front_upright', hand: 'right', noise: NOISE.glove },
-                seed,
-              )
-            ),
-        );
-        expect(ok.length / seeds.length).toBeGreaterThanOrEqual(0.9);
-      },
-    );
+    it('captures the spastic hand at 2x noise in ≥ 90% of tries (upright view)', () => {
+      const seeds = Array.from({ length: 10 }, (_, i) => i + 1);
+      const ok = seeds.filter(
+        (seed) =>
+          !(
+            'error' in
+            calibrate(
+              PATIENTS.spastic,
+              { view: 'front_upright', hand: 'right', noise: NOISE.glove },
+              seed,
+            )
+          ),
+      );
+      expect(ok.length / seeds.length).toBeGreaterThanOrEqual(0.9);
+    });
   },
 );

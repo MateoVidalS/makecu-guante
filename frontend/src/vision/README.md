@@ -49,10 +49,15 @@ hand's MediaPipe label does not reset joint smoothing. Loading a saved affected-
 calibration also updates an already running camera's configured hand.
 
 Smoothing: `JointFilter` (`jointFilter.ts`) runs a One Euro filter on every joint
-angle (degrees; `minCutoff 0.3 Hz`, `beta 0.01`, `dCutoff 1 Hz`). `rawFlexSum`
+angle (degrees; `minCutoff 0.3 Hz`, `beta 0.02`, `dCutoff 0.5 Hz`). `rawFlexSum`
 and `closure` are derived from those filtered joints, so the rendered hand and the
-engine read one timeline. The 3D hand adds frame-rate-independent damping and a
-1° dead-band (`hand3d/smoothing.ts`). `hand3d/jitter.test.ts` measures the result.
+engine read one timeline. Each finger shares the average joint angle as its
+adaptive speed signal, so adjacent signed joints retain equal filter gains and their landmark noise can
+cancel in the flex sum. Pinch has a separate One Euro filter in ratio units
+(`minCutoff 0.1 Hz`, `beta 5` per ratio/s, `dCutoff 0.5 Hz`): the larger beta
+tracks a closing pinch promptly, while the low resting cutoff and smoother
+derivative keep fingertip jitter from restarting the reach dwell. The 3D hand adds
+frame-rate-independent damping and a 1° dead-band (`hand3d/smoothing.ts`). `hand3d/jitter.test.ts` measures the result.
 
 ## Provider and overlay
 
@@ -96,11 +101,34 @@ joints/closure have no camera projection, so their math and calibration are
 identical in either view. The glove simulator implementation stays untouched.
 Upright long-finger MCP is the angle of the proximal bone out of the
 plane formed by knuckles 5, 9, 13 and 17, using that arch's area normal. Wrist
-position and in-plane splay do not count as MCP flexion. PIP/DIP and thumb math
-are unchanged. Every flexion calculation uses world landmarks; image landmarks
-serve the overlay, pinch ratio and exposure region. Degenerate palms produce a
+position and in-plane splay do not count as MCP flexion. The arch normal is
+oriented toward the palmar side using the configured affected hand: reflecting world landmarks for the left hand reverses the raw
+cross product. The area normal is palmar for an anatomical right hand and must
+be reversed for a left hand (distal × palmar points toward the right thumb).
+MCP keeps its sign rather than taking an absolute value. Its in-plane
+component also keeps a forward/backward sign: a bone slightly past perpendicular
+can read above 90°, so noise at the closed calibration endpoint is not rectified
+downward. In-plane splay still does not count as flexion.
+PIP/DIP use a signed `atan2` rotation about each finger's flexion axis, derived
+from its wrist-to-knuckle direction and that palmar normal. The thumb's sign
+reference is `cross(1→2, 2→17)`: rotation across the palm toward the pinky is
+positive, independently of the configured hand. Opposition is not restricted to
+the palm-normal plane. Its full 3D bend magnitude is measured with `atan2` and
+oriented against that across-palm reference; a pure palmar bend is on the sign
+boundary and is positive by convention. Thumb landmarks 1–4 are first smoothed
+in metres (`minCutoff 3 Hz`, `beta 10` per m/s, `dCutoff 1 Hz`) to reduce
+non-planar near-straight magnitude bias and jitter. This prefilter shares the
+existing hand/view/gap reset rules; the joint filters still run afterward. Small negative joint angles represent hyperextension and pass through
+the joint filters; only normalized closure is clamped to [0, 1.1]. Every flexion
+calculation uses world landmarks; image landmarks serve the overlay, pinch ratio and exposure region. Degenerate palms produce a
 missing frame rather than fabricated flexion. The legacy view retains the old
-wrist-to-MCP bone reference. A view change resets smoothing.
+wrist-to-MCP bone reference, using signed flexion in the same finger plane.
+`jointAngles(points, view, affectedHand)` defaults to the right hand for existing
+callers; `FrameProcessor` always passes the configured hand, independently of
+MediaPipe's label. A wrong configured hand reverses long-finger flexion rather
+than silently taking an absolute value; closure can then stay at zero. Correct
+the affected-hand setting. Thumb direction stays label-independent. A view
+change resets smoothing.
 
 A calibration only normalizes closure when its affected hand and camera view
 match the current observation. Missing `camera_view` means `front_diagonal`;
@@ -166,7 +194,9 @@ hand for `open_flex` and the relaxed hand closed **as far as the glove goes on a
 five fingers** for `closed_flex`; there is no ring/pinky active-fist exception.
 Capture pinch separately. Captures reject missing/low or invalid confidence,
 changes of affected hand, sparse data and >8° standard deviation in any finger.
-The existing joint filter and closure normalization remain unchanged.
+Signed raw flexion changes stored calibration values: recapture open/closed
+ranges when upgrading. No calibration version field is added; this work ships
+before or together with the upright Setup/Calibrate update (V2).
 
 ## Preview, real recordings and tests
 
@@ -221,8 +251,13 @@ python3 frontend/src/vision/fixtures/generateFixtures.py
 pnpm --dir frontend test --run src/vision
 ```
 
-The older shared `contracts/fixtures/landmarks_*.json` clips remain frozen and
-continue to test legacy math invariance. Real glove detection, physical
+The older shared `contracts/fixtures/landmarks_*.json` clips remain frozen.
+They contain the historical mirrored "right" geometry; vision's legacy math
+tests reflect their inputs into an anatomical right hand. The owned upright
+and palm-down fixtures now have correct anatomical chirality and thumb
+opposition across the palm with a palmar component. Performance ground truth
+uses an independent unsigned angle oracle on exact geometry, not production
+`jointAngles`. Real glove detection, physical
 camera-to-display lag and the target laptop benchmark remain team hardware
 acceptance work. `fixtures/browser-benchmark.json` records the prior automated
 browser measurements and their workload limits.
