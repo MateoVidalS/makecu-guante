@@ -106,6 +106,7 @@ describe('the glove helps only when the patient asks', () => {
     const run = new Run('open', { ...onRequest, attempt_s: 9 });
     run.world.hand = [...CLOSED] as Quint;
     // Asked before the attempt (e.g. during a check-in): the coach queues it.
+    run.engine.therapy.notePatientSpeech('Can the glove help my index?');
     const queued = run.engine.therapy.adjust(
       'assist_finger_now',
       { finger: 'index', reason: 'The patient asked for index help.' },

@@ -102,6 +102,11 @@ const defaults = (): TherapyAdjustments => ({
 });
 
 /** Pure session policy. Only the engine can turn these bounded overrides into commands. */
+/** The patient's own words asking the glove to help ("help", "ayuda", "move my index"). */
+const PATIENT_ASKS_HELP =
+  /\b(help|ayuda|ayudame|ayudar|ayudes|ayudeme|assist|asistime|move my|mueve|move it|mover)\b/;
+const HELP_ASK_WINDOW_MS = 30_000;
+
 export class TherapyController implements TherapyApi {
   private readonly bounds = structuredClone(THERAPY_LIMITS);
   // Return copies: UI/model consumers cannot mutate the safety policy.
@@ -146,6 +151,8 @@ export class TherapyController implements TherapyApi {
     used: Set<string>;
   }[] = [];
   private painReported: number | null = null;
+  /** When the patient last asked for the glove's help in their own words. */
+  private helpAskedAt = -Infinity;
   private resistanceAt = new Map<FingerId, number>();
   constructor(private readonly context: TherapyContext) {}
 
@@ -180,6 +187,7 @@ export class TherapyController implements TherapyApi {
     );
     this.changed.clear();
     this.queued.clear();
+    this.helpAskedAt = -Infinity;
     this.undoStack = [];
     this.log = [];
     this.feelingLog = [];
@@ -266,6 +274,7 @@ export class TherapyController implements TherapyApi {
     // Consent belongs to the latest patient turn; an old yes cannot override a new no.
     this.patientSpeech = [];
     const normalized = normalizeSpeech(text);
+    if (PATIENT_ASKS_HELP.test(normalized)) this.helpAskedAt = t;
     if (
       /^(no\b(?! (problem|pain|discomfort|tingling|fatigue|dolor)\b| me duele\b)|stop|pause|cancel|don t|do not|not now|basta|para)\b|\b(don t want|do not want|no quiero|please stop)\b/.test(
         normalized,
@@ -954,6 +963,16 @@ export class TherapyController implements TherapyApi {
           // request always has a real effect the coach can truthfully describe.
           if (!this.settingsAssist)
             return reject('Assistance is off for this session.');
+          // The glove never moves without the patient asking: the coach can queue help
+          // only right after the patient asked for it in their own words.
+          if (
+            source === 'coach' &&
+            this.context.now() - this.helpAskedAt > HELP_ASK_WINDOW_MS
+          )
+            return reject(
+              'The patient has not asked for help. Offer it and wait for them to ask.',
+            );
+          this.helpAskedAt = -Infinity; // one request queues help once
           if (this.queued.has(finger))
             return reject(
               'Help for this finger is already set for the next attempt.',

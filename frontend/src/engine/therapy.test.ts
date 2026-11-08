@@ -465,6 +465,7 @@ describe('approved therapy tools and gentleness policy', () => {
   it('immediate finger requests obey the stagger and three-motor cap during ATTEMPT', () => {
     const h = harness({ attempt_s: 9, assist_max_s: 6 });
     // Asked before the attempt: set for the next opening attempt, not refused.
+    h.therapy.notePatientSpeech('Help my thumb, please');
     const early = h.call('assist_finger_now', {
       finger: 'thumb',
       reason: 'Help now.',
@@ -1287,11 +1288,23 @@ it('refuses further intensity on closing poses and scales them in their existing
 });
 
 describe('help asked between attempts', () => {
+  it('the coach cannot queue help the patient never asked for', () => {
+    const h = harness({ attempt_s: 9 });
+    h.therapy.notePatientSpeech('My hand feels fine');
+    const d = h.call('assist_finger_now', {
+      finger: 'index',
+      reason: 'Asked?',
+    });
+    expect(d.result).toBe('rejected');
+    expect(h.therapy.queuedHelp()).toEqual([]);
+  });
+
   const startedAt = (h: ReturnType<typeof harness>, i: number) =>
     h.commands().findIndex((c) => c.t === 'target' && c.f[i] > 0);
 
   it('starts on that finger alone about a second into the next opening attempt', () => {
     const h = harness({ attempt_s: 9, assist_max_s: 6 });
+    h.therapy.notePatientSpeech('Help me, please');
     const d = h.call('assist_finger_now', {
       finger: 'index',
       reason: 'Asked.',
@@ -1312,6 +1325,7 @@ describe('help asked between attempts', () => {
 
   it('a second request for the same finger is refused while one is waiting', () => {
     const h = harness({ attempt_s: 9 });
+    h.therapy.notePatientSpeech('Help me, please');
     h.call('assist_finger_now', { finger: 'ring', reason: 'Asked.' });
     expect(
       h.call('assist_finger_now', { finger: 'ring', reason: 'Again.' }).result,
@@ -1321,7 +1335,11 @@ describe('help asked between attempts', () => {
   it('brake and undo cancel waiting help: no motion starts afterwards', () => {
     for (const cancel of ['brake', 'undo'] as const) {
       const h = harness({ attempt_s: 9, assist_max_s: 6 });
-      h.call('assist_finger_now', { finger: 'middle', reason: 'Asked.' });
+      h.therapy.notePatientSpeech('Help me, please');
+      expect(
+        h.call('assist_finger_now', { finger: 'middle', reason: 'Asked.' })
+          .result,
+      ).toBe('applied');
       if (cancel === 'brake') h.therapy.brake('Stop.', 'patient_ui');
       else h.therapy.undo();
       expect(h.therapy.queuedHelp()).toEqual([]);

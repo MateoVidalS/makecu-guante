@@ -40,6 +40,8 @@ export interface VoiceState {
   lastPatientLine: string | null;
   unavailable: boolean;
   transcriptError: boolean;
+  /** Live is on but the microphone is blocked or busy: the coach talks, cannot hear. */
+  micBlocked: boolean;
 }
 export interface VoiceDependencies {
   token(id: number | null): Promise<VoiceToken>;
@@ -75,6 +77,7 @@ export class VoiceController {
     lastPatientLine: null,
     unavailable: false,
     transcriptError: false,
+    micBlocked: false,
   };
   private listeners = new Set<() => void>();
   private active = false;
@@ -234,6 +237,7 @@ export class VoiceController {
     this.update({
       unavailable: false,
       transcriptError: false,
+      micBlocked: false,
       ...(forcedSimple ? { mode: 'live' as const } : {}),
     });
     this.deps.local.unlock();
@@ -298,7 +302,7 @@ export class VoiceController {
         transport.close();
         return;
       }
-      await this.deps.audio.open((data) => {
+      const mic = await this.deps.audio.open((data) => {
         if (
           this.connected &&
           !this.state.muted &&
@@ -314,6 +318,7 @@ export class VoiceController {
       }
       this.connected = true;
       this.reconnecting = false;
+      this.update({ micBlocked: mic === false });
       this.deps.audio.setMuted(this.state.muted);
       this.update({ status: 'listening' });
       const view = this.runtime.exercise.view();
