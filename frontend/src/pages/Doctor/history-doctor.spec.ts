@@ -57,11 +57,11 @@ test('all data views render without console errors across patient sizes and them
   }
   expect(errors).toEqual([]);
 });
-test('history exposes fixture improvement and chart data with demo labels', async ({
+test('history exposes generated improvement and chart data with demo labels', async ({
   page,
 }) => {
   await page.goto('/history');
-  await expect(page.getByText('37% → 65%')).toBeVisible();
+  await expect(page.getByText('19% → 44%')).toBeVisible();
   await expect(page.getByRole('tab')).toHaveCount(2);
   await expect(page.getByRole('button', { name: /Export/ })).toHaveCount(0);
   await page.getByRole('link', { name: 'Doctor view', exact: true }).click();
@@ -71,12 +71,12 @@ test('history exposes fixture improvement and chart data with demo labels', asyn
   const chart = page.getByRole('article', { name: /^Thumb:/ }).first();
   await chart.getByText('Show as table', { exact: true }).click();
   const table = chart.getByRole('table');
-  await expect(table).toContainText('35%');
-  await expect(table).toContainText('63%');
+  await expect(table).toContainText('23%');
+  await expect(table).toContainText('34%');
   await expect(table).toContainText('Demo data');
-  await expect(page.locator('.recharts-line-curve')).toHaveCount(5);
+  await expect(page.locator('.chart-grid .recharts-line-curve')).toHaveCount(5);
 });
-test('profile persists, therapist summary generates, and exports contain demo flags', async ({
+test('profile persists, therapist summary handles missing keys, and exports contain demo flags', async ({
   page,
 }) => {
   await page.goto('/profile');
@@ -93,6 +93,11 @@ test('profile persists, therapist summary generates, and exports contain demo fl
   await expect(
     page.getByRole('button', { name: 'Generate (last 7 days)' }),
   ).toBeEnabled();
+  await expect(
+    page.getByText(
+      'Summary unavailable. Check the Gemini connection and try again.',
+    ),
+  ).toBeVisible();
   for (const format of ['JSON', 'CSV']) {
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: `Export ${format}` }).click();
@@ -110,7 +115,7 @@ test('doctor report exports A4 and Letter with white pages and indivisible chart
   await page.goto('/doctor');
   await expect(page.locator('.report-details')).not.toHaveAttribute('open');
   await page.getByText('Details', { exact: true }).click();
-  await expect(page.locator('.recharts-line-curve')).toHaveCount(5);
+  await expect(page.locator('.chart-grid .recharts-line-curve')).toHaveCount(5);
   await expect(page.locator('.report-glance .viz-card')).toHaveCount(4);
   await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
   await expect(page.locator('.doctor-banner')).toBeHidden();
@@ -125,12 +130,14 @@ test('doctor report exports A4 and Letter with white pages and indivisible chart
   for (const format of ['A4', 'Letter'] as const) {
     const path = info.outputPath(`doctor-${format.toLowerCase()}.pdf`);
     expect(
-      await page.locator('.recharts-surface').evaluateAll((charts) =>
-        charts.every((el) => {
-          const rect = el.getBoundingClientRect();
-          return rect.width > 280 && rect.width < 360 && rect.height > 100;
-        }),
-      ),
+      await page
+        .locator('.chart-grid .recharts-surface')
+        .evaluateAll((charts) =>
+          charts.every((el) => {
+            const rect = el.getBoundingClientRect();
+            return rect.width > 280 && rect.width < 360 && rect.height > 100;
+          }),
+        ),
     ).toBe(true);
     await page.pdf({ path, format, printBackground: true });
     const pdf = await readFile(path);
@@ -168,6 +175,14 @@ test('mixed three/five-finger history keeps missing measurements visible', async
         );
       }
     }
+    for (const session of Object.values(mockState.details) as {
+      id: number;
+      attempts: { fingers: { finger: string }[] }[];
+    }[]) {
+      if (session.id <= 2)
+        for (const a of session.attempts)
+          a.fingers = a.fingers.filter((f) => legacy(f.finger));
+    }
     const attempt = mockState.details[1].attempts[0];
     attempt.fingers = attempt.fingers.filter((f: { finger: string }) =>
       legacy(f.finger),
@@ -182,7 +197,7 @@ test('mixed three/five-finger history keeps missing measurements visible', async
   await expect(
     page.getByRole('img', { name: /Hand map, first session/ }),
   ).toHaveAccessibleName(
-    /Ring Not measured then, 67% now.*Pinky Not measured then, 67% now/,
+    /Ring Not measured then, 36% now.*Pinky Not measured then, 23% now/,
   );
   const screenshot = async (name: string) =>
     page.screenshot({
@@ -198,13 +213,13 @@ test('mixed three/five-finger history keeps missing measurements visible', async
   const ring = page.getByRole('article', { name: /^Ring:/ }).last();
   await ring.getByText('Show as table', { exact: true }).click();
   await expect(ring.getByRole('table')).toContainText('Not measured');
-  await expect(ring.getByRole('table')).toContainText('67%');
+  await expect(ring.getByRole('table')).toContainText('36%');
   await page
     .getByRole('link', { name: 'Exit doctor view', exact: true })
     .click();
   await page.getByRole('link', { name: 'History', exact: true }).click();
   await page.getByRole('tab', { name: 'Sessions', exact: true }).click();
-  await page.getByRole('link', { name: 'Oct 15, 2026', exact: true }).click();
+  await page.locator('a[href="/history/sessions/1"]').click();
   const table = page.getByRole('table', {
     name: 'Per-finger estimates from the camera',
   });
@@ -310,4 +325,63 @@ test('evaluation measures all friction before a selected patient subset and reus
     ),
   ).toBeVisible();
   await expect(measure).toHaveCount(0);
+});
+
+test('U3 overview cards fit their content at both review sizes', async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+    for (const [name, route] of [
+      ['history', '/history'],
+      ['doctor', '/doctor'],
+      ['sessions', '/history?tab=sessions'],
+    ]) {
+      await page.goto(route);
+      await expect(page.getByText('Loading your records…')).toHaveCount(0);
+      await expect(page.getByText('Loading chart…')).toHaveCount(0);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible({
+        timeout: 15_000,
+      });
+      if (name !== 'sessions') {
+        await expect(page.getByText('15% → 22%')).toBeVisible();
+        await expect(page.getByText('19% → 44%')).toBeVisible();
+        const blanks = await page.locator('.chart-card').evaluateAll((cards) =>
+          cards.map((card) => {
+            const bottom = card.getBoundingClientRect().bottom;
+            const contentBottom = Math.max(
+              ...[...card.children].map(
+                (child) => child.getBoundingClientRect().bottom,
+              ),
+            );
+            return bottom - contentBottom;
+          }),
+        );
+        expect(Math.max(...blanks)).toBeLessThanOrEqual(120);
+        const hand = page.locator('.hand-map');
+        expect(
+          await hand.evaluate(
+            (el) =>
+              el.getBoundingClientRect().width /
+              el.parentElement!.getBoundingClientRect().width,
+          ),
+        ).toBeGreaterThan(0.95);
+      }
+      await page.screenshot({
+        path:
+          process.env.REHAB_U3_SCREENSHOTS === '1'
+            ? resolve(
+                '../docs/design/screenshots/ux-u3',
+                `after-${name}-${viewport.width}.png`,
+              )
+            : info.outputPath(`u3-${name}-${viewport.width}.png`),
+        fullPage: true,
+      });
+    }
+  }
 });

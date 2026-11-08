@@ -155,7 +155,7 @@ export function SessionList({ doctor = false }: { doctor?: boolean }) {
 export function EvaluationList() {
   const evaluations = useEvaluations();
   return (
-    <DataSection title="Saved evaluations">
+    <DataSection title="Saved evaluations" className="saved-evaluations">
       <DataStatus loading={evaluations.isPending} error={evaluations.error}>
         {!evaluations.data?.length ? (
           <p className="footnote">No evaluations recorded yet.</p>
