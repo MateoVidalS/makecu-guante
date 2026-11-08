@@ -10,9 +10,7 @@
         {
           "pose": "open",
           "detection": 1,
-          "labels": [
-            "Left"
-          ],
+          "labels": ["Left"],
           "flex": {
             "thumb": 32.129,
             "index": 59.053,
@@ -24,9 +22,7 @@
         {
           "pose": "half",
           "detection": 1,
-          "labels": [
-            "Right"
-          ],
+          "labels": ["Right"],
           "flex": {
             "thumb": 59.62,
             "index": 150.01,
@@ -38,9 +34,7 @@
         {
           "pose": "fist",
           "detection": 1,
-          "labels": [
-            "Right"
-          ],
+          "labels": ["Right"],
           "flex": {
             "thumb": 66.104,
             "index": 211.924,
@@ -67,9 +61,7 @@
         {
           "pose": "open",
           "detection": 1,
-          "labels": [
-            "Right"
-          ],
+          "labels": ["Right"],
           "flex": {
             "thumb": -17.246,
             "index": 63.667,
@@ -81,9 +73,7 @@
         {
           "pose": "half",
           "detection": 1,
-          "labels": [
-            "Left"
-          ],
+          "labels": ["Left"],
           "flex": {
             "thumb": 29.625,
             "index": 157.336,
@@ -95,9 +85,7 @@
         {
           "pose": "fist",
           "detection": 1,
-          "labels": [
-            "Left"
-          ],
+          "labels": ["Left"],
           "flex": {
             "thumb": -62.332,
             "index": 240.087,
@@ -124,9 +112,7 @@
         {
           "pose": "open",
           "detection": 0.5,
-          "labels": [
-            "Right"
-          ],
+          "labels": ["Right"],
           "flex": {
             "thumb": -2.691,
             "index": 9.553,
@@ -138,9 +124,7 @@
         {
           "pose": "half",
           "detection": 1,
-          "labels": [
-            "Right"
-          ],
+          "labels": ["Right"],
           "flex": {
             "thumb": 36.313,
             "index": 76.903,
@@ -152,9 +136,7 @@
         {
           "pose": "fist",
           "detection": 1,
-          "labels": [
-            "Right"
-          ],
+          "labels": ["Right"],
           "flex": {
             "thumb": 33.473,
             "index": 13.344,
@@ -181,9 +163,7 @@
         {
           "pose": "open",
           "detection": 1,
-          "labels": [
-            "Right"
-          ],
+          "labels": ["Right"],
           "flex": {
             "thumb": 35.073,
             "index": -30.3,
@@ -195,9 +175,7 @@
         {
           "pose": "half",
           "detection": 0.75,
-          "labels": [
-            "Left"
-          ],
+          "labels": ["Left"],
           "flex": {
             "thumb": 47.082,
             "index": 102.609,
@@ -209,9 +187,7 @@
         {
           "pose": "fist",
           "detection": 1,
-          "labels": [
-            "Left"
-          ],
+          "labels": ["Left"],
           "flex": {
             "thumb": 54.536,
             "index": 175.705,
