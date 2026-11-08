@@ -9,7 +9,11 @@ export default defineConfig({
   fullyParallel: true,
   // Leave CPU headroom for concurrent 3D scenes and wall-time recovery checks.
   workers: Number(process.env.REHAB_E2E_WORKERS ?? 3),
-  use: { baseURL, trace: 'retain-on-failure', actionTimeout: 10_000 },
+  use: {
+    baseURL,
+    trace: 'retain-on-failure',
+    actionTimeout: Number(process.env.REHAB_TEST_TIMEOUT_MS ?? 10_000),
+  },
   projects: [
     {
       name: 'chromium',

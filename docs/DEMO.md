@@ -179,6 +179,8 @@ On a shared host running several coding agents, use
 For unit tests, `REHAB_TEST_TIMEOUT_MS=30000 VITEST_MAX_FORKS=1 VITEST_MIN_FORKS=1 make test`
 extends runner and asynchronous UI-loading waits. It does not change performance
 assertions or application safety timing.
+The same `REHAB_TEST_TIMEOUT_MS=30000` setting extends Playwright action waits
+when paired with `REHAB_E2E_WORKERS=1 make e2e`.
 
 Browser checks use an isolated temporary database, fake media, and an accelerated
 simulator; they do not prove physical timing or comfort. The hardware team records
