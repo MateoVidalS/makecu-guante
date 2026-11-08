@@ -160,11 +160,13 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 
 ### Puesta en la mesa
 
-- **Palma hacia abajo**, con el frente del módulo en el borde de la mesa: la mano queda afuera y los dedos se cierran en el aire.
-- **Antebrazo sobre una toalla doblada** (~4 cm), desde el codo hasta justo antes del módulo.
-- **Webcam** adelante y del lado del pulgar (rincón de la mesa), a 30–40 cm de los dedos y más alta que la mano, en diagonal: ve los dedos de costado sin que se tapen. Logitech del desk de MLH en un trípode chico.
-- **Laptop** adelante del paciente, del lado del pulgar, con la pantalla hacia él.
-- **Guante claro y fino:** MediaPipe se entrena con manos sin guante; un guante oscuro puede hacer que no detecte los dedos. Probarlo el primer día.
+- **Laptop delante del paciente; cámara = webcam frontal de la laptop.** Levantar la mano afectada junto a la cara, vertical, con la **palma hacia la pantalla**, como al saludar en una videollamada. Abrir y cerrar los dedos hacia la cámara.
+- **Codo apoyado en la mesa**, con una toalla o almohadilla cómoda; antebrazo vertical. Mantener la muñeca, la mano completa y las cinco puntas dentro del encuadre, a unos **40–60 cm de la laptop**. Ajustar la pantalla para encuadrar sin levantar el codo.
+- **Luz difusa de frente o de costado, sin ventana detrás del paciente.** Comprobar en la vista de cámara que la palma y los dedos se vean iluminados, sin contraluz.
+- **Guante claro y fino, hilo fino y claro:** la cámara ahora ve la palma con hilos, guías y anclajes. El primer día, comprobar la detección en Setup durante cinco segundos al abrir y cerrar con el guante real y la luz del lugar; registrar el porcentaje y las oclusiones. Si falla, ajustar luz/encuadre y pedir revisión al equipo antes de usarlo.
+- **Calibración nueva en esta postura:** no reutilizar las capturas con la palma hacia abajo y cámara diagonal. Hacer series cortas, descansar y pausar si sostener la mano levantada cansa.
+
+**Pregunta pendiente para el equipo de hardware — resolver antes de usar el guante en una persona:** el módulo de muñeca se diseñó para descansar en la mesa con la palma hacia abajo. Con la mano vertical queda colgado del antebrazo. Las dos correas lo sostienen sin deslizarse ni apretar, su peso resulta cómodo y el ángulo de salida de los hilos permite cerrar y aflojar sin roces ni tirones? Comprobar también cómo cambia la acción de los elásticos y la tracción de los servos con la gravedad. Registrar la decisión y la evidencia en [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), primero en un soporte vacío; no asumir que el montaje anterior ya está validado.
 
 ### Piezas impresas
 

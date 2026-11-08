@@ -21,6 +21,7 @@ check blocks use with a person. Do not treat passing host tests as board evidenc
 | BENCH steps 1–7 results and raw captures | Pending — blocks hand mounting |
 | BENCH steps 8–13 results and limitations | Pending |
 | STOP / release / watchdog evidence | Pending |
+| Upright wrist-module decision: strap fit / weight / thread exit / gravity | Pending — blocks hand mounting |
 | Decision: fixture only or helper-hand calibration | Pending |
 
 - [ ] Servo power off: check common ground; INA219 in the positive servo rail;
@@ -29,6 +30,14 @@ check blocks use with a person. Do not treat passing host tests as board evidenc
   capacitor across the servo 5 V/GND rail near the connectors.
 - [ ] Inspect tendons, anchors, guides, spools, strain relief and quick removal.
   No sharp edges, loose connections, crossed threads or trapped fingers.
+- [ ] **Open hardware question — team decision required:** the wrist module was
+  designed to rest on the table with the palm down. With the hand upright it hangs
+  from the forearm. Do both straps prevent slipping without tightening excessively?
+  Is the hanging weight comfortable, and does the vertical wrist preserve a clear
+  thread exit angle without rubbing, snagging or unwanted tension? Check how
+  gravity changes elastic return and servo pull. Verify on an empty fixture first;
+  record the team's decision and evidence above before any hand mounting. The old
+  table-supported mounting does not establish this.
 - [ ] Verify the physical STOP is reachable with the free hand and by the helper;
   the power switch must also be reachable. A browser button is an extra layer.
 - [ ] On the fixture, verify no boot twitch, bounded jogging, calibrated ranges,
@@ -63,19 +72,28 @@ not the mechanical limits of this mounting.
 - [ ] Calibrate → **Glove range**. Keep the hand relaxed, use small jog increments,
   capture comfortable open and closed positions for all five actuated fingers. Do not
   chase full closure or copy example degrees. Release before saving each range.
-- [ ] **Posture**: palm down, wrist module at the table edge, fingers free in
-  the air; forearm supported on a folded towel. Mirror the module for a left hand.
-- [ ] **Camera placement**: 30–40 cm from the fingertips, in front on the thumb
-  side, higher than the hand and diagonal. Keep all five fingertips visible.
-- [ ] **Glove detection check**: with the actual light, thin glove and posture,
-  observe Setup’s detected fraction over five seconds while opening and closing.
-  Record the percentage, lighting and occlusions. Low detection blocks the demo;
-  adjust camera/light or have the team assess exposed fingertips/bare-hand vision.
-  Repeat for the configured affected hand; software uses that choice, not a
-  reliable anatomical inference from a diagonal webcam image.
+- [ ] **Posture**: sit facing the laptop, raise the affected hand upright beside
+  the face, palm toward the screen, and open/close toward the camera. Keep the
+  forearm vertical and the elbow supported on the table with comfortable padding;
+  do not hold the arm unsupported. Confirm the upright module decision above.
+- [ ] **Camera placement**: select the laptop's front webcam. Start with the hand
+  about 40–60 cm from the laptop; adjust the screen to keep the wrist, whole hand
+  and all five fingertips in frame without lifting the elbow.
+- [ ] **Backlight check**: no window or bright light behind the person. Use
+  diffuse light from in front or the side; check the preview for a clearly lit
+  palm and fingers before capturing calibration.
+- [ ] **Day-1 glove detection check**: with the actual light, thin light glove,
+  thin light threads and upright posture, observe Setup’s detected fraction over
+  five seconds while opening and closing. The camera now sees palm-side threads,
+  guides and anchors; record the percentage, lighting and any joint occlusions.
+  Low detection blocks the physical-camera demo; adjust light/framing or have the
+  team assess exposed fingertips/bare-hand vision. Repeat for the configured
+  affected hand; that setting remains authoritative, with selfie handedness as a
+  cross-check. Repeat the check at the event if conditions change.
 - [ ] **Camera range**. Confirm affected hand, lighting, full-hand visibility and
   fingertip clearance; capture open, relaxed glove-closed, and pinch references.
-  Repeat a capture if movement/tracking makes it unreliable.
+  Capture in the upright posture; old palm-down/diagonal camera calibration must
+  be replaced. Repeat a capture if movement/tracking makes it unreliable.
 - [ ] **Review** every servo range and camera capture, then save calibration.
   The wizard has three steps: Glove range → Camera range → Review.
   Empty-glove friction belongs to Evaluate preflight, off the hand. If it cannot
@@ -94,6 +112,9 @@ not the mechanical limits of this mounting.
   optional Gemini access, and both simulator fallbacks rehearsed.
 - [ ] Start with one comfortable pose and one repetition. Check open/release,
   visual target, camera tracking, assistance labels and voice/captions.
+- [ ] Keep the elbow supported throughout. Ask about fatigue from holding the
+  hand up; use short sets and rests, and pause/release if the posture tires the
+  person. Recheck framing after a rest before continuing.
 - [ ] End session and verify release before removal. Do not cause faults on a
   hand to prove safety. Use SimWorld Rigid index for the key demo moment.
 - [ ] Rehearse **Demo tools → Use simulated glove / camera** and **Use simple
@@ -108,6 +129,7 @@ not the mechanical limits of this mounting.
 | --- | --- |
 | Calibration ID / mounting reference | Pending |
 | Five channel mapping / fifth PWM output | Pending |
+| Upright module fit / elbow support / backlight check | Pending |
 | Glove detection fraction / posture / camera evidence | Pending |
 | Slow/fast empty-glove friction timestamp / completeness | Pending |
 | Helper / observer | Pending |
