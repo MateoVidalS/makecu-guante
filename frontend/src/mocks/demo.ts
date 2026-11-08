@@ -40,11 +40,26 @@ export function demoOnDate(endDate = new Date().toISOString()): DemoStory {
     (Math.floor(Date.parse(endDate) / day) -
       Math.floor(Date.parse(referenceDemo.endDate) / day)) *
     day;
-  return JSON.parse(JSON.stringify(referenceDemo.story), (_key, value) =>
-    typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)
-      ? new Date(Date.parse(value) + shift).toISOString()
-      : value,
-  );
+  const story = structuredClone(referenceDemo.story);
+  const shifted = (iso: string) =>
+    new Date(Date.parse(iso) + shift).toISOString();
+  // Traces use relative seconds. Only these record timestamps need to move.
+  story.calibration.created_at = shifted(story.calibration.created_at);
+  for (const session of story.sessions) {
+    session.started_at = shifted(session.started_at);
+    session.ended_at = shifted(session.ended_at);
+    for (const attempt of session.attempts) {
+      attempt.started_at = shifted(attempt.started_at);
+      attempt.ended_at = shifted(attempt.ended_at);
+    }
+    for (const decision of session.decisions) decision.t = shifted(decision.t);
+    for (const feeling of session.feelings) feeling.t = shifted(feeling.t);
+  }
+  for (const evaluation of story.evaluations) {
+    evaluation.started_at = shifted(evaluation.started_at);
+    evaluation.ended_at = shifted(evaluation.ended_at);
+  }
+  return story;
 }
 
 /** Adapt generated records to the REST shapes, just as seed_demo.py does on insertion. */
