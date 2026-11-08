@@ -120,3 +120,14 @@ plus the U2 state comparisons in color and grayscale. Framing tests cover both
 views and hands, both pose families, ghost outlines and coach contours across
 wide, square and portrait canvases. The family envelope remains steady while
 closing the hand; fitting never pumps with individual vision frames.
+
+For full-app regression checks on macOS, use the same Metal renderer as the hand
+gallery, with one Playwright worker:
+
+```sh
+REHAB_FRONTEND_PORT=5194 REHAB_PORT=8014 pnpm exec playwright test --config src/pages/DevHand/app.playwright.config.ts
+```
+
+This imports the app's existing E2E configuration and tests. Run it after Vitest
+has finished to isolate the Vite server's dependency optimization. It changes no
+test assertions or time limits.
