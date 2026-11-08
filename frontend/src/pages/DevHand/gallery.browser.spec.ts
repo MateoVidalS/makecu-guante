@@ -1,7 +1,58 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-const evidence = fileURLToPath(new URL('./evidence/', import.meta.url));
+const evidence = fileURLToPath(
+  new URL('../../../../docs/design/screenshots/ux-u2/', import.meta.url),
+);
+
+test('compares every pose in all four states, in color and grayscale', async ({
+  page,
+}) => {
+  await mkdir(evidence, { recursive: true });
+  await page.goto('/_dev/hand');
+  await page
+    .getByRole('checkbox', { name: 'Compare states', exact: true })
+    .check();
+  await page
+    .getByRole('checkbox', { name: 'Reduced motion', exact: true })
+    .check();
+  for (const [width, height] of [
+    [1280, 720],
+    [1440, 900],
+  ]) {
+    await page.setViewportSize({ width, height });
+    for (const [id, name] of [
+      ['open', 'Open hand'],
+      ['hook', 'Hook'],
+      ['tabletop', 'Tabletop'],
+      ['straight_fist', 'Straight fist'],
+      ['full_fist', 'Full fist'],
+      ['pinch', 'Pinch'],
+    ]) {
+      await page.getByRole('button', { name, exact: true }).click();
+      const comparison = page.getByRole('group', {
+        name: `${name} state comparison`,
+        exact: true,
+      });
+      await expect(comparison.getByRole('img')).toHaveCount(4);
+      await comparison.scrollIntoViewIfNeeded();
+      for (const grayscale of [false, true]) {
+        await page
+          .getByRole('checkbox', { name: 'Grayscale', exact: true })
+          .setChecked(grayscale);
+        await expect(page.locator('.hand-gallery')).toHaveAttribute(
+          'data-grayscale',
+          String(grayscale),
+        );
+        await comparison.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(150);
+        await page.screenshot({
+          path: `${evidence}states-${id}-${grayscale ? 'grayscale' : 'color'}-${width}.png`,
+        });
+      }
+    }
+  }
+});
 
 test('renders all poses, grayscale overlay, mirroring, loss of tracking and dark mode', async ({
   page,

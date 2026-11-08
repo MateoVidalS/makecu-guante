@@ -41,6 +41,8 @@ export function createHandAnimator(
       hasTarget: boolean,
       reducedMotion: boolean,
       delta: number,
+      keepTargetOnReach = false,
+      highlight: FingerId | null = null,
     ) {
       const visible = sample !== null;
       animator.visibilityChanged = visible !== animator.visible;
@@ -56,14 +58,21 @@ export function createHandAnimator(
       scene.palm.opacity = reducedMotion
         ? opacity
         : scene.palm.opacity + (opacity - scene.palm.opacity) * blend;
-      scene.palm.transparent = scene.palm.opacity < 0.999;
+      // Keep one transparent render pass, even at full opacity, so the actual
+      // hand draws after the ghost and retains its clay/state color.
+      scene.palm.transparent = true;
+      scene.focusMaterial.opacity = scene.palm.opacity;
       let reached = false;
       let pending = false;
       for (let i = 0; i < FINGERS.length; i++) {
         const status = state(FINGERS[i]);
         const material = scene.fingers[i];
+        const highlighted = highlight === FINGERS[i];
+        for (let segment = 0; segment < 3; segment++)
+          scene.focusMeshes[i][segment].visible = highlighted;
         material.color.copy(colors.idle);
-        if (status !== 'idle') material.color.lerp(colors[status], STATE_TINT);
+        if (status !== 'idle')
+          material.color.lerp(colors[status], highlighted ? 1 : STATE_TINT);
         material.opacity = scene.palm.opacity;
         material.transparent = scene.palm.transparent;
         if (status === 'reached') reached = true;
@@ -82,7 +91,7 @@ export function createHandAnimator(
       // Reached means HOLD: brighten once, then show the patient alone.
       scene.ghost.opacity = !hasTarget
         ? 0
-        : reached && visible
+        : reached && visible && !keepTargetOnReach
           ? reducedMotion
             ? 0
             : GHOST_OPACITY * 1.5 * (1 - progress)

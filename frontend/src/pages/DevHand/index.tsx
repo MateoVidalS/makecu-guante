@@ -1,9 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { POSES, type PoseId } from '../../contracts/poses';
 import type { FingerId, Handedness } from '../../contracts/vision';
 import { VirtualHand, type JointMap } from '../../hand3d';
 import { FINGERS, JOINTS, jointsFromClosure } from '../../hand3d/rig';
 import type { FingerState } from '../../hand3d/scene';
+import {
+  Button,
+  Card,
+  Checkbox,
+  Heading,
+  Inline,
+  PageHeader,
+  Pill,
+  Select,
+  Slider,
+  Stack,
+  Text,
+} from '../../design-system';
 import './gallery.css';
 
 const zero = () =>
@@ -24,6 +37,13 @@ const labels: Record<FingerState, string> = {
 
 export default function DevHand() {
   const [pose, setPose] = useState<PoseId>('open');
+  const comparisonJoints = useMemo(() => {
+    const sample = zero();
+    for (const finger of FINGERS)
+      for (const joint of JOINTS)
+        sample[finger][joint] = POSES[pose].render[finger][joint] * 0.65;
+    return sample;
+  }, [pose]);
   const [handedness, setHandedness] = useState<Handedness>('right');
   const [joints, setJoints] = useState<JointMap>(zero);
   const [states, setStates] = useState<Record<FingerId, FingerState>>({
@@ -38,6 +58,8 @@ export default function DevHand() {
   const [reducedMotion, setReducedMotion] = useState(false);
   const [stub, setStub] = useState(false);
   const [fps, setFps] = useState(0);
+  const [grayscale, setGrayscale] = useState(false);
+  const [compare, setCompare] = useState(false);
   const [camera, setCamera] = useState(false);
   const [cameraPending, setCameraPending] = useState(false);
   const pendingCapture = useRef(false);
@@ -137,22 +159,61 @@ export default function DevHand() {
     }));
   }
   return (
-    <section className="hand-gallery">
-      <h1>Virtual hand gallery</h1>
-      <p>Ghost outline is the target. The solid hand is you.</p>
+    <section className="hand-gallery" data-grayscale={grayscale}>
+      <PageHeader
+        title="Virtual hand gallery"
+        lead="Ghost outline is the target. The solid hand is you."
+      />
+      <Inline gap={16}>
+        <Checkbox
+          label="Grayscale"
+          checked={grayscale}
+          onChange={(event) => setGrayscale(event.target.checked)}
+        />
+        <Checkbox
+          label="Compare states"
+          checked={compare}
+          onChange={(event) => setCompare(event.target.checked)}
+        />
+      </Inline>
       <div className="hand-pose-picker" role="group" aria-label="Target pose">
         {Object.values(POSES).map((p) => (
-          <button
+          <Pill
             key={p.id}
-            aria-pressed={pose === p.id}
+            selected={pose === p.id}
             onClick={() => setPose(p.id)}
           >
             {p.name}
-          </button>
+          </Pill>
         ))}
       </div>
-      <h2>{POSES[pose].name}</h2>
-      <p>{POSES[pose].instruction}</p>
+      <Stack gap={8}>
+        <Heading level={2}>{POSES[pose].name}</Heading>
+        <Text>{POSES[pose].instruction}</Text>
+      </Stack>
+      {compare && (
+        <div
+          className="hand-state-comparison"
+          role="group"
+          aria-label={`${POSES[pose].name} state comparison`}
+        >
+          {(Object.keys(labels) as FingerState[]).map((status) => (
+            <Card key={status} title={labels[status]}>
+              <VirtualHand
+                target={POSES[pose].render}
+                actual={() =>
+                  status === 'reached' ? POSES[pose].render : comparisonJoints
+                }
+                state={() => status}
+                pose={pose}
+                handedness={handedness}
+                reducedMotion={reducedMotion}
+                keepTargetOnReach
+              />
+            </Card>
+          ))}
+        </div>
+      )}
       <VirtualHand
         target={targetVisible ? POSES[pose].render : null}
         actual={() => (visible ? frame.current : null)}
@@ -175,83 +236,65 @@ export default function DevHand() {
         </span>
       </p>
       <div className="hand-gallery-options">
-        <label>
-          Affected hand{' '}
-          <select
-            aria-label="Affected hand"
-            value={handedness}
-            onChange={(event) =>
-              setHandedness(event.target.value as Handedness)
-            }
-          >
-            <option value="right">Right</option>
-            <option value="left">Left</option>
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={visible}
-            onChange={(event) => setVisible(event.target.checked)}
-          />
-          Hand visible
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={targetVisible}
-            onChange={(event) => setTargetVisible(event.target.checked)}
-          />
-          Show target
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={reducedMotion}
-            onChange={(event) => setReducedMotion(event.target.checked)}
-          />
-          Reduced motion
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={stub}
-            onChange={(event) => setStub(event.target.checked)}
-          />
-          30 Hz stub vision
-        </label>
-        <label>
-          Theme{' '}
-          <select
-            aria-label="Theme"
-            defaultValue="system"
-            onChange={(event) => {
-              if (event.target.value === 'system')
-                delete document.documentElement.dataset.theme;
-              else document.documentElement.dataset.theme = event.target.value;
-            }}
-          >
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
-        <button
+        <Select
+          label="Affected hand"
+          aria-label="Affected hand"
+          value={handedness}
+          onChange={(event) => setHandedness(event.target.value as Handedness)}
+        >
+          <option value="right">Right</option>
+          <option value="left">Left</option>
+        </Select>
+        <Checkbox
+          label="Hand visible"
+          checked={visible}
+          onChange={(event) => setVisible(event.target.checked)}
+        />
+        <Checkbox
+          label="Show target"
+          checked={targetVisible}
+          onChange={(event) => setTargetVisible(event.target.checked)}
+        />
+        <Checkbox
+          label="Reduced motion"
+          checked={reducedMotion}
+          onChange={(event) => setReducedMotion(event.target.checked)}
+        />
+        <Checkbox
+          label="30 Hz stub vision"
+          checked={stub}
+          onChange={(event) => setStub(event.target.checked)}
+        />
+        <Select
+          label="Theme"
+          aria-label="Theme"
+          defaultValue="system"
+          onChange={(event) => {
+            if (event.target.value === 'system')
+              delete document.documentElement.dataset.theme;
+            else document.documentElement.dataset.theme = event.target.value;
+          }}
+        >
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </Select>
+        <Button
           onClick={() => {
             setStub(false);
             setJoints(POSES[pose].render);
           }}
         >
           Match target
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={() => {
             setStub(false);
             setJoints(zero());
           }}
         >
           Open actual hand
-        </button>
+        </Button>
       </div>
       <div className="hand-joint-grid">
         {FINGERS.map((finger) => (
@@ -260,57 +303,53 @@ export default function DevHand() {
             {JOINTS.filter(
               (joint) => finger !== 'thumb' || joint !== 'dip',
             ).map((joint) => (
-              <label key={joint}>
-                {finger === 'thumb' && joint === 'pip'
-                  ? 'IP'
-                  : joint.toUpperCase()}{' '}
-                <output>{joints[finger][joint]}°</output>
-                <input
-                  type="range"
-                  min={0}
-                  max={joint === 'mcp' ? 100 : 120}
-                  step={1}
-                  value={joints[finger][joint]}
-                  disabled={stub}
-                  aria-label={`${names[finger]} ${finger === 'thumb' && joint === 'pip' ? 'IP' : joint.toUpperCase()}`}
-                  onChange={(event) =>
-                    updateJoint(finger, joint, Number(event.target.value))
-                  }
-                />
-              </label>
-            ))}
-            <label>
-              State{' '}
-              <select
-                aria-label={`${names[finger]} state`}
-                value={states[finger]}
-                onChange={(event) =>
-                  setStates((current) => ({
-                    ...current,
-                    [finger]: event.target.value as FingerState,
-                  }))
+              <Slider
+                key={joint}
+                label={
+                  finger === 'thumb' && joint === 'pip'
+                    ? 'IP'
+                    : joint.toUpperCase()
                 }
-              >
-                {Object.entries(labels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                min={0}
+                max={joint === 'mcp' ? 100 : 120}
+                step={1}
+                value={joints[finger][joint]}
+                disabled={stub}
+                format={(value) => `${value}°`}
+                aria-label={`${names[finger]} ${finger === 'thumb' && joint === 'pip' ? 'IP' : joint.toUpperCase()}`}
+                onValueChange={(value) => updateJoint(finger, joint, value)}
+              />
+            ))}
+            <Select
+              label="State"
+              aria-label={`${names[finger]} state`}
+              value={states[finger]}
+              onChange={(event) =>
+                setStates((current) => ({
+                  ...current,
+                  [finger]: event.target.value as FingerState,
+                }))
+              }
+            >
+              {Object.entries(labels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
           </fieldset>
         ))}
       </div>
       <details className="card">
         <summary>Camera and performance check</summary>
         <p>Run the camera with 30 Hz stub vision. Aim for 55 fps.</p>
-        <button disabled={cameraPending} onClick={() => void toggleCamera()}>
+        <Button disabled={cameraPending} onClick={() => void toggleCamera()}>
           {cameraPending
             ? 'Starting camera…'
             : camera
               ? 'Stop camera'
               : 'Start camera'}
-        </button>
+        </Button>
         <p role="status">{cameraMessage}</p>
         <video
           ref={video}

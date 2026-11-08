@@ -64,3 +64,15 @@
   border-radius: var(--radius-input);
   margin-block: var(--space-16);
 }
+.hand-gallery[data-grayscale='true'] .hand-view {
+  filter: grayscale(1);
+}
+.hand-state-comparison {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-12);
+  margin-block: var(--space-24);
+}
+.hand-state-comparison .hand-view {
+  height: var(--placeholder-height);
+}
