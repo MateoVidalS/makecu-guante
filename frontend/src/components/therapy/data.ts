@@ -15,13 +15,17 @@ export const adjustmentTools = new Set([
   'choose_next_pose',
   'adjust_target',
   'repeat_pose',
+  'intensify',
 ]);
 
 export function canUndo(decisions: CoachDecision[]) {
   let pending = 0;
   for (const decision of decisions) {
     if (decision.result === 'rejected') continue;
-    if (decision.tool === 'undo_last_adjustment')
+    if (
+      decision.tool === 'undo_last_adjustment' ||
+      (decision.tool === 'intensify' && decision.result === 'undone')
+    )
       pending = Math.max(0, pending - 1);
     else if (adjustmentTools.has(decision.tool) && decision.result !== 'undone')
       pending++;
@@ -35,6 +39,11 @@ export function decisionLabel(decision: CoachDecision) {
   switch (decision.tool) {
     case 'adjust_help':
       return `${args.direction === 'more' ? 'Help starts sooner' : args.direction === 'less' ? 'Help starts later' : args.direction === 'gentler' ? 'Gentler help' : 'Help adjusted'}${finger}`;
+    case 'intensify':
+      if (decision.result === 'undone')
+        return `${decision.source === 'local_rule' ? 'Gentle help restored automatically' : 'Gentle help restored'}${finger}`;
+      if (decision.result === 'rejected') return `Intensity request${finger}`;
+      return `${args.kind === 'further' ? 'Further reach requested' : args.kind === 'hold_longer' ? 'Longer hold requested' : args.kind === 'faster' ? 'Faster help requested' : 'Intensity requested'}${finger}`;
     case 'assist_finger_now':
       return `Immediate help${finger}`;
     case 'adjust_target':

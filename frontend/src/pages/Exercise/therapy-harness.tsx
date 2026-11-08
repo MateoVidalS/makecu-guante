@@ -37,6 +37,43 @@ createRoot(document.getElementById('root')!).render(
     >
       Test finger highlight
     </Button>
+    <Button
+      size="lg"
+      onClick={() => {
+        therapy.live!.adjustments.intensified = [
+          'thumb',
+          'index',
+          'middle',
+          'ring',
+          'pinky',
+        ];
+        therapy.emit('intensify', {
+          finger: 'index',
+          kind: 'faster',
+          consent: 'patient_asked',
+          patient_quote: 'Yes, a little faster.',
+        });
+      }}
+    >
+      Test intensity
+    </Button>
+    <Button
+      size="lg"
+      onClick={() => {
+        therapy.live!.adjustments.intensified = [];
+        therapy.emit(
+          'intensify',
+          {
+            finger: 'index',
+            reason: 'Pain reported. Returning to gentle help.',
+          },
+          'undone',
+          'local_rule',
+        );
+      }}
+    >
+      Test restoration
+    </Button>
     <CoachDecisions therapy={therapy} onBrake={brake} sessionId={1} />
   </main>,
 );

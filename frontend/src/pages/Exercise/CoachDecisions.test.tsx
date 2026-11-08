@@ -118,6 +118,39 @@ describe('patient therapy controls', () => {
     ).toBeEnabled();
     expect(therapy.brakes).toBe(0);
   });
+  it('keeps intensified fingers and automatic restoration visible in the decision line', () => {
+    const { therapy } = mount();
+    act(() => {
+      therapy.live!.adjustments.intensified = ['index'];
+      therapy.emit('intensify', {
+        finger: 'index',
+        kind: 'faster',
+        consent: 'accepted_offer',
+        patient_quote: 'Yes, please.',
+      });
+    });
+    expect(
+      screen.getByText('Coach decisions · Intensity: Index'),
+    ).toBeVisible();
+    expect(screen.getByText(/Faster help requested · index/)).toBeVisible();
+    act(() => {
+      therapy.live!.adjustments.intensified = [];
+      therapy.emit(
+        'intensify',
+        { finger: 'index', reason: 'Pain reported. Returning to gentle help.' },
+        'undone',
+        'local_rule',
+      );
+    });
+    expect(
+      screen.getByText('Coach decisions · Gentle again: Index (automatic)'),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/Gentle help restored automatically · index/),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
+    expect(therapy.patientSpeech).toHaveLength(0);
+  });
   it('does not invent feelings when cancelled or when the runtime is unavailable', () => {
     const { therapy, rerender } = mount();
     fireEvent.click(screen.getByRole('button', { name: 'How I feel' }));

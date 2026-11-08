@@ -135,6 +135,35 @@ describe('therapy audit timeline', () => {
       ),
     ).toBeVisible();
   });
+  it('keeps the patient quote and automatic intensity restoration in the audit', () => {
+    const therapy = new FakeTherapy();
+    therapy.emit('intensify', {
+      finger: 'index',
+      kind: 'further',
+      consent: 'patient_asked',
+      patient_quote: 'A little further, please.',
+    });
+    expect(canUndo(therapy.decisions())).toBe(true);
+    therapy.emit(
+      'intensify',
+      { finger: 'index', reason: 'Resistance.' },
+      'undone',
+      'local_rule',
+    );
+    expect(canUndo(therapy.decisions())).toBe(false);
+    render(
+      <CoachTimeline
+        startedAt="2026-11-07T12:00:00Z"
+        decisions={therapy.decisions()}
+      />,
+    );
+    expect(
+      screen.getByText('Patient said: “A little further, please.”'),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Gentle help restored automatically · index'),
+    ).toBeVisible();
+  });
   it('shows a clear empty state for older sessions', () => {
     render(<CoachTimeline startedAt="2026-11-07T12:00:00Z" />);
     expect(

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { TherapyApi } from '../../contracts/therapist';
 import { Button, Dialog } from '../../design-system';
 import { canUndo, decisionLabel } from '../../components/therapy/data';
+import { useIntensity } from '../../components/therapy/useIntensity';
 import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
 import { CoachTimeline } from '../../components/therapy/CoachTimeline';
 
@@ -22,6 +23,11 @@ export function CoachDecisions({
   const [message, setMessage] = useState('');
   const [feelingError, setFeelingError] = useState('');
   const highlighted = useHighlightedFinger(therapy);
+  const intensity = useIntensity(therapy, sessionId);
+  const names = (fingers: string[]) =>
+    fingers
+      .map((finger) => finger.charAt(0).toUpperCase() + finger.slice(1))
+      .join(', ');
   useEffect(() => {
     const refresh = () => {
       setMessage('');
@@ -73,6 +79,12 @@ export function CoachDecisions({
             Coach decisions
             {highlighted
               ? ` · Focus: ${highlighted.charAt(0).toUpperCase()}${highlighted.slice(1)}`
+              : ''}
+            {intensity.active.length
+              ? ` · Intensity: ${names(intensity.active)}`
+              : ''}
+            {intensity.restored.length
+              ? ` · Gentle again: ${names(intensity.restored)}${intensity.automatic ? ' (automatic)' : ''}`
               : ''}
           </strong>
           <p>

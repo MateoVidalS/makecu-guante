@@ -83,6 +83,15 @@ export function CoachTimeline({
                       )}
                     </p>
                   )}
+                {decision.tool === 'intensify' &&
+                  typeof decision.requested.patient_quote === 'string' && (
+                    <p>
+                      {decision.result === 'rejected'
+                        ? 'Requested quote'
+                        : 'Patient said'}
+                      : “{decision.requested.patient_quote}”
+                    </p>
+                  )}
                 <DecisionDetail decision={decision} />
               </>
             ) : (

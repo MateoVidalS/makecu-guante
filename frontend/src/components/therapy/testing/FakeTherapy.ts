@@ -28,6 +28,8 @@ export function fakeLiveState(): LiveTherapyState {
       assist_delay_s: perFinger(6),
       target_scale: perFinger(1),
       extra_reps: 0,
+      hold_extra_s: 0,
+      intensified: [],
       attempt_s: 6,
       extra_rest_s: 0,
       next_pose: null,
@@ -49,6 +51,10 @@ export class FakeTherapy implements TherapyApi {
   undos = 0;
   live: LiveTherapyState | null = fakeLiveState();
   state = () => this.live;
+  patientSpeech: { text: string; t?: number }[] = [];
+  notePatientSpeech = (text: string, t?: number) => {
+    this.patientSpeech.push({ text, t });
+  };
   decisions = () => this.log;
   feelings = () => this.entries;
   onDecision = (cb: (d: CoachDecision) => void) => {

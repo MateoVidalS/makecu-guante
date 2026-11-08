@@ -186,6 +186,34 @@ for (const theme of ['light', 'dark']) {
       0,
       { timeout: 6000 },
     );
+    await page
+      .getByRole('button', { name: 'Test intensity', exact: true })
+      .click();
+    await expect(
+      page.getByText(
+        'Coach decisions · Intensity: Thumb, Index, Middle, Ring, Pinky',
+      ),
+    ).toBeVisible();
+    expect(
+      (await page
+        .getByRole('region', { name: 'Coach decisions' })
+        .boundingBox())!.height,
+    ).toBeLessThanOrEqual(96);
+    await page
+      .getByRole('button', { name: 'Test restoration', exact: true })
+      .click();
+    await expect(
+      page.getByText(
+        'Coach decisions · Gentle again: Thumb, Index, Middle, Ring, Pinky (automatic)',
+      ),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+    const quote = page
+      .getByRole('dialog')
+      .getByText('Patient said: “Yes, a little faster.”');
+    await quote.scrollIntoViewIfNeeded();
+    await expect(quote).toBeVisible();
+    await page.keyboard.press('Escape');
     expect(errors).toEqual([]);
   });
 }
