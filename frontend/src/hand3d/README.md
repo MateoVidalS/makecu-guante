@@ -15,11 +15,13 @@ or unreliable. Do not put vision frames in React state for this component.
 ```
 
 `handedness` defaults to `right`. `pose` is optional: the six library targets are
-recognized from their angles for the accessible name. The camera shows the back
-of the palm-down hand from a front diagonal on the thumb side, mirrored for
-the left hand (`view.ts`).
+recognized from their angles for the accessible name. `view?: CameraView` defaults
+to `CURRENT_CAMERA_VIEW` (`front_upright`): fingers point up and the palm faces the
+viewer, matching a mirrored laptop camera preview. The rig's right thumb appears
+on screen left and the left thumb on screen right; flexion curls toward the viewer.
+`view="front_diagonal"` retains the legacy palm-down thumb-side camera (`view.ts`).
 Framing fits the canvas to 80% of the projected motion envelope for the pose
-family. It includes open-to-target intermediate positions, both actual and ghost
+family and camera view. It includes open-to-target intermediate positions, both actual and ghost
 mesh bounds, and the outline. A family keeps one center and scale across poses;
 closed poses therefore naturally occupy less height than an open hand. Width
 limits the fit in narrow canvases. Resizing reframes outside the animation loop.
@@ -75,7 +77,7 @@ React internals and caller-supplied getters are outside this allocation review.
 The opt-in performance test uses a live synthetic Chromium camera capture and a
 30 Hz stub, a fixed 10-second warm-up, then ten one-second FPS samples. It records
 its renderer, capture settings, actual stub rate, and samples in the gallery's
-`docs/design/screenshots/ux-u2/performance.json`. It does not run MediaPipe inference. A physical
+`docs/design/screenshots/upright/performance.json`. It does not run MediaPipe inference. A physical
 camera check on the integration laptop remains necessary; the software-rendered
 browser environment is not a substitute for that hardware check.
 
@@ -103,3 +105,18 @@ follows the actual hand's tracking-loss opacity. A visible “Focus on your …�
 legend and the hand's accessible name identify the selected finger. Clearing the
 prop removes the contour immediately. A4 can pass coach state directly without
 changing the actual/target getters or finger state callback.
+
+## Upright camera gallery
+
+The **Camera view** selector at `/_dev/hand` switches the live hand and all state
+comparisons between the upright mirror presentation and the legacy diagonal view.
+The gallery camera preview mirrors horizontally in upright mode. Patient Exercise
+integration and its camera preview are owned by A4/the coordinator; this change
+only updates `VirtualHand`'s default presentation and the developer gallery.
+
+Upright regression screenshots live in `docs/design/screenshots/upright/`:
+all six poses in both views, right/light at 1440×900 and left/dark at 1280×720,
+plus the U2 state comparisons in color and grayscale. Framing tests cover both
+views and hands, both pose families, ghost outlines and coach contours across
+wide, square and portrait canvases. The family envelope remains steady while
+closing the hand; fitting never pumps with individual vision frames.

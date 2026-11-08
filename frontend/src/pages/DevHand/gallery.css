@@ -76,3 +76,7 @@
 .hand-state-comparison .hand-view {
   height: var(--placeholder-height);
 }
+
+.hand-camera[data-mirrored='true'] {
+  transform: scaleX(-1);
+}
