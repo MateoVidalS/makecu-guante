@@ -61,7 +61,7 @@ export interface FingerAttemptMetrics {
   scored: boolean;
   target: number | null;
   active_max: number | null; // max vision closure during ATTEMPT (for an "open" target: the min, i.e. best opening)
-  assist_needed: number | null; // max(0, target − active_max) for closing targets; max(0, active_min − target) for open targets
+  assist_needed: number | null; // opening glove (docs/plan/15): opening deficit the glove could assist, max(0, active_min − target) beyond tolerance; null/0 for closing targets (never assisted)
   final: number | null; // vision closure at the end of the hold
 }
 export interface AttemptResult {
