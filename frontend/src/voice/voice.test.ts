@@ -281,6 +281,17 @@ it('closes microphone on fallback and sends stream end when muted', async () => 
   s.controller.dispose();
 });
 
+it('a blocked microphone keeps Gemini Live as the voice (no robotic fallback) and says so', async () => {
+  const s = setup();
+  vi.mocked(s.deps.audio.open).mockResolvedValue(false);
+  await s.controller.start(null);
+  expect(s.controller.state.mode).toBe('live');
+  expect(s.controller.state.micBlocked).toBe(true);
+  expect(s.transports[0].closed).toBe(false);
+  expect(s.deps.local.speak).not.toHaveBeenCalled();
+  s.controller.dispose();
+});
+
 describe('cue table and scheduler', () => {
   it('covers the cue and fallback tables', () => {
     const s = setup(),
