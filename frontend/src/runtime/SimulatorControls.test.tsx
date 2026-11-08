@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -26,6 +26,9 @@ vi.mock('../vision', () => ({
 vi.mock('./RuntimeProvider', () => ({
   useRuntime: () => ({ calibration: { save: mocks.save } }),
 }));
+beforeEach(() => {
+  mocks.save.mockResolvedValue({});
+});
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
