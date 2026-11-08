@@ -12,6 +12,7 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlmodel import Session as DbSession
 from sqlmodel import select
 
+from app.contracts import progression as progression
 from app.contracts import therapist as therapy
 from app.contracts import types as c
 from app.db import models as m
@@ -80,6 +81,21 @@ def put_profile(db: DbSession, profile: c.Profile) -> c.Profile:
     db.add(row)
     db.commit()
     return get_profile(db)
+
+
+def get_progression_settings(db: DbSession) -> progression.ProgressionSettings:
+    row = db.get(m.ProgressionSettings, 1) or m.ProgressionSettings()
+    return progression.ProgressionSettings.model_validate(_values(row, exclude={"id"}))
+
+
+def put_progression_settings(
+    db: DbSession, body: progression.ProgressionSettingsIn
+) -> progression.ProgressionSettings:
+    row = db.get(m.ProgressionSettings, 1) or m.ProgressionSettings()
+    row.sqlmodel_update({**body.model_dump(), "updated_at": now()})
+    db.add(row)
+    db.commit()
+    return get_progression_settings(db)
 
 
 def _calibration(row) -> c.Calibration:

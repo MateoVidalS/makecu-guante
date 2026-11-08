@@ -29,6 +29,12 @@ def test_health(client):
 CASES = [
     ("GET", "/profile", None),
     ("PUT", "/profile", fixture("profile")),
+    ("GET", "/progression/settings", None),
+    (
+        "PUT",
+        "/progression/settings",
+        {k: v for k, v in fixture("progression_settings").items() if k != "updated_at"},
+    ),
     ("GET", "/calibrations/latest", None),
     ("GET", "/calibrations", None),
     (
