@@ -18,7 +18,7 @@ export const CAMERA_VIEW_RECAPTURE_MESSAGE =
   'Your camera range was captured in the old position. Recapture it with your hand raised.';
 
 export interface CalibrationIssue {
-  /** Absent when the whole camera capture needs redoing. */
+  /** Absent when a whole calibration step needs redoing. */
   finger?: FingerId;
   step: 'glove' | 'camera';
   message: string;

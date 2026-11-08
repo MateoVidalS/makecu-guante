@@ -57,7 +57,7 @@ export const freshDraft = (): Draft => ({
   friction: {},
   limit: 1500,
 });
-/** A posture change invalidates camera captures, never glove ranges or friction. */
+/** Routing changes reset every range; posture changes reset camera captures only. */
 function currentViewDraft(draft: Draft): Draft {
   if (draft.assistDirection !== CURRENT_ASSIST_DIRECTION)
     return { ...freshDraft(), sourceId: draft.sourceId };

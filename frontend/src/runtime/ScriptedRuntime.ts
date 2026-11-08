@@ -25,7 +25,7 @@ import {
   type Calibration,
   type FrictionCurve,
 } from '../contracts/calibration';
-import { GLOVE_FINGERS } from '../contracts/glove';
+import { GLOVE_FINGERS, pullFromClosure } from '../contracts/glove';
 import { POSES, DEFAULT_EXERCISE_SETTINGS } from '../contracts/poses';
 import * as fixture from '../contracts/fixtures.check';
 import * as api from '../api/client';
@@ -542,7 +542,7 @@ export class ScriptedRuntime implements TherapyRuntime {
         this.resistedThisAttempt && f === 'index' ? active : value,
       );
       this.trace.servo[f].push(
-        v.phase === 'RELEASE' ? 0 : Math.max(0, value - 0.05),
+        v.phase === 'RELEASE' ? 0 : Math.max(0, pullFromClosure(value) - 0.08),
       );
     }
     this.trace.phase.push(v.phase);
