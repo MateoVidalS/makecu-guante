@@ -1,8 +1,9 @@
 /* global AudioWorkletProcessor, sampleRate, registerProcessor */
+// Up to five minutes of 24 kHz audio queued ahead of playback (about 29 MB).
+const MAX_SAMPLES = 24000 * 300;
 class Player extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.buffer = new Float32Array(48000); // Two seconds at the source rate.
     this.reset();
     this.port.onmessage = ({ data }) => {
       if (data === 'flush') {
@@ -11,7 +12,9 @@ class Player extends AudioWorkletProcessor {
       }
       const view = new DataView(data);
       for (let i = 0; i + 1 < view.byteLength; i += 2) {
+        if (this.length === this.buffer.length) this.grow();
         if (this.length === this.buffer.length) {
+          // Only past the cap: drop the oldest sample rather than the newest.
           this.read = (this.read + 1) % this.buffer.length;
           this.length--;
           this.offset = 0;
@@ -22,7 +25,23 @@ class Player extends AudioWorkletProcessor {
       }
     };
   }
+  /**
+   * Live sends a reply's audio in bursts, far ahead of playback. Queue all of it: a fixed
+   * two-second ring dropped the oldest audio, so long answers played with gaps.
+   */
+  grow() {
+    if (this.buffer.length >= MAX_SAMPLES) return;
+    const bigger = new Float32Array(
+      Math.min(this.buffer.length * 2, MAX_SAMPLES),
+    );
+    for (let i = 0; i < this.length; i++)
+      bigger[i] = this.buffer[(this.read + i) % this.buffer.length];
+    this.buffer = bigger;
+    this.read = 0;
+  }
   reset() {
+    // Back to two seconds at the 24 kHz source rate; grows again for long replies.
+    this.buffer = new Float32Array(48000);
     this.read = 0;
     this.length = 0;
     this.offset = 0;
