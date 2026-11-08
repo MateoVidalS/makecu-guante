@@ -18,20 +18,19 @@ describe('five-servo power model', () => {
     const patient = new SimPatient();
     for (const finger of GLOVE_FINGERS) patient.rigid[finger] = true;
     const currents = patient.servoCurrents([1, 1, 1, 1, 1], zeros, quiet);
-    expect(currents).toEqual([650, 800, 750, 650, 650]);
+    expect(currents).toEqual([650, 650, 650, 650, 650]);
     const power = supplyPower(currents);
-    expect(power.demandMa).toBe(3530);
+    expect(power.demandMa).toBe(3280);
     expect(power.demandMa).toBeGreaterThan(2200);
     expect(power.totalMa).toBe(SUPPLY_LIMIT_MA);
     expect(power.saturated).toBe(true);
   });
-  it('sums distinct moving currents and load, with no current for detached servos', () => {
+  it('sums equal moving currents for the five identical servos, with no current for detached servos', () => {
     const patient = new SimPatient();
     const velocity: Quint = [0.3, 0.3, 0.3, 0.3, 0.3];
     const currents = patient.servoCurrents(zeros, velocity, quiet);
-    expect(currents[1]).toBeGreaterThan(currents[2]);
-    expect(currents[2]).toBeGreaterThan(currents[3]);
-    expect(currents[3]).toBe(currents[4]);
+    expect(currents[0]).toBeGreaterThan(0);
+    expect(currents.every((ma) => ma === currents[0])).toBe(true);
     const power = supplyPower(currents);
     expect(power.totalMa).toBe(
       ELECTRONICS_IDLE_MA + currents.reduce((a, b) => a + b, 0),
@@ -78,23 +77,22 @@ describe('five-servo power model', () => {
       expect(patient.realPosition(positions, quiet)[i]).toBe(0.6);
     },
   );
-  it('five spastic fingers held at pull 0.95 demand 2320 mA without a governor', () => {
+  it('five spastic fingers held at pull 0.95 demand 2305 mA without a governor', () => {
     const patient = new SimPatient('spastic');
     const power = supplyPower(
       patient.servoCurrents([0.95, 0.95, 0.95, 0.95, 0.95], zeros, quiet),
     );
-    for (let i = 0; i < 5; i++)
-      expect(power.perServoMa[i]).toBeCloseTo([460, 460, 460, 455, 455][i]);
-    expect(power.demandMa).toBeCloseTo(2320);
+    for (let i = 0; i < 5; i++) expect(power.perServoMa[i]).toBeCloseTo(455);
+    expect(power.demandMa).toBeCloseTo(2305);
     expect(power.totalMa).toBeGreaterThan(2200);
     expect(power.saturated).toBe(false);
   });
-  it('the same held opening on demo draws 120 mA, below 1500 mA', () => {
+  it('the same held opening on demo draws 105 mA, below 1500 mA', () => {
     const patient = new SimPatient('demo');
     const power = supplyPower(
       patient.servoCurrents([0.95, 0.95, 0.95, 0.95, 0.95], zeros, quiet),
     );
-    expect(power.totalMa).toBe(120);
+    expect(power.totalMa).toBe(105);
     expect(power.totalMa).toBeLessThan(1500);
   });
   it('spastic opening without a governor trips the firmware 2200 mA cut and releases to slack', async () => {
@@ -199,10 +197,10 @@ describe('five-servo power model', () => {
     world.glove.release();
     world.advance(100);
     expect(world.firmware.position[0]).toBeCloseTo(0.7);
-    // The unidentified thumb's provisional 300 deg/s is slower than a 3/s
-    // release across 170 degrees. Other servos can follow that release ramp.
-    expect(world.servoPosition[0]).toBeCloseTo(1 - (300 / 170) * 0.1);
-    expect(world.servoPosition[1]).toBeCloseTo(0.7);
+    // The S51's provisional 500 deg/s is just slower than a 3/s release across
+    // 170 degrees (510 deg/s): the shafts lag the firmware ramp slightly.
+    for (const i of [0, 1, 2, 3, 4])
+      expect(world.servoPosition[i]).toBeCloseTo(1 - (500 / 170) * 0.1);
     expect(world.servoPosition[0]).toBeGreaterThan(world.firmware.position[0]);
   });
   it('supply saturation stalls physical winding and still trips the independent 100 ms firmware rule', async () => {

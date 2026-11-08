@@ -140,11 +140,10 @@ loss do not prove the mechanism can open a spastic hand.
 
 | Dedo | Servo | Torque aprox. (4,8 V) | Por qué |
 |---|---|---|---|
-| Índice | TowerPro SG92R | ~2,5 kg·cm | El más fuerte: el dedo que más trabaja en la pinza |
-| Medio | Miuzei MG90S | ~1,8–2,2 kg·cm | Engranajes de metal |
-| Anular | Smraza S51 | ~1,6–1,8 kg·cm | Alcanza para un dedo que hace menos fuerza |
-| Meñique | Smraza S51 | ~1,6–1,8 kg·cm | Ídem |
-| Pulgar | Negro sin identificar | **medir** | Su alojamiento es 1,5 mm más grande |
+| Los 5 dedos | Smraza S51 (micro servo 9 g, tipo SG90) | ~1,6–1,8 kg·cm | El mismo servo en todos: un solo tamaño de alojamiento y el mismo perfil de corriente |
+
+- Rango de pulso ~500–2400 µs: calibrar cada dedo dentro de ~10–170° para no forzar el tope interno.
+- 5 servos trabados pueden pedir ~650 mA cada uno: usar una fuente de 5 V de al menos 2 A.
 
 - Torques de fichas de tiendas y fabricantes; varían entre fuentes.
 - **Alojamientos universales:** hueco de 23,6 × 13,2 mm (los cuerpos miden 22,2–23 × 11,8–12,6) y agujeros alargados (±0,8 mm), porque la distancia entre agujeros cambia entre marcas.
@@ -226,7 +225,7 @@ loss do not prove the mechanism can open a spastic hand.
 
 - Todo sale de `hardware/cad/piezas.py` (FreeCAD, paramétrico): `freecadcmd hardware/cad/piezas.py` regenera los STL en `hardware/stl/`.
 - Para la mano izquierda: espejar módulo y tapa en el slicer.
-- **Antes de imprimir el módulo:** medir el servo negro y comprobar el paso de 1,5 mm con los servos reales.
+- **Antes de imprimir el módulo:** comprobar que los 5 S51 entran en sus alojamientos.
 
 ---
 
@@ -514,7 +513,7 @@ Piezas en `hardware/`: módulo de muñeca, tapa, carretes, guías y anclajes (ve
 ### Riesgos
 
 - **La mecánica es lo más difícil:** fricción del hilo, anclajes que se sueltan, guante que se corre. Probar con un solo dedo lo antes posible.
-- **Servos:** ya los tenemos (SG92R, MG90S, 2× S51 y uno negro sin identificar). Falta medir el negro y confirmar que los 5 entran en sus alojamientos.
+- **Servos:** 5× Smraza S51. Falta medir cada uno en banco (reposo, movimiento, trabado) y confirmar que entran en sus alojamientos.
 - **Opening travel and force:** measure dorsal travel, extension strength and sustained current on a fixture before finalizing spools.
 - **Cámara con dedos tapados:** probar la posición de la webcam temprano.
 - **Firmware nunca probado en una placa:** hacer el banco de pruebas temprano, con el guante sin poner.
