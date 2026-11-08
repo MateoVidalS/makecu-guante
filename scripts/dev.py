@@ -1,5 +1,6 @@
 """Run the local API and Vite, and stop both when either exits or on Ctrl-C."""
 
+import shutil
 import signal
 import subprocess
 import time
@@ -23,7 +24,13 @@ def main():
             (["uv", "run", "python", "-m", "app"], "backend"),
             (["pnpm", "dev"], "frontend"),
         ]:
-            processes.append(subprocess.Popen(command, cwd=ROOT / directory))
+            # On Windows pnpm is pnpm.cmd: resolve the real executable instead of the bare name.
+            executable = shutil.which(command[0])
+            if executable is None:
+                raise SystemExit(f"{command[0]} not found on PATH; install it first (see docs/DEV.md)")
+            processes.append(
+                subprocess.Popen([executable, *command[1:]], cwd=ROOT / directory)
+            )
         while all(p.poll() is None for p in processes):
             time.sleep(0.2)
         return next((p.returncode for p in processes if p.returncode is not None), 0)
