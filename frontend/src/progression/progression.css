@@ -1,0 +1,29 @@
+/* Adaptive progression (docs/plan/17): Today's plan card and the Doctor view section. */
+.todays-plan__list {
+  margin: 0 0 var(--space-16);
+  padding-inline-start: var(--space-24);
+  display: grid;
+  gap: var(--space-4);
+}
+.adaptive-plan__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16) var(--space-32);
+  margin-bottom: var(--space-16);
+}
+.adaptive-plan__table caption {
+  caption-side: top;
+  text-align: left;
+  color: var(--muted);
+  font-size: var(--caption);
+  padding-bottom: var(--space-8);
+}
+.adaptive-plan__print {
+  display: none;
+}
+@media print {
+  .adaptive-plan__print {
+    display: block;
+  }
+}

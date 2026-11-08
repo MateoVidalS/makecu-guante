@@ -281,7 +281,7 @@ Una app web local (**Rehab Hub**) que corre en la laptop:
 | `/exercise` | Sesión de ejercicio (modo foco, sin navegación) |
 | `/evaluate` | Evaluación de resistencia |
 | `/history` | Tendencias de rango, ayuda y resistencia; repetición de cada sesión (`/history/sessions/:id`) y evaluación |
-| `/doctor` | Vista del terapeuta (solo lectura): tendencias, resumen de Gemini a pedido, exportar JSON/CSV, imprimir |
+| `/doctor` | Vista del terapeuta: tendencias, resumen de Gemini a pedido, exportar JSON/CSV, imprimir. El único ajuste es el **plan adaptativo** (sección 4.10) |
 | `/profile` | Perfil opcional del paciente |
 
 En el encabezado hay un menú **Demo tools** para pasar a guante o cámara simulados en medio de la demo sin recargar.
@@ -361,7 +361,17 @@ Gemini solo recibe métricas resumidas, nunca video. Todo se presenta como acomp
 
 SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con trazas, evaluaciones y transcripciones de voz. Exportable a JSON y CSV desde la vista del terapeuta. Demo data from `make demo-seed` contains 25 sessions (212 attempts, including three legacy closing sessions) and five opening evaluations over six weeks, with voice-coach decisions, check-ins and transcripts in the last 18 days. All carry `is_demo`; directions remain separated in history.
 
-### 4.10 Pendiente
+### 4.10 Plan del día (progresión adaptativa)
+
+Cada práctica puede arrancar desde las últimas sesiones en vez del mismo plan estándar. **Está apagado por defecto**: lo prende el terapeuta en `/doctor` → **Adaptive plan** (Standard o Gentle). Apagado, la práctica y la demo funcionan igual que antes.
+
+- **Objetivo por dedo:** un dedo que casi nunca llega solo a abrirse del todo recibe un objetivo un poco más allá de lo que abre solo (por ejemplo, meñique al 60%). Así practica un desafío alcanzable.
+- **La ayuda se retira de a poco:** si la mayoría de las aperturas salen solas, la ayuda se ofrece más tarde (6 → 7 → 8 s para intentar solo). Si en la última sesión hubo dolor o mucha fatiga, el tiempo queda estándar.
+- **Solo hace la práctica más fácil o da más tiempo:** nunca cambia la velocidad del guante, la tracción máxima, los límites de corriente ni el firmware. Un objetivo más bajo también hace que el guante tire menos. El coach ajusta desde ahí, con sus propios límites.
+- En la pantalla de práctica (Home → Customize plan) el paciente ve **Today's plan** y puede usar el plan estándar ese día; los botones de inicio rápido aplican el plan sin mostrarlo. El plan aplicado queda en el registro de la sesión ("Today's plan applied").
+- Detalle, reglas y pruebas: [`docs/plan/17-progression.md`](docs/plan/17-progression.md). Es una estimación inspirada en la práctica clínica, no un protocolo validado.
+
+### 4.11 Pendiente
 
 **Plan del equipo, paso a paso y con responsables:** [`docs/TEAM_PLAN.md`](docs/TEAM_PLAN.md).
 
@@ -369,7 +379,7 @@ SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con
 - **Umbral de corriente para 5 servos:** medirlo en el banco de pruebas.
 - **Probar el firmware en la placa** con [`firmware/BENCH.md`](firmware/BENCH.md) y después [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), sin el guante puesto.
 - **Gemini con la key real:** confirmar que `/api/health` diga `gemini: true` y ensayar una conexión de voz y un resumen.
-- Fuera de alcance: modo espejo, retiro gradual del feedback, acceso remoto, varios pacientes, otros idiomas.
+- Fuera de alcance: modo espejo, retiro de las luces y de la frecuencia de ayuda (el plan del día solo retrasa la ayuda, sección 4.10), acceso remoto, varios pacientes, otros idiomas.
 
 ---
 
@@ -386,7 +396,7 @@ SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con
 - **Oposición del pulgar:** tocar con el pulgar la punta de cada dedo (inspirado en el test de Kapandji).
 - **Pinza:** pulgar e índice.
 
-**Feedback que se retira** (no construido): en modo rehabilitación, la ayuda del guante y las luces se reducen de a poco (por ejemplo, del 100% de los intentos al 50%). El feedback constante genera dependencia.
+**Feedback que se retira** (primer paso construido, sección 4.10): con el plan adaptativo prendido, la ayuda se ofrece más tarde a medida que el paciente abre solo, y cada dedo practica un objetivo a su medida. Falta reducir las luces y ofrecer ayuda en menos intentos (por ejemplo, del 100% al 50%). El feedback constante genera dependencia.
 
 ---
 

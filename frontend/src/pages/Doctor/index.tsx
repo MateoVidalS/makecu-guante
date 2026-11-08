@@ -39,6 +39,7 @@ import { DoctorChat } from './chat/DoctorChat';
 import { ExportButtons } from './ExportButtons';
 import './doctor.css';
 import { TherapyReview } from './TherapyReview';
+import { AdaptivePlanSection } from '../../progression/AdaptivePlanSection';
 
 const capitalize = (value: string) =>
   value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
@@ -250,6 +251,7 @@ export default function Doctor() {
             </DataSection>
           )}
       </DataStatus>
+      <AdaptivePlanSection />
       <details
         className="report-details"
         onToggle={(e) => setDetailsOpen(e.currentTarget.open)}

@@ -17,6 +17,7 @@ import {
 } from '../../design-system';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
+import { useTodaysPlan } from '../../progression/useTodaysPlan';
 import { useRuntime } from '../../runtime';
 
 import { useGlove, useGloveTelemetry } from '../../glove';
@@ -95,6 +96,8 @@ export default function Calibrate() {
   const runtime = useRuntime(),
     { client } = useGlove(),
     vision = useVision();
+  // Today's plan (docs/plan/17); settings come back unchanged while it is off.
+  const today = useTodaysPlan();
   const [draft, setDraft] = useState(() => resumableDraft(calibration)),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -493,7 +496,7 @@ export default function Calibrate() {
                 if (!checkPreflight()) return;
                 await runtime.exercise.start(
                   practicePlan(short),
-                  DEFAULT_EXERCISE_SETTINGS,
+                  today.apply(DEFAULT_EXERCISE_SETTINGS),
                 );
                 navigate('/exercise');
               })

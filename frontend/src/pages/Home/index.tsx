@@ -6,6 +6,7 @@ import { useRuntime } from '../../runtime';
 import { useGlove } from '../../glove';
 import { useVisionFrame } from '../../vision';
 import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
+import { useTodaysPlan } from '../../progression/useTodaysPlan';
 import { Section, StatusList } from '../../components/common';
 import {
   Button,
@@ -41,6 +42,8 @@ export default function Home() {
   const runtime = useRuntime(),
     navigate = useNavigate(),
     { store } = useGlove();
+  // Today's plan (docs/plan/17); settings come back unchanged while it is off.
+  const today = useTodaysPlan();
   const missingCurrentSensor = useCurrentSensorMissing();
   const connected = useStore(store, (s) => s.connection === 'connected');
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
@@ -63,7 +66,7 @@ export default function Home() {
     try {
       await runtime.exercise.start(
         practicePlan(short),
-        DEFAULT_EXERCISE_SETTINGS,
+        today.apply(DEFAULT_EXERCISE_SETTINGS),
       );
       navigate('/exercise');
     } catch (e) {

@@ -24,5 +24,6 @@ progress.
 | [15-open-assist.md](15-open-assist.md) | **Pivot: the glove helps the hand OPEN** (tendon pull on the wire, asymmetric ramps, open-only assist, load governor, O0–O7) |
 | [12-five-finger-update.md](12-five-finger-update.md) | **Hardware changes analysis + plan to move to 5 fingers** (contract v2, power-aware assist, palm-down view, glove vision check) |
 | [16-bare-hand.md](16-bare-hand.md) | **Nov 8: bare hand with BLACK dorsal guides and YELLOW fingertip anchors**, skin checks, recalibration, unhooked thread friction, vision evidence; supersedes H10/glove detection and C6 |
+| [17-progression.md](17-progression.md) | **Nov 8: adaptive progression ("today's plan")**: per-finger targets and solo trying time from recent sessions, therapist switch in Doctor view, off by default |
 | [`/handoffs/`](../../handoffs/) | One self-contained brief per work package (WP0–WP11) + `STATUS.md` |
 | [`/AGENTS.md`](../../AGENTS.md) | Rules every coding agent follows |

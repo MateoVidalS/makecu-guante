@@ -42,6 +42,15 @@ vi.mock('../../vision', () => ({
 }));
 vi.mock('../../vision/CameraOverlay', () => ({ CameraOverlay: () => <div /> }));
 vi.mock('../../runtime', () => ({ useRuntime: () => state.runtime }));
+// Today's plan (docs/plan/17) is off here: capture tests run without a query client.
+vi.mock('../../progression/useTodaysPlan', () => ({
+  useTodaysPlan: () => ({
+    enabled: false,
+    loading: false,
+    plan: null,
+    apply: <T,>(settings: T) => settings,
+  }),
+}));
 vi.mock('../../runtime/calibrationValidation', async (original) => ({
   ...(await original<typeof import('../../runtime/calibrationValidation')>()),
   useSavedCalibration: () =>
