@@ -1,3 +1,9 @@
+ifeq ($(OS),Windows_NT)
+PYTHON ?= python
+else
+PYTHON ?= python3
+endif
+
 .PHONY: setup dev dev-sim dev-camera dev-mock test lint typecheck e2e fw-build fw-flash build demo demo-seed
 
 setup:
@@ -8,13 +14,13 @@ setup:
 	else echo "PlatformIO not installed; skipping firmware setup."; fi
 
 dev:
-	python3 scripts/dev.py
+	$(PYTHON) scripts/dev.py
 
 dev-sim:
-	VITE_SIM=1 python3 scripts/dev.py
+	VITE_SIM=1 $(PYTHON) scripts/dev.py
 
 dev-camera:
-	VITE_SIM=1 VITE_VISION=camera python3 scripts/dev.py
+	VITE_SIM=1 VITE_VISION=camera $(PYTHON) scripts/dev.py
 
 dev-mock:
 	cd frontend && VITE_MOCK_API=1 VITE_SIM=1 pnpm dev
