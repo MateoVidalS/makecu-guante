@@ -153,9 +153,9 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
   await page
     .getByRole('button', { name: 'Practice again', exact: true })
     .click();
-  // A single closing pose reaches assistance promptly, where camera loss must release.
+  // A single opening pose reaches assistance promptly, where camera loss must release.
   await page
-    .getByRole('button', { name: 'Fist only, 1 rep', exact: true })
+    .getByRole('button', { name: 'Open only, 1 rep', exact: true })
     .click();
   await page
     .getByRole('button', { name: 'Start practice', exact: true })
@@ -163,7 +163,7 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
   await expect(
     page
       .locator('.phase-ring')
-      .getByText('The glove is helping', { exact: true }),
+      .getByText('The glove is helping you open', { exact: true }),
   ).toBeVisible({ timeout: 20_000 });
   await page.locator('.runtime-fallback').evaluate((menu) => {
     // Expose simulator fault injection only inside this test.

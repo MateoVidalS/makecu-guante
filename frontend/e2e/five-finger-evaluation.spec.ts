@@ -1,21 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { calibrateSimulator } from './helpers';
 import { calibration as fixture } from '../src/contracts/fixtures.check';
-import type { Calibration } from '../src/contracts/calibration';
 import type { Evaluation } from '../src/contracts/api';
 
 test('a ring/little-finger subset persists four sweeps and opens evaluation detail', async ({
   page,
 }) => {
   test.setTimeout(90_000);
-  await calibrateSimulator(page);
-  const calibration = (await (
-    await page.request.get('/api/calibrations/latest')
-  ).json()) as Calibration;
+  const calibration = await calibrateSimulator(page);
   // A fresh, complete synthetic baseline isolates subset selection from the
   // separately tested empty-glove measurement flow. Never used on hardware.
   const saved = await page.request.post('/api/calibrations', {
     data: {
+      assist_direction: 'open',
       servo: calibration.servo,
       camera: calibration.camera,
       friction: fixture.friction,
@@ -23,6 +20,10 @@ test('a ring/little-finger subset persists four sweeps and opens evaluation deta
     },
   });
   expect(saved.ok()).toBe(true);
+  const baseline = await saved.json();
+  await page.route('**/api/calibrations/latest', (route) =>
+    route.fulfill({ json: baseline }),
+  );
   await page.goto('/evaluate');
   const fingers = page.getByRole('group', { name: 'Fingers to measure' });
   await expect(fingers.getByRole('checkbox', { checked: true })).toHaveCount(5);
@@ -42,7 +43,10 @@ test('a ring/little-finger subset persists four sweeps and opens evaluation deta
     .getByRole('button', { name: 'Start evaluation', exact: true })
     .click();
   await expect(
-    page.getByRole('heading', { name: 'Your evaluation', exact: true }),
+    page.getByRole('heading', {
+      name: 'Resistance to opening (flexor tone)',
+      exact: true,
+    }),
   ).toBeVisible({ timeout: 60_000 });
   const result = (await (await stored).json()) as Evaluation;
   expect(result.settings.fingers).toEqual(['ring', 'pinky']);

@@ -18,6 +18,7 @@ const events: { at: number; event: EngineEvent }[] = [];
 const commands: {
   at: number;
   kind: 'target' | 'release';
+  pose?: string;
   f?: number[];
   v?: number;
   from?: number[];
@@ -69,6 +70,7 @@ SimGlove.prototype.target = function (f, v) {
   commands.push({
     at: this.world.now,
     kind: 'target',
+    pose: runtime.exercise.view().pose.id,
     f: [...f],
     v,
     from: [...this.world.firmware.position],
@@ -113,17 +115,71 @@ function until(predicate: () => boolean, budgetMs = 90_000) {
   return snapshot();
 }
 
+let calibrationClock: ReturnType<typeof setInterval> | null = null;
+let calibrationRandom: (() => number) | null = null;
+let patientTick: SimWorld['patient']['tick'] | null = null;
 const harness = {
+  ready: () => Boolean(world && runtime),
+  resetObservations() {
+    commands.length = 0;
+    events.length = 0;
+  },
+  // Camera calibration needs a volunteer's full fist, not a therapy pose's
+  // partial thumb closure. Script only voluntary effort; leave motors, vision,
+  // current, captures and safety gates on their production paths.
+  calibrationFist(enabled: boolean) {
+    if (enabled) {
+      patientTick ??= world.patient.tick.bind(world.patient);
+      world.patient.tick = () => {
+        world.patient.position.fill(1);
+      };
+      world.advance(300);
+    } else if (patientTick) {
+      world.patient.tick = patientTick;
+      patientTick = null;
+      world.controls.setPreset('moderate');
+    }
+  },
+  calibrationClock(enabled: boolean) {
+    if (calibrationClock) clearInterval(calibrationClock);
+    calibrationClock = null;
+    if (enabled) {
+      // A still calibration volunteer has no camera jitter; keep motion/current
+      // and all capture stability checks active. Restore seeded noise afterward.
+      calibrationRandom ??= world.random;
+      world.random = () => 0.5;
+      let last = performance.now();
+      calibrationClock = setInterval(() => {
+        const now = performance.now();
+        world.advance((now - last) * 3);
+        last = now;
+      }, 10);
+    } else if (calibrationRandom) {
+      world.random = calibrationRandom;
+      calibrationRandom = null;
+    }
+  },
   snapshot,
   advance(ms: number) {
     world.advance(ms);
     return snapshot();
   },
-  untilPhase(phase: ExercisePhase, index?: number) {
+  physicalStop(enabled: boolean) {
+    if (enabled) world.controls.pressStop();
+    else world.controls.releaseStop();
+  },
+  untilPhase(phase: ExercisePhase, index?: number, budgetMs = 90_000) {
     return until(() => {
       const view = runtime.exercise.view();
       return view.phase === phase && (index == null || view.index === index);
-    });
+    }, budgetMs);
+  },
+  untilPulling() {
+    return until(
+      () =>
+        world.firmware.mode === 'target' &&
+        world.firmware.position.some((p) => p > 0.4),
+    );
   },
   untilEvent(kind: EngineEvent['kind'], finger?: GloveFinger) {
     return until(() =>
