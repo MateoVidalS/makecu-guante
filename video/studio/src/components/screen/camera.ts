@@ -48,7 +48,7 @@ function pose(clip: RecordingClip, key: CameraKeyframe, frame: number) {
   return { x: box.x + box.w / 2, y: box.y + box.h / 2, zoom: clamp(key.zoom, 1, 2.2) };
 }
 
-export function cameraAt(clip: RecordingClip, keys: CameraKeyframe[], sceneFrame: number, clipFrame: number, viewport: Viewport): CameraTransform {
+export function cameraAt(clip: RecordingClip, keys: CameraKeyframe[], sceneFrame: number, clipFrame: number, viewport: Viewport, bounds: Box = { x: 0, y: 0, w: clip.width, h: clip.height }, align: Point = { x: 0.5, y: 0.5 }): CameraTransform {
   const sorted = [...keys].sort((a, b) => a.at - b.at);
   const first = sorted[0] ?? { at: 0, target: { x: 0, y: 0, w: clip.width, h: clip.height }, zoom: 1 };
   let current = pose(clip, first, clipFrame);
@@ -60,9 +60,9 @@ export function cameraAt(clip: RecordingClip, keys: CameraKeyframe[], sceneFrame
     const t = ease(clamp((sceneFrame - next.at) / clamp(next.transition ?? 24, 15, 24), 0, 1));
     current = { x: previous.x + (end.x - previous.x) * t, y: previous.y + (end.y - previous.y) * t, zoom: previous.zoom + (end.zoom - previous.zoom) * t };
   }
-  const scale = Math.max(viewport.w / clip.width, viewport.h / clip.height) * current.zoom;
-  const x = clamp(viewport.w / 2 - current.x * scale, viewport.w - clip.width * scale, 0);
-  const y = clamp(viewport.h / 2 - current.y * scale, viewport.h - clip.height * scale, 0);
+  const scale = Math.max(viewport.w / bounds.w, viewport.h / bounds.h) * current.zoom;
+  const x = clamp(viewport.w * align.x - current.x * scale, viewport.w - (bounds.x + bounds.w) * scale, -bounds.x * scale);
+  const y = clamp(viewport.h * align.y - current.y * scale, viewport.h - (bounds.y + bounds.h) * scale, -bounds.y * scale);
   return { scale, x: viewport.x + x, y: viewport.y + y, zoom: current.zoom, viewport };
 }
 
@@ -74,4 +74,14 @@ export function fitViewport(clip: RecordingClip, area: Viewport): Viewport {
   const w = clip.width * scale;
   const h = clip.height * scale;
   return { x: area.x + (area.w - w) / 2, y: area.y + (area.h - h) / 2, w, h };
+}
+
+// Isolate one complete card. Padding is in output pixels, independent of recording resolution.
+export function cardAt(box: Box, area: Viewport, padding = 32): { camera: CameraTransform; viewport: Viewport; content: Viewport } {
+  const scale = Math.min((area.w - padding * 2) / box.w, (area.h - padding * 2) / box.h);
+  const w = box.w * scale;
+  const h = box.h * scale;
+  const content = { x: area.x + (area.w - w) / 2, y: area.y + (area.h - h) / 2, w, h };
+  const viewport = { x: content.x - padding, y: content.y - padding, w: w + padding * 2, h: h + padding * 2 };
+  return { camera: { x: content.x - box.x * scale, y: content.y - box.y * scale, scale, zoom: 1, viewport: content }, viewport, content };
 }

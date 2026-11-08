@@ -6,32 +6,23 @@ import { ScreenFrame } from '../components/screen/ScreenFrame';
 import { SourceHighlight } from '../components/screen/SourceHighlight';
 import { COPY } from '../script';
 
-export const Doctor: React.FC = () => <Fill style={{ clipPath: 'inset(64px 0 0 0)' }}>
+export const Doctor: React.FC = () => <Fill style={{ clipPath: 'inset(64px 0 200px 0)' }}>
   <Sequence durationInFrames={200} layout="none">
-    <ScreenFrame clip="doctor-history" camera={[
-      { at: 0, target: 'focus:then-now', zoom: 1.15 },
-      { at: 36, target: 'focus:then-now', zoom: 2 },
-    ]} />
+    <ScreenFrame clip="doctor-history" card="focus:history-card" camera={[]} playback={[{ at: 0, event: 'focus:then-now-demo-data', fallback: 0, offset: 270 }]} />
   </Sequence>
-  <Sequence from={200} durationInFrames={100} layout="none">
-    <ScreenFrame clip="doctor-replay" camera={[
-      { at: 0, target: 'focus:vision-servo', zoom: 1.1 },
-      { at: 66, target: 'focus:current', zoom: 1.8 },
-    ]} />
+  <Sequence from={200} durationInFrames={72} layout="none">
+    <ScreenFrame clip="doctor-replay" card="focus:position-card" camera={[]} />
+  </Sequence>
+  <Sequence from={272} durationInFrames={28} layout="none">
+    <ScreenFrame clip="doctor-replay" from={72} card="focus:current-card" camera={[]} />
   </Sequence>
   <Sequence from={300} durationInFrames={260} layout="none">
-    <ScreenFrame clip="doctor-summary" from={72} cursor={false} camera={[
-      { at: 0, target: 'focus:summary', zoom: 1.4 },
-      { at: 54, target: 'focus:summary-sentence', zoom: 1.8 },
-    ]}>
+    <ScreenFrame clip="doctor-summary" from={72} cursor={false} card="focus:summary-card" camera={[]}>
       <SourceHighlight target="focus:summary-sentence" at={60} />
     </ScreenFrame>
   </Sequence>
   <Sequence from={560} durationInFrames={40} layout="none">
-    <ScreenFrame clip="doctor-export" from={48} camera={[
-      { at: 0, target: 'focus:export', zoom: 1.65 },
-      { at: 18, target: 'focus:export', zoom: 2.2 },
-    ]} />
+    <ScreenFrame clip="doctor-export" from={48} card="focus:export-card" camera={[]} />
   </Sequence>
   <Sequence from={600} durationInFrames={120} layout="none">
     <Fill>

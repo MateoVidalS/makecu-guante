@@ -17,8 +17,8 @@ const chains = [[0, 1, 2, 3, 4], [0, 5, 6, 7, 8], [0, 9, 10, 11, 12], [0, 13, 14
 export const VisionInset: React.FC = () => {
   const frame = useCurrentFrame();
   const opacity = interpolate(frame, [0, 12, 168, 180], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: ease });
-  return <div style={{ position: 'absolute', left: 96, top: 560, width: 640, height: 310, padding: space.s24, boxSizing: 'border-box', display: 'flex', gap: space.s24, alignItems: 'center', background: c.surface, border: `1px solid ${c.border}`, borderRadius: radius.card, boxShadow: shadow, opacity }}>
-    <svg width={220} height={240} viewBox="0 0 320 320" style={{ flexShrink: 0 }} aria-label="21 MediaPipe hand landmarks">
+  return <div style={{ position: 'absolute', left: 96, top: 560, width: 480, height: 260, padding: space.s24, boxSizing: 'border-box', display: 'flex', gap: space.s16, alignItems: 'center', background: c.surface, border: `1px solid ${c.border}`, borderRadius: radius.card, boxShadow: shadow, opacity }}>
+    <svg width={160} height={200} viewBox="0 0 320 320" style={{ flexShrink: 0 }} aria-label="21 MediaPipe hand landmarks">
       {chains.map((chain, index) => <polyline key={index} points={chain.map((i) => points[i].join(',')).join(' ')} fill="none" stroke={c.text} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />)}
       {points.map(([x, y], index) => <circle key={index} cx={x} cy={y} r={6} fill={c.brand} />)}
     </svg>

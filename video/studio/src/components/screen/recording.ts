@@ -50,6 +50,15 @@ export function recordingForScreen(source: RecordingClip): RecordingClip {
   region('focus:summary', 'mark:stored-real-Gemini-summary-visible', (box) => ({ x: box.x, y: box.y, w: 1600, h: 1000 }));
   region('focus:summary-sentence', 'mark:stored-real-Gemini-summary-visible', (box) => ({ x: box.x, y: box.y + 555, w: 1500, h: 50 }));
   region('focus:export', 'click:Export CSV', (box) => ({ x: box.x - 500, y: box.y - 50, w: 1000, h: 200 }));
+  region('focus:history-card', 'focus:then-now-demo-data', (box) => ({ x: box.x, y: box.y + 139, w: 2272, h: 1096 }));
+  region('focus:position-card', 'focus:vision-servo-current-phase-bands', (box) => ({ x: box.x, y: box.y, w: box.w, h: 1246 }));
+  region('focus:current-card', 'focus:vision-servo-current-phase-bands', (box) => ({ x: box.x, y: box.y + 1270, w: box.w, h: 576 }));
+  region('focus:summary-card', 'mark:stored-real-Gemini-summary-visible', (box) => ({ x: box.x, y: box.y - 24, w: box.w, h: 1325 }));
+  region('focus:export-card', 'click:Export CSV', (box) => ({ x: box.x - 620, y: box.y - 52, w: 1260, h: 200 }));
+  region('focus:coach-tight', 'focus:coach-adjustment', (box) => ({ x: box.x, y: box.y - 260, w: box.w, h: box.h + 260 }));
+  region('focus:coach-source', 'focus:coach-adjustment', () => ({ x: 2400, y: 810, w: 1440, h: 1350 }));
+  region('focus:coach-dialog-source', 'click:Close timeline', () => ({ x: 1004, y: 540, w: 1620, h: 930 }));
+  region('focus:coach-dialog-body', 'click:Close timeline', () => ({ x: 1004, y: 540, w: 1620, h: 930 }));
   return clip;
 }
 

@@ -1,4 +1,4 @@
-"""Assemble the three rendered mid-zoom frames; no scene pixels are altered."""
+"""Assemble rendered evidence frames; no scene pixels are altered."""
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -20,17 +20,29 @@ for column, frame in enumerate(frames):
     sheet.paste(image.crop((960, 64, 1600, 424)), (x, 528))
 sheet.save("evidence/V5/session-zoom-proof.png")
 
-session = Image.new("RGB", (1920, 3360), paper)
+session = Image.new("RGB", (1920, 4480), paper)
 draw = ImageDraw.Draw(session)
 for row, (name, label) in enumerate((
     ("session-innovation", "Innovation: passive movement fades; memo keeps the goal and your hand"),
     ("session-callouts", "Ghost and solid: the opening goal stays visible"),
     ("session-vision", "Technology: 21 MediaPipe points; hand footage inset above captions"),
+    ("session-assist", "Assist: hand, meters and callout stay clear of the 400 x 225 inset"),
 )):
     y = row * 1120
     draw.text((24, y + 6), label, font=font, fill=ink)
     session.paste(Image.open(source / f"{name}.png").convert("RGB"), (0, y + 40))
 session.save("evidence/V5/session-callouts.png")
+
+coach = Image.new("RGB", (1920, 2240), paper)
+draw = ImageDraw.Draw(coach)
+for row, (name, label) in enumerate((
+    ("coach-panel", "Coach: tight decision panel and Undo beside team footage"),
+    ("coach-dialog", "Coach decisions: complete dialog body without scrim or footer"),
+)):
+    y = row * 1120
+    draw.text((24, y + 6), label, font=font, fill=ink)
+    coach.paste(Image.open(source / f"{name}.png").convert("RGB"), (0, y + 40))
+coach.save("evidence/V5/coach-split.png")
 
 doctor = Image.new("RGB", (3840, 2240), paper)
 draw = ImageDraw.Draw(doctor)
