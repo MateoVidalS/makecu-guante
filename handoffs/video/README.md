@@ -55,3 +55,9 @@ Ghost-and-solid is the visual metaphor: a faint target shape, a solid shape reac
 | STL renders of the wrist module, spools and anchors | Soft studio light on paper, slow turntable, not a dark void |
 | End card: lockup, "Your hand remembers.", "Try first. memo helps with the rest.", disclaimer, music credit | Same content; lockup on paper; disclaimer at caption size |
 | Six-word counter, campus "REC" frames, "INTRODUCING" all-caps, dark gradients | **Dropped** (gimmicky / off-brand) |
+
+## Judging criteria (MakeCU Hacker Handbook): the video must make each one obvious
+A 3-minute Devpost video that covers **problem solving, innovation, technology, design, completion**. `CHAPTER` in `src/timeline.ts`
+maps every scene to one; `Chapters` draws it as a small label at the top-left, so **keep the top 64 px of every frame clear**
+(scene titles start at y ≥ 72). Credit every library and asset (`COPY.close.credits`). Completion is proven by the team's real
+bench footage (`bench` scene) and by honest labels everywhere else.

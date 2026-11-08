@@ -7,11 +7,11 @@ export const Next: React.FC = () => (
   <TeamFootage
     id="team-next"
     label="What is next"
-    durationS={(4 * BAR) / FPS}
+    durationS={(3 * BAR) / FPS}
     notes={[
-      'One of us to camera, hardware on the table in the background.',
-      '"Next: the bench safety gate. Then a pilot with therapists."',
-      'Honest: the glove has not been tested on a person yet.',
+      'One of us to camera, the hardware on the table behind.',
+      '"It works end to end: camera, coach, board and servos. Next: the safety gate on a real hand, then a pilot with therapists."',
+      'Honest: memo has not been tested on a patient yet. Under 6.5 s.',
     ]}
   />
 );
