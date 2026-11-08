@@ -20,7 +20,7 @@ const files: Record<Part, string> = {
 };
 const allParts = Object.keys(files) as Part[];
 // Physical plastic colors; yellow identifies the real fingertip anchors, not a UI state.
-const plastic: Record<Part, string> = {
+export const hardwarePlastic: Record<Part, string> = {
   module: c.surface3, lid: c.surface3, spools: c.borderStrong, guides: c.text, anchors: c.caution,
 };
 const geometryCache = new Map<Part, Promise<BufferGeometry>>();
@@ -32,7 +32,7 @@ const loadPart = (part: Part) => {
 };
 
 // Millimetres, copied from hardware/cad/piezas.py: all shafts share the same mounting height.
-const shafts = [[-20, 25], [-54, 2.5], [-20, 0], [-54, -22.5], [-20, -25]] as const;
+export const servoShafts = [[-20, 25], [-54, 2.5], [-20, 0], [-54, -22.5], [-20, -25]] as const;
 // A knolling display, rather than a hand-mounted assembly. Park the lid beside
 // the module so all five working spools remain visible even at explode=0.
 const smallParts: Part[] = [...Array<Part>(10).fill('guides'), ...Array<Part>(5).fill('anchors')];
@@ -67,11 +67,8 @@ const CameraAim: React.FC<{
   return null;
 };
 
-export const HardwareTurntable: React.FC<HardwareProps> = ({
-  parts = allParts, explode = 0, turn = 0, width = 1920, height = 1080,
-}) => {
+export const useHardwareGeometry = () => {
   const [hold] = useState(() => delayRender('Loading hardware STL geometry'));
-  const assembly = useRef<Group>(null);
   const [geometry, setGeometry] = useState<Record<Part, BufferGeometry> | null>(null);
   useEffect(() => {
     let active = true;
@@ -81,12 +78,36 @@ export const HardwareTurntable: React.FC<HardwareProps> = ({
     return () => { active = false; continueRender(hold); };
   }, [hold]);
   useEffect(() => { if (geometry) continueRender(hold); }, [geometry, hold]);
+  return geometry;
+};
+
+export const HardwareLighting: React.FC = () => <>
+  <color attach="background" args={[c.bg]} />
+  <ambientLight intensity={0.7} />
+  <hemisphereLight args={[c.surface, c.border, 0.8]} />
+  <directionalLight position={[-120, 240, 140]} intensity={2.2} castShadow
+    shadow-mapSize={[2048, 2048]} shadow-bias={-0.0005} shadow-normalBias={0.12}
+    shadow-camera-left={-180} shadow-camera-right={180}
+    shadow-camera-top={180} shadow-camera-bottom={-180} shadow-camera-far={500}
+    shadow-radius={8} />
+  <directionalLight position={[130, 110, -90]} intensity={1.8} />
+  <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
+    <planeGeometry args={[2000, 2000]} />
+    <shadowMaterial transparent opacity={0.08} />
+  </mesh>
+</>;
+
+export const HardwareTurntable: React.FC<HardwareProps> = ({
+  parts = allParts, explode = 0, turn = 0, width = 1920, height = 1080,
+}) => {
+  const assembly = useRef<Group>(null);
+  const geometry = useHardwareGeometry();
   if (!geometry) return null;
 
   const separation = ease(Math.min(1, Math.max(0, explode)));
   const mesh = (part: Part, key: string, position: [number, number, number], scale = 1) => (
     <mesh key={key} geometry={geometry[part]} position={position} scale={scale} castShadow receiveShadow>
-      <meshStandardMaterial color={plastic[part]} roughness={0.82} metalness={0} />
+      <meshStandardMaterial color={hardwarePlastic[part]} roughness={0.82} metalness={0} />
     </mesh>
   );
   return (
@@ -95,24 +116,12 @@ export const HardwareTurntable: React.FC<HardwareProps> = ({
       camera={{ position: [0, 180, 290], near: 1, far: 1000 }}
       gl={{ antialias: true, alpha: false }}
     >
-      <color attach="background" args={[c.bg]} />
-      <ambientLight intensity={0.7} />
-      <hemisphereLight args={[c.surface, c.border, 0.8]} />
-      <directionalLight position={[-120, 240, 140]} intensity={2.2} castShadow
-        shadow-mapSize={[2048, 2048]} shadow-bias={-0.0005} shadow-normalBias={0.12}
-        shadow-camera-left={-180} shadow-camera-right={180}
-        shadow-camera-top={180} shadow-camera-bottom={-180} shadow-camera-far={500}
-        shadow-radius={8} />
-      <directionalLight position={[130, 110, -90]} intensity={1.8} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
-        <planeGeometry args={[2000, 2000]} />
-        <shadowMaterial transparent opacity={0.08} />
-      </mesh>
+      <HardwareLighting />
       <group ref={assembly} rotation={[0, turn, 0]}>
         <group rotation={[-Math.PI / 2, 0, 0]}>
           {parts.includes('module') && mesh('module', 'module', [0, 0, 0])}
           {parts.includes('lid') && mesh('lid', 'lid', [84, 0, separation * 56])}
-          {parts.includes('spools') && shafts.map(([x, y], i) => mesh('spools', `spool-${i}`, [x, y, 31.2 + separation * 25]))}
+          {parts.includes('spools') && servoShafts.map(([x, y], i) => mesh('spools', `spool-${i}`, [x, y, 31.2 + separation * 25]))}
           {smallParts.map((part, i) => parts.includes(part) && mesh(part, `${part}-${i}`, [-89.25 + i * 7, -61, 0], 0.45))}
         </group>
       </group>
