@@ -44,15 +44,43 @@ export class ApiRequestError extends Error {
     super(detail.message);
   }
 }
+/** Shown when the local server cannot be reached or answers without a usable error. */
+export const SERVER_UNREACHABLE_MESSAGE =
+  "Can't reach the memo server. Check that it is running, then try again.";
+
+/** A network failure (server stopped, proxy up but API down) never surfaces as a raw parser or fetch error. */
+async function send(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiRequestError(0, {
+      code: 'unreachable',
+      message: SERVER_UNREACHABLE_MESSAGE,
+    });
+  }
+}
+
+/** The API answers errors as `{ error: { code, message } }`; anything else (an empty proxy 500, an HTML page) is "unreachable". */
+async function failure(response: Response): Promise<ApiRequestError> {
+  try {
+    const body = (await response.json()) as Partial<ApiError>;
+    if (body?.error && typeof body.error.message === 'string')
+      return new ApiRequestError(response.status, body.error);
+  } catch {
+    /* Not the API's JSON error. */
+  }
+  return new ApiRequestError(response.status, {
+    code: 'unreachable',
+    message: SERVER_UNREACHABLE_MESSAGE,
+  });
+}
+
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const response = await send(`/api${path}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
-  if (!response.ok) {
-    const body: ApiError = await response.json();
-    throw new ApiRequestError(response.status, body.error);
-  }
+  if (!response.ok) throw await failure(response);
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
@@ -143,11 +171,8 @@ export const createVoiceToken = (session_id: number | null) =>
 export async function exportData(
   format: 'json' | 'csv' = 'json',
 ): Promise<Blob> {
-  const response = await fetch(`/api/export?format=${format}`);
-  if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new ApiRequestError(response.status, error.error);
-  }
+  const response = await send(`/api/export?format=${format}`);
+  if (!response.ok) throw await failure(response);
   return response.blob();
 }
 

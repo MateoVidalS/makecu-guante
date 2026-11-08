@@ -18,12 +18,15 @@ import { claimsGloveHelp, HONESTY_CORRECTION } from './honesty';
 
 /** A tool call can arrive just after the words that describe it. */
 const HELP_CLAIM_GRACE_MS = 1500;
+/** Pause after which an unfinished help request is taken as complete. */
+const HELP_SENTENCE_MS = 700;
 import { dispatchTool } from './tools';
 import { TranscriptBatcher } from './transcript';
 import {
   patientBrakeReason,
   reportedPain,
   normalizePatientText,
+  namedFingers,
 } from './patientSafety';
 import {
   type PatientTranscriber,
@@ -95,6 +98,9 @@ export class VoiceController {
   private quietUntilPatient = false;
   /** Attempt index the patient already asked help for (once per attempt). */
   private helpAskedFor = -1;
+  /** A help request waits for the end of the sentence, which may name fingers. */
+  private helpTimer: ReturnType<typeof setTimeout> | undefined;
+  private helpText = '';
   /** Outbox: context and the next spoken cue wait until nobody is speaking. */
   private context: string[] = [];
   private spoken: Cue | null = null;
@@ -413,7 +419,7 @@ export class VoiceController {
         this.partial[event.role] += event.text;
         if (event.role === 'patient') {
           this.checkPatientSafety(this.partial.patient);
-          this.checkHelpRequest(this.partial.patient);
+          this.checkHelpRequest(this.partial.patient, !!event.finished);
           this.runtime.therapy?.notePatientSpeech?.(this.partial.patient);
           this.scheduler.setTalking(!event.finished);
         }
@@ -651,7 +657,7 @@ export class VoiceController {
    * The glove only moves when the patient asks. "help" / "ayuda" always counts during an
    * attempt; a plain "yes" / "si" / "dale" counts right after help was offered.
    */
-  private checkHelpRequest(text: string) {
+  private checkHelpRequest(text: string, finished: boolean) {
     const view = this.runtime.exercise.view();
     if (view.phase !== 'ATTEMPT' || this.helpAskedFor === view.index) return;
     const said = normalizePatientText(text);
@@ -662,8 +668,22 @@ export class VoiceController {
           said,
         ));
     if (!asks) return;
-    this.helpAskedFor = view.index;
-    this.runtime.exercise.requestHelp();
+    // Speech arrives in pieces: "help" can come before "my index and middle". Wait for
+    // the end of the sentence (or a short pause) so the request covers the named fingers.
+    this.helpText = text;
+    clearTimeout(this.helpTimer);
+    const index = view.index;
+    const send = () => {
+      const now = this.runtime.exercise.view();
+      if (now.phase !== 'ATTEMPT' || now.index !== index) return;
+      if (this.helpAskedFor === index || this.brakeLatched) return;
+      this.helpAskedFor = index;
+      // "Help my index" helps the index; "help" or "the whole hand" helps every finger.
+      const fingers = namedFingers(this.helpText);
+      this.runtime.exercise.requestHelp(fingers.length ? fingers : undefined);
+    };
+    if (finished) send();
+    else this.helpTimer = setTimeout(send, HELP_SENTENCE_MS);
   }
   private checkPatientSafety(text: string) {
     const awaitingPain = performance.now() < this.awaitingPainUntil;
@@ -693,7 +713,7 @@ export class VoiceController {
       this.partial.patient = text;
       if (text.trim()) this.quietUntilPatient = false;
       this.checkPatientSafety(text);
-      this.checkHelpRequest(text);
+      this.checkHelpRequest(text, !!finished);
       this.runtime.therapy?.notePatientSpeech?.(text);
       this.update({ lastPatientLine: text });
       if (finished) this.finishTranscript('patient');
@@ -866,6 +886,7 @@ export class VoiceController {
     this.update({ status: 'off' });
   }
   dispose() {
+    clearTimeout(this.helpTimer);
     this.stop();
     this.unsubscribe();
     clearTimeout(this.captionTimer);

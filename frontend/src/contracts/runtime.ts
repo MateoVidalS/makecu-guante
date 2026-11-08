@@ -59,7 +59,7 @@ export interface Runtime {
     resume(): void;
     skip(): void;
     /** The patient asks for the glove's help. The glove never moves without it. */
-    requestHelp(): void;
+    requestHelp(fingers?: readonly GloveFinger[]): void;
     stop(): Promise<void>;
     view(): ExerciseView;
     subscribe(cb: (v: ExerciseView) => void): Unsubscribe;

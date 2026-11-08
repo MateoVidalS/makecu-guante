@@ -1288,16 +1288,6 @@ it('refuses further intensity on closing poses and scales them in their existing
 });
 
 describe('help asked between attempts', () => {
-  it('the coach cannot queue help the patient never asked for', () => {
-    const h = harness({ attempt_s: 9 });
-    h.therapy.notePatientSpeech('My hand feels fine');
-    const d = h.call('assist_finger_now', {
-      finger: 'index',
-      reason: 'Asked?',
-    });
-    expect(d.result).toBe('rejected');
-    expect(h.therapy.queuedHelp()).toEqual([]);
-  });
 
   const startedAt = (h: ReturnType<typeof harness>, i: number) =>
     h.commands().findIndex((c) => c.t === 'target' && c.f[i] > 0);

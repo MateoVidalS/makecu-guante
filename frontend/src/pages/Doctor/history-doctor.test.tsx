@@ -162,6 +162,24 @@ describe('record review pages', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(
       mockState.sessions.length + 1,
     );
+    // A percentage column and a count column say which is which, and same-day sessions differ by time.
+    expect(
+      within(table).getByRole('columnheader', {
+        name: 'On your own (average)',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByRole('columnheader', { name: 'Attempts with help' }),
+    ).toBeInTheDocument();
+    const listed = mockState.sessions[0];
+    const time = new Date(listed.started_at).toLocaleTimeString('en', {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    });
+    expect(
+      table.querySelector(`a[href="/history/sessions/${listed.id}"]`),
+    ).toHaveTextContent(time);
   });
   it('labels missing latest ring/pinky effort instead of showing an older session', async () => {
     const latest = mockState.sessions.reduce((a, b) =>

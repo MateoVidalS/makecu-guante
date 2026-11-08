@@ -30,6 +30,14 @@ import {
 import { firstAndLast, useAllSessions } from './data';
 import './history.css';
 
+/** Two sessions on the same day must be told apart: the time, in the same UTC as the date. */
+const formatTime = (value: string) =>
+  new Date(value).toLocaleTimeString('en', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  });
+
 const tabs = ['Overview', 'Sessions'];
 export default function History() {
   const [params, setParams] = useSearchParams();
@@ -145,10 +153,10 @@ export function SessionList({ doctor = false }: { doctor?: boolean }) {
                     Attempts
                   </th>
                   <th scope="col" className="num">
-                    On your own
+                    On your own (average)
                   </th>
                   <th scope="col" className="num">
-                    With help
+                    Attempts with help
                   </th>
                   <th scope="col" className="num">
                     Safety events
@@ -227,6 +235,10 @@ function SessionRows({ sessions }: { sessions: Session[] }) {
           <th scope="row">
             <Link to={`/history/sessions/${s.id}`}>
               {formatDate(s.started_at)}
+              <span className="session-time">
+                {' '}
+                · {formatTime(s.started_at)}
+              </span>
             </Link>
           </th>
           <td>

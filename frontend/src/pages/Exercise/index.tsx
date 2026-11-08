@@ -65,6 +65,7 @@ import { useHighlightedFinger } from '../../components/therapy/useHighlightedFin
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
 import { usePracticePreflightGate } from '../../components/common/preflight';
+import { recapStatus } from './recapStatus';
 const Hand = memo(function Hand() {
   const runtime = useRuntime(),
     vision = useVision();
@@ -246,6 +247,14 @@ function LiveDetails({ onBrake }: { onBrake: () => void }) {
     </aside>
   );
 }
+function RecapStatus({ message }: { message: ReturnType<typeof recapStatus> }) {
+  if (!message) return null;
+  return message.kind === 'coach' ? (
+    <p className="recap__coach">{message.text}</p>
+  ) : (
+    <p role="status">{message.text}</p>
+  );
+}
 function Summary({
   onAgain,
   attempts,
@@ -270,15 +279,14 @@ function Summary({
         attempts={attempts}
         mirrored={runtime.calibration.current?.camera.affected_hand === 'left'}
       />
-      {summary.isFetching ? (
-        <p role="status">Preparing your recap…</p>
-      ) : summary.data?.text ? (
-        <p className="recap__coach">{summary.data.text}</p>
-      ) : saving !== 'Saved' ? (
-        <p role="status">Your recap will be available after saving.</p>
-      ) : summary.isError ? (
-        <p role="status">Summary unavailable. Your session is saved.</p>
-      ) : null}
+      <RecapStatus
+        message={recapStatus({
+          saving,
+          fetching: summary.isFetching,
+          text: summary.data?.text,
+          failed: summary.isError,
+        })}
+      />
       <div className="actions">
         <BigButton variant="primary" onClick={onAgain}>
           Practice again
@@ -589,7 +597,7 @@ export default function Exercise() {
                   size="lg"
                   variant={helpOffered ? 'primary' : 'secondary'}
                   disabled={safetyVisible}
-                  onClick={runtime.exercise.requestHelp}
+                  onClick={() => runtime.exercise.requestHelp()}
                 >
                   Help me open
                 </Button>
