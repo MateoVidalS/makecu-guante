@@ -184,6 +184,9 @@ export class VoiceController {
     });
   }
   async start(id: number | null) {
+    // A fallback forced by a Live failure (not chosen by the user) is per session: every new
+    // session tries Gemini Live again instead of staying on the robotic browser voice.
+    const forcedSimple = this.state.mode === 'simple' && this.state.unavailable;
     this.stop();
     this.active = true;
     this.id = id;
@@ -213,7 +216,11 @@ export class VoiceController {
       if (state && ['ATTEMPT', 'ASSIST', 'HOLD'].includes(state.phase))
         this.transport?.sendText(liveContext(state), false);
     }, 1000);
-    this.update({ unavailable: false, transcriptError: false });
+    this.update({
+      unavailable: false,
+      transcriptError: false,
+      ...(forcedSimple ? { mode: 'live' as const } : {}),
+    });
     this.deps.local.unlock();
     if (id !== null) {
       this.batch = new TranscriptBatcher(
