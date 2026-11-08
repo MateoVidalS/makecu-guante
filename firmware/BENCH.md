@@ -43,7 +43,7 @@ separate current meter or subtract a measured rail baseline. Record the voltage,
 angle range, load, method and instrument uncertainty with the captures. Never
 claim per-finger attribution from the total INA219 when other servos are active.
 
-Measure powered idle/holding current at open, mean and peak moving current over
+Measure powered idle/holding current at slack, mean and peak moving current over
 a safe unloaded sweep, and maximum unloaded speed (degrees/s). Use a team-approved
 brief loaded fixture test for stall current; stop immediately at a limit, fault,
 voltage droop or excessive heat. Do not raise the firmware cap to force a stall
@@ -102,11 +102,12 @@ Build overrides may lower the default/maximum, never exceed 2200 mA.
    still return `no_calib`. Send index 4 and capture one `calib_ok`. Send target
    `[0.5,0.5,0.5,0.5,0.5]`, v=0.5 with valid pings every 300 ms. Confirm five-value
    `a` and `tg`, correctly ordered bars/servos, and <=200-byte JSON lines including
-   the largest observed timestamp/current. Try v=5: every channel stays <=1
-   calibrated range/s. Verify hard clamps, mirrored mounting, and that starting
-   a new calibration batch requires all five new ranges. Reset: all five null.
+   the largest observed timestamp/current. Try v=5: every channel winds at <=1
+   calibrated range/s; target and follow unwind at 3 ranges/s. Verify hard clamps,
+   mirrored mounting, and that starting a new calibration batch requires all five
+   new ranges. Reset: all five null.
 6. On an unloaded fixture, start **all five servos together** with a single small
-   target from open and keepalives, using the **2.5 A limit and installed bulk
+   target from slack and keepalives, using the **2.5 A limit and installed bulk
    capacitor**. Scope the 5 V servo rail and ESP32 power; capture the minimum
    voltage and current peak. Repeat start/release cycles and confirm the ESP32
    **does not reset** (no new boot event, continuous telemetry `ms`). The firmware
@@ -119,7 +120,7 @@ Build overrides may lower the default/maximum, never exceed 2200 mA.
    threshold and `evt overcurrent` peak. From **filtered threshold crossing** to
    fault/release: 100 ms +/- one 5 ms tick; allow filter/INA conversion delay from
    physical load onset. A sub-100 ms spike must not latch. All five must unwind
-   to open, then detach 500 ms after open. Stop if current disagrees with the DMM
+   to slack, then detach 500 ms after slack. Stop if current disagrees with the DMM
    or the mechanism does not unwind. Never rigidly stall longer than necessary.
 8. Press STOP during five-servo target, follow and individual jogs: verify release
    and latched fault. Held STOP + `release` returns `err fault`. On letting go,
@@ -127,16 +128,18 @@ Build overrides may lower the default/maximum, never exceed 2200 mA.
    until explicit release. Contact bounce must not re-enable motion.
 9. With the separate servo supply connected, pull USB during five-servo motion:
    verify release on the first tick strictly after 1000 ms from the last valid
-   message (1005 ms on 5 ms ticks), opening at <=3 ranges/s, then PWM detach
-   500 ms after open. Reconnect; an accepted move reattaches. If USB removal
+   message (1005 ms on 5 ms ticks), unwinding at 3 ranges/s, then PWM detach
+   500 ms after slack. Reconnect; an accepted move reattaches. If USB removal
    powers down the ESP32, record that limitation and repeat by stopping messages
    with board power retained to isolate the watchdog.
 10. Boot without INA219: expect `ina_missing`, target/follow refused with
     `err state`, jog/release still available. Disconnect the sensor during a
     fixture target: verify fault and release across all five channels, with
     assistance inhibited until reset. Check a wedged bus fails closed.
-11. Follow must replace target and set each goal to `clamp(vision - 0.05, 0, 1)`.
-    Check rising/falling input on all five fingers. Ring segments: thumb 0–3,
+11. Follow must replace target and set each goal to `clamp(f - 0.08, 0, 1)`,
+    where `f` is vision converted to pull by the host. Check rising/falling pull
+    on all five fingers: winding at 1.5 ranges/s, unwinding at 3 ranges/s.
+    Ring bars show pull (how much the glove is opening each finger): thumb 0–3,
     index 5–8, middle 10–13, ring 15–18, pinky 20–23; gaps 4/9/14/19 stay dark
     except in fault. Colors: blue follow, orange target, amber calibration, dim
     white idle. Fault overrides all 24 pixels with a 2 Hz red blink. Verify 20%
@@ -158,6 +161,120 @@ Build overrides may lower the default/maximum, never exceed 2200 mA.
     controlled brown-out can be safely induced, leave this check pending. This
     deliberate reset test is separate from step 6, which must run without reset.
 
+## Opening glove gate
+
+Complete the checklist above first, then these gates **in this order**. Pull 0
+is slack at calibrated `min`; pull 1 is full pull at `max`, fingers straight.
+Never swap those endpoints to reverse direction. Keep the configured firmware
+current limit and supply limit active throughout; record the actual limits.
+Gates 1–3 use an empty glove or fixture. Only after they pass may the hardware
+team use a relaxed volunteer hand for gates 4 and 6; use a fixture/empty glove
+for fault gates 5 and 7. No patient use until every gate passes. Never run
+fault/stall tests on a person. Results remain **NOT RUN**.
+
+### 1. Dorsal routing
+
+On the empty glove, confirm the threads pass over the back of every finger.
+Slowly wind each spool independently: it must straighten/open that finger.
+Unwind to pull 0: the tendon must become slack. Stop and repair routing if
+winding closes a finger or pull 0 keeps tension. Do not reverse calibration.
+
+| Finger | Winding opens / pull 0 slack | Result | Evidence |
+| --- | --- | --- | --- |
+| Thumb | Pending / Pending | Not run | Pending |
+| Index | Pending / Pending | Not run | Pending |
+| Middle | Pending / Pending | Not run | Pending |
+| Ring | Pending / Pending | Not run | Pending |
+| Pinky | Pending / Pending | Not run | Pending |
+
+### 2. Calibration per finger
+
+On the fixture, reproduce a relaxed full fist. With the low setup current limit,
+jog until the thread is just taut without extending the finger: **Slack** is
+`min` (pull 0). Jog slowly to a straight, neutral finger, **never bent back**:
+**Open** is `max` (pull 1). Require both angles within 5–175 degrees and
+`|max - min| >= 20 degrees`. Send release before calibration; confirm it unwinds
+to slack. Repeat calibration for the actual hand before its relaxed-hand gates.
+
+| Finger | Slack `min` deg | Open `max` deg | Separation >=20 deg / release to slack | Result / evidence |
+| --- | --- | --- | --- | --- |
+| Thumb | Pending | Pending | Pending / Pending | Not run |
+| Index | Pending | Pending | Pending / Pending | Not run |
+| Middle | Pending | Pending | Pending / Pending | Not run |
+| Ring | Pending | Pending | Pending / Pending | Not run |
+| Pinky | Pending | Pending | Pending / Pending | Not run |
+
+### 3. Extension strength gate
+
+One finger at a time on the fixture/empty glove, have a helper resist opening
+with moderate effort. The servo must open the finger and hold it straight for
+**2 seconds below the active current limit**. Record peak and sustained current,
+the applied load/method, and rail baseline with other servos slack. One INA219
+only measures the total. Stop immediately at a fault, discomfort, heat or droop;
+never raise a limit to pass. Failure requires a **stronger servo or bigger
+spool/lever**, reviewed by the hardware team and the full gate repeated, before
+any patient use.
+
+| Finger | Limit mA | Peak mA | Sustained mA / hold s | Result / load method / evidence |
+| --- | --- | --- | --- | --- |
+| Thumb | Pending | Pending | Pending / Pending | Not run |
+| Index | Pending | Pending | Pending / Pending | Not run |
+| Middle | Pending | Pending | Pending / Pending | Not run |
+| Ring | Pending | Pending | Pending / Pending | Not run |
+| Pinky | Pending | Pending | Pending / Pending | Not run |
+
+### 4. All five held open
+
+After recalibrating to a relaxed volunteer hand, open all five fingers slowly
+in stages without hyperextension and hold for **2 seconds**. Record total peak
+and sustained current; both must stay below the active limit throughout the hold.
+Do not average away peaks or increase limits to pass.
+
+| Limit mA | Total peak mA | Total sustained mA | Hold s | Result / evidence |
+| --- | --- | --- | --- | --- |
+| Pending | Pending | Pending | Pending (>=2) | Not run |
+
+### 5. STOP while held open
+
+While all five are held straight on the fixture, press STOP. All tendons must
+reach slack within **0.5 seconds** of the press; record actual motion as well as
+telemetry.
+The fault must latch and PWM must detach 500 ms after reaching slack. Confirm
+that letting go of STOP alone never resumes pulling.
+
+| Starting pull | Press to all-five slack s | Slack to detach ms | Fault stays latched | Result / evidence |
+| --- | --- | --- | --- | --- |
+| Pending | Pending (<=0.5) | Pending (500) | Pending | Not run |
+
+### 6. Fast fist during follow
+
+From an open hand in follow, make a fast fist while the host streams converted
+pull every 20 ms. Goals must be `max(0, f - 0.08)` and pay out at 3 ranges/s,
+without blocking closing or tripping overcurrent. Record all five goal/commanded
+pull traces and total peak current. Native tests cover a 0.9-to-0 pull ramp in
+300 ms; actual tendon tracking and current require this hardware check.
+
+| Fist duration ms | Total peak / limit mA | Goal / pull traces | Overcurrent event | Result / evidence |
+| --- | --- | --- | --- | --- |
+| Pending | Pending / Pending | Pending | Pending (none) | Not run |
+
+### 7. Watchdog while held open
+
+With board and servo power retained, pull USB while all five are held open on
+the fixture. The opening gate requires the **watchdog fault within 1005 ms of the
+last valid message and all-five commanded slack within 1.5 s of USB loss** (the
+protocol faults strictly after 1000 ms, then unwinds at 3 ranges/s: up to ~335 ms
+from full pull, plus mechanical delay). Coordinator decision, Nov 7: this bound
+replaces the earlier "slack within 1 second". Record USB-loss time, last valid
+message, watchdog event, actual slack and PWM detach separately. Do not mark the
+gate passed from a watchdog event alone. If pulling USB removes board power,
+record that limitation and repeat with messages stopped and independent board
+power, as in checklist 9. Detach remains 500 ms after slack.
+
+| Starting pull | USB loss to slack s | Last message to watchdog ms | Watchdog to slack ms | Slack to detach ms | Result / evidence |
+| --- | --- | --- | --- | --- | --- |
+| Pending | Pending (<=1.0 required) | Pending (>1000) | Pending | Pending (500) | Not run; timing conflict pending |
+
 ## Results
 
 Attach serial captures, scope/analyzer traces and measurement tables to the PR
@@ -173,7 +290,7 @@ or team hardware record. Do not mark a row passed without evidence.
 | 6. Simultaneous start | all five start; no ESP32 reset with capacitor | Not run | Pending |
 | 7. Overcurrent | 100 ms +/-5 ms; all five release/detach | Not run | Pending |
 | 8. STOP | latch; held release refused; explicit recovery | Not run | Pending |
-| 9. Watchdog | >1000 ms; open+500 ms detach on all five | Not run | Pending |
+| 9. Watchdog | >1000 ms; slack+500 ms detach on all five | Not run | Pending |
 | 10. INA loss | assistance refused; runtime loss releases all | Not run | Pending |
 | 11. Follow/ring | five slack goals, bars/gaps, colors/blink | Not run | Pending |
 | 12. Latency/tick/heap/flood | p95 <50 ms, tick <2 ms, stable heap, safety preserved | Not run | Pending |

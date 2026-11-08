@@ -1,6 +1,7 @@
 #include <ArduinoJson.h>
 #include <unity.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -42,13 +43,13 @@ struct Harness {
   explicit Harness(bool sensor = true, uint32_t start = 0) : now(start) {
     safety.begin(sensor, now);
   }
-  void calibrate() {
+  void calibrate(bool alternateMirrors = false) {
     for (std::size_t i = 0; i < config::FINGERS; ++i) {
       Command c;
       c.type = CommandType::Calib;
       c.i = i;
-      c.min = 20;
-      c.max = 150;
+      c.min = alternateMirrors && i % 2 ? 150 : 20;
+      c.max = alternateMirrors && i % 2 ? 20 : 150;
       TEST_ASSERT_EQUAL_INT(0, static_cast<int>(safety.handle(c, now)));
     }
   }
@@ -272,6 +273,119 @@ void requested_slow_speed_and_no_catchup_jump() {
   TEST_ASSERT_EQUAL_INT(static_cast<int>(ErrorCode::BadArgs),
                         static_cast<int>(h.safety.handle(c, h.now)));
 }
+void follow_unwinds_at_release_rate_and_winds_at_follow_rate() {
+  Harness h;
+  h.calibrate(true);
+  h.send("{\"t\":\"target\",\"f\":[0.9,0.9,0.9,0.9,0.9],\"v\":1}");
+  h.advance(900);
+  h.send("{\"t\":\"follow\",\"f\":[0.28,0.28,0.28,0.28,0.28]}");
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
+    TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.2F, h.safety.goal(i));
+    TEST_ASSERT_FLOAT_WITHIN(0.0002F, 0.9F, h.safety.telemetry(h.now).a[i]);
+  }
+  h.advance(100);
+  for (float pull : h.safety.telemetry(h.now).a)
+    TEST_ASSERT_FLOAT_WITHIN(0.0002F, 0.6F, pull);  // 3.0/s unwinding
+  h.advance(135);
+  for (float pull : h.safety.telemetry(h.now).a)
+    TEST_ASSERT_FLOAT_WITHIN(0.0002F, 0.2F, pull);  // Clamp at the goal.
+
+  h.send("{\"t\":\"follow\",\"f\":[0.98,0.98,0.98,0.98,0.98]}");
+  h.advance(100);
+  for (float pull : h.safety.telemetry(h.now).a)
+    TEST_ASSERT_FLOAT_WITHIN(0.0002F, 0.35F, pull);  // 1.5/s winding
+  h.advance(370);
+  for (float pull : h.safety.telemetry(h.now).a) TEST_ASSERT_FLOAT_WITHIN(0.0002F, 0.9F, pull);
+}
+void target_unwinds_at_release_rate_and_caps_only_winding() {
+  for (float speed : {0.2F, 5.0F}) {
+    Harness h;
+    h.calibrate(true);
+    h.send("{\"t\":\"target\",\"f\":[0.9,0.2,0.9,0.2,0.9],\"v\":1}");
+    h.advance(900);
+    Command c;
+    c.type = CommandType::Target;
+    c.f = {0.2F, 0.9F, 0.2F, 0.9F, 0.2F};
+    c.v = speed;
+    TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.safety.handle(c, h.now)));
+    h.advance(100);
+    for (std::size_t i = 0; i < config::FINGERS; ++i) {
+      const float expected = i % 2 ? (speed == 0.2F ? 0.22F : 0.3F) : 0.6F;
+      TEST_ASSERT_FLOAT_WITHIN(0.0002F, expected, h.safety.telemetry(h.now).a[i]);
+    }
+    h.advance(135);
+    for (std::size_t i = 0; i < config::FINGERS; ++i) {
+      const float expected = i % 2 ? (speed == 0.2F ? 0.247F : 0.435F) : 0.2F;
+      TEST_ASSERT_FLOAT_WITHIN(0.0002F, expected, h.safety.telemetry(h.now).a[i]);
+    }
+    h.advance(3500);
+    for (std::size_t i = 0; i < config::FINGERS; ++i)
+      TEST_ASSERT_FLOAT_WITHIN(0.0002F, c.f[i], h.safety.telemetry(h.now).a[i]);
+  }
+}
+void fast_fist_follow_pays_out_to_each_goal_without_overshoot() {
+  Harness h;
+  h.calibrate(true);
+  h.send("{\"t\":\"target\",\"f\":[0.9,0.9,0.9,0.9,0.9],\"v\":1}");
+  h.advance(900);
+  Command c;
+  c.type = CommandType::Follow;
+  // A 300 ms fist drops the pull goal every camera frame (20 ms).
+  for (int frame = 1; frame <= 15; ++frame) {
+    c.f.fill(frame == 15 ? 0 : 0.98F - 0.06F * frame);
+    TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.safety.handle(c, h.now)));
+    const float goal = frame == 15 ? 0 : 0.9F - 0.06F * frame;
+    for (int tick = 0; tick < 4; ++tick) {
+      const auto before = h.safety.telemetry(h.now).a;
+      h.advance(5);
+      for (std::size_t i = 0; i < config::FINGERS; ++i) {
+        const float expected = std::max(goal, before[i] - 0.015F);
+        TEST_ASSERT_FLOAT_WITHIN(0.0002F, expected, h.safety.telemetry(h.now).a[i]);
+      }
+    }
+    for (float pull : h.safety.telemetry(h.now).a) {
+      TEST_ASSERT_FLOAT_WITHIN(0.0002F, goal, pull);
+      TEST_ASSERT_TRUE(pull <= goal + 0.0002F);
+    }
+  }
+}
+void run_unwinding_never_catches_up_after_a_missed_tick() {
+  for (const char* next : {"{\"t\":\"follow\",\"f\":[0.28,0.28,0.28,0.28,0.28]}",
+                           "{\"t\":\"target\",\"f\":[0.2,0.2,0.2,0.2,0.2],\"v\":0.2}"}) {
+    Harness h;
+    h.calibrate(true);
+    h.send("{\"t\":\"target\",\"f\":[0.9,0.9,0.9,0.9,0.9],\"v\":1}");
+    h.advance(900);
+    TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.send(next)));
+    h.now += 100;
+    h.safety.tick(h.now);
+    for (float pull : h.safety.telemetry(h.now).a)
+      TEST_ASSERT_FLOAT_WITHIN(0.0002F, 0.885F, pull);  // One 5 ms step, not 100 ms.
+  }
+}
+void follow_target_follow_and_target_release_transitions_never_jump() {
+  Harness h;
+  h.calibrate(true);
+  h.send("{\"t\":\"follow\",\"f\":[0.68,0.68,0.68,0.68,0.68]}");
+  for (float pull : h.safety.telemetry(h.now).a) TEST_ASSERT_EQUAL_FLOAT(0, pull);
+  h.advance(200);
+  const char* transitions[] = {"{\"t\":\"target\",\"f\":[0.1,0.9,0.1,0.9,0.1],\"v\":0.2}",
+                               "{\"t\":\"follow\",\"f\":[0.28,0.98,0.28,0.98,0.28]}",
+                               "{\"t\":\"target\",\"f\":[0.1,0.9,0.1,0.9,0.1],\"v\":0.2}",
+                               "{\"t\":\"release\"}"};
+  const float unwinding[] = {0.285F, 0.27F, 0.255F, 0.24F};
+  const float winding[] = {0.301F, 0.3085F, 0.3095F, 0.2945F};
+  for (std::size_t step = 0; step < 4; ++step) {
+    const auto before = h.safety.telemetry(h.now).a;
+    TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.send(transitions[step])));
+    for (std::size_t i = 0; i < config::FINGERS; ++i)
+      TEST_ASSERT_EQUAL_FLOAT(before[i], h.safety.telemetry(h.now).a[i]);
+    h.advance(5);
+    for (std::size_t i = 0; i < config::FINGERS; ++i)
+      TEST_ASSERT_FLOAT_WITHIN(0.0002F, i % 2 ? winding[step] : unwinding[step],
+                               h.safety.telemetry(h.now).a[i]);
+  }
+}
 void overcurrent_trips_at_100_ms_with_peak() {
   Harness h;
   h.calibrate();
@@ -397,13 +511,13 @@ void follow_replaces_target_and_keeps_slack() {
   h.advance(100);
   h.send("{\"t\":\"follow\",\"f\":[0.3,0.02,1.2,0.3,0.2]}");
   TEST_ASSERT_EQUAL_INT(static_cast<int>(Mode::Follow), static_cast<int>(h.safety.mode()));
-  TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.25F, h.safety.goal(0));
+  TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.22F, h.safety.goal(0));
   TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0, h.safety.goal(1));
   TEST_ASSERT_FLOAT_WITHIN(0.0001F, 1, h.safety.goal(2));
   h.advance(100);
-  TEST_ASSERT_FLOAT_WITHIN(0.0002F, 0.25F, h.safety.telemetry(h.now).a[0]);
+  TEST_ASSERT_FLOAT_WITHIN(0.0002F, 0.22F, h.safety.telemetry(h.now).a[0]);
   h.advance(1000);
-  TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.25F, h.safety.telemetry(h.now).a[0]);
+  TEST_ASSERT_FLOAT_WITHIN(0.0001F, 0.22F, h.safety.telemetry(h.now).a[0]);
 }
 void mirrored_calibration_and_hard_angle_clamps() {
   Calibration c{160, 20, true};
@@ -688,11 +802,11 @@ void all_five_follow_goals_keep_slack_and_respect_the_speed_cap() {
   h.send("{\"t\":\"target\",\"f\":[1,1,1,1,1],\"v\":1}");
   h.advance(100);
   h.send("{\"t\":\"follow\",\"f\":[0.3,0.02,1.2,0.7,0.8]}");
-  const Quint expected{{0.25F, 0, 1, 0.65F, 0.75F}};
+  const Quint expected{{0.22F, 0, 1, 0.62F, 0.72F}};
   for (std::size_t i = 0; i < config::FINGERS; ++i)
     TEST_ASSERT_FLOAT_WITHIN(0.0001F, expected[i], h.safety.goal(i));
   h.advance(5);
-  const Quint next{{0.1075F, 0.0925F, 0.1075F, 0.1075F, 0.1075F}};
+  const Quint next{{0.1075F, 0.085F, 0.1075F, 0.1075F, 0.1075F}};
   for (std::size_t i = 0; i < config::FINGERS; ++i)
     TEST_ASSERT_FLOAT_WITHIN(0.0002F, next[i], h.safety.telemetry(h.now).a[i]);
 }
@@ -735,7 +849,7 @@ void assistance_waits_for_out_of_range_jog_to_unwind() {
       0, static_cast<int>(h.send("{\"t\":\"target\",\"f\":[0,0,0,0.3,0.2],\"v\":1}")));
   const float angle = h.safety.angle(0);
   h.advance(5);
-  TEST_ASSERT_FLOAT_WITHIN(0.001F, angle - 0.65F, h.safety.angle(0));
+  TEST_ASSERT_FLOAT_WITHIN(0.001F, angle - 1.95F, h.safety.angle(0));  // Run unwinds at 3.0/s.
 }
 void decimal_writer_never_overruns_and_parser_survives_noise() {
   Telemetry t{UINT32_MAX, {{1, 0.25F, 0}}, 3276, State::Fault, Mode::Target, {{0, 1, 0.5F}}};
@@ -760,9 +874,9 @@ void decimal_writer_never_overruns_and_parser_survives_noise() {
   }
 }
 
-// ---------- the app's real command sequences (frontend runtime, engine, calibration wizard) ----------
-// Replays what the browser sends over Web Serial, at its cadence, through the board's safety
-// controller: every command must be accepted and no safety event may fire on a healthy run.
+// App command patterns: runtime, engine and calibration wizard.
+// Replay Web Serial commands at the host cadence through the safety controller.
+// Every command must be accepted and no safety event may fire on a healthy run.
 struct AppLink {
   Harness& h;
   uint32_t lastSent = 0;
@@ -776,11 +890,12 @@ struct AppLink {
   void sendFingers(const char* type, const Quint& f, float v = 0) {
     char json[160];
     if (v > 0)
-      std::snprintf(json, sizeof(json), "{\"t\":\"%s\",\"f\":[%.2f,%.2f,%.2f,%.2f,%.2f],\"v\":%.2f}",
-                    type, f[0], f[1], f[2], f[3], f[4], v);
+      std::snprintf(json, sizeof(json),
+                    "{\"t\":\"%s\",\"f\":[%.2f,%.2f,%.2f,%.2f,%.2f],\"v\":%.2f}", type, f[0], f[1],
+                    f[2], f[3], f[4], v);
     else
-      std::snprintf(json, sizeof(json), "{\"t\":\"%s\",\"f\":[%.2f,%.2f,%.2f,%.2f,%.2f]}", type, f[0],
-                    f[1], f[2], f[3], f[4]);
+      std::snprintf(json, sizeof(json), "{\"t\":\"%s\",\"f\":[%.2f,%.2f,%.2f,%.2f,%.2f]}", type,
+                    f[0], f[1], f[2], f[3], f[4]);
     sendOk(json);
   }
   // One 5 ms control tick; the client pings only after 300 ms without any other write.
@@ -804,8 +919,8 @@ struct AppLink {
   }
 };
 void no_safety_event(const Harness& h) {
-  for (auto kind : {EventKind::Overcurrent, EventKind::StopButton, EventKind::Watchdog,
-                    EventKind::InaMissing})
+  for (auto kind :
+       {EventKind::Overcurrent, EventKind::StopButton, EventKind::Watchdog, EventKind::InaMissing})
     TEST_ASSERT_FALSE_MESSAGE(h.saw(kind), protocol::name(kind));
 }
 void app_practice_sequence_is_accepted_end_to_end() {
@@ -814,17 +929,17 @@ void app_practice_sequence_is_accepted_end_to_end() {
   app.connect();
   TEST_ASSERT_TRUE(h.saw(EventKind::CalibOk));
   TEST_ASSERT_EQUAL_FLOAT(1500, h.safety.info().limit);
-  // ATTEMPT: follow at 30 Hz while the patient closes to 40%. Follow alone feeds the watchdog.
-  Quint vision{};
+  // ATTEMPT: follow at 30 Hz while the patient opens to 40% pull. Follow feeds the watchdog.
+  Quint pull{};
   for (int frame = 0; frame < 90; ++frame) {
-    vision.fill(0.4F * frame / 89);
-    app.sendFingers("follow", vision);
+    pull.fill(0.4F * frame / 89);
+    app.sendFingers("follow", pull);
     for (int t = 0; t < 7; ++t) app.tick();  // ~33 ms between follow lines
   }
   auto tel = h.safety.telemetry(h.now);
   TEST_ASSERT_EQUAL_INT(static_cast<int>(Mode::Follow), static_cast<int>(tel.md));
   for (std::size_t i = 0; i < config::FINGERS; ++i)
-    TEST_ASSERT_FLOAT_WITHIN(0.02F, 0.35F, tel.a[i]);  // slack: never past vision - 0.05
+    TEST_ASSERT_FLOAT_WITHIN(0.02F, 0.32F, tel.a[i]);  // slack: never past input pull - 0.08
   // ASSIST: the engine staggers fingers 150 ms apart; waiting fingers hold their position.
   const Quint goal{0.7F, 0.95F, 0.95F, 0.95F, 0.95F};
   for (std::size_t released = 1; released <= config::FINGERS; ++released) {
@@ -840,7 +955,7 @@ void app_practice_sequence_is_accepted_end_to_end() {
     TEST_ASSERT_FLOAT_WITHIN(0.001F, goal[i], tel.a[i]);
     TEST_ASSERT_TRUE(h.safety.attached(i));
   }
-  // RELEASE: unwind at 3 ranges/s, then detach 500 ms after reaching open.
+  // RELEASE: unwind at 3 ranges/s, then detach 500 ms after reaching slack.
   app.sendOk("{\"t\":\"release\"}");
   for (int t = 0; t < 200; ++t) app.tick(100);
   for (std::size_t i = 0; i < config::FINGERS; ++i) TEST_ASSERT_FALSE(h.safety.attached(i));
@@ -862,11 +977,11 @@ void app_calibration_wizard_sequence_is_accepted() {
   TEST_ASSERT_EQUAL_FLOAT(400, h.safety.info().limit);
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Calib), static_cast<int>(h.safety.state()));
   // Ranges are rejected until release; uncalibrated jogs then go limp at once.
-  TEST_ASSERT_EQUAL_STRING("state",
-                           protocol::name(app.send("{\"t\":\"calib\",\"i\":0,\"min\":20,\"max\":150}")));
+  TEST_ASSERT_EQUAL_STRING(
+      "state", protocol::name(app.send("{\"t\":\"calib\",\"i\":0,\"min\":20,\"max\":150}")));
   app.connect();
   for (std::size_t i = 0; i < config::FINGERS; ++i) TEST_ASSERT_FALSE(h.safety.attached(i));
-  // "Glove closes the hand": limit min(1500, draft) and a slow target on all five.
+  // "Glove opens the hand": limit min(1500, draft) and a slow pull target on all five.
   app.sendOk("{\"t\":\"limit\",\"ma\":1500}");
   app.sendFingers("target", Quint{1, 1, 1, 1, 1}, 0.3F);
   for (int t = 0; t < 800; ++t) app.tick(900);
@@ -1037,6 +1152,11 @@ int main() {
   RUN_TEST(ring_and_pinky_require_calibration_move_and_release_with_the_other_fingers);
   RUN_TEST(target_speed_cap_and_position_clamps);
   RUN_TEST(requested_slow_speed_and_no_catchup_jump);
+  RUN_TEST(follow_unwinds_at_release_rate_and_winds_at_follow_rate);
+  RUN_TEST(target_unwinds_at_release_rate_and_caps_only_winding);
+  RUN_TEST(fast_fist_follow_pays_out_to_each_goal_without_overshoot);
+  RUN_TEST(run_unwinding_never_catches_up_after_a_missed_tick);
+  RUN_TEST(follow_target_follow_and_target_release_transitions_never_jump);
   RUN_TEST(overcurrent_trips_at_100_ms_with_peak);
   RUN_TEST(overcurrent_101_ms_and_spikes_reset_timer);
   RUN_TEST(watchdog_boundary_idle_and_valid_message_refresh);

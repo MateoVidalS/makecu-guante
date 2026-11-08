@@ -22,8 +22,8 @@ Integration branch: `MateoVidalS/rehab-hub` · Repo id: `de782449-371b-4870-89e2
 | U2 | [virtual-hand](ux/U2-virtual-hand.md) | UX-1 | high | `…/u2-virtual-hand` | `term_6168c807` | `MateoVidalS/u2-virtual-hand` | #51 | merged | |
 | U3 | [data-views](ux/U3-data-views.md) | UX-2 | high | `…/u3-data-views` | `term_ab2c65f1` | `MateoVidalS/u3-data-views` | #69 | merged | backend seed done by #58; 2 camera e2e load-flaky, pass alone |
 | U4 | [live-screen](ux/U4-live-screen.md) | UX-2 | xhigh | `…/u4-live-screen` | `term_62e15241` | `MateoVidalS/u4-live-screen` | #72 | merged | |
-| O1 | [firmware](open/O1-firmware.md) | OPEN-1 | xhigh | `…/o1-firmware` | `term_69cdc21e` | `MateoVidalS/o1-firmware` | | handed-off | safety-critical review |
-| O2 | [glove-sim](open/O2-glove-sim.md) | OPEN-1 | high | `…/o2-glove-sim` | `term_147111d7` | `MateoVidalS/o2-glove-sim` | | handed-off | sim conformance = safety review |
+| O1 | [firmware](open/O1-firmware.md) | OPEN-1 | xhigh | `…/o1-firmware` | `term_69cdc21e` | `MateoVidalS/o1-firmware` | #75 | merged | safety review done; watchdog gate reconciled to 1.5 s in BENCH |
+| O2 | [glove-sim](open/O2-glove-sim.md) | OPEN-1 | high | `…/o2-glove-sim` | `term_147111d7` | `MateoVidalS/o2-glove-sim` | #76 | merged | sim inverted; engine/runtime/backend-demo callers fixed by O3/O4/O5 (notified) |
 | O3 | [engine](open/O3-engine.md) | OPEN-1 | xhigh | `…/o3-engine` | `term_1aeb8484` | `MateoVidalS/o3-engine` | | handed-off | safety-critical review |
 | O4 | [runtime-calibrate](open/O4-runtime-calibrate.md) | OPEN-1 | high | `…/o4-runtime-calibrate` | `term_73e664b4` | `MateoVidalS/o4-runtime-calibrate` | | handed-off | merge after O5 |
 | O5 | [backend-voice](open/O5-backend-voice.md) | OPEN-1 | high | `…/o5-backend-voice` | `term_32d94a24` | `MateoVidalS/o5-backend-voice` | | handed-off | owns Pydantic half of the contract + calibration fixture |
