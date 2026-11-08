@@ -196,6 +196,15 @@ supply limit, with the existing continuous **100 ms** trip rule. Per-build flags
 settings; compile-time validation requires `100 <= default <= max <= 2200`.
 Preserve all existing PlatformIO build flags when adding overrides.
 
+### First servo after boot (fixed Nov 8)
+
+`ServoOut::begin()` pre-configures the LEDC timers at 50 Hz and **10 bits**, the width
+ESP32Servo 1.2.1 always attaches with. Earlier firmware used 16 bits: the first attach
+after each boot then reconfigured a running timer, output no pulses for 1.28 s, and the
+servo jumped straight to its ramped position (400–460 mA spike on the bench). A
+`static_assert` in `hal_servo.cpp` keeps the two widths equal. Servo resolution is one
+10-bit step, 19.5 µs (about 1.76°).
+
 ## Reset diagnosis
 
 Each physical boot emits an additive field on the existing boot event, using
