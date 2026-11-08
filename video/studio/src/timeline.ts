@@ -34,13 +34,13 @@ export const SCENES: SceneDef[] = [
   { id: 'team', bars: 4, title: 'Founders', owner: 'team', what: 'The three of us on camera, six words or fewer each. Lower thirds by the coordinator.' },
   { id: 'problem', bars: 5, title: 'The problem', owner: 'V3', what: 'Many hands can still close; opening is the hard part. 77% stat with citation.' },
   { id: 'reveal', bars: 5, title: 'memo', owner: 'V3', what: 'Mark animation, hardware turntable (V4 component), "It watches. It coaches. It helps open."' },
-  { id: 'session', bars: 19, title: 'Try first', owner: 'V5', what: 'App recording: ghost vs. solid, blue on your own, orange glove helped, green reached; resist and it lets go.' },
+  { id: 'session', bars: 19, title: 'Try first', owner: 'V5', what: 'App recording: ghost vs. solid, blue on your own, orange memo helped, green reached; resist and it lets go.' },
   { id: 'coach', bars: 8, title: 'The coach', owner: 'V5', what: 'Gemini Live coach: names the finger, adjusts help with Undo; the model never moves the motors.' },
   { id: 'doctor', bars: 12, title: 'The therapist', owner: 'V5', what: 'History then vs. now, replay, therapist summary in one click, export.' },
   { id: 'build', bars: 4, title: 'How it is built', owner: 'V4', what: '3D assembly montage: wrist module, 5 micro servos drop in, spools on the horns, ESP32 + INA219 current sensor + stop button, servo cables route to the board, lid closes, threads run over the back of the fingers to the fingertip anchors. No LED ring.' },
   { id: 'underHood', bars: 6, title: 'Under the hood', owner: 'V4', what: 'The board decides, not the browser: 4 safety layers, architecture, three numbers.' },
   { id: 'next', bars: 4, title: 'What is next', owner: 'team', what: 'Founders: the bench safety gate, then a pilot with therapists.' },
-  { id: 'close', bars: 4, title: 'Your hand remembers', owner: 'V3', what: 'Rosa opens her hand (blue on her own, orange the glove helped, green reached) and holds her mug (illustrative). End card: lockup, tagline, credits, disclaimer.' },
+  { id: 'close', bars: 4, title: 'Your hand remembers', owner: 'V3', what: 'Rosa opens her hand (blue on her own, orange memo helped, green reached) and holds her mug (illustrative). End card: lockup, tagline, credits, disclaimer.' },
 ];
 
 export const sceneFrames = (s: SceneDef) => s.bars * BAR;
