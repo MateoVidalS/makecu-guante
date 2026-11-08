@@ -178,7 +178,11 @@ export class CueScheduler {
     clearTimeout(this.timer);
     const cue = this.pending;
     if (!cue || (this.talking && !cue.present)) return;
-    const delay = Math.max(0, 2500 - (this.now() - this.lastSpoke));
+    // The pose invitation never waits for the spacing: the attempt waits for it (F4), and
+    // live runs measured up to 2 s of spacing in its 3.4 s worst case to first sound.
+    const delay = cue.present
+      ? 0
+      : Math.max(0, 2500 - (this.now() - this.lastSpoke));
     if (delay) {
       this.timer = setTimeout(() => this.drain(), delay);
       return;
