@@ -328,7 +328,7 @@ export default function Exercise() {
       ? 'Bend the top two joints'
       : pose.id === 'tabletop'
         ? 'Bend only at the knuckles'
-        : 'Palm down, fingers beyond the table edge';
+        : 'Hand raised, palm to the screen, elbow resting';
   useSessionLeaveGuard('exercise');
   useEffect(() => {
     const finish = () => setConfirm(true);
@@ -414,7 +414,7 @@ export default function Exercise() {
       <Stack as="section" gap={24} className="practice-plan">
         <PageHeader
           title="Your practice"
-          lead="Choose a comfortable pace. Rest palm down, fingers beyond the table edge."
+          lead="Choose a comfortable pace. Raise your hand beside your face, palm to the screen, elbow resting on the table."
         />
         <Inline>
           {[

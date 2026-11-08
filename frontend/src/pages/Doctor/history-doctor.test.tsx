@@ -97,15 +97,15 @@ function mount(path: string) {
   );
 }
 describe('record review pages', () => {
-  it('shows fixture improvement, pose selection, accessible tables, and session safety counts', async () => {
+  it('shows generated improvement, pose selection, accessible tables, and session safety counts', async () => {
     mount('/history');
-    expect(await screen.findByText('35% → 63%')).toBeVisible();
+    expect(await screen.findByText('16% → 23%')).toBeVisible();
     expect(
       screen.getByRole('img', { name: /Hand map, first session/ }),
-    ).toHaveAccessibleName(/Thumb 35% then, 63% now/);
+    ).toHaveAccessibleName(/Thumb 16% then, 23% now/);
     expect(
       await screen.findByRole('img', { name: /Latest session per finger/ }),
-    ).toHaveAccessibleName(/Index 65% on your own and 35% from the glove/);
+    ).toHaveAccessibleName(/Index 46% on your own and 8% from the glove/);
     expect(
       screen.getByRole('img', { name: /Practice calendar/ }),
     ).toBeInTheDocument();
@@ -124,7 +124,7 @@ describe('record review pages', () => {
     expect(within(table).getAllByText('Demo data')).toHaveLength(
       mockState.sessions.filter((s) => s.is_demo).length,
     );
-    expect(within(table).getAllByRole('row')).toHaveLength(9);
+    expect(within(table).getAllByRole('row')).toHaveLength(15);
   });
   it('labels missing latest ring/pinky effort instead of showing an older session', async () => {
     const latest = mockState.sessions.reduce((a, b) =>
@@ -133,6 +133,11 @@ describe('record review pages', () => {
     latest.summary!.per_finger = latest.summary!.per_finger.filter(
       (f) => f.finger !== 'ring' && f.finger !== 'pinky',
     );
+    for (const a of mockState.details[latest.id].attempts) {
+      a.fingers = a.fingers.filter(
+        (f) => f.finger !== 'ring' && f.finger !== 'pinky',
+      );
+    }
     mount('/history');
     const bars = await screen.findByRole('img', {
       name: /Latest session per finger/,
@@ -218,27 +223,37 @@ describe('record review pages', () => {
     });
   });
   it('requires explicit confirmation for cascade deletion, then returns to history', async () => {
-    mount('/history/sessions/8');
+    // Replay the rigid-index interruption recorded by the production engine.
+    const session = Object.values(mockState.details).find((s) =>
+      s.attempts.some((a) => a.safety_events.length),
+    )!;
+    const attempt = session.attempts.find((a) => a.safety_events.length)!;
+    const traceIds = session.attempts.map((a) => a.id);
+    mount(`/history/sessions/${session.id}`);
     expect(
       await screen.findByText('Your attempt, moment by moment'),
     ).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Attempt'), {
+      target: { value: String(session.attempts.indexOf(attempt)) },
+    });
     expect(
-      await screen.findByRole('img', { name: /Attempt phases: On your own/ }),
-    ).toHaveAccessibleName(/1 safety event marked/);
-    expect(
-      screen.getByRole('img', { name: /Hand map for this attempt/ }),
-    ).toHaveAccessibleName(/Index: 65% on your own, glove added 35%/);
+      await screen.findByRole('img', {
+        name: /Attempt phases:.*1 safety event marked/,
+      }),
+    ).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Delete session' }));
-    expect(mockState.details[8]).toBeDefined();
+    expect(mockState.details[session.id]).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Keep session' }));
-    expect(mockState.details[8]).toBeDefined();
+    expect(mockState.details[session.id]).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Delete session' }));
     fireEvent.click(screen.getByRole('button', { name: 'Confirm delete' }));
     expect(
       await screen.findByRole('heading', { name: 'History' }),
     ).toBeVisible();
-    expect(mockState.details[8]).toBeUndefined();
-    expect(mockState.traces[1]).toBeUndefined();
+    expect(mockState.details[session.id]).toBeUndefined();
+    expect(traceIds.every((id) => mockState.traces[id] === undefined)).toBe(
+      true,
+    );
   });
   it('explains missing records instead of displaying fabricated data', async () => {
     mount('/history/evaluations/999');

@@ -148,15 +148,15 @@ export default function Doctor() {
               assist={assist.data ?? []}
               loading={rom.isPending || assist.isPending || sessions.isPending}
             />
+            <PracticeCalendar
+              sessions={sessions.data ?? []}
+              loading={sessions.isPending}
+            />
             <ResistanceDumbbells
               points={resistance.data ?? []}
               loading={resistance.isPending}
               compact
               hint="Extra motor current. Circle: slow sweep. Diamond: fast sweep. The bar is fast − slow, a velocity-dependence estimate. Check friction calibration and incomplete sweeps in evaluation details."
-            />
-            <PracticeCalendar
-              sessions={sessions.data ?? []}
-              loading={sessions.isPending}
             />
           </div>
         </DataSection>

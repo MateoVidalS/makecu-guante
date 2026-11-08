@@ -532,7 +532,7 @@ export default function Evaluate() {
             </p>
           </fieldset>
           <p className="hp-note">
-            Rest palm down, fingers beyond the table edge.
+            Raise your hand, palm to the screen. Support your elbow and relax.
           </p>
           <Checkbox
             label="Hand relaxed in the glove"

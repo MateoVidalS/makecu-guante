@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { stableCapture, validRange, fingers } from './draft';
+import {
+  stableCapture,
+  validRange,
+  fingers,
+  draftFromCalibration,
+  loadDraft,
+} from './draft';
+import { calibration } from '../../contracts/fixtures.check';
 import type { VisionFrame, FingerId } from '../../contracts/vision';
 function frames(): VisionFrame[] {
   return Array.from({ length: 61 }, (_, i) => ({
@@ -48,5 +55,58 @@ describe('safe calibration validation', () => {
       values[30] = { ...values[30], ...patch };
       expect(() => stableCapture(values)).toThrow();
     }
+  });
+});
+
+describe('view-aware calibration drafts', () => {
+  it.each([undefined, 'front_diagonal'] as const)(
+    'clears old %s camera captures and retains glove ranges and friction',
+    (camera_view) => {
+      const saved = {
+        ...calibration,
+        camera: { ...calibration.camera, camera_view },
+      };
+      const draft = draftFromCalibration(saved);
+      expect(draft).toMatchObject({
+        step: 1,
+        cameraView: 'front_upright',
+        open: null,
+        closed: null,
+        pinch: null,
+        friction: saved.friction,
+        limit: saved.current_limit_ma,
+      });
+      expect(Object.values(draft.servo)).toEqual(saved.servo);
+    },
+  );
+  it('retains current-view captures for review', () => {
+    const draft = draftFromCalibration({
+      ...calibration,
+      camera: { ...calibration.camera, camera_view: 'front_upright' },
+    });
+    expect(draft.step).toBe(2);
+    expect(draft.open?.raw).toEqual(calibration.camera.open_flex);
+    expect(draft.closed?.raw).toEqual(calibration.camera.closed_flex);
+  });
+  it('migrates a resumed legacy draft without relabeling its old captures', () => {
+    const draft = draftFromCalibration({
+      ...calibration,
+      camera: { ...calibration.camera, camera_view: 'front_upright' },
+    });
+    sessionStorage.setItem(
+      'rehab-calibration',
+      JSON.stringify({ ...draft, cameraView: undefined, edited: true }),
+    );
+    const resumed = loadDraft();
+    expect(resumed).toMatchObject({
+      step: 1,
+      open: null,
+      closed: null,
+      pinch: null,
+      cameraView: 'front_upright',
+      edited: true,
+    });
+    expect(resumed.servo).toEqual(draft.servo);
+    sessionStorage.clear();
   });
 });

@@ -12,32 +12,77 @@ sheet. Its steps **1–7 must pass on the real board and be recorded before anyo
 connects a person's hand**. Complete the remaining bench checks too; any failed
 check blocks use with a person. Do not treat passing host tests as board evidence.
 
+Read [Matias' first bench session, 7 Nov 2026](../hardware/BANCO.md) before
+wiring. It records unloaded jogs and STOP observations, with no INA219 connected;
+it does **not** pass the BENCH gate. The actual Facmogu adapter has **no current
+limit**, and the MB102 breadboard regulator is insufficient for glove practice.
+Use the checks below instead of assuming the laboratory supply described elsewhere
+is the supply on the bench.
+
 | Record | Event value / evidence link |
 | --- | --- |
 | Operator / date / second checker | Pending |
 | Board and wiring revision / firmware commit | Pending |
 | Servo model / spool radius / tendon routing | Pending |
 | Supply / DMM / INA219 shunt | Pending |
+| Fuse or current-limited supply / measured 5 V rail / polarity | Pending |
+| INA219 wired and checked / 800 mA cut-off evidence | Pending — blocks practice |
 | BENCH steps 1–7 results and raw captures | Pending — blocks hand mounting |
 | BENCH steps 8–13 results and limitations | Pending |
 | STOP / release / watchdog evidence | Pending |
+| Upright wrist-module decision: strap fit / weight / thread exit / gravity | Pending — blocks hand mounting |
 | Decision: fixture only or helper-hand calibration | Pending |
 
-- [ ] Servo power off: check common ground; INA219 in the positive servo rail;
-  signal pins and STOP wiring against README. Keep USB/ESP32 power separate from
-  the servo supply. Verify 5.0 V on a DMM; supply limit **2.5 A**. Fit a correctly polarized **470–1000 µF**
-  capacitor across the servo 5 V/GND rail near the connectors.
+- [ ] Servo power off: check common ground, signal pins and STOP wiring. Keep
+  USB/ESP32 power separate from servo power. **Measure breadboard rail polarity
+  with a multimeter before connecting servos**; do not infer +/− from row position.
+  BANCO records reversed red/brown servo leads causing heat within seconds.
+- [ ] **INA219 required before any physical practice:** wire it in the positive
+  servo rail and verify sensor/current readings against the DMM. Without it the
+  firmware refuses assistance (`target`/`follow`); `jog` still works and a zero
+  `ma` reading without a sensor does not establish safe current.
+- [ ] **Demo power protection:** the actual Facmogu adapter has no adjustable
+  current limit; its 5 A rating is not a safety cut-off. Use a team-selected fuse
+  or a current-limited supply for the demo. With a limited supply, retain the
+  bench procedure's **2.5 A** limit. Verify the servo rail is **5.0 V** with a DMM.
+  For glove practice, power the rail directly from the 5 V supply through the
+  INA219, bypassing the MB102; fit a correctly polarized **470–1000 µF** capacitor
+  near the servo connectors. Record the protection and wiring decision above.
+- [ ] **MB102 is for single-servo bench tests only (~0.8 A maximum)**, never
+  five-servo glove practice. If using it on the empty bench, set both rail jumpers
+  to **5V**, measure the output, and keep the Facmogu input **at or below 9 V**:
+  the recorded MB102 capacitor is rated 10 V. Its onboard capacitor does not
+  replace the glove's dedicated servo-rail capacitor.
 - [ ] Inspect tendons, anchors, guides, spools, strain relief and quick removal.
   No sharp edges, loose connections, crossed threads or trapped fingers.
+- [ ] **Open hardware question — team decision required:** the wrist module was
+  designed to rest on the table with the palm down. With the hand upright it hangs
+  from the forearm. Do both straps prevent slipping without tightening excessively?
+  Is the hanging weight comfortable, and does the vertical wrist preserve a clear
+  thread exit angle without rubbing, snagging or unwanted tension? Check how
+  gravity changes elastic return and servo pull. Verify on an empty fixture first;
+  record the team's decision and evidence above before any hand mounting. The old
+  table-supported mounting does not establish this.
 - [ ] Verify the physical STOP is reachable with the free hand and by the helper;
   the power switch must also be reachable. A browser button is an extra layer.
 - [ ] On the fixture, verify no boot twitch, bounded jogging, calibrated ranges,
   current cut-off, latched STOP, and watchdog/release behavior using BENCH.
+- [ ] **Manual bench keepalive:** while jogging with the repository firmware,
+  send `ping` about every **300 ms** (`{"t":"ping"}` plus newline). A manual
+  serial console needs a keepalive sender; a single jog command is insufficient.
+  Without valid messages the watchdog releases/faults after more than 1 s. Never
+  disable or lengthen it to make manual testing easier.
 - [ ] Verify all five servos can remain attached at once, including the fifth
   channel. Firmware allocates **two LEDC timers** (PR #39); see BENCH step 4.
   Check GPIO4/13 boot behavior and no reset during five-servo startup.
 - [ ] Confirm the current sensor agrees with the DMM. Do not increase the limit
   to hide friction or repeated stops. Diagnose the mechanism on the bench.
+- [ ] With the INA219 working and the fuse/limited supply in place, test the
+  low-current cut-off on an **empty fixture**, following BENCH step 7: `limit 800`
+  means send `{"t":"limit","ma":800}` plus newline. Record the measured current,
+  overcurrent event and release. This is an 800 mA firmware threshold, not a
+  supply current limit or an approved patient setting. Never test the cut on a
+  person's hand; the bench team still must approve the practice limit.
 - [ ] Capture the evidence and obtain the team's go/no-go decision above.
 
 ## 2. Mount only after the gate passes
@@ -63,19 +108,28 @@ not the mechanical limits of this mounting.
 - [ ] Calibrate → **Glove range**. Keep the hand relaxed, use small jog increments,
   capture comfortable open and closed positions for all five actuated fingers. Do not
   chase full closure or copy example degrees. Release before saving each range.
-- [ ] **Posture**: palm down, wrist module at the table edge, fingers free in
-  the air; forearm supported on a folded towel. Mirror the module for a left hand.
-- [ ] **Camera placement**: 30–40 cm from the fingertips, in front on the thumb
-  side, higher than the hand and diagonal. Keep all five fingertips visible.
-- [ ] **Glove detection check**: with the actual light, thin glove and posture,
-  observe Setup’s detected fraction over five seconds while opening and closing.
-  Record the percentage, lighting and occlusions. Low detection blocks the demo;
-  adjust camera/light or have the team assess exposed fingertips/bare-hand vision.
-  Repeat for the configured affected hand; software uses that choice, not a
-  reliable anatomical inference from a diagonal webcam image.
+- [ ] **Posture**: sit facing the laptop, raise the affected hand upright beside
+  the face, palm toward the screen, and open/close toward the camera. Keep the
+  forearm vertical and the elbow supported on the table with comfortable padding;
+  do not hold the arm unsupported. Confirm the upright module decision above.
+- [ ] **Camera placement**: select the laptop's front webcam. Start with the hand
+  about 40–60 cm from the laptop; adjust the screen to keep the wrist, whole hand
+  and all five fingertips in frame without lifting the elbow.
+- [ ] **Backlight check**: no window or bright light behind the person. Use
+  diffuse light from in front or the side; check the preview for a clearly lit
+  palm and fingers before capturing calibration.
+- [ ] **Day-1 glove detection check**: with the actual light, thin light glove,
+  thin light threads and upright posture, observe Setup’s detected fraction over
+  five seconds while opening and closing. The camera now sees palm-side threads,
+  guides and anchors; record the percentage, lighting and any joint occlusions.
+  Low detection blocks the physical-camera demo; adjust light/framing or have the
+  team assess exposed fingertips/bare-hand vision. Repeat for the configured
+  affected hand; that setting remains authoritative, with selfie handedness as a
+  cross-check. Repeat the check at the event if conditions change.
 - [ ] **Camera range**. Confirm affected hand, lighting, full-hand visibility and
   fingertip clearance; capture open, relaxed glove-closed, and pinch references.
-  Repeat a capture if movement/tracking makes it unreliable.
+  Capture in the upright posture; old palm-down/diagonal camera calibration must
+  be replaced. Repeat a capture if movement/tracking makes it unreliable.
 - [ ] **Review** every servo range and camera capture, then save calibration.
   The wizard has three steps: Glove range → Camera range → Review.
   Empty-glove friction belongs to Evaluate preflight, off the hand. If it cannot
@@ -94,6 +148,9 @@ not the mechanical limits of this mounting.
   optional Gemini access, and both simulator fallbacks rehearsed.
 - [ ] Start with one comfortable pose and one repetition. Check open/release,
   visual target, camera tracking, assistance labels and voice/captions.
+- [ ] Keep the elbow supported throughout. Ask about fatigue from holding the
+  hand up; use short sets and rests, and pause/release if the posture tires the
+  person. Recheck framing after a rest before continuing.
 - [ ] End session and verify release before removal. Do not cause faults on a
   hand to prove safety. Use SimWorld Rigid index for the key demo moment.
 - [ ] Rehearse **Demo tools → Use simulated glove / camera** and **Use simple
@@ -108,6 +165,7 @@ not the mechanical limits of this mounting.
 | --- | --- |
 | Calibration ID / mounting reference | Pending |
 | Five channel mapping / fifth PWM output | Pending |
+| Upright module fit / elbow support / backlight check | Pending |
 | Glove detection fraction / posture / camera evidence | Pending |
 | Slow/fast empty-glove friction timestamp / completeness | Pending |
 | Helper / observer | Pending |
@@ -116,7 +174,8 @@ not the mechanical limits of this mounting.
 | Saved history / replay / export | Pending |
 | Go/no-go and unresolved limitations | Pending |
 
-Pack laptop/charger, tested data USB cable plus spare, separate regulated supply,
-DMM, spare servo/board, STOP switch, glove, tendons/guides/anchors, tape/Velcro,
+Pack laptop/charger, tested data USB cable plus spare, separate regulated supply
+with a team-approved fuse or current limit, wired INA219, DMM, spare servo/board,
+STOP switch, glove, tendons/guides/anchors, tape/Velcro,
 strain relief, and the recorded bench evidence. Keep the fully simulated demo
 ready even when hardware passes.

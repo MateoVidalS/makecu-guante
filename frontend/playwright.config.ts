@@ -10,7 +10,11 @@ export default defineConfig({
   // Leave CPU headroom for concurrent 3D scenes and wall-time recovery checks.
   workers: Number(process.env.REHAB_E2E_WORKERS ?? 3),
   retries: Number(process.env.REHAB_E2E_RETRIES ?? 0),
-  use: { baseURL, trace: 'retain-on-failure', actionTimeout: 10_000 },
+  use: {
+    baseURL,
+    trace: 'retain-on-failure',
+    actionTimeout: Number(process.env.REHAB_TEST_TIMEOUT_MS ?? 10_000),
+  },
   projects: [
     {
       name: 'chromium',
@@ -26,6 +30,7 @@ export default defineConfig({
     },
   ],
   webServer: {
+    // Seeding and the first Vite build share CPU with other integration workers.
     timeout: 180_000,
     command:
       process.env.REHAB_E2E_MOCK === '1'

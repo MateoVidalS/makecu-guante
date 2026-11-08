@@ -64,14 +64,31 @@ to keep the header recovery controls available. Complete the hardware gate first
 - [ ] Volume audible; click a control to unlock browser audio. Confirm the local
   safety phrase is audible even with Voice mode Off. Simple voice needs no key;
   browsers without an installed speech voice still show captions.
-- [ ] Palm down, wrist module at the table edge, forearm on a towel. Camera
-  30–40 cm away, in front on the thumb side, diagonal and above the hand.
-  Check Setup’s five-second detection fraction with the actual light, thin glove.
-- [ ] Camera sees the whole affected hand, including all five fingertips. Use diffuse
-  light, a steady background, and an angle that keeps tendons from hiding joints.
+- [ ] Sit facing the laptop and use its **front webcam**. Raise the affected hand
+  upright beside the face, **palm toward the screen**, about **40–60 cm from the
+  laptop**. Open/close toward the camera; keep the elbow on the table with
+  comfortable padding and the forearm vertical. Adjust the screen to include the
+  wrist, whole hand and all five fingertips without lifting the elbow.
+- [ ] **Backlight check:** no window or bright light behind the presenter. Use
+  diffuse light from in front or the side and a steady background; check the
+  preview shows a clearly lit palm and fingers.
+- [ ] **Day 1, then recheck at the venue:** use Setup’s five-second glove detection
+  check while opening/closing with the actual thin light glove, thin light threads
+  and upright posture. The camera sees palm-side threads, guides and anchors;
+  record detection percentage, light and occlusions in
+  [HARDWARE_CHECKLIST.md](HARDWARE_CHECKLIST.md). If detection stays low, use the
+  simulated camera for the pitch and have the team review the physical setup.
+- [ ] The hardware team has resolved and recorded the **upright wrist-module
+  question**: the module now hangs from the forearm instead of resting on the
+  table. Check strap fit, weight, thread exit angle, elastic return and servo pull
+  on an empty fixture before any hand mounting; keep the physical glove off a
+  person while that decision is pending.
 - [ ] If using hardware: recorded bench gate, accessible physical STOP and supply
   switch, helper present, fresh calibration for this hand and mounting. Seeded
-  model ranges must never substitute for physical calibration.
+  model ranges must never substitute for physical calibration. Capture the camera
+  references in the upright posture; replace old palm-down/diagonal calibration.
+- [ ] Use short sets with the elbow supported. Ask about fatigue, allow rests and
+  pause/release if holding the hand up becomes tiring. Recheck framing after rests.
 - [ ] Without a glove, Setup → **Simulate glove** keeps the real camera
   tracking your hand. The live **Glove motors** strip labels simulated motors;
   use both simulators for a fully rehearsed synthetic-patient demo.
@@ -113,6 +130,45 @@ The full default plan is fifteen attempts; do not run it during this six-minute
 pitch. A single fist demonstrates the core behavior promptly. All deliberate
 resistance/STOP/unplug demonstrations use the simulator or an empty bench fixture.
 
+## AI therapist moment
+
+Allow another minute with **both sources simulated** and Live coach connected.
+Ask for help with one finger: “Please help my index sooner.” Show **Coach
+decisions**: more help means an earlier start, while gentler help slows the pull
+within 0.10–0.20 of the calibrated range per second. A smaller target takes effect
+on the next attempt. Use **Undo** to reverse an adjustment, and **Timeline** to
+show its reason and requested/applied values. When the coach names a finger,
+point out its steady focus contour on the virtual hand.
+
+Let the coach offer a little more intensity, then answer “yes.” This is optional:
+it requires a matching patient utterance within 20 seconds, stays inside the
+calibrated range, and may allow up to 0.30/s, a further reach, or up to two extra
+seconds of hold. Without consent, the request is rejected. In the simulator,
+enable **Rigid index** during assistance to show the automatic return to gentle
+practice; clear rigidity afterward. Never demonstrate resistance on a person.
+
+Say “stop” (or “para”) while the model is silent. The local transcription rule
+releases and pauses before a model answer. A reported pain score of 4 or more
+also releases and pauses; show the **How I feel** buttons as a tap alternative.
+Wait for **Saved**, then open the session replay to show the decisions, consent,
+automatic reversion, and pain/fatigue entries together. These are synthetic demo
+records, not evidence of treatment benefit. With simple voice, demonstrate the
+buttons and audit trail; do not promise autonomous adjustments without Live.
+
+For a deterministic, offline rehearsal of the model's tool calls:
+
+```sh
+cd frontend
+pnpm exec playwright test e2e/ai-therapist.spec.ts --workers=1
+```
+
+These checks mount the production app with a scripted fake Live transport, an
+explicitly stepped simulator, and real temporary SQLite persistence. They use no
+Gemini connection or key. They cover sooner/slower help, immediate finger help,
+target shaping, rest, Undo, finger focus, pain 5, both stop words, consent and
+resistance reversion, and reloading the complete audit in replay. A real Live
+connection still needs a separately rehearsed microphone and network.
+
 ## Recover without a reload
 
 Recovery controls stay in the header during practice and evaluation. Switching a
@@ -134,6 +190,14 @@ stopped. It does not automatically resume an interrupted exercise or sweep.
 make test
 make e2e
 ```
+
+On a shared host running several coding agents, use
+`REHAB_E2E_WORKERS=1 make e2e` to run the same browser checks sequentially.
+For unit tests, `REHAB_TEST_TIMEOUT_MS=30000 VITEST_MAX_FORKS=1 VITEST_MIN_FORKS=1 make test`
+extends runner and asynchronous UI-loading waits. It does not change performance
+assertions or application safety timing.
+The same `REHAB_TEST_TIMEOUT_MS=30000` setting extends Playwright action waits
+when paired with `REHAB_E2E_WORKERS=1 make e2e`.
 
 Browser checks use an isolated temporary database, fake media, and an accelerated
 simulator; they do not prove physical timing or comfort. The hardware team records

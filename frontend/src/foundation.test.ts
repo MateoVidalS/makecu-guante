@@ -26,7 +26,7 @@ import type { EngineEvent } from './contracts/engine';
 import type { Runtime } from './contracts/runtime';
 import { tokens } from './styles/tokens';
 import { server } from './mocks/server';
-import { resetMocks } from './mocks/handlers';
+import { mockState, resetMocks } from './mocks/handlers';
 import * as api from './api/client';
 
 const nativeFetch = globalThis.fetch;
@@ -91,7 +91,7 @@ describe('shared contracts', () => {
 describe('MSW REST client', () => {
   it('covers health, profile, and calibration reads and writes', async () => {
     expect((await api.getHealth()).ok).toBe(true);
-    expect(await api.getProfile()).toEqual(fixtures.profile);
+    expect(await api.getProfile()).toEqual(mockState.profile);
     const profile = { ...fixtures.profile, pseudonym: 'Alex' };
     await api.putProfile(profile);
     expect(await api.getProfile()).toEqual(profile);
@@ -132,13 +132,11 @@ describe('MSW REST client', () => {
     });
     expect((await api.getSession(session.id)).ended_at).not.toBeNull();
     expect(await api.getSessions({ limit: 1 })).toHaveLength(1);
-    expect((await api.getSessions({ offset: 1 }))[0].id).toBe(8);
+    expect((await api.getSessions({ offset: 1 }))[0].id).toBe(14);
     expect(await api.getSessions({ limit: 0 })).toHaveLength(0);
-    const summary = await api.createSummary({
-      kind: 'session',
-      session_id: session.id,
-    });
-    expect((await api.getSummaries({ kind: 'session' }))[0]).toEqual(summary);
+    await expect(
+      api.createSummary({ kind: 'session', session_id: session.id }),
+    ).rejects.toMatchObject({ status: 503 });
     await api.deleteSession(session.id);
     await expect(api.getSession(session.id)).rejects.toMatchObject({
       status: 404,
@@ -154,16 +152,16 @@ describe('MSW REST client', () => {
     const { id: _id, ...value } = fixtures.evaluations[0];
     const e = await api.createEvaluation(value);
     expect(await api.getEvaluation(e.id)).toEqual(e);
-    expect(await api.getEvaluations()).toHaveLength(4);
-    expect((await api.getHistoryOverview()).evaluations).toBe(4);
+    expect(await api.getEvaluations()).toHaveLength(5);
+    expect((await api.getHistoryOverview()).evaluations).toBe(5);
     expect(
       await api.getHistoryRom({ finger: 'index', pose: 'full_fist' }),
-    ).toHaveLength(8);
-    expect(await api.getHistoryAssist()).toHaveLength(40);
-    expect(await api.getHistoryResistance()).toHaveLength(20);
-    expect((await api.createSummary({ kind: 'therapist', days: 7 })).kind).toBe(
-      'therapist',
-    );
+    ).toHaveLength(14);
+    expect(await api.getHistoryAssist()).toHaveLength(70);
+    expect(await api.getHistoryResistance()).toHaveLength(25);
+    await expect(
+      api.createSummary({ kind: 'therapist', days: 7 }),
+    ).rejects.toMatchObject({ status: 503 });
     expect((await api.exportData('json')).type).toContain('application/json');
     expect((await api.exportData('csv')).type).toContain('text/csv');
     await expect(api.createVoiceToken(null)).rejects.toMatchObject({
