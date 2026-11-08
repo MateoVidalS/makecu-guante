@@ -18,6 +18,7 @@ export type CoachToolName =
   | 'highlight_finger'
   | 'note_for_therapist'
   | 'repeat_pose'
+  | 'intensify'
   | 'pause_session'
   | 'resume_session'
   | 'skip_pose'
@@ -36,6 +37,17 @@ export interface TherapyLimits {
   target_scale: [number, number]; // [0.5, 1.0]
   target_step: number; // 0.1
   attempt_s: [number, number]; // [4, 9]
+  /**
+   * Patient-requested intensity (owner decision): only after the patient asked, or said yes to the
+   * coach's offer, within consent_window_s; blocked by pain >= intensify_pain_block or a resistance
+   * event on that finger in the last intensify_cooldown_s; reverted automatically if either appears.
+   */
+  intensify_speed_max: number; // 0.30 /s (normal practice speed)
+  intensify_target_max: number; // 1.0 = the calibrated comfortable "closed"
+  hold_add_max_s: number; // 2
+  consent_window_s: number; // 20
+  intensify_pain_block: number; // 2
+  intensify_cooldown_s: number; // 60
   rest_add_max_s: number; // 20
   rest_total_max_s: number; // 60
   pain_brake_at: number; // 4
@@ -49,6 +61,12 @@ export const THERAPY_LIMITS: TherapyLimits = {
   target_scale: [0.5, 1],
   target_step: 0.1,
   attempt_s: [4, 9],
+  intensify_speed_max: 0.3,
+  intensify_target_max: 1,
+  hold_add_max_s: 2,
+  consent_window_s: 20,
+  intensify_pain_block: 2,
+  intensify_cooldown_s: 60,
   rest_add_max_s: 20,
   rest_total_max_s: 60,
   pain_brake_at: 4,
@@ -61,6 +79,10 @@ export interface TherapyAdjustments {
   /** Shaping: fraction of the pose target required for this finger. */
   target_scale: Record<FingerId, number>;
   extra_reps: number;
+  /** Seconds added to the hold by an accepted intensify(hold_longer). */
+  hold_extra_s: number;
+  /** Fingers whose intensity was raised at the patient's request (reverted on pain/resistance). */
+  intensified: FingerId[];
   attempt_s: number;
   extra_rest_s: number;
   next_pose: PoseId | null;
@@ -126,6 +148,15 @@ export interface FeelingEntry {
   source: 'voice' | 'ui';
 }
 
+/** Arguments of the intensify tool. The runtime rejects it without a fresh patient consent. */
+export interface IntensifyArgs {
+  finger: FingerId;
+  kind: 'further' | 'hold_longer' | 'faster';
+  consent: 'patient_asked' | 'accepted_offer';
+  /** The patient's own words, quoted, for the audit log. */
+  patient_quote: string;
+}
+
 export interface TherapyApi {
   readonly limits: TherapyLimits;
   state(): LiveTherapyState | null;
@@ -139,6 +170,8 @@ export interface TherapyApi {
   recordFeeling(
     f: Omit<FeelingEntry, 't' | 'session_id' | 'attempt_index'>,
   ): CoachDecision;
+  /** Voice layer reports each transcribed patient utterance; consent for intensify must be this fresh. */
+  notePatientSpeech(text: string, t?: number): void;
   decisions(): CoachDecision[];
   feelings(): FeelingEntry[];
   onDecision(cb: (d: CoachDecision) => void): Unsubscribe;
