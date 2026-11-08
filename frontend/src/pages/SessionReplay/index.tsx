@@ -14,6 +14,7 @@ import {
   useSession,
 } from '../../api/client';
 import type { Attempt } from '../../contracts/api';
+import { directionOf, directionLabel } from '../../components/charts/direction';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import { POSES } from '../../contracts/poses';
 import './replay.css';
@@ -62,7 +63,9 @@ function AttemptReplay({
           ? 'This attempt was interrupted.'
           : attempt.reached_active
             ? 'You did that on your own.'
-            : 'The glove helped with the rest.'
+            : attempt.assisted
+              ? 'The glove helped with the rest.'
+              : 'You practiced on your own. The glove only followed.'
       }
       demo={demo}
       demoNote="Demo data"
@@ -83,7 +86,11 @@ function AttemptReplay({
               }
             />
             <KpiTile
-              label="Glove help needed"
+              label={
+                directionOf(detail) === 'open'
+                  ? 'Opening the glove completed'
+                  : 'Earlier closing help'
+              }
               value={percentage(meanAssist(attempt))}
             />
             <KpiTile
@@ -92,10 +99,16 @@ function AttemptReplay({
             />
           </KpiRow>
         </div>
-        <AttemptHand values={handFromAttempt(attempt.fingers)} demo={demo} />
+        <AttemptHand
+          legacy={directionOf(detail) === 'close'}
+          description={`${directionLabel(detail)}. ${attempt.pose === 'open' && directionOf(detail) === 'open' ? '100% means fully open' : '100% means fully closed'}`}
+          values={handFromAttempt(attempt.fingers, directionOf(detail))}
+          demo={demo}
+        />
       </div>
       <DataStatus error={trace.error}>
         <ReplayChart
+          assistDirection={directionOf(detail)}
           trace={trace.data}
           loading={trace.isPending}
           isDemo={demo}
@@ -114,13 +127,18 @@ function AttemptReplay({
           <thead>
             <tr>
               <th scope="col">Finger</th>
-              {['Target', 'Best on your own', 'Help needed', 'Final'].map(
-                (s) => (
-                  <th key={s} scope="col" className="num">
-                    {s}
-                  </th>
-                ),
-              )}
+              {[
+                'Target closure',
+                'Best closure on your own',
+                directionOf(detail) === 'open'
+                  ? 'Opening the glove completed'
+                  : 'Earlier closing help',
+                'Final closure',
+              ].map((s) => (
+                <th key={s} scope="col" className="num">
+                  {s}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -153,8 +171,7 @@ function AttemptReplay({
         </table>
       </div>
       <p className="footnote">
-        Servo position is commanded; the servo cannot report its physical
-        position.
+        Glove help is commanded tendon pull, not a measured finger position.
       </p>
     </DataSection>
   );
@@ -179,7 +196,7 @@ export default function SessionReplay() {
         title="Session replay"
         lead={
           detail
-            ? `${formatDate(detail.started_at)} · Estimated from the camera, not a medical measurement.`
+            ? `${formatDate(detail.started_at)} · ${directionLabel(detail)} · Estimated from the camera, not a medical measurement.`
             : 'Estimated from the camera, not a medical measurement.'
         }
       />

@@ -7,12 +7,14 @@ declare global {
   interface Window {
     u4Layout: {
       phase(phase: ExercisePhase): void;
+      opening(): void;
+      evaluationResult(): void;
       progress(index: number, rep: number): void;
       safety(source: Extract<EngineEvent, { kind: 'safety' }>['source']): void;
     };
   }
 }
-const shots = resolve('../docs/design/screenshots/ux-u4');
+const shots = resolve('src/pages/Exercise/evidence/o6');
 async function frame(page: Page, state: string, width: number) {
   await expect(page.locator('.hand-view canvas')).toBeVisible();
   expect(
@@ -35,12 +37,14 @@ async function frame(page: Page, state: string, width: number) {
     expect(box.x + box.width).toBeLessThanOrEqual(width);
     expect(box.height).toBeGreaterThan(0);
   }
-  await expect(page.getByRole('meter')).toHaveCount(5);
+  await expect(page.locator('.mx-gauge__track')).toHaveCount(5);
   if (width === 1440)
     expect(
       (await page.locator('.hand-view canvas').boundingBox())!.width,
     ).toBeGreaterThanOrEqual(width * 0.55);
-  await page.screenshot({ path: `${shots}/after-${state}-${width}.png` });
+  await page.screenshot({
+    path: `${state === 'assisted-open' ? shots : '/tmp/rehab-o6-layout'}/after-${state}-${width}.png`,
+  });
 }
 for (const [width, height] of [
   [1280, 720],
@@ -143,5 +147,54 @@ for (const [width, height] of [
         ['serious', 'critical'].includes(v.impact ?? ''),
       ),
     ).toEqual([]);
+  });
+}
+
+for (const [width, height] of [
+  [1280, 720],
+  [1440, 900],
+]) {
+  test(`opening assistance and evaluation copy at ${width}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto('/src/pages/Exercise/live-harness.html');
+    await page.waitForFunction(
+      () => typeof window.u4Layout?.opening === 'function',
+    );
+    await page.evaluate(() => window.u4Layout.opening());
+    await expect(
+      page.getByText('The glove is helping you open', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('region', { name: 'Glove opening help' }),
+    ).toBeVisible();
+    await expect(
+      page.locator('.glove-motor[data-state="pulling"]'),
+    ).toHaveCount(5);
+    await expect(
+      page.getByRole('meter', { name: 'Index', exact: true }),
+    ).toHaveAttribute('aria-valuenow', '0.4');
+    await expect(
+      page.locator('[aria-label="Index opening help"]'),
+    ).toHaveAttribute('aria-valuenow', '60');
+    await frame(page, 'assisted-open', width);
+    await page.goto('/src/pages/Exercise/live-harness.html?view=evaluation');
+    await page.waitForFunction(
+      () => typeof window.u4Layout?.evaluationResult === 'function',
+    );
+    await page.evaluate(() => window.u4Layout.evaluationResult());
+    await expect(
+      page.getByRole('heading', {
+        name: 'Resistance to opening (flexor tone)',
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Fast − slow estimates velocity dependence/),
+    ).toBeVisible();
+    await page.screenshot({
+      path: `${shots}/evaluation-result-${width}.png`,
+      fullPage: true,
+    });
   });
 }

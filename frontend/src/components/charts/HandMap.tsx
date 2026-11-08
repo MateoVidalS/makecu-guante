@@ -1,5 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
+import type { AssistDirection } from '../../contracts/calibration';
+import { directionLabel } from './direction';
 import type { HandValue, HandValues } from './visuals';
 import { VisualCard, type LegendEntry } from './VisualCard';
 
@@ -155,6 +157,7 @@ export function HandRangeMap({
   firstDate,
   lastDate,
   compact,
+  assistDirection = 'close',
 }: {
   first: HandValues;
   last: HandValues;
@@ -165,6 +168,7 @@ export function HandRangeMap({
   firstDate?: string;
   lastDate?: string;
   compact?: boolean;
+  assistDirection?: AssistDirection;
 }) {
   const has = GLOVE_FINGERS.some(
     (f) => first[f]?.own != null || last[f]?.own != null,
@@ -174,18 +178,19 @@ export function HandRangeMap({
       ? [Math.round(last[f]!.own! * 100) - Math.round(first[f]!.own! * 100)]
       : [],
   );
+  const motion = assistDirection === 'open' ? 'opens' : 'closes';
   const title =
     gains.length === GLOVE_FINGERS.length && gains.every((g) => g > 0)
-      ? 'Every glove finger closes further on its own'
+      ? `Every glove finger ${motion} further on its own`
       : gains.some((g) => g > 0)
-        ? 'Some fingers close further on their own'
-        : 'How far each finger closes on its own';
+        ? `Some fingers ${assistDirection === 'open' ? 'open' : 'close'} further on their own`
+        : `How far each finger ${motion} on its own`;
   const size = compact ? 150 : 230;
   return (
     <VisualCard
-      className="hand-map"
+      className={`hand-map${assistDirection === 'close' ? ' legacy-map' : ''}`}
       title={title}
-      hint="Each finger fills from the knuckle (0%) to the tip (fully closed). A dash means not measured. Higher is better."
+      hint={`${directionLabel({ assist_direction: assistDirection })}. ${assistDirection === 'open' ? 'Open poses only: 100% means fully open.' : '100% means fully closed.'} A dash means not measured. Higher is better.`}
       label={`Hand map, first session compared with the latest. ${GLOVE_FINGERS.map(
         (f) =>
           `${fingerName(f)} ${pct(first[f]?.own)} then, ${pct(last[f]?.own)} now`,
@@ -229,7 +234,10 @@ export function HandRangeMap({
       }
       table={
         <table className="data-table">
-          <caption>Best closure on your own, first and latest session</caption>
+          <caption>
+            {directionLabel({ assist_direction: assistDirection })}: active
+            range, first and latest session
+          </caption>
           <thead>
             <tr>
               <th scope="col">Finger</th>
@@ -295,16 +303,20 @@ export function AttemptHand({
   values,
   demo,
   mirror,
+  description = 'Progress toward the pose',
+  legacy = false,
 }: {
+  description?: string;
+  legacy?: boolean;
   values: HandValues;
   demo?: boolean;
   mirror?: boolean;
 }) {
   return (
-    <div className="attempt-hand">
+    <div className={`attempt-hand${legacy ? ' legacy-map' : ''}`}>
       <div
         role="img"
-        aria-label={`Hand map for this attempt. ${GLOVE_FINGERS.map(
+        aria-label={`Hand map for this attempt. ${description}. ${GLOVE_FINGERS.map(
           (f) =>
             `${fingerName(f)}: ${pct(values[f]?.own)} on your own, glove added ${pct(values[f]?.glove)}, target ${pct(values[f]?.target)}`,
         ).join('; ')}.`}

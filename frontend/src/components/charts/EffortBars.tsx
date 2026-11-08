@@ -1,5 +1,6 @@
 import type { AssistPoint, RomPoint } from '../../contracts/api';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
+import { directionOf, directionLabel, LEGACY_GLOVE } from './direction';
 import type { TimelineEntry } from './transforms';
 import { effortSeries, effortTakeaway, type EffortPoint } from './visuals';
 import { useWidth, VisualCard, type LegendEntry } from './VisualCard';
@@ -23,7 +24,11 @@ const longDate = (d: string) =>
 
 export const EFFORT_LEGEND: LegendEntry[] = [
   { label: 'On your own', mark: 'block', color: 'var(--active)' },
-  { label: 'Glove helped', mark: 'block', color: 'var(--assist)' },
+  {
+    label: 'Opening the glove completed',
+    mark: 'block',
+    color: 'var(--assist)',
+  },
 ];
 
 /** Rectangle with only the top corners rounded (data end), square at the baseline. */
@@ -60,12 +65,17 @@ function EffortTable({
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={r.sessionId}>
+          <tr
+            key={r.sessionId}
+            data-legacy={directionOf(r) === 'close' || undefined}
+          >
             <th scope="row">{longDate(r.date)}</th>
             <td className="num">{pct(r.own)}</td>
             <td className="num">{pct(r.glove)}</td>
             <td className="num">{pct(r.rate)}</td>
-            <td>{r.demo ? 'Demo data' : 'Recorded'}</td>
+            <td>
+              {r.demo ? 'Demo data' : 'Recorded'} · {directionLabel(r)}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -76,7 +86,7 @@ function EffortTable({
 const PLOT_H = 150;
 const M = { top: 10, right: 76, bottom: 24, left: 36 };
 
-/** Stacked columns per session: blue is what the finger closed alone, orange is what the glove added. */
+/** Stacked columns per session: blue is active opening in open poses, orange is what the glove added. */
 export function EffortColumns({
   rom,
   assist,
@@ -114,11 +124,11 @@ export function EffortColumns({
   return (
     <VisualCard
       title={effortTakeaway(rows, finger)}
-      hint="Each column is one session. A dash means not measured. More blue and less orange is better."
+      hint={`Each column is one session. Active opening in open poses and mean opening the glove completed. ${LEGACY_GLOVE} is muted; directions are compared separately.`}
       label={`${fingerName(finger)}, per session: ${rows
         .map(
           (r) =>
-            `${shortDate(r.date)} ${pct(r.own)} on your own, ${pct(r.glove)} glove${r.demo ? ' (demo)' : ''}`,
+            `${shortDate(r.date)} ${directionLabel(r)} ${pct(r.own)} on your own, ${pct(r.glove)} glove${r.demo ? ' (demo)' : ''}`,
         )
         .join('; ')}.`}
       legend={EFFORT_LEGEND}
@@ -168,9 +178,13 @@ export function EffortColumns({
             const gloveH = Math.max(0, PLOT_H * glove - (ownH > 0 ? 2 : 0));
             const demo = r.demo ? ' viz-demo' : '';
             return (
-              <g key={r.sessionId} className="viz-col">
+              <g
+                key={r.sessionId}
+                className="viz-col"
+                data-legacy={directionOf(r) === 'close' || undefined}
+              >
                 <title>
-                  {`${longDate(r.date)}${r.demo ? ' · Demo data' : ''} · On your own ${pct(r.own)} · Glove helped ${pct(r.glove)}`}
+                  {`${longDate(r.date)} · ${directionLabel(r)}${r.demo ? ' · Demo data' : ''} · On your own ${pct(r.own)} · Glove helped ${pct(r.glove)}`}
                 </title>
                 <rect
                   className="viz-hit"
@@ -290,11 +304,11 @@ export function LatestEffortBars({
           ? `${fingerName(best.finger)} did the most on its own last time`
           : 'Latest session'
       }
-      hint={`Latest session${date ? `, ${longDate(date)}` : ''}. The orange part is what the glove added to reach the target.`}
+      hint={`Latest session${date ? `, ${longDate(date)}` : ''}. Blue: active opening in open poses. Orange: mean opening the glove completed.`}
       label={`Latest session per finger: ${rows
         .map(
           (l) =>
-            `${fingerName(l.finger)} ${pct(l.row?.own)} on your own and ${pct(l.row?.glove)} from the glove`,
+            `${fingerName(l.finger)} ${directionLabel(l.row)} ${pct(l.row?.own)} on your own and ${pct(l.row?.glove)} from the glove`,
         )
         .join('; ')}.`}
       legend={EFFORT_LEGEND}
@@ -323,7 +337,9 @@ export function LatestEffortBars({
                 <th scope="row">{fingerName(finger)}</th>
                 <td className="num">{pct(row?.own)}</td>
                 <td className="num">{pct(row?.glove)}</td>
-                <td>{row?.demo ? 'Demo data' : 'Recorded'}</td>
+                <td>
+                  {row?.demo ? 'Demo data' : 'Recorded'} · {directionLabel(row)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -335,7 +351,11 @@ export function LatestEffortBars({
           const own = row?.own ?? 0,
             glove = row?.glove ?? 0;
           return (
-            <div key={finger} className="effort-bars__row">
+            <div
+              key={finger}
+              className="effort-bars__row"
+              data-legacy={directionOf(row) === 'close' || undefined}
+            >
               <span className="effort-bars__name">{fingerName(finger)}</span>
               <div
                 className={`effort-bars__track${row?.demo ? ' viz-demo' : ''}`}

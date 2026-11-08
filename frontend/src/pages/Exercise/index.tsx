@@ -215,6 +215,11 @@ function LiveDetails({ onBrake }: { onBrake: () => void }) {
         assisting={view.assisting}
       />
       <GloveMotors />
+      <p className="hp-note live-direction-note">
+        {view.pose.id === 'open'
+          ? 'Try opening. The glove can help with the rest.'
+          : 'Make the pose yourself. The glove only follows.'}
+      </p>
       <div className="live-tools">
         <CoachPanel compact />
         <CoachDecisions

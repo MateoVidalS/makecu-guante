@@ -12,7 +12,13 @@ import type {
   ExercisePhase,
   FingerAttemptMetrics,
 } from '../../contracts/engine';
-import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
+import {
+  GLOVE_FINGERS,
+  pullFromClosure,
+  type GloveFinger,
+} from '../../contracts/glove';
+import type { AssistDirection } from '../../contracts/calibration';
+import { directionOf, latestCohort } from './direction';
 import { phaseBands, type TimelineEntry } from './transforms';
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -32,28 +38,47 @@ export type HandValues = Partial<Record<GloveFinger, HandValue>>;
 export function handFromOverview(
   overview: HistoryOverview | undefined,
   sessions?: Session[],
+  openingPoints?: RomPoint[],
 ): {
   first: HandValues;
   last: HandValues;
+  assistDirection?: AssistDirection;
 } {
   const first: HandValues = {},
     last: HandValues = {};
   if (sessions) {
     // The overview uses each finger's first measured session, which may be newer
     // than the date on the hand map when history mixes three and five fingers.
-    const ordered = sessions
-      .filter((s) => s.summary)
-      .sort(
-        (a, b) =>
-          Date.parse(a.started_at) - Date.parse(b.started_at) || a.id - b.id,
-      );
+    const ordered = latestCohort(sessions.filter((s) => s.summary)).sort(
+      (a, b) =>
+        Date.parse(a.started_at) - Date.parse(b.started_at) || a.id - b.id,
+    );
     ordered[0]?.summary?.per_finger.forEach((f) => {
       first[f.finger] = { own: f.active_max_mean };
     });
     ordered.at(-1)?.summary?.per_finger.forEach((f) => {
       last[f.finger] = { own: f.active_max_mean };
     });
-    return { first, last };
+    const assistDirection = directionOf(ordered.at(-1));
+    if (assistDirection === 'open') {
+      for (const [values, session] of [
+        [first, ordered[0]],
+        [last, ordered.at(-1)],
+      ] as const) {
+        GLOVE_FINGERS.forEach((finger) => {
+          const point = openingPoints?.find(
+            (p) =>
+              p.session_id === session?.id &&
+              p.finger === finger &&
+              directionOf(p) === 'open',
+          );
+          values[finger] = {
+            own: point ? pullFromClosure(point.active_max_mean) : null,
+          };
+        });
+      }
+    }
+    return { first, last, assistDirection };
   }
   overview?.per_finger.forEach((f) => {
     first[f.finger] = { own: f.active_max_first };
@@ -63,18 +88,29 @@ export function handFromOverview(
 }
 
 /** Scored glove fingers of one attempt. The glove part is capped so own + glove never passes 100%. */
-export function handFromAttempt(fingers: FingerAttemptMetrics[]): HandValues {
+export function handFromAttempt(
+  fingers: FingerAttemptMetrics[],
+  assistDirection: AssistDirection = 'close',
+): HandValues {
   const out: HandValues = {};
   fingers.forEach((f) => {
     if (!f.scored || !(GLOVE_FINGERS as string[]).includes(f.finger)) return;
-    const own = f.active_max == null ? null : clamp01(f.active_max);
+    const opening =
+      assistDirection === 'open' && f.target != null && f.target <= 0.05;
+    const own =
+      f.active_max == null
+        ? null
+        : opening
+          ? pullFromClosure(f.active_max)
+          : clamp01(f.active_max);
     out[f.finger as GloveFinger] = {
       own,
       glove:
         f.assist_needed == null
           ? null
           : Math.min(f.assist_needed, 1 - (own ?? 0)),
-      target: f.target,
+      target:
+        opening && f.target != null ? pullFromClosure(f.target) : f.target,
     };
   });
   return out;
@@ -86,6 +122,7 @@ export interface EffortPoint {
   sessionId: number;
   date: string;
   demo: boolean;
+  assist_direction?: AssistDirection;
   /** Best closure on their own, 0..1. */
   own: number | null;
   /** The extra the glove had to add to reach the target, 0..1 (capped at 1 − own). */
@@ -102,30 +139,49 @@ export function effortSeries(
   timeline: TimelineEntry[] = [],
 ): EffortPoint[] {
   const rows = new Map<number, EffortPoint>();
-  const row = (id: number, date: string, demo: boolean) => {
+  const row = (
+    id: number,
+    date: string,
+    demo: boolean,
+    assist_direction?: AssistDirection,
+  ) => {
     let r = rows.get(id);
     if (!r) {
-      r = { sessionId: id, date, demo, own: null, glove: null, rate: null };
+      r = {
+        sessionId: id,
+        date,
+        demo,
+        assist_direction,
+        own: null,
+        glove: null,
+        rate: null,
+      };
       rows.set(id, r);
     }
+    if (assist_direction) r.assist_direction = assist_direction;
     return r;
   };
   // Include every session, even when this finger was not measured.
-  timeline.forEach((s) => row(s.id, s.started_at, s.is_demo));
+  timeline.forEach((s) =>
+    row(s.id, s.started_at, s.is_demo, s.assist_direction),
+  );
   [...rom, ...assist].forEach((p) =>
-    row(p.session_id, p.started_at, p.is_demo),
+    row(p.session_id, p.started_at, p.is_demo, p.assist_direction),
   );
   rom
     .filter((p) => p.finger === finger)
     .forEach((p) => {
-      row(p.session_id, p.started_at, p.is_demo).own = clamp01(
-        p.active_max_mean,
-      );
+      row(p.session_id, p.started_at, p.is_demo, p.assist_direction).own =
+        clamp01(
+          directionOf(p) === 'open'
+            ? pullFromClosure(p.active_max_mean)
+            : p.active_max_mean,
+        );
     });
   assist
     .filter((p) => p.finger === finger)
     .forEach((p) => {
-      const r = row(p.session_id, p.started_at, p.is_demo);
+      const r = row(p.session_id, p.started_at, p.is_demo, p.assist_direction);
       r.glove = clamp01(p.assist_needed_mean);
       r.rate = clamp01(p.assisted_rate);
     });
@@ -141,7 +197,10 @@ export function effortSeries(
 }
 
 export function effortTakeaway(points: EffortPoint[], finger: GloveFinger) {
-  const measured = points.filter((p) => p.own != null);
+  const latest = points.at(-1);
+  const measured = points.filter(
+    (p) => p.own != null && directionOf(p) === directionOf(latest),
+  );
   if (!measured.length) return `${cap(finger)}: not measured`;
   const first = measured[0].own!,
     last = measured.at(-1)!.own!;
@@ -253,6 +312,7 @@ export interface DumbbellRow {
   evaluationId: number;
   date: string;
   demo: boolean;
+  assist_direction?: AssistDirection;
   slow: number | null;
   fast: number | null;
   /** fast − slow: the speed-dependent part (spasticity proxy). */
@@ -283,6 +343,7 @@ export function dumbbellRows(
         evaluationId: evaluation.evaluation_id,
         date: evaluation.started_at,
         demo: evaluation.is_demo,
+        assist_direction: evaluation.assist_direction,
         slow,
         fast,
         gap:
@@ -317,7 +378,11 @@ export function resistanceTakeaway(
   upTo?: number,
 ) {
   const changes = GLOVE_FINGERS.flatMap((f) => {
-    const list = rows[f].filter(
+    const list = latestCohort(
+      rows[f]
+        .map((r) => ({ ...r, started_at: r.date }))
+        .filter((r) => upTo == null || Date.parse(r.date) <= upTo),
+    ).filter(
       (r) => r.gap != null && (upTo == null || Date.parse(r.date) <= upTo),
     );
     return list.length > 1 ? [list.at(-1)!.gap! - list[0].gap!] : [];
@@ -343,12 +408,18 @@ export function resistanceTakeaway(
 
 /** One evaluation plus the one before it (from history), so the dumbbells show the change. */
 export function compareWithPrevious(
-  current: Pick<Evaluation, 'id' | 'started_at' | 'fingers' | 'is_demo'>,
+  current: Pick<
+    Evaluation,
+    'id' | 'started_at' | 'fingers' | 'is_demo' | 'assist_direction'
+  >,
   history: ResistancePoint[],
 ): ResistancePoint[] {
   const at = Date.parse(current.started_at);
   const earlier = history.filter(
-    (p) => p.evaluation_id !== current.id && Date.parse(p.started_at) < at,
+    (p) =>
+      p.evaluation_id !== current.id &&
+      Date.parse(p.started_at) < at &&
+      directionOf(p) === directionOf(current),
   );
   const previousId = [...earlier].sort(
     (a, b) => Date.parse(b.started_at) - Date.parse(a.started_at),
@@ -363,6 +434,7 @@ export function compareWithPrevious(
       fast: f.resistance_fast_ma,
       dependence: f.velocity_dependence_ma,
       is_demo: current.is_demo,
+      assist_direction: current.assist_direction,
     })),
   ];
 }

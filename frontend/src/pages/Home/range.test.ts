@@ -40,3 +40,28 @@ describe('home active range', () => {
     );
   });
 });
+
+it('compares open poses within one direction and ignores directionless previous summaries', () => {
+  const legacy = session(1, '01', 0.99);
+  const first = { ...session(2, '05', 0.9), assist_direction: 'open' as const };
+  const latest = {
+    ...session(3, '09', 0.8),
+    assist_direction: 'open' as const,
+  };
+  const opening = [first, latest].map((s, i) => ({
+    session_id: s.id,
+    started_at: s.started_at,
+    finger: 'thumb' as const,
+    pose: 'open' as const,
+    active_max_mean: i ? 0.3 : 0.6,
+    is_demo: false,
+    assist_direction: 'open' as const,
+  }));
+  const result = rangeComparison([legacy, first, latest], opening)!;
+  expect(result.thenLabel).toBe('Time before');
+  expect(result.deltas[0]).toMatchObject({ then: 0.4, now: 0.7, delta: 30 });
+  expect(result.changeText).toContain('opens further');
+  expect(
+    rangeComparison([legacy, latest], opening)!.deltas[0].delta,
+  ).toBeNull();
+});

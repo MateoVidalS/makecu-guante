@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   assistSeries,
+  splitDirectionRows,
   decimate,
   phaseBands,
   resistanceSeries,
@@ -206,4 +207,18 @@ describe('replay transforms', () => {
     );
     expect(() => decimate(data, 1, (p) => [p.current])).toThrow(RangeError);
   });
+});
+
+it('breaks paths at each direction transition without dropping legacy points or missing values', () => {
+  const rows = [
+    { x: 1, demo: false, direction: 'close', active: 80 },
+    { x: 2, demo: false, direction: 'open', active: 50 },
+    { x: 3, demo: false, direction: 'close', active: 90 },
+    { x: 4, demo: false, direction: 'open', active: null },
+    { x: 5, demo: false, direction: 'open', active: 30 },
+  ];
+  const result = splitDirectionRows(rows, ['active']);
+  expect(result.map((r) => r.active_open)).toEqual([null, 50, null, null, 30]);
+  expect(result.map((r) => r.active_close)).toEqual([80, null, 90, null, null]);
+  expect(result.map((r) => r.active)).toEqual(rows.map((r) => r.active));
 });

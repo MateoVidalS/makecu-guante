@@ -34,7 +34,7 @@ export function DeltaText({
 }
 
 /**
- * Two small hands side by side: how far each finger closed on its own then, and now.
+ * Two small hands side by side: active range for each finger then, and now.
  * Per-finger deltas sit under "now". With no earlier session, only "now" is drawn.
  */
 export function ThenNow({

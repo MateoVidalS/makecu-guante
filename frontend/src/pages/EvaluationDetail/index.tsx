@@ -1,6 +1,7 @@
 import { PageHeader } from '../../design-system';
 import { Link, useParams } from 'react-router-dom';
 import { useEvaluation, useHistoryResistance } from '../../api/client';
+import { directionOf, directionLabel } from '../../components/charts/direction';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
   DataSection,
@@ -29,7 +30,7 @@ export default function EvaluationDetail() {
         title="Evaluation detail"
         lead={
           data
-            ? `${formatDate(data.started_at)} · An estimate inspired by clinical practice, not a validated medical measurement.`
+            ? `${formatDate(data.started_at)} · ${directionLabel(data)} · An estimate inspired by clinical practice, not a validated medical measurement.`
             : 'An estimate inspired by clinical practice, not a validated medical measurement.'
         }
       />
@@ -37,7 +38,11 @@ export default function EvaluationDetail() {
         {data && (
           <>
             <DataSection
-              title="Resistance by finger"
+              title={
+                directionOf(data) === 'open'
+                  ? 'Resistance to opening (flexor tone)'
+                  : 'Earlier closing resistance'
+              }
               description={
                 data.friction_used
                   ? 'Empty-glove friction was subtracted for resistance estimates.'
@@ -53,7 +58,7 @@ export default function EvaluationDetail() {
                 table={
                   <table className="data-table">
                     <caption>
-                      Mean excess current over 20–90% commanded position
+                      Mean excess current over 20–90% commanded pull
                     </caption>
                     <thead>
                       <tr>
@@ -99,7 +104,8 @@ export default function EvaluationDetail() {
                 }
               />
               <p className="footnote">
-                Sweep speeds: slow {data.settings.slow_v} ranges/s, fast{' '}
+                Fast − slow estimates velocity dependence (spasticity). Sweep
+                speeds: slow {data.settings.slow_v} ranges/s, fast{' '}
                 {data.settings.fast_v} ranges/s.
               </p>
             </DataSection>

@@ -112,10 +112,23 @@ export function PhaseStrip({
               key={i}
               transform={`translate(${x(Math.min(t1, Math.max(t0, e.t_rel)))} 8)`}
             >
-              <title>{`Safety: ${e.source.replaceAll('_', ' ')} at ${e.t_rel.toFixed(1)} s`}</title>
-              <path className="safety-marker" d="M0 6L-5.5 -3.5H5.5Z" />
+              <title>{`${e.source === 'load_shed' ? 'Eased off to protect the glove' : `Safety: ${e.source.replaceAll('_', ' ')}`} at ${e.t_rel.toFixed(1)} s`}</title>
+              <path
+                className="safety-marker"
+                style={
+                  e.source === 'load_shed'
+                    ? { fill: 'var(--caution)' }
+                    : undefined
+                }
+                d="M0 6L-5.5 -3.5H5.5Z"
+              />
               <line
                 className="safety-marker__line"
+                style={
+                  e.source === 'load_shed'
+                    ? { stroke: 'var(--caution)' }
+                    : undefined
+                }
                 x1={0}
                 x2={0}
                 y1={6}
@@ -146,7 +159,16 @@ export function PhaseStrip({
                 },
               ]
             : []),
-          ...(safety.length
+          ...(safety.some((e) => e.source === 'load_shed')
+            ? [
+                {
+                  label: 'Eased off to protect the glove',
+                  mark: 'triangle' as const,
+                  color: 'var(--caution)',
+                },
+              ]
+            : []),
+          ...(safety.some((e) => e.source !== 'load_shed')
             ? [
                 {
                   label: 'Safety event',

@@ -32,6 +32,7 @@ import {
   formatDate,
   handFromOverview,
 } from '../../components/charts';
+import { LEGACY_GLOVE } from '../../components/charts/direction';
 import { firstAndLast, useAllSessions } from '../History/data';
 import { ExportButtons } from './ExportButtons';
 import './doctor.css';
@@ -46,9 +47,9 @@ export default function Doctor() {
     sessions = useAllSessions(),
     evaluations = useEvaluations();
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [pose, setPose] = useState<PoseId | ''>('');
+  const [pose, setPose] = useState<PoseId | ''>('open');
   const filteredRom = useHistoryRom(pose ? { pose } : {});
-  const rom = useHistoryRom(),
+  const rom = useHistoryRom({ pose: 'open' }),
     assist = useHistoryAssist(),
     resistance = useHistoryResistance();
   const summaries = useSummaries({ kind: 'therapist', limit: 20 }),
@@ -61,6 +62,10 @@ export default function Doctor() {
   const hasDemo = demoSessions || demoEvaluations;
   return (
     <section className="data-page doctor-report">
+      <p className="footnote">
+        {LEGACY_GLOVE} records are muted. Comparisons use the same glove
+        direction.
+      </p>
       <section className="report-page">
         <PageHeader
           eyebrow="Rehab Hub · Clinical review"
@@ -131,12 +136,12 @@ export default function Doctor() {
         </DataStatus>
         <DataSection
           title="At a glance"
-          description={`Blue: on their own. Orange: glove helped.${hasDemo ? ' Demo data is drawn hollow.' : ''}`}
+          description={`Blue: active opening in open poses. Orange: opening the glove completed.${hasDemo ? ' Demo data is drawn hollow.' : ''}`}
           className="report-glance"
         >
           <div className="report-glance__grid">
             <HandRangeMap
-              {...handFromOverview(overview.data, sessions.data)}
+              {...handFromOverview(overview.data, sessions.data, rom.data)}
               {...firstAndLast(sessions.data)}
               mirror={profile.data?.affected_hand === 'left'}
               loading={overview.isPending || sessions.isPending}
@@ -248,7 +253,7 @@ export default function Doctor() {
             <DataSection
               className="report-page"
               title="Assistance over sessions"
-              description="Per session: best closure on its own (blue) and what the glove added to reach the target (orange). All poses."
+              description="Per session: active opening in open poses (blue); mean opening the glove completed across attempts (orange)."
               demo={demoSessions}
               demoNote="Demo data is drawn hollow"
             >

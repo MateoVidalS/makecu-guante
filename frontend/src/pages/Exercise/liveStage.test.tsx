@@ -297,7 +297,11 @@ describe('live stage', () => {
     await waitFor(() =>
       expect(document.querySelector('.live-details')).not.toBeNull(),
     );
-    const meters = screen.getAllByRole('meter');
+    const meters = screen
+      .getAllByRole('meter')
+      .filter(
+        (meter) => !meter.getAttribute('aria-label')?.includes('opening help'),
+      );
     expect(meters.map((m) => m.getAttribute('aria-label'))).toEqual([
       'Thumb',
       'Index',
@@ -355,13 +359,13 @@ describe('session recap', () => {
       screen.getByText('3 attempts · 1 on your own · 1 with help'),
     ).toBeVisible();
     expect(
-      screen.getByText('Your index closed further on its own than last time.'),
+      screen.getByText('You reached most poses on your own. Steady work.'),
     ).toBeVisible();
-    expect(screen.getByRole('img', { name: /^Last time:/ })).toBeVisible();
+    expect(screen.queryByRole('img', { name: /^Last time:/ })).toBeNull();
     expect(screen.getByRole('img', { name: /^Today:/ })).toBeVisible();
     expect(
       screen.getByRole('img', {
-        name: 'Thumb: 40% on your own, glove helped 20% more',
+        name: 'Thumb: No reading',
       }),
     ).toBeVisible();
     expect(document.querySelectorAll('.mx-strip__groups .mx-dot')).toHaveLength(
