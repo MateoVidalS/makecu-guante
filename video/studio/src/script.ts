@@ -42,23 +42,28 @@ export const VO: VoLine[] = [
   { id: 'session-coach', scene: 'session', at: 1008, maxFrames: 126, voice: 'coach', text: "I feel resistance opening your index, let's stop here." },
   { id: 'session-6', scene: 'session', at: 1152, maxFrames: 210, voice: 'narrator', text: 'memo lets go. Safety runs on the board, not in the browser.' },
 
-  // coach (576 f). Frames 144–468 are reserved for the team's real Gemini Live conversation audio.
+  // coach (504 f). Frames 144–468 are reserved for the team's real Gemini Live conversation audio.
   { id: 'coach-1', scene: 'coach', at: 12, maxFrames: 126, voice: 'narrator', text: 'The coach runs on Gemini Live. It names the finger and adjusts the session.' },
-  { id: 'coach-2', scene: 'coach', at: 474, maxFrames: 96, voice: 'narrator', text: 'It never moves the motors itself.' },
 
-  // doctor (864 f)
-  { id: 'doctor-1', scene: 'doctor', at: 12, maxFrames: 90, voice: 'narrator', text: 'Every attempt is saved.' },
-  { id: 'doctor-2', scene: 'doctor', at: 120, maxFrames: 204, voice: 'narrator', text: 'Therapists see every finger, on its own and with help, over weeks.' },
-  { id: 'doctor-3', scene: 'doctor', at: 336, maxFrames: 126, voice: 'narrator', text: 'They can replay any attempt,' },
-  { id: 'doctor-4', scene: 'doctor', at: 468, maxFrames: 210, voice: 'narrator', text: 'and get a summary from Gemini in one click.' },
-  { id: 'doctor-5', scene: 'doctor', at: 690, maxFrames: 168, voice: 'narrator', text: 'Honest numbers for the people who guide you.' },
+  // gemini (432 f)
+  { id: 'ai-1', scene: 'gemini', at: 12, maxFrames: 120, voice: 'narrator', text: 'Under the hood, the coach is Gemini Live, with function calling.' },
+  { id: 'ai-2', scene: 'gemini', at: 138, maxFrames: 114, voice: 'narrator', text: 'Twenty tools. Every call is clamped, logged, and undoable.' },
+  { id: 'ai-3', scene: 'gemini', at: 258, maxFrames: 54, voice: 'narrator', text: 'None of them moves a motor.' },
+  { id: 'ai-4', scene: 'gemini', at: 318, maxFrames: 108, voice: 'narrator', text: 'Gemini also writes the summaries, and voiced this video.' },
+
+  // doctor (720 f)
+  { id: 'doctor-1', scene: 'doctor', at: 12, maxFrames: 60, voice: 'narrator', text: 'Every attempt is saved.' },
+  { id: 'doctor-2', scene: 'doctor', at: 72, maxFrames: 132, voice: 'narrator', text: 'Therapists see every finger, on its own and with help, over weeks.' },
+  { id: 'doctor-3', scene: 'doctor', at: 216, maxFrames: 60, voice: 'narrator', text: 'They can replay any attempt,' },
+  { id: 'doctor-4', scene: 'doctor', at: 300, maxFrames: 120, voice: 'narrator', text: 'and get a summary from Gemini in one click.' },
+  { id: 'doctor-5', scene: 'doctor', at: 606, maxFrames: 108, voice: 'narrator', text: 'Honest numbers for the people who guide you.' },
 
   // build (288 f)
   { id: 'build-1', scene: 'build', at: 18, maxFrames: 252, voice: 'narrator', text: 'Five micro servos wind thin threads over the back of each finger. A current sensor feels every pull.' },
 
-  // underHood (432 f)
-  { id: 'hood-1', scene: 'underHood', at: 12, maxFrames: 126, voice: 'narrator', text: 'The board decides, not the browser.' },
-  { id: 'hood-2', scene: 'underHood', at: 144, maxFrames: 270, voice: 'narrator', text: 'A current cut-off, a stop button, a watchdog, and a release that always goes slack.' },
+  // underHood (360 f)
+  { id: 'hood-1', scene: 'underHood', at: 12, maxFrames: 84, voice: 'narrator', text: 'The board decides, not the browser.' },
+  { id: 'hood-2', scene: 'underHood', at: 108, maxFrames: 180, voice: 'narrator', text: 'A current cut-off, a stop button, a watchdog, and a release that always goes slack.' },
 ];
 
 // On-screen copy that is not voiced. Scenes import their strings from here so copy review happens in one file.
@@ -89,6 +94,20 @@ export const COPY = {
     resist: 'Resist, and it lets go.',
   },
   coach: { rule: 'The model never moves the motors.', sub: 'It adjusts the session inside fixed safe limits. Every decision has Undo.' },
+  gemini: {
+    title: 'How memo uses Gemini.',
+    flow: ['Patient speaks', 'Gemini Live', 'Tool call', 'Runtime clamps', 'Session engine'],
+    exampleCall: "adjust_help({ finger: 'index', direction: 'more' })",
+    toolCount: '20 tools · 0 motor controls',
+    tools: ['get_live_state', 'adjust_help', 'assist_finger_now', 'adjust_target', 'highlight_finger', 'record_feeling', 'note_for_therapist', 'add_rest', 'choose_next_pose', 'brake'],
+    localRule: 'Stop and pain words are caught on the laptop before Gemini answers.',
+    uses: [
+      { title: 'Gemini Live', sub: 'Voice coach · 20 tools · single-use tokens, the key never reaches the browser' },
+      { title: 'Gemini text', sub: 'Patient and therapist summaries' },
+      { title: 'Doctor chat', sub: 'Gemini with 6 read-only tools over the record' },
+      { title: 'Gemini TTS', sub: 'The voice-over in this video' },
+    ],
+  },
   doctor: { title: 'Every attempt, saved.', honest: 'Estimates, not diagnoses.' },
   underHood: {
     title: 'The board decides. Not the browser.',
