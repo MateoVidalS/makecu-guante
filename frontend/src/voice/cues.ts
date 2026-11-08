@@ -20,7 +20,11 @@ export function eventCue(
     case 'phase':
       if (event.phase === 'PRESENT')
         return {
-          text: `[session] PRESENT: ${event.pose}, rep ${event.rep}. Attempt ${event.index + 1} of ${view.total}. Pose: ${poseInstruction(event.pose)} Invite it in your own words, differently from before.${event.index === 0 ? ' First pose: if natural, mention once that the glove only helps fingers open; for fists they work alone.' : ''}`,
+          text: `[session] PRESENT: ${event.pose}, rep ${event.rep}. Attempt ${event.index + 1} of ${view.total}. Pose: ${poseInstruction(event.pose)}${
+            previous && event.index > 0
+              ? ` Previous attempt: ${attemptContext(previous)} In ONE short turn, react to it in a few words, then invite this pose.`
+              : ''
+          } Invite it in your own words, differently from before.${event.index === 0 ? ' First pose: if natural, mention once that the glove only helps fingers open; for fists they work alone.' : ''}`,
           speak: true,
           present: true,
         };
@@ -53,9 +57,11 @@ export function eventCue(
         speak: true,
       };
     case 'attempt_done':
+      // Context only: the coach reacts to it together with the next pose, in one turn,
+      // so it never falls behind the screen.
       return {
-        text: `[session] Result: ${attemptContext(event.result, previous)}`,
-        speak: true,
+        text: `[session] Result: ${attemptContext(event.result, previous)} Do not speak yet; you will react with the next pose.`,
+        speak: false,
       };
     case 'safety':
     case 'resistance':

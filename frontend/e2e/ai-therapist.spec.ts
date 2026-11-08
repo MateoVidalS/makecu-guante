@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { CoachDecision } from '../src/contracts/therapist';
 import type { SessionDetail } from '../src/contracts/api';
 import { pullFromClosure } from '../src/contracts/glove';
-import { POSES } from '../src/contracts/poses';
+import { DEFAULT_EXERCISE_SETTINGS, POSES } from '../src/contracts/poses';
 import type { TherapistSnapshot } from './ai-therapist-harness';
 import { silenceCoach } from './helpers';
 
@@ -292,7 +292,10 @@ test.describe('scripted Live AI therapist through the production app', () => {
     const rested = await page.evaluate(() =>
       window.aiTherapist.untilPhase('REST', 0),
     );
-    expect(rested.view.phaseDuration).toBe(23);
+    // The default rest plus the 20 s the coach added.
+    expect(rested.view.phaseDuration).toBe(
+      DEFAULT_EXERCISE_SETTINGS.rest_s + 20,
+    );
     const attemptAt = rested.events.find(
       (e) => e.event.kind === 'phase' && e.event.phase === 'ATTEMPT',
     )!.at;
