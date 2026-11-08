@@ -30,7 +30,8 @@ import Setup from '../../pages/Setup';
 import Exercise from '../../pages/Exercise';
 import Evaluate from '../../pages/Evaluate';
 import Calibrate from '../../pages/Calibrate';
-import { loadDraft, saveDraft } from '../../pages/Calibrate/draft';
+import { helperRuntime } from '../calibration/testSupport';
+import { freshDraft, loadDraft, saveDraft } from '../../pages/Calibrate/draft';
 import { RuntimeFallbackControls } from '../../runtime/FallbackControls';
 import {
   GloveChip,
@@ -85,6 +86,7 @@ beforeEach(() => {
   resetMocks();
   server.resetHandlers();
   sessionStorage.clear();
+  saveDraft(freshDraft());
   localStorage.clear();
   handRender.mockClear();
 });
@@ -97,10 +99,7 @@ afterAll(() => {
   server.close();
   vi.stubGlobal('fetch', nativeFetch);
 });
-function mount(
-  children: ReactNode,
-  runtime = new ScriptedRuntime({ persist: false }),
-) {
+function mount(children: ReactNode, runtime = helperRuntime()) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
@@ -495,6 +494,11 @@ describe('Safety and accessible common controls', () => {
   });
 });
 describe('Calibration wizard', () => {
+  function freshRuntime() {
+    const runtime = helperRuntime();
+    runtime.calibration.current = null;
+    return runtime;
+  }
   it('names the safety event that stopped a camera-range capture', () => {
     function StopGlove() {
       const { world } = useGlove();
@@ -518,7 +522,7 @@ describe('Calibration wizard', () => {
   });
 
   it('validates each range and resumes after leaving', () => {
-    const first = mount(<Calibrate />);
+    const first = mount(<Calibrate />, freshRuntime());
     expect(
       screen.getByText('Rest palm down, forearm on a towel. Stop if it hurts.'),
     ).toBeVisible();
@@ -532,12 +536,12 @@ describe('Calibration wizard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Set closed/ }));
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeEnabled();
     first.unmount();
-    mount(<Calibrate />);
+    mount(<Calibrate />, freshRuntime());
     expect(screen.getByText('Open at 90°')).toBeVisible();
     expect(screen.getByText('Closed at 120°')).toBeVisible();
   });
   it('sends five ranges automatically, reviews captures and starts the default plan', async () => {
-    const first = mount(<Calibrate />);
+    const first = mount(<Calibrate />, freshRuntime());
     for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky']) {
       fireEvent.click(
         screen.getByRole('button', { name: new RegExp(`^${finger} ·`) }),
@@ -562,7 +566,7 @@ describe('Calibration wizard', () => {
       screen.getByRole('button', { name: 'Continue to review' }),
     ).toBeDisabled();
     // Captures survive route departure; review resumes with those measured values.
-    const camera = first.runtime.calibration.current!.camera;
+    const camera = helperRuntime().calibration.current!.camera;
     saveDraft({
       ...loadDraft(),
       step: 2,
@@ -570,7 +574,7 @@ describe('Calibration wizard', () => {
       closed: { raw: camera.closed_flex, pinch: camera.pinch_closed },
     });
     first.unmount();
-    const { runtime } = mount(<Calibrate />);
+    const { runtime } = mount(<Calibrate />, freshRuntime());
     expect(
       screen.getByRole('heading', { name: 'Review your range' }),
     ).toBeVisible();
@@ -600,7 +604,7 @@ describe('Calibration wizard', () => {
 });
 describe('Evaluation', () => {
   function evaluationRuntime() {
-    const runtime = new ScriptedRuntime({ persist: false });
+    const runtime = helperRuntime();
     runtime.calibration.current!.created_at = new Date().toISOString();
     return runtime;
   }

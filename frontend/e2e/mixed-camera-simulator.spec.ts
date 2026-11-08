@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('no-port fallback simulates only the glove and retains the camera stream', async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(150_000);
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'serial', {
       configurable: true,
@@ -31,9 +31,13 @@ test('no-port fallback simulates only the glove and retains the camera stream', 
   const preview = page.getByRole('figure', { name: 'Hand camera preview' });
   await expect(preview.locator('video')).toHaveCount(1, { timeout: 30_000 });
   await expect(stopCamera).toBeVisible();
-  await page
-    .getByRole('button', { name: /^(Connect|Reconnect) glove$/ })
-    .click();
+  // The preview shows the stream right away; the camera action finishes once the hand model
+  // has loaded (slow on CPU), and Setup keeps its buttons disabled until then.
+  const connectGlove = page.getByRole('button', {
+    name: /^(Connect|Reconnect) glove$/,
+  });
+  await expect(connectGlove).toBeEnabled({ timeout: 90_000 });
+  await connectGlove.click();
   await expect(
     page.getByRole('alert').filter({ hasText: 'No glove was selected.' }),
   ).toBeVisible();

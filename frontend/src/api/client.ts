@@ -144,7 +144,14 @@ export async function exportData(
 }
 
 export const useHealth = () =>
-  useQuery({ queryKey: ['health'], queryFn: getHealth });
+  // Gemini availability can change while a tab stays open (a key added, a backend restart):
+  // never trust a health answer older than 10 s when deciding the voice mode.
+  useQuery({
+    queryKey: ['health'],
+    queryFn: getHealth,
+    staleTime: 10_000,
+    refetchOnMount: 'always',
+  });
 export const useProfile = () =>
   useQuery({ queryKey: ['profile'], queryFn: getProfile });
 export const useLatestCalibration = () =>
