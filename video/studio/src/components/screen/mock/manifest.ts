@@ -8,7 +8,7 @@ import doctor from './doctor.png';
 const focus = (label: string, x: number, y: number, w: number, h: number, frame = 0): RecordingEvent => ({ frame, kind: 'focus', label, box: { x, y, w, h }, point: { x: x + w / 2, y: y + h / 2 } });
 const sessionEvents: RecordingEvent[] = [
   focus('focus:virtual-hand', 292, 255, 465, 385),
-  focus('focus:ghost', 731, 496, 10, 10),
+  focus('focus:ghost', 298, 330, 10, 10),
   focus('focus:solid', 435, 380, 80, 80),
   focus('focus:index', 674, 546, 22, 20),
   focus('focus:helped-fingers', 650, 448, 60, 92),

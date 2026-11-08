@@ -17,7 +17,7 @@ for column, frame in enumerate(frames):
     draw.text((x + 24, 64), f"Session frame {frame}", font=font, fill=ink)
     sheet.paste(image.resize((640, 360), Image.Resampling.LANCZOS), (x, 104))
     draw.text((x + 24, 488), "Endpoint detail (original pixels)", font=font, fill=ink)
-    sheet.paste(image.crop((960, 360, 1600, 720)), (x, 528))
+    sheet.paste(image.crop((480, 150, 1120, 510)), (x, 528))
 sheet.save("evidence/V5/session-zoom-proof.png")
 
 doctor = Image.new("RGB", (3840, 2240), paper)
