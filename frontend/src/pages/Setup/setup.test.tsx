@@ -25,6 +25,12 @@ import Calibrate from '../Calibrate';
 import { PreflightGloveControls } from '../../components/common/preflightTestSupport';
 import { readPracticePreflight } from '../../components/common/preflight';
 
+/** Step 1 hides per-motor tuning in an "advanced" disclosure. */
+function openAdvanced() {
+  const details = screen.getByText(/Adjust each motor/).closest('details');
+  if (details) details.open = true;
+}
+
 vi.mock('../../vision/CameraOverlay', () => ({
   CameraOverlay: () => <div>Camera preview</div>,
 }));
@@ -235,8 +241,9 @@ it('requires new glove ranges after re-attachment instead of reusing saved range
   );
   answerGuides('yes');
   expect(
-    await screen.findByRole('heading', { name: 'Step 1 · Glove range: Thumb' }),
+    await screen.findByRole('heading', { name: 'Step 1 · Motors' }),
   ).toBeVisible();
+  openAdvanced();
   expect(screen.getByText('Slack not set')).toBeVisible();
   expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
   expect(

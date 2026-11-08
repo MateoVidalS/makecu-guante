@@ -319,10 +319,16 @@
 }
 .glove-motors__tag {
   font-size: var(--small);
-  color: var(--muted);
-  border: 1px solid var(--border);
+  color: var(--demo-text);
+  background: var(--demo-soft);
+  border: 1px solid color-mix(in srgb, var(--demo) 45%, var(--border));
   border-radius: var(--radius-sm);
   padding: 0 var(--space-4);
+}
+.glove-motors__note {
+  margin: 0;
+  font-size: var(--small);
+  color: var(--muted);
 }
 .glove-motors__row {
   display: grid;

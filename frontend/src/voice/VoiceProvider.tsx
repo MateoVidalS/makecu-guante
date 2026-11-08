@@ -63,6 +63,7 @@ export function useVoice() {
       stop: () => controller.stop(),
       setMode: (mode: 'live' | 'simple' | 'off') => controller.setMode(mode),
       setMuted: (muted: boolean) => controller.setMuted(muted),
+      brake: (reason?: string) => controller.brake(reason),
     }),
     [controller],
   );

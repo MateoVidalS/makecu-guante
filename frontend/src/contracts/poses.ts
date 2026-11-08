@@ -288,7 +288,7 @@ export const DEFAULT_EXERCISE_SETTINGS: ExerciseSettings = {
   hold_s: 2,
   assist_max_s: 6,
   rest_s: 3,
-  tolerance: 0.1,
+  tolerance: 0.15, // a little forgiving for a first demo
   reach_dwell_s: 0.5,
   assist_speed: 0.3,
   plateau_s: 2,
