@@ -399,7 +399,7 @@ export default function Calibrate() {
                   </p>
                 </div>
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   disabled={busy}
                   onClick={applySimulatedRanges}
                 >
