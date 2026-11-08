@@ -4,7 +4,7 @@ else
 PYTHON ?= python3
 endif
 
-.PHONY: setup dev dev-sim dev-camera dev-mock test lint typecheck e2e fw-build fw-flash build demo demo-seed
+.PHONY: dev-sim-all setup dev dev-sim dev-camera dev-mock test lint typecheck e2e fw-build fw-flash build demo demo-seed
 
 setup:
 	cd backend && uv sync --locked
@@ -16,11 +16,16 @@ setup:
 dev:
 	$(PYTHON) scripts/dev.py
 
+# Simulated glove + the real webcam (default for local work).
 dev-sim:
-	VITE_SIM=1 $(PYTHON) scripts/dev.py
-
-dev-camera:
 	VITE_SIM=1 VITE_VISION=camera $(PYTHON) scripts/dev.py
+
+# Alias kept for older docs.
+dev-camera: dev-sim
+
+# Simulated glove AND simulated camera (no webcam needed).
+dev-sim-all:
+	VITE_SIM=1 VITE_VISION=sim $(PYTHON) scripts/dev.py
 
 dev-mock:
 	cd frontend && VITE_MOCK_API=1 VITE_SIM=1 pnpm dev

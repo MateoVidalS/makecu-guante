@@ -22,14 +22,15 @@
 ```sh
 make setup        # instala backend y frontend
 make demo-seed    # optional: 14 demo sessions (2 legacy) and 4 opening evaluations
-make dev-sim      # API en :8000 + app en http://127.0.0.1:5173, con guante y cámara simulados
+make dev-sim      # API en :8000 + app en http://127.0.0.1:5173, guante simulado + cámara real (webcam)
+make dev-sim-all  # guante y cámara simulados (sin webcam)
 ```
 
 | Comando | Para qué |
 |---|---|
-| `make dev` | Igual que `dev-sim`, pero con guante (USB) y cámara reales |
+| `make dev` | Igual que `dev-sim`, pero con el guante real por USB |
 | `make dev-mock` | Solo el frontend, con la API simulada en el navegador |
-| `make dev-camera` | Webcam real + guante simulado: para ver cómo detecta MediaPipe la mano antes de tener el hardware |
+| `make dev-camera` | Alias de `dev-sim` (webcam real + guante simulado) |
 | `make test` / `make e2e` | pytest, vitest, TypeScript, Ruff, ESLint (+ tests nativos del firmware si hay `pio`) / Playwright |
 | `make demo` | Compila el frontend y lo sirve desde el backend en http://127.0.0.1:8000 |
 | `make fw-build` / `make fw-flash` | Compilar / cargar el firmware (**solo después del banco de pruebas**) |

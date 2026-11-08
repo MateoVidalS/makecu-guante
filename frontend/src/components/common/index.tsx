@@ -371,18 +371,23 @@ export function Stepper({
   step,
   onStep,
   disabled = false,
+  completed,
 }: {
   disabled?: boolean;
   labels: string[];
   step: number;
   onStep: (step: number) => void;
+  /** Per-step completion. Defaults to "every step before the current one". */
+  completed?: boolean[];
 }) {
   return (
     <DSStepper
       label="Calibration steps"
       steps={labels.map((label, i) => ({ id: String(i), label }))}
       current={String(step)}
-      completed={labels.flatMap((_, i) => (i < step ? [String(i)] : []))}
+      completed={labels.flatMap((_, i) =>
+        (completed ? completed[i] && i !== step : i < step) ? [String(i)] : [],
+      )}
       onSelect={disabled ? undefined : (id) => onStep(Number(id))}
     />
   );

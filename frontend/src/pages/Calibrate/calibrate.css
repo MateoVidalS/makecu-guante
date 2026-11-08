@@ -1,0 +1,418 @@
+/* Calibrate wizard. Tokens only (docs/plan/11-ux-design.md). */
+
+.cal-wizard {
+  max-width: 72rem;
+}
+
+.cal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.cal-sim-top {
+  margin-block-end: var(--space-24);
+}
+
+.cal-strong {
+  font-weight: var(--weight-semibold);
+  margin: 0;
+}
+
+.cal-dot {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: var(--radius-pill);
+  flex: none;
+}
+
+/* Simulated glove callout. */
+.cal-sim-card {
+  padding: var(--space-16) var(--space-24);
+  border: var(--control-border) dashed
+    color-mix(in srgb, var(--demo) 45%, var(--border));
+  border-radius: var(--radius-card);
+  background: var(--demo-soft);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  margin-block-end: var(--space-16);
+}
+.cal-sim-card p {
+  margin: 0;
+}
+
+/* Finger progress: five clickable chips. */
+.cal-fingers {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-8);
+  margin-block-end: var(--space-24);
+}
+.cal-finger {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: var(--space-8);
+  row-gap: var(--space-2);
+  padding: var(--space-8) var(--space-12);
+  border: var(--control-border) solid var(--border-control);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.cal-finger:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+.cal-finger:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.cal-finger.is-current {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cal-finger__name {
+  font-weight: var(--weight-semibold);
+}
+.cal-finger__status {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--small);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.cal-finger.is-done .cal-finger__status {
+  color: var(--reached-text);
+}
+
+/* Two-column layout: task on the left, status/visual on the right. */
+.cal-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-24);
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .cal-grid {
+    grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr);
+  }
+  .cal-grid--camera {
+    grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr);
+  }
+}
+.cal-main,
+.cal-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-inline-size: 0;
+}
+
+/* Motor panel. */
+.cal-motor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+/* Ordered tasks (slack → open, fist → open hand). */
+.cal-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+.cal-task {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-16);
+  padding: var(--space-16);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.cal-task.is-active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cal-task.is-done:not(.is-active) {
+  background: var(--surface-2);
+}
+.cal-task--stack {
+  grid-template-columns: auto auto minmax(0, 1fr);
+}
+.cal-task--stack > .ds-button {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+.cal-task__num {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: var(--radius-pill);
+  border: var(--control-border) solid var(--border-strong);
+  font-weight: var(--weight-semibold);
+  font-size: var(--small);
+  color: var(--muted);
+}
+.cal-task.is-active .cal-task__num {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.cal-task.is-done .cal-task__num {
+  border-color: var(--reached);
+  background: var(--reached-soft);
+  color: var(--reached-text);
+}
+.cal-task__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+.cal-task__body p {
+  margin: 0;
+}
+.cal-task__value {
+  font-size: var(--small);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.cal-task.is-done .cal-task__value {
+  color: var(--reached-text);
+}
+@media (max-width: 640px) {
+  .cal-task {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .cal-task .cal-pose {
+    display: none;
+  }
+  .cal-task > .ds-button {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}
+
+.cal-caution,
+.cal-note {
+  display: flex;
+  gap: var(--space-8);
+  align-items: flex-start;
+  margin: 0;
+  font-size: var(--small);
+}
+.cal-caution {
+  color: var(--caution-text);
+}
+.cal-note {
+  color: var(--muted);
+}
+.cal-caution svg,
+.cal-note svg {
+  flex: none;
+  margin-block-start: 2px;
+}
+
+/* Capture progress inside the active capture card. */
+.cal-capture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-12);
+  margin-block-start: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-input);
+  background: var(--active-soft);
+}
+.cal-capture__text {
+  font-weight: var(--weight-semibold);
+  color: var(--active-text);
+}
+
+.cal-camera-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-16) var(--space-24);
+}
+
+/* Pose illustration. */
+.cal-pose {
+  display: block;
+  flex: none;
+}
+.cal-pose--sm {
+  inline-size: 88px;
+  block-size: 64px;
+}
+.cal-pose--md {
+  inline-size: 120px;
+  block-size: 88px;
+}
+.cal-pose__module {
+  fill: var(--surface-3);
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+.cal-pose__palm {
+  fill: var(--hand);
+}
+.cal-pose__finger-outline,
+.cal-pose__finger {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cal-pose__finger-outline {
+  stroke: var(--border-strong);
+  stroke-width: 13;
+}
+.cal-pose__finger {
+  stroke: var(--hand);
+  stroke-width: 11;
+}
+.cal-pose__joint {
+  fill: var(--border-strong);
+}
+.cal-pose__thread {
+  fill: none;
+  stroke: var(--assist);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cal-pose__limit {
+  stroke: var(--caution);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+/* Range bar. */
+.cal-range {
+  padding-block: var(--space-24) var(--space-4);
+}
+.cal-range--compact {
+  padding-block: var(--space-4);
+}
+.cal-range__track {
+  position: relative;
+  block-size: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+}
+.cal-range--compact .cal-range__track {
+  block-size: 6px;
+}
+.cal-range__span {
+  position: absolute;
+  inset-block: 0;
+  border-radius: var(--radius-pill);
+}
+.cal-range__span--active {
+  background: var(--active);
+}
+.cal-range__span--reached {
+  background: var(--reached);
+}
+.cal-range__span--caution {
+  background: var(--caution);
+}
+.cal-range__mark {
+  position: absolute;
+  inset-block-start: 50%;
+  inline-size: 3px;
+  block-size: 18px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-sm);
+  background: var(--text);
+}
+.cal-range--compact .cal-range__mark {
+  block-size: 12px;
+  inline-size: 2px;
+}
+.cal-range__tag {
+  position: absolute;
+  inset-block-end: calc(100% + var(--space-2));
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  font-size: var(--caption);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cal-range__now {
+  position: absolute;
+  inset-block-start: 50%;
+  inline-size: 14px;
+  block-size: 14px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 2px solid var(--accent);
+}
+
+/* Review. */
+.cal-review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+  margin-block: var(--space-16);
+}
+@media (min-width: 1024px) {
+  .cal-review {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.cal-review__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+.cal-review__row {
+  display: grid;
+  grid-template-columns: auto 5.5em minmax(60px, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4) var(--space-12);
+}
+.cal-review__name {
+  font-weight: var(--weight-semibold);
+}
+.cal-review__val {
+  font-size: var(--small);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+.cal-review__ok,
+.cal-review__issue {
+  grid-column: 2 / -1;
+  font-size: var(--small);
+}
+.cal-review__ok {
+  color: var(--reached-text);
+}
+.cal-review__issue {
+  color: var(--caution-text);
+}
