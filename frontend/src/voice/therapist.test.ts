@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   CoachDecision,
   LiveTherapyState,
@@ -812,4 +812,75 @@ it('fails closed for intensity while the runtime has no patient-speech tracker',
   ).toEqual({ ok: false, reason: 'Patient consent tracking unavailable.' });
   expect(s.therapy.adjust).not.toHaveBeenCalled();
   s.controller.dispose();
+});
+
+describe('coach honesty about glove help', () => {
+  const coach = (s: ReturnType<typeof setup>, text: string) =>
+    s.transport.emit({
+      type: 'transcript',
+      role: 'coach',
+      text,
+      finished: true,
+    });
+  const corrections = (s: ReturnType<typeof setup>) =>
+    s.transport.texts.filter((t) => t.text.startsWith('[correction]'));
+
+  it('corrects a help claim when nothing was applied, and records it', async () => {
+    const s = setup();
+    await s.controller.start(1);
+    coach(s, 'The glove is now assisting your index finger to open.');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(corrections(s)).toHaveLength(0); // a tool may still arrive
+    await vi.advanceTimersByTimeAsync(600);
+    expect(corrections(s)).toHaveLength(1);
+    expect(corrections(s)[0].speak).toBe(true);
+    await s.controller.stop();
+    const saved = vi
+      .mocked(s.deps.save)
+      .mock.calls.flatMap(
+        ([, lines]) => lines as { role: string; text: string }[],
+      );
+    expect(
+      saved.some((l) => l.role === 'system' && l.text.startsWith('[honesty]')),
+    ).toBe(true);
+    s.controller.dispose();
+  });
+
+  it('accepts the claim when the runtime applied help just before or with the words', async () => {
+    const s = setup();
+    await s.controller.start(1);
+    coach(s, "I'll help your index open.");
+    s.transport.emit({
+      type: 'tools',
+      calls: [
+        {
+          id: 'h1',
+          name: 'assist_finger_now',
+          args: { finger: 'index', reason: 'Asked.' },
+        },
+      ],
+    });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(corrections(s)).toHaveLength(0);
+    s.controller.dispose();
+  });
+
+  it('accepts it while the glove is actually helping a finger', async () => {
+    const s = setup();
+    s.state.fingers[1].glove_helping = true;
+    await s.controller.start(1);
+    coach(s, 'The glove is helping your index.');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(corrections(s)).toHaveLength(0);
+    s.controller.dispose();
+  });
+
+  it('ignores offers and questions', async () => {
+    const s = setup();
+    await s.controller.start(1);
+    coach(s, 'Would you like me to help your index finger?');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(corrections(s)).toHaveLength(0);
+    s.controller.dispose();
+  });
 });

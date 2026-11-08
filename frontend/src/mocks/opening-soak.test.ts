@@ -163,6 +163,8 @@ it.each(['moderate', 'spastic'] as const)(
     expect(r.world.firmware.position).toEqual([0, 0, 0, 0, 0]);
     expect(r.runtime.persistence.store.getState().status).toBe('Saved');
   },
+  // A full simulated ten-attempt session: ~1-5 s alone, more under full-suite load.
+  20_000,
 );
 
 it('detects rigid-index resistance before the independent firmware cut', async () => {
