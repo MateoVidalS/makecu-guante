@@ -4,6 +4,9 @@ import { DEFAULT_EXERCISE_SETTINGS, type PoseDef } from '../../contracts/poses';
 import { useVisionFrame } from '../../vision';
 import { FingerGauge, GaugeLegend } from '../../components/metrics';
 
+import { useRuntime } from '../../runtime';
+import type { Runtime } from '../../contracts/runtime';
+import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
 import { liveFingerState } from './fingerState';
 
 const LIVE: ExercisePhase[] = ['ATTEMPT', 'HOLD', 'ASSIST', 'ASSIST_HOLD'];
@@ -22,6 +25,9 @@ export function LiveFingerMeters({
   assisting?: boolean;
   tolerance?: number;
 }) {
+  const therapy = (useRuntime() as Runtime).therapy;
+  const highlighted = useHighlightedFinger(therapy);
+  const live = therapy?.state();
   const closure = useVisionFrame((f) =>
     f?.detected && f.confidence >= 0.6 ? f.closure : null,
   );
@@ -33,25 +39,34 @@ export function LiveFingerMeters({
       aria-label="Finger movement estimates"
     >
       <div className="mx-gauges__row">
-        {GLOVE_FINGERS.map((f) => (
-          <FingerGauge
-            key={f}
-            finger={f}
-            value={closure?.[f] ?? null}
-            best={scoring ? (activeMax[f] ?? null) : null}
-            target={pose.closure[f]}
-            tolerance={tolerance}
-            assisting={scoring && assisting}
-            state={liveFingerState({
-              phase,
-              target: pose.closure[f],
-              value: closure?.[f] ?? null,
-              best: activeMax[f] ?? null,
-              assisting,
-              tolerance,
-            })}
-          />
-        ))}
+        {GLOVE_FINGERS.map((f) => {
+          // Follow the runtime's shaped goal; null still means a free finger.
+          const runtimeFinger =
+            live?.pose === pose.id
+              ? live.fingers.find((finger) => finger.finger === f)
+              : undefined;
+          const target = runtimeFinger ? runtimeFinger.target : pose.closure[f];
+          return (
+            <FingerGauge
+              key={f}
+              finger={f}
+              highlighted={highlighted === f}
+              value={closure?.[f] ?? null}
+              best={scoring ? (activeMax[f] ?? null) : null}
+              target={target}
+              tolerance={tolerance}
+              assisting={scoring && assisting}
+              state={liveFingerState({
+                phase,
+                target,
+                value: closure?.[f] ?? null,
+                best: activeMax[f] ?? null,
+                assisting,
+                tolerance,
+              })}
+            />
+          );
+        })}
       </div>
       <GaugeLegend />
     </div>
