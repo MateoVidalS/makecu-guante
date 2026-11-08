@@ -1,0 +1,9 @@
+{
+  "id": 3,
+  "kind": "therapist",
+  "created_at": "2026-11-08T07:01:10.123720Z",
+  "session_id": null,
+  "days": 7,
+  "model": "gemini-3.5-flash-lite",
+  "text": "Practice:\nThis is demo data covering 6 sessions with 56 attempts and 1 evaluation between Nov 1 and Nov 8, totaling 15 minutes of practice. Adherence was consistent across 6 days practiced with no sessions stopped early.\n\nActive range:\nWithin the window, active opening changed by about 3 points or less for most fingers, with middle and ring gaining 3 points and pinky declining by 2 points. Since the first opening session on Oct 4, active opening improved across all fingers, with index most improved at 42 points further.\n\nAssistance:\nThe glove assisted opening for all five fingers during every attempt. On Nov 7, the glove completed 47% of opening for the thumb and 28% for the index.\n\nResistance:\nSlow resistance was measured at 59 mA for the thumb and 88 mA for the pinky on Nov 6. Fast resistance reached 80 mA for the thumb and 122 mA for the pinky, showing velocity dependence across all fingers. Resistance to opening eased by about 23% since Oct 4.\n\nSafety:\nNo safety events occurred, and pain remained low between 0 and 1 out of 10 during all 17 check-ins. Fatigue ranged from 2 to 5 out of 10, with the patient noting forearm tiredness.\n\nNotes for therapist:\nCoach actions included pointing out the little finger to focus on and leaving a note about its plateau. A request to increase speed on Nov 4 was rejected, while a request to open the index fully was applied on Nov 5."
+}

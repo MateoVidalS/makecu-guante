@@ -1115,6 +1115,153 @@
           }
         }
       ]
+    },
+    {
+      "id": "doctor-history",
+      "file": "recordings/doctor-history.mp4",
+      "width": 3840,
+      "height": 2160,
+      "fps": 30,
+      "durationFrames": 450,
+      "simulated": true,
+      "demoData": true,
+      "events": [
+        {
+          "frame": 0,
+          "kind": "focus",
+          "label": "focus:then-now-demo-data",
+          "box": {
+            "x": 784,
+            "y": 969.34375,
+            "w": 929.40625,
+            "h": 105.71875
+          }
+        },
+        {
+          "frame": 270,
+          "kind": "focus",
+          "label": "focus:then-now-demo-data",
+          "box": {
+            "x": 784,
+            "y": 253.34375,
+            "w": 929.40625,
+            "h": 105.71875
+          }
+        },
+        {
+          "frame": 300,
+          "kind": "click",
+          "label": "click:Doctor view trends",
+          "box": {
+            "x": 3463.6875,
+            "y": 23,
+            "w": 256.3125,
+            "h": 64
+          }
+        },
+        {
+          "frame": 300,
+          "kind": "focus",
+          "label": "focus:range-trends-demo-data",
+          "box": {
+            "x": 784,
+            "y": 242.25,
+            "w": 2272,
+            "h": 1918.5625
+          }
+        }
+      ]
+    },
+    {
+      "id": "doctor-replay",
+      "file": "recordings/doctor-replay.mp4",
+      "width": 3840,
+      "height": 2160,
+      "fps": 30,
+      "durationFrames": 360,
+      "simulated": true,
+      "demoData": true,
+      "events": [
+        {
+          "frame": 0,
+          "kind": "focus",
+          "label": "focus:vision-servo-current-phase-bands",
+          "box": {
+            "x": 784,
+            "y": 192.5,
+            "w": 2272,
+            "h": 1845.21875
+          }
+        }
+      ]
+    },
+    {
+      "id": "doctor-summary",
+      "file": "recordings/doctor-summary.mp4",
+      "width": 3840,
+      "height": 2160,
+      "fps": 30,
+      "durationFrames": 450,
+      "simulated": true,
+      "demoData": true,
+      "events": [
+        {
+          "frame": 60,
+          "kind": "click",
+          "label": "click:Doctor view — stored therapist summary",
+          "box": {
+            "x": 3463.6875,
+            "y": 23,
+            "w": 256.3125,
+            "h": 64
+          }
+        },
+        {
+          "frame": 60,
+          "kind": "mark",
+          "label": "mark:stored-real-Gemini-summary-visible",
+          "box": {
+            "x": 784,
+            "y": 853.25,
+            "w": 2272,
+            "h": 1560.28125
+          }
+        }
+      ]
+    },
+    {
+      "id": "doctor-export",
+      "file": "recordings/doctor-export.mp4",
+      "width": 3840,
+      "height": 2160,
+      "fps": 30,
+      "durationFrames": 180,
+      "simulated": true,
+      "demoData": true,
+      "events": [
+        {
+          "frame": 60,
+          "kind": "click",
+          "label": "click:Export CSV",
+          "box": {
+            "x": 1372.5,
+            "y": 661.25,
+            "w": 206.5,
+            "h": 64
+          }
+        },
+        {
+          "frame": 60,
+          "kind": "mark",
+          "label": "mark:export-downloaded",
+          "box": {
+            "x": 1120.5,
+            "y": 733.25,
+            "w": 790.90625,
+            "h": 46.09375
+          }
+        }
+      ]
     }
   ]
 }

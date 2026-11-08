@@ -1,0 +1,34 @@
+{
+  "id": "doctor-summary",
+  "file": "recordings/doctor-summary.mp4",
+  "width": 3840,
+  "height": 2160,
+  "fps": 30,
+  "durationFrames": 450,
+  "simulated": true,
+  "demoData": true,
+  "events": [
+    {
+      "frame": 60,
+      "kind": "click",
+      "label": "click:Doctor view — stored therapist summary",
+      "box": {
+        "x": 3463.6875,
+        "y": 23,
+        "w": 256.3125,
+        "h": 64
+      }
+    },
+    {
+      "frame": 60,
+      "kind": "mark",
+      "label": "mark:stored-real-Gemini-summary-visible",
+      "box": {
+        "x": 784,
+        "y": 853.25,
+        "w": 2272,
+        "h": 1560.28125
+      }
+    }
+  ]
+}

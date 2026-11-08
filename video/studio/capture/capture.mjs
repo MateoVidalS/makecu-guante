@@ -80,7 +80,7 @@ async function prepare() {
   await page.route('**/e2e/v1-driver.js', async r => r.fulfill({ contentType: 'text/javascript', body: await readFile(path.join(studio, 'capture/driver.mjs'), 'utf8') }));
   await page.goto(`${origin}/e2e/v1.html`);
   await page.waitForFunction(() => window.aiTherapist?.ready());
-  await page.addStyleTag({ content: '* { cursor: none !important; } [data-testid="bench-mirror-status"], [data-capture-dev] { display: none !important; }' });
+  await page.addStyleTag({ content: '* { cursor: none !important; } .runtime-fallback, [data-testid="bench-mirror-status"], [data-capture-dev] { display: none !important; }' });
   // Hide developer entry points only; simulation labels and safety UI stay visible.
   await page.getByRole('button', { name: 'Demo tools', exact: true }).evaluateAll(nodes => nodes.forEach(n => n.setAttribute('data-capture-dev', '')));
   await page.getByRole('button', { name: 'Calibrate simulator', exact: true }).click();
@@ -131,8 +131,8 @@ async function record(id) {
   if (id.startsWith('session-') || id === 'coach-panel') {
     await start(page);
     if (id === 'coach-panel') {
-      await tool(page, 'adjust_help', { finger: 'index', direction: 'gentler', reason: 'Give your index slower, gentler help.' });
       await tool(page, 'highlight_finger', { finger: 'index' });
+      await tool(page, 'adjust_help', { finger: 'index', direction: 'gentler', reason: 'Give your index slower, gentler help.' });
     }
   } else {
     if (id === 'doctor-summary') {
@@ -142,7 +142,7 @@ async function record(id) {
       const route = id === 'doctor-history' ? '/history' : id === 'doctor-replay' ? `/history/sessions/${await replaySession()}` : '/doctor';
       // Reload preserves real REST-backed UI; recordings do not use fixture responses.
       await page.goto(origin + route);
-      await page.addStyleTag({ content: '* { cursor: none !important; } [data-testid="bench-mirror-status"], [data-capture-dev] { display: none !important; }' });
+      await page.addStyleTag({ content: '* { cursor: none !important; } .runtime-fallback, [data-testid="bench-mirror-status"], [data-capture-dev] { display: none !important; }' });
       await page.getByRole('button', { name: 'Demo tools', exact: true }).evaluateAll(nodes => nodes.forEach(n => n.setAttribute('data-capture-dev', '')));
       await page.waitForLoadState('networkidle');
       await settle(page);
@@ -159,7 +159,7 @@ async function record(id) {
       if (index >= 0) await select.selectOption(String(index));
       await page.getByRole('article', { name: 'Your attempt, moment by moment' }).waitFor();
       await page.waitForLoadState('networkidle');
-      await page.getByRole('article', { name: 'Your attempt, moment by moment' }).locator('..').first().scrollIntoViewIfNeeded();
+      await page.getByRole('article', { name: 'Your attempt, moment by moment' }).locator('..').first().evaluate(node => window.scrollTo({ top: window.scrollY + node.getBoundingClientRect().top - 96, behavior: 'instant' }));
       await settle(page);
     }
   }
@@ -233,13 +233,20 @@ async function record(id) {
     if (id === 'doctor-summary' && f === 60) {
       await click(clip, page, f, page.getByRole('link', { name: 'Doctor view', exact: true }), 'Doctor view — stored therapist summary');
       await page.waitForLoadState('networkidle');
-      await page.locator('.summary-copy').waitFor();
+      // REST completion schedules React Query notifications on the paused browser clock.
+      // Keep stepping it while yielding to the real network; locator polling alone cannot.
+      for (let n = 0; n < 150 && !await page.locator('.summary-copy').isVisible(); n++) {
+        await page.clock.runFor(100);
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      if (!await page.locator('.summary-copy').isVisible()) throw new Error('Stored summary did not render');
       await event(clip, page, f, 'mark', 'mark:stored-real-Gemini-summary-visible', page.locator('.therapist-summary'));
     }
     if (id === 'doctor-export' && f === 60) {
       const download = page.waitForEvent('download');
       await click(clip, page, f, page.getByRole('button', { name: 'Export CSV', exact: true }), 'Export CSV');
       await download;
+      await settle(page);
       await event(clip, page, f, 'mark', 'mark:export-downloaded', page.getByRole('status').filter({ hasText: 'Export downloaded' }));
     }
     await settle(page);
@@ -248,7 +255,7 @@ async function record(id) {
   }
   await context.close();
   if (probe) { console.log(`Probe frames: ${framesDir}`); return; }
-  await command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-threads', '2', '-filter_threads', '1', '-framerate', '30', '-i', path.join(framesDir, '%05d.jpg'), '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path.join(out, `${id}.mp4`)]);
+  await command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-threads', '2', '-filter_threads', '1', '-framerate', '30', '-i', path.join(framesDir, '%05d.jpg'), '-vf', 'scale=in_range=full:out_range=limited,format=yuv420p', '-color_range', 'tv', '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path.join(out, `${id}.mp4`)]);
   await writeFile(path.join(out, `${id}.events.json`), JSON.stringify(clip, null, 2) + '\n');
   await createContact(clip, framesDir);
   await rm(framesDir, { recursive: true });
@@ -265,7 +272,12 @@ try {
   stack = spawn('python3', ['scripts/dev.py'], { cwd: root, env, detached: true, stdio: ['ignore', serverLog, serverLog] });
   await Promise.all([waitFor(`${api}/api/health`), waitFor(origin)]);
   browser = await chromium.launch({ headless: true, args: ['--use-angle=metal', '--disable-features=LocalNetworkAccessChecks'] });
+  let doctorSeeded = false;
   for (const id of selected) {
+    if (id.startsWith('doctor-') && !doctorSeeded) {
+      await command(path.join(root, 'backend/.venv/bin/python'), [path.join(studio, 'capture/restore-demo.py')]);
+      doctorSeeded = true;
+    }
     if (id === 'doctor-summary') await command(path.join(root, 'backend/.venv/bin/python'), [path.join(studio, 'capture/summary.py')]);
     await record(id);
   }
