@@ -1,5 +1,6 @@
 import type { TherapyRuntime } from './therapy';
 import { powerAwareSettings } from './power';
+import { benchMirror } from '../glove/benchMirror';
 import {
   ASSIST_DIRECTION_RECALIBRATE_MESSAGE,
   validateCameraRange,
@@ -323,9 +324,10 @@ export class RehabRuntime implements TherapyRuntime {
     start: async (plan, requested) => {
       const calibration = this.requireReady();
       if (!plan.length) throw new Error('Choose at least one pose');
+      // The bench mirror drives real motors too, on the same small supply.
       const settings = powerAwareSettings(
         requested,
-        this.sources.glove === 'serial',
+        this.sources.glove === 'serial' || benchMirror.active(),
       );
       const out = this.exerciseEngine.start(
         plan,
