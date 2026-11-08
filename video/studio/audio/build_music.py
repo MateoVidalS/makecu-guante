@@ -38,7 +38,7 @@ def pulse():
     bus = np.zeros((N, 2), dtype=np.float32)
     rng = np.random.default_rng(100)
     for beat in range(round(STARTS['reveal'] / .6), round(STARTS['next'] / .6)):
-        at = beat * 0.6
+        at = beat * 18 / TIMELINE['fps']  # Integer beat frames avoid float boundary drift.
         if RESIST <= at < RELEASE:
             continue
         if STARTS['bench'] <= at < STARTS['underHood']:
@@ -49,7 +49,7 @@ def pulse():
         kick *= (1 - np.exp(-t * 180)) * np.exp(-t * 28) * (0.047 if at >= STARTS['underHood'] else 0.038)
         i = round(at * RATE)
         bus[i:i + len(t)] += kick[:, None]
-        mechanical = STARTS['build'] <= at < STARTS['bench']
+        mechanical = STARTS['build'] <= at < STARTS['session']
         for off in ([0, .15, .3, .45] if mechanical else [0, .3]):
             j = round((at + off) * RATE)
             t = np.arange(round(0.07 * RATE)) / RATE
@@ -80,7 +80,9 @@ def main():
     # hook's hard cut, without a crossfade leaking into the founders' shot.
     edits = [(STARTS['hook'], STARTS['reveal'], 6.164943),
              (STARTS['reveal'], STARTS['build'], 82.8),
-             (STARTS['build'], STARTS['underHood'], 236.4),
+             (STARTS['build'], STARTS['session'], 236.4),
+             (STARTS['session'], STARTS['bench'], 92.4),
+             (STARTS['bench'], STARTS['underHood'], 190.8),
              (STARTS['underHood'], STARTS['next'], 250.8),
              (STARTS['next'], STARTS['close'], 25.2), (STARTS['close'], SECONDS, 328.2)]
     bed = np.zeros((N, 2), dtype=np.float32)
@@ -90,6 +92,8 @@ def main():
         left = half if index else 0
         right = half if index < len(edits) - 1 else 0
         piece = original[round(offset * RATE) - left:round(offset * RATE) + b - a + right].copy()
+        assert 0 <= a < b <= N, f'Invalid timeline edit: {start}–{end}'
+        assert len(piece) == b - a + left + right, f'Source too short for {start}–{end}'
         envelope = np.ones(len(piece), dtype=np.float32)
         if left:
             envelope[:2 * half] = np.linspace(0, 1, 2 * half)
@@ -114,13 +118,14 @@ def main():
     f = TIMELINE['starts']
     resist, release = round(RESIST * TIMELINE['fps']), round(RELEASE * TIMELINE['fps'])
     cues = [(0, 0), (f['hook'] - 1, 0), (f['hook'], .52),
-            (f['reveal'] - 18, .52), (f['reveal'], .78), (f['session'], .68),
-            (resist - 18, .68), (resist, .035), (resist + 75, .035),
-            (release - 12, .12), (release, .68), (f['build'] - 6, .68), (f['build'], .72),
-            (f['bench'] - 1, .72), (f['bench'], .35),
+            (f['reveal'] - 18, .52), (f['reveal'], .78),
+            (f['build'] - 6, .78), (f['build'], .82),
+            (f['session'] - 6, .82), (f['session'], .68),
+            (resist - 18, .68), (resist, .035), (release - 1, .035), (release, .68),
+            (f['bench'] - 1, .68), (f['bench'], .35),
             (f['underHood'] - 1, .35), (f['underHood'], .82),
             (f['next'] - 12, .82), (f['next'], .34),
-            (f['close'] - 12, .34), (f['close'], .72),
+            (f['close'] - 1, .34), (f['close'], .72),
             (TIMELINE['frames'] - 72, .6), (TIMELINE['frames'] - 1, 0)]
     manifest = {'version': 1, 'file': 'audio/music/bed.wav', 'bpm': 100,
         'source': 'A Kind Of Hope by Scott Buckley (2022), CC BY 4.0. '
@@ -139,6 +144,8 @@ def main():
         'silentOpeningSeconds': STARTS['hook'],
         'pianoEntersAtFrame': f['hook'],
         'benchGain': .35,
+        'mechanicalGrooveFrames': [f['build'], f['session']],
+        'resistanceDipFrames': [resist, release],
     }, indent=2) + '\n')
 
     sounds = []

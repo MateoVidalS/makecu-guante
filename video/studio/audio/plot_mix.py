@@ -38,7 +38,7 @@ def main():
     fig, axes = plt.subplots(3, 1, figsize=(19.2, 10.8), sharex=True,
                              gridspec_kw={'height_ratios': [2, 2, 1]})
     fig.patch.set_facecolor('#F7F8FA')
-    fig.suptitle('memo · V2 audio review', x=.07, y=.92, ha='left', fontsize=28, weight='semibold')
+    fig.suptitle('memo · V2b music remix', x=.07, y=.92, ha='left', fontsize=28, weight='semibold')
     axes[0].fill_between(seconds, -peaks, peaks, color='#2155CD', linewidth=0)
     axes[0].set_ylabel('Bed waveform\n48 kHz stereo')
     axes[0].set_ylim(-1, 1)
