@@ -17,16 +17,15 @@ test('an undersized example camera range is flagged before practice sends motion
       sessionsCreated++;
   });
   await page.goto('/exercise');
-  await page
-    .getByRole('button', { name: 'Start practice', exact: true })
-    .click();
   await expect(
-    page
-      .getByRole('alert')
-      .filter({
-        hasText: /Camera range would report over 100% for your index/,
-      }),
+    page.getByRole('button', { name: 'Start practice', exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText('Your index range needs a quick redo.').first(),
   ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Redo camera range', exact: true }),
+  ).toHaveAttribute('href', '/calibrate?step=camera&finger=index');
   await expect(page.locator('.focus')).toHaveCount(0);
   expect(sessionsCreated).toBe(0);
 });

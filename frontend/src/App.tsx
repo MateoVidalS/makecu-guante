@@ -79,7 +79,7 @@ function Brand() {
   );
 }
 
-function Shell() {
+export function Shell() {
   const location = useLocation(),
     phase = useExerciseView((v) => v.phase),
     stage = useEvaluationView((v) => v.stage);
