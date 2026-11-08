@@ -1,19 +1,18 @@
-"""Single-use Live credentials locked to the clinician prompt.
+"""Single-use Live credentials locked to the clinician prompt and the read-only tools.
 
-The Live model (gemini-3.8-live-extended-thinking on this key) never issues function calls:
-verified Nov 8 2026 with a minimal tool, with and without ephemeral tokens. Voice therefore
-answers from the record in its system instruction and declares no tools; typed chat keeps the
-read-only tools. The browser still handles Live tool calls should a future model send them.
+Uses the same Live model as the patient coach, including its translation of retired models:
+gemini-3.8-live-extended-thinking never delivers tool calls (checked Nov 8 2026).
 """
 
 from datetime import datetime, timedelta, timezone
 
 from google import genai
 
-from app.chat import prompt
+from app.chat import prompt, tools
 from app.chat.record import build_patient_record
 from app.config import settings
 from app.contracts.chat import ChatVoiceToken
+from app.voice.gemini_live import CURRENT_MODEL, RETIRED_MODELS
 
 RECORD_IN_TOKEN_MAX_CHARS = 60_000
 
@@ -33,6 +32,8 @@ def create_token(db) -> ChatVoiceToken:
             instruction = prompt.rules(voice=True)
             context = prompt.record_text(record)
         model = settings.gemini_live_model
+        if model in RETIRED_MODELS:
+            model = CURRENT_MODEL
         now = datetime.now(timezone.utc)
         expires = now + timedelta(minutes=30)
         config = {
@@ -44,6 +45,7 @@ def create_token(db) -> ChatVoiceToken:
                 },
             },
             "system_instruction": instruction,
+            "tools": tools.TOOLS,
             "input_audio_transcription": {},
             "output_audio_transcription": {},
             "realtime_input_config": {"automatic_activity_detection": {"disabled": False}},

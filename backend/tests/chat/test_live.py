@@ -3,7 +3,7 @@ import json
 import pytest
 from google.genai import types
 
-from app.chat import live, prompt
+from app.chat import live, prompt, tools
 from app.config import settings
 
 
@@ -18,7 +18,8 @@ def test_locked_single_use_voice_token_inline_or_context(client, sdk, monkeypatc
     assert result.status_code == 200, result.text
     body = result.json()
     assert body["token"] == "auth_tokens/chat-test"
-    assert body["model"] == settings.gemini_live_model
+    expected = settings.gemini_live_model
+    assert body["model"] == (live.CURRENT_MODEL if expected in live.RETIRED_MODELS else expected)
     assert body["voice"] == settings.gemini_live_voice
     assert "fake-key" not in result.text
     assert set(body) == {"token", "expires_at", "model", "voice", "context"}
@@ -35,7 +36,7 @@ def test_locked_single_use_voice_token_inline_or_context(client, sdk, monkeypatc
         == body["voice"]
     )
     assert connect["input_audio_transcription"] == connect["output_audio_transcription"] == {}
-    assert "tools" not in connect  # Live never calls them; voice answers from the record
+    assert connect["tools"] == tools.TOOLS
     assert "never say you will" in connect["system_instruction"]
     assert "60 words" in connect["system_instruction"]
     # Validate against the installed SDK locally; this does not make a request.
@@ -119,3 +120,11 @@ def test_tools_endpoint_statuses_and_read_only(client, db):
     after = {table: len(db.exec(select(table)).all()) for table in before}
     assert before == after
     assert "fake-key" not in json.dumps(result.json())
+
+
+def test_voice_uses_the_coach_live_model_mapping(db, monkeypatch):
+    from app.voice.gemini_live import CURRENT_MODEL
+
+    monkeypatch.setattr(settings, "gemini_live_model", "gemini-3.8-live-extended-thinking")
+    assert live.CURRENT_MODEL == CURRENT_MODEL
+    assert "gemini-3.8-live-extended-thinking" in live.RETIRED_MODELS

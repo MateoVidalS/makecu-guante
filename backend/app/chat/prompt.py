@@ -23,14 +23,14 @@ Call show_chart when pointing to a chart helps explain the answer; select its Do
 """
 VOICE_RULES = """
 This is a voice conversation. Keep each answer under about 60 words.
-Answer straight from the patient record; you have no tools in voice, so never say you will
-check or look something up. If the record lacks a detail (full transcripts or single attempts),
-say it is not in the record summary and suggest asking in the typed chat.
+Answer from the patient record when it has the answer. When it lacks a detail, call the tool
+right away in the same turn, before saying anything; never say you will check or look something
+up without calling the tool, and answer only after the tool result arrives.
 """
 
 
 def rules(voice: bool = False) -> str:
-    return COMMON + CHAT_RULES + (VOICE_RULES if voice else TOOL_RULES)
+    return COMMON + CHAT_RULES + TOOL_RULES + (VOICE_RULES if voice else "")
 
 
 def record_text(record: dict) -> str:
