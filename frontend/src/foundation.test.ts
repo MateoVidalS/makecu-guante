@@ -172,7 +172,7 @@ describe('MSW REST client', () => {
     });
     expect((await api.getSession(session.id)).ended_at).not.toBeNull();
     expect(await api.getSessions({ limit: 1 })).toHaveLength(1);
-    expect((await api.getSessions({ offset: 1 }))[0].id).toBe(14);
+    expect((await api.getSessions({ offset: 1 }))[0].id).toBe(25);
     expect(await api.getSessions({ limit: 0 })).toHaveLength(0);
     await expect(
       api.createSummary({ kind: 'session', session_id: session.id }),
@@ -192,13 +192,13 @@ describe('MSW REST client', () => {
     const { id: _id, ...value } = fixtures.evaluations[0];
     const e = await api.createEvaluation(value);
     expect(await api.getEvaluation(e.id)).toEqual(e);
-    expect(await api.getEvaluations()).toHaveLength(5);
-    expect((await api.getHistoryOverview()).evaluations).toBe(5);
+    expect(await api.getEvaluations()).toHaveLength(6);
+    expect((await api.getHistoryOverview()).evaluations).toBe(6);
     expect(
       await api.getHistoryRom({ finger: 'index', pose: 'full_fist' }),
-    ).toHaveLength(14);
-    expect(await api.getHistoryAssist()).toHaveLength(70);
-    expect(await api.getHistoryResistance()).toHaveLength(25);
+    ).toHaveLength(25);
+    expect(await api.getHistoryAssist()).toHaveLength(125);
+    expect(await api.getHistoryResistance()).toHaveLength(30);
     await expect(
       api.createSummary({ kind: 'therapist', days: 7 }),
     ).rejects.toMatchObject({ status: 503 });

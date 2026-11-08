@@ -7,7 +7,7 @@ Only --reset removes data, and only rows explicitly marked is_demo.
 import argparse
 import json
 import subprocess
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import delete
@@ -57,6 +57,12 @@ def _validate_fingers(calibration, sessions, evaluations) -> None:
             require(s.finger for s in evaluation.sweeps if s.speed == speed)
 
 
+def _created_at(calibration: dict) -> str:
+    """Historical calibration time from the story, normalized to the stored Z format."""
+    value = datetime.fromisoformat(calibration["created_at"].replace("Z", "+00:00"))
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def _profile_is_replaceable(db, demo: c.Profile) -> bool:
     """Fill the profile only when nobody has entered one, or it is the previous demo patient."""
     current = repo.get_profile(db)
@@ -98,6 +104,10 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
         ]
         for value in payload["sessions"]
     ]
+    transcripts = [
+        [c.TranscriptLine.model_validate(line) for line in value.get("transcript", [])]
+        for value in payload["sessions"]
+    ]
     evaluations = [
         c.EvaluationIn.model_validate({**value, "calibration_id": 1, "is_demo": True})
         for value in payload["evaluations"]
@@ -124,11 +134,10 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
                 db.commit()
             # Reuse only an identical historical calibration; never overwrite hardware ranges.
             calibration_ids = {}
-            for direction, body, age in [
-                ("open", calibration, 25),
-                ("close", legacy_calibration, 28),
+            for direction, body, created_at in [
+                ("open", calibration, _created_at(payload["calibration"])),
+                ("close", legacy_calibration, _created_at(payload["legacy_calibration"])),
             ]:
-                created_at = (end - timedelta(days=age)).isoformat().replace("+00:00", "Z")
                 candidates = db.exec(
                     select(m.Calibration).where(m.Calibration.created_at == created_at)
                 ).all()
@@ -150,8 +159,8 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
                 calibration_ids[direction] = row.id
             if _profile_is_replaceable(db, profile):
                 repo.put_profile(db, profile)
-            for (value, attempts, summary), coach, felt in zip(
-                sessions, decisions, feelings, strict=True
+            for (value, attempts, summary), coach, felt, lines in zip(
+                sessions, decisions, feelings, transcripts, strict=True
             ):
                 saved = repo.create_session(
                     db,
@@ -173,6 +182,8 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
                     repo.add_feelings(
                         db, saved.id, [f.model_copy(update={"session_id": saved.id}) for f in felt]
                     )
+                if lines:
+                    repo.add_transcript(db, saved.id, lines)
             for evaluation in evaluations:
                 repo.create_evaluation(
                     db, evaluation.model_copy(update={"calibration_id": calibration_ids["open"]})

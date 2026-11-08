@@ -10,6 +10,7 @@ import {
 } from 'vitest';
 import {
   cleanup,
+  configure,
   fireEvent,
   render,
   screen,
@@ -21,7 +22,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { mockState, resetMocks, historyRom } from '../../mocks/handlers';
+import {
+  mockState,
+  resetMocks,
+  historyRom,
+  historyAssist,
+} from '../../mocks/handlers';
 import { getProfile } from '../../api/client';
 import History from '../History';
 import Profile from '../Profile';
@@ -29,6 +35,11 @@ import SessionReplay from '../SessionReplay';
 import EvaluationDetail from '../EvaluationDetail';
 import Doctor from './index';
 import { FingerTrend, ReplayChart, SweepCurves } from '../../components/charts';
+
+// The demo history is six weeks (25 sessions): rendering every page takes longer under a
+// fully parallel jsdom run than the 1 s / 5 s defaults allow.
+configure({ asyncUtilTimeout: 5000 });
+vi.setConfig({ testTimeout: 20_000 });
 
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
@@ -106,6 +117,19 @@ describe('record review pages', () => {
     const points = historyRom(null, 'open').filter((p) => p.finger === 'thumb');
     const first = Math.round((1 - points[0].active_max_mean) * 100);
     const last = Math.round((1 - points.at(-1)!.active_max_mean) * 100);
+    const latest = mockState.sessions[0].id;
+    const indexOwn = Math.round(
+      (1 -
+        historyRom('index', 'open').find((p) => p.session_id === latest)!
+          .active_max_mean) *
+        100,
+    );
+    // Glove help counts only open attempts: the opening glove never assists a fist.
+    const indexHelp = Math.round(
+      historyAssist().find(
+        (p) => p.session_id === latest && p.finger === 'index',
+      )!.assist_needed_mean * 100,
+    );
     expect(await screen.findByText(`${first}% → ${last}%`)).toBeVisible();
     expect(
       screen.getByRole('img', { name: /Hand map, first session/ }),
@@ -113,7 +137,9 @@ describe('record review pages', () => {
     expect(
       await screen.findByRole('img', { name: /Latest session per finger/ }),
     ).toHaveAccessibleName(
-      /Index Opening-assist glove 77% on your own and 12% from the glove/,
+      new RegExp(
+        `Index Opening-assist glove ${indexOwn}% on your own and ${indexHelp}% from the glove`,
+      ),
     );
     expect(
       screen.getByRole('img', { name: /Practice calendar/ }),
