@@ -52,6 +52,7 @@ Object.assign(browserVoiceDependencies, {
 const mount = RehabRuntime.prototype.mount;
 const observed = new WeakSet<RehabRuntime>();
 RehabRuntime.prototype.mount = function () {
+  // eslint-disable-next-line @typescript-eslint/no-this-alias -- Observe the provider-created runtime without replacing it.
   runtime = this;
   if (!observed.has(this)) {
     observed.add(this);
@@ -60,6 +61,7 @@ RehabRuntime.prototype.mount = function () {
   mount.call(this);
 };
 SimWorld.prototype.start = function () {
+  // eslint-disable-next-line @typescript-eslint/no-this-alias -- Keep the provider's simulator, with an explicitly stepped clock.
   world = this;
 };
 const target = SimGlove.prototype.target;

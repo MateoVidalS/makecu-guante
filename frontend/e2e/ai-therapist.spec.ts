@@ -1,11 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { CoachDecision } from '../src/contracts/therapist';
 import type { SessionDetail } from '../src/contracts/api';
+import { POSES } from '../src/contracts/poses';
 import type { TherapistSnapshot } from './ai-therapist-harness';
 import { silenceCoach } from './helpers';
 
 test.describe('scripted Live AI therapist through the production app', () => {
   test.setTimeout(90_000);
+  test.use({ actionTimeout: 30_000 });
 
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -146,8 +148,14 @@ test.describe('scripted Live AI therapist through the production app', () => {
       coach_decisions: CoachDecision[];
       feelings: TherapistSnapshot['feelings'];
     };
-    expect(stored.coach_decisions).toEqual(snapshot.decisions);
-    expect(stored.feelings).toEqual(snapshot.feelings);
+    // Python serializes fractional seconds to six digits; compare the instant
+    // while retaining strict equality for every audit field and payload.
+    const canonical = <T extends { t: string }>(items: T[]) =>
+      items.map((item) => ({ ...item, t: new Date(item.t).toISOString() }));
+    expect(canonical(stored.coach_decisions)).toEqual(
+      canonical(snapshot.decisions),
+    );
+    expect(canonical(stored.feelings)).toEqual(canonical(snapshot.feelings));
     expect(stored.is_demo).toBe(true);
     expect(stored.ended_at).not.toBeNull();
     // Reload from REST, rather than retaining the in-memory runtime audit.
@@ -161,25 +169,20 @@ test.describe('scripted Live AI therapist through the production app', () => {
     await expect(replay.locator(':scope > li')).toHaveCount(
       snapshot.decisions.length + snapshot.feelings.length,
     );
-    for (const decision of snapshot.decisions) {
-      const row = replay
-        .locator(':scope > li')
-        .filter({ hasText: decision.reason });
-      await expect(row.first()).toBeVisible();
-      const detail = row
-        .filter({
-          has: page.locator('.therapy-audit > p', {
-            hasText: ` · ${decision.tool}`,
-          }),
-        })
-        .first();
+    const decisionRows = replay.locator(':scope > li').filter({
+      has: page.locator('.therapy-audit'),
+    });
+    for (const [index, decision] of snapshot.decisions.entries()) {
+      const detail = decisionRows.nth(index);
+      await expect(detail).toContainText(decision.reason);
+      await expect(detail).toContainText(decision.result);
       await detail.getByText('Decision details', { exact: true }).click();
-      await expect(detail.locator('pre').first()).toHaveText(
-        JSON.stringify(decision.requested, null, 2),
-      );
-      await expect(detail.locator('pre').last()).toHaveText(
-        JSON.stringify(decision.applied, null, 2),
-      );
+      // The backend canonicalizes JSON key order for idempotent uploads.
+      const payloads = await detail.locator('pre').allTextContents();
+      expect(payloads.map((text) => JSON.parse(text))).toEqual([
+        decision.requested,
+        decision.applied,
+      ]);
     }
     return stored;
   }
@@ -263,7 +266,7 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(attempt.state.adjustments.assist_speed.index).toBe(0.15);
     expect(
       attempt.state.fingers.find((f) => f.finger === 'middle')?.target,
-    ).toBeCloseTo(0.9);
+    ).toBeCloseTo(POSES.full_fist.closure.middle! * 0.9);
     await tool(
       page,
       'assist_finger_now',
@@ -282,24 +285,24 @@ test.describe('scripted Live AI therapist through the production app', () => {
       window.aiTherapist.untilPhase('REST', 0),
     );
     expect(rested.view.phaseDuration).toBe(23);
-    const starts = rested.events.filter(
-      (e) => e.event.kind === 'assist_started',
-    );
-    const thumb = starts.find(
-      (e) =>
-        e.event.kind === 'assist_started' && e.event.fingers.includes('thumb'),
-    )!;
     const attemptAt = rested.events.find(
       (e) => e.event.kind === 'phase' && e.event.phase === 'ATTEMPT',
     )!.at;
+    const normalTargets = rested.commands.filter((c) => c.kind === 'target');
+    // assist_started describes the initial group. Observe later staggered
+    // starts at the motor boundary, including the thumb's earlier deadline.
+    const thumb = normalTargets.find((c) => c.f![0] > c.from![0] + 0.05)!;
+    expect(thumb).toBeDefined();
     expect((thumb.at - attemptAt) / 1000).toBeGreaterThanOrEqual(5);
     expect((thumb.at - attemptAt) / 1000).toBeLessThan(6);
-    const normalTargets = rested.commands.filter((c) => c.kind === 'target');
-    expect(normalTargets.some((c) => c.v === 0.15)).toBe(true);
     expect(
       normalTargets.every((c) => c.v! <= 0.2 && c.f!.every((f) => f <= 0.95)),
     ).toBe(true);
-    expect(normalTargets.every((c) => c.f![2] <= 0.9)).toBe(true);
+    expect(
+      normalTargets.every(
+        (c) => c.f![2] <= POSES.full_fist.closure.middle! * 0.9,
+      ),
+    ).toBe(true);
     expect(
       (await page.evaluate(() => window.aiTherapist.advance(22_900))).view
         .phase,
@@ -310,7 +313,26 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(next.state.adjustments.assist_delay_s.thumb).toBe(5);
     expect(
       next.state.fingers.find((f) => f.finger === 'middle')?.target,
-    ).toBeCloseTo(0.9);
+    ).toBeCloseTo(POSES.full_fist.closure.middle! * 0.9);
+    await tool(
+      page,
+      'assist_finger_now',
+      {
+        finger: 'index',
+        reason: 'Keep the index help gentle.',
+      },
+      'Immediate help',
+    );
+    const gentle = await page.evaluate(() => window.aiTherapist.advance(200));
+    const gentleTargets = gentle.commands.filter((c) => c.kind === 'target');
+    expect(gentleTargets.at(-1)?.v).toBe(0.15);
+    expect(gentleTargets.every((c) => c.v! <= 0.2)).toBe(true);
+    await tool(
+      page,
+      'brake',
+      { reason: 'Rest after those changes.' },
+      'Brake · glove released',
+    );
     await auditAndReplay(page);
   });
 
@@ -385,10 +407,11 @@ test.describe('scripted Live AI therapist through the production app', () => {
         window.aiTherapist.advance(1000),
       );
       expect(pulling.firmware.mode).toBe('target');
-      const stopped = await page.evaluate(
-        (word) => window.aiTherapist.patient(word, false),
-        word,
-      );
+      const stopped = await page.evaluate((word) => {
+        const state = window.aiTherapist.patient(word, false);
+        window.aiTherapist.modelAudio('stale-model-audio');
+        return state;
+      }, word);
       expect(stopped.coachTurns).toBe(0);
       expect(stopped.view.phase).toBe('PAUSED');
       expect(stopped.firmware.mode).toBe('none');
@@ -413,7 +436,6 @@ test.describe('scripted Live AI therapist through the production app', () => {
       expect(late.reason).toContain('Patient brake is active');
       await page.evaluate(() => {
         window.aiTherapist.patient('', true);
-        window.aiTherapist.modelAudio('stale-model-audio');
       });
       const after = await page.evaluate(() => window.aiTherapist.advance(1000));
       expect(after.view.phase).toBe('PAUSED');
@@ -491,6 +513,9 @@ test.describe('scripted Live AI therapist through the production app', () => {
     );
     expect(attempt.state.adjustments.assist_speed.index).toBe(0.3);
     expect(attempt.state.adjustments.hold_extra_s).toBe(2);
+    expect(
+      attempt.state.fingers.find((f) => f.finger === 'middle')?.target,
+    ).toBe(1);
     expect(attempt.state.adjustments.intensified).toEqual([
       'index',
       'middle',
