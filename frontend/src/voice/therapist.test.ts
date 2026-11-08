@@ -190,6 +190,27 @@ it.each([
 ])('does not treat "%s" as a brake request', (text) => {
   expect(patientBrakeReason(text)).toBeNull();
 });
+/** [live] state lines inside the messages sent to the coach (they ride along, merged). */
+function liveLines(texts: { text: string; speak: boolean }[]) {
+  return texts.flatMap((t) =>
+    t.text
+      .split('\n')
+      .filter((line) => line.startsWith('[live]'))
+      .map((line) => ({
+        text: line,
+        speak: t.speak,
+        state: JSON.parse(line.slice(7)),
+      })),
+  );
+}
+const attemptStarted = {
+  kind: 'phase',
+  phase: 'ATTEMPT',
+  pose: 'full_fist',
+  rep: 1,
+  index: 0,
+} as const;
+
 it('detects a phrase split across Live chunks once and blocks stale resume/adjust tools', async () => {
   const s = setup();
   await s.controller.start(1);
@@ -223,35 +244,28 @@ it('detects a phrase split across Live chunks once and blocks stale resume/adjus
   expect(resume).toHaveBeenCalledOnce();
   s.controller.dispose();
 });
-it('streams non-speaking live state every second only in active phases, with nullable measurements', async () => {
+it('sends live state only with another message (no per-second stream), only in active phases, with nullable measurements', async () => {
   const s = setup();
   await s.controller.start(1);
-  const live = () =>
-    s.transport.texts.filter((t) => t.text.startsWith('[live]'));
-  await vi.advanceTimersByTimeAsync(999);
-  expect(live()).toHaveLength(0);
-  await vi.advanceTimersByTimeAsync(1);
-  const payload = JSON.parse(live()[0].text.slice(7));
-  expect(live()[0].speak).toBe(false);
-  expect(payload.fingers[0].now).toBeNull();
-  expect(payload.fingers[1]).toMatchObject({
+  const before = s.transport.texts.length;
+  // Time alone sends nothing: a message every second cut off the coach's answers.
+  await vi.advanceTimersByTimeAsync(5000);
+  expect(liveLines(s.transport.texts.slice(before))).toHaveLength(0);
+  s.emit(attemptStarted);
+  await vi.advanceTimersByTimeAsync(10);
+  const [line] = liveLines(s.transport.texts);
+  expect(line.speak).toBe(false);
+  expect(line.state.fingers[0].now).toBeNull();
+  expect(line.state.fingers[1]).toMatchObject({
     now: 45,
     target: 80,
     best_alone: 50,
     lagging: true,
   });
-  for (const phase of ['ASSIST', 'HOLD'] as const) {
-    s.state.phase = phase;
-    await vi.advanceTimersByTimeAsync(1000);
-  }
-  expect(live()).toHaveLength(3);
   s.state.phase = 'PAUSED';
-  await vi.advanceTimersByTimeAsync(2000);
-  expect(live()).toHaveLength(3);
-  s.controller.stop();
-  s.state.phase = 'ATTEMPT';
-  await vi.advanceTimersByTimeAsync(2000);
-  expect(live()).toHaveLength(3);
+  s.emit({ ...attemptStarted, index: 1 });
+  await vi.advanceTimersByTimeAsync(10);
+  expect(liveLines(s.transport.texts)).toHaveLength(1);
   s.controller.dispose();
 });
 it('checks in every three completed attempts, and a bare pain answer brakes locally', async () => {
@@ -556,16 +570,14 @@ it.each([
   },
 );
 
-it('streams approved timing, shaping, highlight, glove and safety fields', async () => {
+it('sends approved timing, shaping, highlight, glove and safety fields with the next message', async () => {
   const s = setup();
   await s.controller.start(1);
-  await vi.advanceTimersByTimeAsync(1000);
-  const line = s.transport.texts.find((text) =>
-    text.text.startsWith('[live]'),
-  )!;
-  const state = JSON.parse(line.text.slice(7));
+  s.emit(attemptStarted);
+  await vi.advanceTimersByTimeAsync(10);
+  const [line] = liveLines(s.transport.texts);
   expect(line.speak).toBe(false);
-  expect(state).toMatchObject({
+  expect(line.state).toMatchObject({
     highlighted_finger: 'index',
     glove: { state: 'run', current_ma: 240, simulated: true },
     last_safety: { source: 'resistance', finger: 'index', seconds_ago: 5 },
@@ -764,20 +776,20 @@ it('reports simple-voice patient lines too, and keeps braking ahead of speech bo
   s.controller.dispose();
 });
 
-it('streams intensity and hold overrides and their runtime auto-revert', async () => {
+it('sends intensity and hold overrides and their runtime auto-revert', async () => {
   const s = setup();
   await s.controller.start(1);
   s.state.adjustments.intensified = ['index'];
   s.state.adjustments.hold_extra_s = 2;
   s.state.adjustments.assist_speed.index = 0.3;
-  await vi.advanceTimersByTimeAsync(1000);
+  s.emit(attemptStarted);
+  await vi.advanceTimersByTimeAsync(10);
   s.state.adjustments.intensified = [];
   s.state.adjustments.hold_extra_s = 0;
   s.state.adjustments.assist_speed.index = 0.2;
-  await vi.advanceTimersByTimeAsync(1000);
-  const states = s.transport.texts
-    .filter((text) => text.text.startsWith('[live]'))
-    .map((text) => JSON.parse(text.text.slice(7)));
+  s.emit({ ...attemptStarted, index: 1 });
+  await vi.advanceTimersByTimeAsync(10);
+  const states = liveLines(s.transport.texts).map((l) => l.state);
   expect(states[0].adjustments).toMatchObject({
     intensified: ['index'],
     hold_extra_s: 2,
