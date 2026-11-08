@@ -122,6 +122,15 @@ to keep the header recovery controls available. Complete the hardware gate first
 | 4:00–5:00 | Doctor view → Generate summary (when available). | “The therapist can review trends and request a summary.” Read the actual generated text; do not promise a particular conclusion. Without a key/network, show the unavailable state and the underlying charts. |
 | 5:00–6:00 | Doctor export JSON/CSV; optionally Print. Exit doctor view. | Show the read-only banner and demo labels in output. Explain that practice still works with simple voice and simulated sources. End any active run and release before removing hardware. |
 
+**Optional: today's plan (adaptive progression, ~30 s, docs/plan/17).** It is **off by default**, so the script above
+is unchanged unless someone turns it on. To show it, in the 4:00–5:00 Doctor step scroll to **Adaptive plan**, show the
+preview (from the last three demo sessions: pinky 60%, ring and thumb 80%, middle 90%, index full) and turn it on. Then
+Practice shows **Today's plan** before Start. Say: “The next session starts where this patient is: each finger gets a target
+a little beyond what it opens alone, and help is offered later as openings succeed alone. It only makes practice easier or
+gives more time to try; glove speed, pull and safety limits never change.” The replay's coach timeline lists **Today's plan
+applied**. **Turn it off again** before the next run if the presenter expects the standard targets. Pre-demo check: the
+Doctor view's Adaptive plan switch is in the state you intend.
+
 The five-finger firmware uses GPIO25/26/27/13/4 in thumb-to-little-finger order,
 a 5 V / 2.5 A supply with 470–1000 µF servo-rail capacitance, and two LEDC timers.
 Setup and runtime status report a board brown-out (boot reset reason 9):

@@ -68,6 +68,10 @@ function ConnectedRuntime({ children }: { children: ReactNode }) {
   }, [glove, vision, cache]);
   return <InjectedRuntime runtime={runtime}>{children}</InjectedRuntime>;
 }
+/** The runtime when inside a RuntimeProvider, else null (read-only pages such as Doctor). */
+export function useOptionalRuntime() {
+  return useContext(Context);
+}
 export function useRuntime() {
   const runtime = useContext(Context);
   if (!runtime) throw new Error('RuntimeProvider is missing');

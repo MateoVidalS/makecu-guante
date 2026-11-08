@@ -394,6 +394,14 @@ export class RehabRuntime implements TherapyRuntime {
             this.sources.glove === 'sim' || this.sources.vision === 'sim',
         },
       });
+      // Decisions logged while the engine started (today's plan, docs/plan/17) came before
+      // the session existed; save them with it.
+      for (const decision of this.exerciseEngine.therapy.decisions())
+        this.persistence.enqueue({
+          kind: 'decision',
+          key: this.sessionKey,
+          value: decision,
+        });
       this.handle(out);
     },
     pause: () => {

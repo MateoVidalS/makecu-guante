@@ -9,6 +9,7 @@ import {
   Stack,
 } from '../../design-system';
 import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
+import { useTodaysPlan } from '../../progression/useTodaysPlan';
 import {
   practicePlan,
   useShortPractice,
@@ -49,6 +50,8 @@ export function PracticeSafety({
   connecting: boolean;
 }) {
   const runtime = useRuntime();
+  // Today's plan (docs/plan/17); settings come back unchanged while it is off.
+  const today = useTodaysPlan();
   const navigate = useNavigate();
   const location = useLocation();
   const preflight = usePracticePreflight();
@@ -102,7 +105,7 @@ export function PracticeSafety({
     try {
       await runtime.exercise.start(
         practicePlan(short),
-        DEFAULT_EXERCISE_SETTINGS,
+        today.apply(DEFAULT_EXERCISE_SETTINGS),
       );
       navigate('/exercise');
     } catch (e) {

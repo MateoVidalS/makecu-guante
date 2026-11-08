@@ -15,12 +15,22 @@ import type {
 import type { Calibration } from '../contracts/calibration';
 import type { AttemptResult, SessionSummary } from '../contracts/engine';
 import type { ChatStreamEvent } from '../contracts/chat';
+import {
+  DEFAULT_PROGRESSION_SETTINGS,
+  type ProgressionSettings,
+  type ProgressionSettingsIn,
+} from '../contracts/progression';
 
 const now = () => new Date().toISOString();
 export const createMockState = createDemoState;
 export let mockState = createMockState();
+/** Off by default, like the backend (docs/plan/17): the demo runs the standard plan. */
+let progressionSettings: ProgressionSettings = {
+  ...DEFAULT_PROGRESSION_SETTINGS,
+};
 export const resetMocks = () => {
   mockState = createMockState();
+  progressionSettings = { ...DEFAULT_PROGRESSION_SETTINGS };
 };
 const missing = () =>
   HttpResponse.json(
@@ -200,6 +210,31 @@ export const handlers = [
   http.put('/api/profile', async ({ request }) => {
     mockState.profile = (await request.json()) as Profile;
     return HttpResponse.json(mockState.profile);
+  }),
+  http.get('/api/progression/settings', () =>
+    HttpResponse.json(progressionSettings),
+  ),
+  http.put('/api/progression/settings', async ({ request }) => {
+    const body = (await request.json()) as ProgressionSettingsIn;
+    if (
+      typeof body?.enabled !== 'boolean' ||
+      !['gentle', 'standard'].includes(body?.challenge)
+    )
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'validation_error',
+            message: 'enabled and challenge are required',
+          },
+        },
+        { status: 422 },
+      );
+    progressionSettings = {
+      enabled: body.enabled,
+      challenge: body.challenge,
+      updated_at: now(),
+    };
+    return HttpResponse.json(progressionSettings);
   }),
   http.get('/api/calibrations/latest', () =>
     HttpResponse.json(mockState.calibrations[0] ?? null),

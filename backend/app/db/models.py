@@ -14,6 +14,20 @@ class Profile(SQLModel, table=True):
     therapist_email: str = ""
 
 
+class ProgressionSettings(SQLModel, table=True):
+    """The therapist's adaptive-plan switch (docs/plan/17); one row, off by default."""
+
+    __tablename__ = "progression_settings"
+    __table_args__ = (
+        CheckConstraint("id = 1"),
+        CheckConstraint("challenge IN ('gentle', 'standard')"),
+    )
+    id: int = Field(default=1, primary_key=True)
+    enabled: bool = False
+    challenge: str = "standard"
+    updated_at: str | None = None
+
+
 class Calibration(SQLModel, table=True):
     __tablename__ = "calibration"
     id: int | None = Field(default=None, primary_key=True)
