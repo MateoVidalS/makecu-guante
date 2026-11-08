@@ -6,6 +6,13 @@ a un motor por vez, y el freno suelta todo en ~140 ms. Lo que falla es físico.
 
 **Los pines no cambian** y no hay que tocar el firmware ni la app.
 
+> **Estado al 8/11, 08:36** (banco con Claude; detalle y mediciones en [BANCO-3.md](BANCO-3.md)):
+> - **1. Servo que no se mueve:** resuelto. El pulgar (D25) se mueve y consume; era la conexión.
+> - **2. Meñique:** sin hilo, quieto consume lo mismo que en reposo (16 mA con los 5). Falta verificarlo con el hilo puesto.
+> - **3. Fuente:** sin cambios (MB102 + "un motor a la vez"). De a un servo, aun a velocidad máxima, no se llegó al corte de 750 mA.
+> - **4. Verificar:** los 5 se mueven y consumen; falta mirar a ojo que no se mueva otro dedo, recalibrar en memo y la prueba con la app.
+> - **Nuevo:** el INA219 se desconectaba en la breadboard (`ina_missing`); ya está soldado. Sus datos van a 3V3, GND, D21 (SDA) y D22 (SCL), y solo se detecta al arrancar: después de conectarlo, apretar **EN**.
+
 Antes de tocar cables: **desenchufá la fuente de los servos y el USB.** Todo esto es sin
 mano: nunca probar atascos ni fallas con el guante puesto.
 

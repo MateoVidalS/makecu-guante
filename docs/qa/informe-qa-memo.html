@@ -27,6 +27,11 @@
   --ok: #1f6e43;
   --ok-soft: #e3f2e9;
   --code-bg: #eef1f6;
+  --w-pos: #c62828;
+  --w-gnd: #5d4037;
+  --w-sig: #d97000;
+  --w-data: #1e63b6;
+  --mateo: #7b3fb3;
   --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --step--1: 0.875rem;
@@ -42,6 +47,7 @@
     --accent: #8db2f0; --accent-soft: #1d2a40;
     --alta: #ff8a80; --alta-soft: #3a1c1a; --media: #f0bf5a; --media-soft: #33280f;
     --baja: #9cc0e0; --baja-soft: #1c2836; --ok: #7fd3a1; --ok-soft: #15291e; --code-bg: #1f2632;
+    --w-pos: #ff6b6b; --w-gnd: #c9b2a6; --w-sig: #ffad42; --w-data: #79b0ff; --mateo: #c79bff;
     color-scheme: dark;
   }
 }
@@ -50,6 +56,7 @@
   --accent: #8db2f0; --accent-soft: #1d2a40;
   --alta: #ff8a80; --alta-soft: #3a1c1a; --media: #f0bf5a; --media-soft: #33280f;
   --baja: #9cc0e0; --baja-soft: #1c2836; --ok: #7fd3a1; --ok-soft: #15291e; --code-bg: #1f2632;
+  --w-pos: #ff6b6b; --w-gnd: #c9b2a6; --w-sig: #ffad42; --w-data: #79b0ff; --mateo: #c79bff;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -140,6 +147,31 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .tbl table { border-collapse: collapse; font-size: var(--step--1); min-width: 28rem; }
 .tbl th, .tbl td { text-align: left; padding: 0.4rem 0.8rem 0.4rem 0; border-bottom: 1px solid var(--line); }
 .tbl th { color: var(--muted); font-weight: 700; }
+.diagram { margin: 0; display: grid; gap: 0.6rem; }
+.dscroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.75rem; }
+.diagram svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--ink); font-family: var(--font-body); }
+.diagram figcaption { font-size: var(--step--1); color: var(--muted); max-width: 80ch; }
+.diagram .box { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+.diagram .w { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.diagram .rail { stroke-width: 5; stroke-linecap: round; }
+.diagram .w-pos { stroke: var(--w-pos); }
+.diagram .w-gnd { stroke: var(--w-gnd); }
+.diagram .w-sig { stroke: var(--w-sig); }
+.diagram .w-data { stroke: var(--w-data); }
+.diagram .f-pos { fill: var(--w-pos); }
+.diagram .f-gnd { fill: var(--w-gnd); }
+.diagram .f-ink { fill: currentColor; }
+.diagram .nc { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.diagram .x { stroke: var(--muted); stroke-width: 1.5; }
+.diagram .t { font-size: 12px; fill: currentColor; }
+.diagram .tb { font-size: 13px; font-weight: 700; fill: currentColor; }
+.diagram .ts { font-size: 11px; fill: var(--muted); }
+.diagram .tm { font-size: 11px; font-family: var(--font-mono); fill: currentColor; }
+.diagram .mc { fill: var(--mateo); }
+.diagram .mn { font-size: 11px; font-weight: 700; fill: var(--surface); }
+.diagram .mt { font-size: 12px; fill: currentColor; }
+.diagram .mh { font-size: 12px; font-weight: 700; fill: var(--mateo); }
+.mateo-k { color: var(--mateo); font-weight: 700; }
 .f .sum { max-width: 72ch; }
 .f dl { margin: 0; display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 0.45rem 1rem; }
 .f dt { font-size: var(--step--1); font-weight: 700; color: var(--muted); padding-top: 0.12rem; }
@@ -220,8 +252,196 @@ pre { margin: 0; background: var(--code-bg); border-radius: 8px; padding: 0.8rem
   <p class="muted" style="max-width:70ch">Arreglos de pocas líneas que quedan: <a href="#HIS-03">HIS-03</a> (envolver el gráfico de la evaluación en un div) y <a href="#A11Y-10">A11Y-10</a> (un h1 en la página 404).</p>
 </section>
 
+<section aria-labelledby="h-armado" class="hw">
+  <h2 id="h-armado">Armado del banco para retomar</h2>
+  <div class="prose">
+    <p>El armado de la segunda sesión de banco (8 nov, la que dio 84/84) con los cambios de Mateo sobre pines y conexión, marcados en <span class="mateo-k">violeta</span>. Ahora los cinco servos son <strong>Smraza S51</strong> iguales. Quedan afuera los cambios nuevos de corriente (fuente directa de 5 A, capacitor nuevo, límite de 1500 mA): están en el plan completo de Mateo, más abajo.</p>
+    <p>Resultados de la tercera sesión de banco (pulgar resuelto, corrientes de los 5 S51, INA219 soldado): <code>hardware/BANCO-3.md</code>.</p>
+  </div>
+  <figure class="diagram">
+    <div class="dscroll">
+      <svg viewBox="0 0 1120 620" role="img" aria-label="Cableado del banco: adaptador Facmogu a 7,5 V entra al MB102; los 5 V del MB102 pasan por el INA219 (VIN+ a VIN−) a la fila + de los servos; GND del MB102 y de la ESP32 van a la fila − de los servos; la ESP32 alimenta el INA219 con 3V3 y GND y lo lee por D21 (SDA) y D22 (SCL); los pines D25, D26, D27, D13 y D4 llevan la señal a pulgar, índice, medio, anular y meñique, cinco Smraza S51; capacitor de 470 µF entre las filas; VIN y STOP sin conectar; la ESP32 va por USB a la laptop.">
+        <!-- I2C and 3V3 bus from the ESP32 top edge to the INA219 top edge, nested so no lines cross -->
+        <path class="w w-data" d="M70,190 V16 H880 V80"/>
+        <path class="w w-data" d="M110,190 V32 H855 V80"/>
+        <path class="w w-data" d="M150,190 V48 H830 V80"/>
+        <path class="w w-data" d="M190,190 V64 H805 V80"/>
+        <text class="t" x="300" y="12">3V3 → VCC</text>
+        <text class="t" x="300" y="28">GND → GND</text>
+        <text class="t" x="300" y="44">D21 → SDA</text>
+        <text class="t" x="300" y="60">D22 → SCL</text>
+
+        <!-- Power chain -->
+        <rect class="box" x="300" y="100" width="140" height="60" rx="6"/>
+        <text class="tb" x="370" y="124" text-anchor="middle">Adaptador Facmogu</text>
+        <text class="ts" x="370" y="142" text-anchor="middle">7,5 V · nunca más de 9 V</text>
+        <path class="w w-pos" d="M440,130 H512"/>
+        <polygon class="f-pos" points="520,130 510,125 510,135"/>
+        <text class="ts" x="480" y="122" text-anchor="middle">7,5 V</text>
+
+        <rect class="box" x="520" y="100" width="160" height="60" rx="6"/>
+        <text class="tb" x="600" y="120" text-anchor="middle">MB102</text>
+        <text class="ts" x="600" y="136" text-anchor="middle">jumper del lado USB sacado</text>
+        <text class="ts" x="600" y="151" text-anchor="middle">tira del medio: 5V y GND</text>
+        <path class="w w-pos" d="M680,125 H752"/>
+        <polygon class="f-pos" points="760,125 750,120 750,130"/>
+        <text class="ts" x="720" y="117" text-anchor="middle">5V → VIN+</text>
+
+        <rect class="box" x="760" y="80" width="150" height="90" rx="6"/>
+        <text class="tb" x="835" y="112" text-anchor="middle">INA219</text>
+        <text class="ts" x="835" y="128" text-anchor="middle">soldado, fuera</text>
+        <text class="ts" x="835" y="142" text-anchor="middle">de la breadboard</text>
+        <text class="ts" x="835" y="160" text-anchor="middle">mide la corriente</text>
+
+        <!-- Wire legend -->
+        <line class="w w-pos" x1="935" y1="96" x2="965" y2="96"/><text class="t" x="972" y="100">+5 V servos</text>
+        <line class="w w-gnd" x1="935" y1="114" x2="965" y2="114"/><text class="t" x="972" y="118">GND</text>
+        <line class="w w-sig" x1="935" y1="132" x2="965" y2="132"/><text class="t" x="972" y="136">señal (naranja)</text>
+        <line class="w w-data" x1="935" y1="150" x2="965" y2="150"/><text class="t" x="972" y="154">datos INA219</text>
+
+        <!-- Rails -->
+        <line class="rail w-pos" x1="300" y1="225" x2="980" y2="225"/>
+        <line class="rail w-gnd" x1="300" y1="262" x2="980" y2="262"/>
+        <text class="t" x="988" y="229">fila + (5 V)</text>
+        <text class="t" x="988" y="270">fila − (GND)</text>
+
+        <!-- INA219 VIN− to rail + -->
+        <path class="w w-pos" d="M835,170 V225"/>
+        <circle class="f-pos" cx="835" cy="225" r="4.5"/>
+        <text class="ts" x="843" y="200">VIN−</text>
+
+        <!-- MB102 GND to rail −, hopping over rail + -->
+        <path class="w w-gnd" d="M600,160 V219 a6,6 0 0 1 0,12 V262"/>
+        <circle class="f-gnd" cx="600" cy="262" r="4.5"/>
+        <text class="ts" x="608" y="192">GND</text>
+
+        <!-- Bulk capacitor across the rails -->
+        <path class="w" stroke="currentColor" d="M960,225 V238 M950,238 H970 M950,246 H970 M960,246 V262"/>
+        <text class="ts" x="988" y="249">470 µF / 25 V</text>
+
+        <!-- ESP32 -->
+        <rect class="box" x="30" y="190" width="200" height="340" rx="8"/>
+        <text class="tm" x="70" y="207" text-anchor="middle">3V3</text>
+        <text class="tm" x="110" y="207" text-anchor="middle">GND</text>
+        <text class="tm" x="150" y="207" text-anchor="middle">D21</text>
+        <text class="tm" x="190" y="207" text-anchor="middle">D22</text>
+        <text class="tb" x="130" y="238" text-anchor="middle">ESP32 DevKit</text>
+        <text class="ts" x="130" y="254" text-anchor="middle">CP2102 · COM3</text>
+
+        <text class="tm" x="222" y="266" text-anchor="end">GND</text>
+        <path class="w w-gnd" d="M230,262 H300"/>
+        <circle class="f-gnd" cx="300" cy="262" r="4.5"/>
+
+        <text class="tm" x="222" y="304" text-anchor="end">VIN</text>
+        <line class="nc" x1="230" y1="300" x2="248" y2="300"/>
+        <path class="x" d="M246,296 l8,8 M254,296 l-8,8"/>
+        <text class="ts" x="260" y="304">sin conectar</text>
+
+        <text class="tm" x="222" y="340" text-anchor="end">D32 STOP</text>
+        <line class="nc" x1="230" y1="336" x2="248" y2="336"/>
+        <path class="x" d="M246,332 l8,8 M254,332 l-8,8"/>
+        <text class="ts" x="260" y="340">sin conectar</text>
+
+        <text class="tm" x="222" y="444" text-anchor="end">D25</text>
+        <text class="tm" x="222" y="460" text-anchor="end">D26</text>
+        <text class="tm" x="222" y="476" text-anchor="end">D27</text>
+        <text class="tm" x="222" y="492" text-anchor="end">D13</text>
+        <text class="tm" x="222" y="508" text-anchor="end">D4</text>
+
+        <!-- USB to the laptop -->
+        <path class="w" stroke="currentColor" d="M130,530 V565"/>
+        <rect class="box" x="40" y="565" width="180" height="38" rx="6"/>
+        <text class="t" x="130" y="589" text-anchor="middle">Laptop · USB</text>
+
+        <!-- Servos: red to +, brown to −, orange signal to the ESP32 (nested so the bus never crosses) -->
+        <g>
+          <rect class="box" x="330" y="330" width="110" height="80" rx="6"/>
+          <text class="tb" x="385" y="352" text-anchor="middle">Pulgar</text>
+          <text class="ts" x="385" y="370" text-anchor="middle">Smraza S51</text>
+          <text class="tm" x="385" y="394" text-anchor="middle">D25</text>
+          <path class="w w-pos" d="M355,330 V268 a6,6 0 0 0 0,-12 V225"/><circle class="f-pos" cx="355" cy="225" r="4"/>
+          <path class="w w-gnd" d="M380,330 V262"/><circle class="f-gnd" cx="380" cy="262" r="4"/>
+          <path class="w w-sig" d="M415,410 V440 H230"/>
+        </g>
+        <g>
+          <rect class="box" x="460" y="330" width="110" height="80" rx="6"/>
+          <text class="tb" x="515" y="352" text-anchor="middle">Índice</text>
+          <text class="ts" x="515" y="370" text-anchor="middle">Smraza S51</text>
+          <text class="tm" x="515" y="394" text-anchor="middle">D26</text>
+          <path class="w w-pos" d="M485,330 V268 a6,6 0 0 0 0,-12 V225"/><circle class="f-pos" cx="485" cy="225" r="4"/>
+          <path class="w w-gnd" d="M510,330 V262"/><circle class="f-gnd" cx="510" cy="262" r="4"/>
+          <path class="w w-sig" d="M545,410 V456 H230"/>
+        </g>
+        <g>
+          <rect class="box" x="590" y="330" width="110" height="80" rx="6"/>
+          <text class="tb" x="645" y="352" text-anchor="middle">Medio</text>
+          <text class="ts" x="645" y="370" text-anchor="middle">Smraza S51</text>
+          <text class="tm" x="645" y="394" text-anchor="middle">D27</text>
+          <path class="w w-pos" d="M615,330 V268 a6,6 0 0 0 0,-12 V225"/><circle class="f-pos" cx="615" cy="225" r="4"/>
+          <path class="w w-gnd" d="M640,330 V262"/><circle class="f-gnd" cx="640" cy="262" r="4"/>
+          <path class="w w-sig" d="M675,410 V472 H230"/>
+        </g>
+        <g>
+          <rect class="box" x="720" y="330" width="110" height="80" rx="6"/>
+          <text class="tb" x="775" y="352" text-anchor="middle">Anular</text>
+          <text class="ts" x="775" y="370" text-anchor="middle">Smraza S51</text>
+          <text class="tm" x="775" y="394" text-anchor="middle">D13</text>
+          <path class="w w-pos" d="M745,330 V268 a6,6 0 0 0 0,-12 V225"/><circle class="f-pos" cx="745" cy="225" r="4"/>
+          <path class="w w-gnd" d="M770,330 V262"/><circle class="f-gnd" cx="770" cy="262" r="4"/>
+          <path class="w w-sig" d="M805,410 V488 H230"/>
+        </g>
+        <g>
+          <rect class="box" x="850" y="330" width="110" height="80" rx="6"/>
+          <text class="tb" x="905" y="352" text-anchor="middle">Meñique</text>
+          <text class="ts" x="905" y="370" text-anchor="middle">Smraza S51</text>
+          <text class="tm" x="905" y="394" text-anchor="middle">D4</text>
+          <path class="w w-pos" d="M875,330 V268 a6,6 0 0 0 0,-12 V225"/><circle class="f-pos" cx="875" cy="225" r="4"/>
+          <path class="w w-gnd" d="M900,330 V262"/><circle class="f-gnd" cx="900" cy="262" r="4"/>
+          <path class="w w-sig" d="M935,410 V504 H230"/>
+        </g>
+
+        <!-- Mateo's pin/connection changes: numbered markers and their key -->
+        <circle class="mc" cx="985" cy="370" r="9"/><text class="mn" x="985" y="374" text-anchor="middle">1</text>
+        <circle class="mc" cx="270" cy="243" r="9"/><text class="mn" x="270" y="247" text-anchor="middle">2</text>
+        <circle class="mc" cx="450" cy="342" r="9"/><text class="mn" x="450" y="346" text-anchor="middle">3</text>
+        <circle class="mc" cx="150" cy="548" r="9"/><text class="mn" x="150" y="552" text-anchor="middle">4</text>
+
+        <text class="mh" x="300" y="534">Cambios de Mateo (pines y conexión)</text>
+        <circle class="mc" cx="308" cy="548" r="7"/><text class="mn" x="308" y="552" text-anchor="middle">1</text>
+        <text class="mt" x="322" y="552">Pines sin cambios. Rojo a la fila +, marrón a la fila −, naranja a su pin. Los 5 servos ahora son Smraza S51.</text>
+        <circle class="mc" cx="308" cy="566" r="7"/><text class="mn" x="308" y="570" text-anchor="middle">2</text>
+        <text class="mt" x="322" y="570">En la breadboard las filas + y − están invertidas arriba y abajo: guiarse por los signos impresos.</text>
+        <circle class="mc" cx="308" cy="584" r="7"/><text class="mn" x="308" y="588" text-anchor="middle">3</text>
+        <text class="mt" x="322" y="588">Pulgar: medir ~5 V entre rojo y marrón en el conector del servo; si no se mueve, intercambiar D25 ↔ D26.</text>
+        <circle class="mc" cx="308" cy="602" r="7"/><text class="mn" x="308" y="606" text-anchor="middle">4</text>
+        <text class="mt" x="322" y="606">Un solo programa por vez en el USB: la app o el monitor de banco, nunca los dos.</text>
+      </svg>
+    </div>
+    <figcaption>Los cables que se cruzan con un pequeño salto no están conectados; los puntos marcan las uniones. El capacitor va con la franja (−) hacia la fila −. VIN de la ESP32 y el STOP (D32) quedan sin conectar; sin botón, no dejar cables sueltos cerca de D32 porque dan avisos de STOP falsos.</figcaption>
+  </figure>
+  <div class="two">
+    <div>
+      <h3>Cómo volver a armarlo, de a un paso</h3>
+      <ol class="steps">
+        <li>Solo el MB102 con la fuente: medir 5 V entre 5V y GND de la tira del medio.</li>
+        <li>INA219, solo los 4 cables de datos (3V3, GND, D21, D22), y apretar <strong>EN</strong>: la placa no tiene que avisar <code>ina_missing</code>.</li>
+        <li>Pasar los 5 V por el INA219 (VIN+ / VIN−).</li>
+        <li>Sumar los servos de a uno. Quieto, cada uno suma unos 4 mA; si con todo quieto da cientos de mA, hay un servo al revés o un corto.</li>
+      </ol>
+    </div>
+    <div>
+      <h3>En memo, con este armado</h3>
+      <ul class="plain">
+        <li>Calibrar → límite de corriente <strong>~700 mA</strong>, como pide <code>hardware/ARREGLOS.md</code> con el MB102; cada S51 dentro de <strong>~10°–170°</strong>.</li>
+        <li>Setup → "One motor at a time (low-power supply)" <strong>marcado</strong>.</li>
+        <li>Para reiniciar la placa, usar el botón <strong>EN</strong> o desenchufar el USB: el reinicio por software la dejó trabada en el arranque dos veces.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <section aria-labelledby="h-hw" class="hw">
-  <h2 id="h-hw">Arreglos de hardware pendientes</h2>
+  <h2 id="h-hw">Plan completo de Mateo (incluye cambios de corriente, para después)</h2>
   <div class="prose">
     <p>Del archivo <code>hardware/ARREGLOS.md</code> en <code>main</code> (8 nov), encontrados probando la app con la placa real, sin guante ni mano. El software ya coordina bien con la placa: las órdenes llegan en 20–40 ms, al dedo correcto, de a un motor por vez, y el freno suelta todo en ~140 ms. Lo que falla es físico, y hay que arreglarlo antes de seguir probando con la app y antes de pensar en una mano.</p>
   </div>
@@ -230,9 +450,9 @@ pre { margin: 0; background: var(--code-bg); border-radius: 8px; padding: 0.8rem
     <table>
       <thead><tr><th>Dedo</th><th>Pin de señal (naranja)</th><th>Servo</th></tr></thead>
       <tbody>
-        <tr><td>Pulgar</td><td class="mono">D25 (GPIO25)</td><td>Negro, sin identificar</td></tr>
-        <tr><td>Índice</td><td class="mono">D26 (GPIO26)</td><td>TowerPro SG92R</td></tr>
-        <tr><td>Medio</td><td class="mono">D27 (GPIO27)</td><td>MG90S</td></tr>
+        <tr><td>Pulgar</td><td class="mono">D25 (GPIO25)</td><td>Smraza S51 <span class="muted">(antes: negro, sin identificar)</span></td></tr>
+        <tr><td>Índice</td><td class="mono">D26 (GPIO26)</td><td>Smraza S51 <span class="muted">(antes: TowerPro SG92R)</span></td></tr>
+        <tr><td>Medio</td><td class="mono">D27 (GPIO27)</td><td>Smraza S51 <span class="muted">(antes: MG90S)</span></td></tr>
         <tr><td>Anular</td><td class="mono">D13 (GPIO13)</td><td>Smraza S51</td></tr>
         <tr><td>Meñique</td><td class="mono">D4 (GPIO4)</td><td>Smraza S51</td></tr>
       </tbody>
