@@ -62,3 +62,38 @@ The doctor takes restore this exact cohort so the charts and stored summary desc
 `summary.py` first reuses a stored result. If none exists, it can import the key at runtime from the path in the brief, in a separate Python process. The key is never returned to the browser, copied to a file, or logged. A persistent `/tmp/memo-video-summary-budget.json` counter enforces at most **two underlying model requests**, including fallback or shortening calls, across reruns. That budget is now exhausted; do not remove the counter to retry. Provider exception details are suppressed. Normal reruns use the packaged stored result and make no model requests.
 
 Frame timing, simulator seed, UI actions and scrolling are scripted. Browser time is fixed to the demo date; database IDs and font/GPU rasterization can differ between machines. Reproduction means the same shots and events, not identical MP4 bytes.
+
+## V1c Doctor chat — blocked on provider availability
+
+The requested `doctor-chat` clip has **not** been recorded. No manifest entry or contact
+sheet was added for absent media. `doctor-chat.failure.json` records the redacted results:
+`gemini-4-argon` returned 429, `gemini-3.8-flash` failed without a status code, and
+`gemini-3.5-flash-lite` returned 503. Three underlying model requests were used; the
+remaining one cannot cover the normal tool-call round plus the final answer. Do not reset
+the counter or retry this capture under the current authorization.
+
+`chat.py` calls the production `app.chat.text.run_chat` against the restored demo cohort.
+It reads the API key only inside its Python process from the authorized `.env` path and
+never prints provider exception text. Each underlying streaming model request, including
+fallbacks and tool rounds, consumes the persistent four-request cap in
+`/tmp/memo-video-doctor-chat-budget.json`. The committed failure record also preserves the
+spent budget if that temporary file disappears. No paid-tier configuration is changed.
+
+The attempted therapist question was: “Compare index opening on Oct 24 and Nov 7, and show
+me the chart.” Both dates contain opening-assist sessions in the packaged demo snapshot.
+A successful stream must finish with `done` and contain actual `compare` and `show_chart`
+events before it can be cached as `public/recordings/doctor-chat.response.json`. A cached
+response is checked against the question and demo snapshot SHA-256 before reuse, and is
+read before any credentials or model client are loaded. No response was fabricated.
+
+The helper invocation (currently exits without spending quota) is:
+
+```sh
+REHAB_DB_PATH=/tmp/memo-video.db ../../backend/.venv/bin/python capture/chat.py
+```
+
+Once the team supplies a successful response or separately authorizes a new generation
+budget when service is available, the remaining work is to connect its cached SSE events
+to `capture.mjs`, record the eased typing/tool/answer/chart sequence at 4K/30 fps, add its
+manifest events, and produce `evidence/V1c/doctor-chat.png`. The existing seven recordings
+remain the only complete takes.

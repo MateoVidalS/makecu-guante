@@ -1,0 +1,22 @@
+{
+  "capturedAt": "2026-11-08T16:43:07.492394+00:00",
+  "question": "Compare index opening on Oct 24 and Nov 7, and show me the chart.",
+  "fixtureSha256": "399637e001406827298046a377f1f7819b876f01a4884e52c719f8a8256b532d",
+  "requestLimit": 4,
+  "requests": [
+    {
+      "model": "gemini-4-argon",
+      "status": 429
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "status": "failed"
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": 503
+    }
+  ],
+  "status": "blocked: no successful production chat response",
+  "recordingCreated": false
+}
