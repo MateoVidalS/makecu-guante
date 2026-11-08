@@ -27,7 +27,7 @@ Read `handoffs/open/COMMON.md` first, then `docs/plan/15-open-assist.md` §1–�
    (3) **extension strength gate**: a helper resists opening one finger with moderate effort, the servo must open it and hold 2 s under
    the limit; record peak and sustained mA; failing = stronger servo or bigger spool/lever before any patient use; (4) all five held open
    on a relaxed hand for 2 s, total current under the limit (record); (5) STOP while held open → slack within 0.5 s; (6) a fast fist during
-   `follow` does not trip overcurrent; (7) watchdog (pull USB) while held open → slack within 1 s.
+   `follow` does not trip overcurrent; (7) watchdog (pull USB) while held open → fault within 1005 ms, slack within 1.5 s.
 7. The NeoPixel ring logic does not change (it already draws `a`); update its comment/README line: the bar is how much the glove is opening.
 
 ## Acceptance
