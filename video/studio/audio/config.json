@@ -1,0 +1,7 @@
+{
+  "narrator": "Sulafat",
+  "coach": "Puck",
+  "ttsModel": "gemini-3.8-flash-tts",
+  "musicModel": "lyria-3.5",
+  "keyFile": "/Users/mateovidal/orca/workspaces/makecu-guante/rehab-hub/backend/.env"
+}
