@@ -12,9 +12,10 @@ import { SimWorld } from '../glove/sim';
 import { createGloveController } from '../glove/GloveProvider';
 import { createVisionController } from '../vision/VisionProvider';
 import { RehabRuntime } from './runtime';
+import { CURRENT_CAMERA_VIEW } from '../contracts/calibration';
 import { calibration as fixture } from '../contracts/fixtures.check';
 import {
-  DEFAULT_PLAN,
+  OPEN_ASSIST_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
   DEFAULT_EVAL_SETTINGS,
 } from '../contracts/poses';
@@ -94,6 +95,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     servo: fixture.servo,
     camera: {
       ...fixture.camera,
+      camera_view: CURRENT_CAMERA_VIEW,
       closed_flex: {
         thumb: 100,
         index: 270,
@@ -103,9 +105,14 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       },
     },
     friction: {},
-    current_limit_ma: 900,
+    current_limit_ma: 1500,
   });
-  const world = new SimWorld({ autoStart: false, seed: 42 });
+  expect(calibration.assist_direction).toBe('open');
+  const world = new SimWorld({
+    autoStart: false,
+    seed: 42,
+    preset: 'moderate',
+  });
   const glove = createGloveController({ kind: 'sim', world });
   const vision = createVisionController({
     simSource: world.vision,
@@ -118,7 +125,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     runtime.mount();
     await runtime.calibration.reload();
     world.advance(200);
-    await runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS);
+    await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
     for (
       let ms = 0;
       ms < 400_000 && runtime.exercise.view().phase !== 'DONE';
@@ -134,16 +141,16 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     expect(sessions).toHaveLength(1);
     expect(sessions[0]).toMatchObject({
       calibration_id: calibration.id,
-      n_attempts: 15,
+      n_attempts: 10,
       is_demo: true,
     });
     const detail = await api.getSession(sessions[0].id);
     expect(detail.summary).toMatchObject({
-      attempts: 15,
-      assisted: 9,
-      reached_active: 6,
+      attempts: 10,
+      assisted: 5,
+      reached_active: 5,
     });
-    expect(detail.attempts).toHaveLength(15);
+    expect(detail.attempts).toHaveLength(10);
     const trace = await api.getAttemptTrace(detail.attempts[3].id);
     expect(trace.phase).toContain('ASSIST');
     expect(trace.closure.index).toHaveLength(trace.t.length);
@@ -158,7 +165,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     expect(await api.getEvaluations()).toHaveLength(1);
     expect(await api.getHistoryOverview()).toMatchObject({
       sessions: 1,
-      attempts: 15,
+      attempts: 10,
       evaluations: 1,
     });
     const exported = await api.exportData('json');
@@ -166,7 +173,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
 
     // Exercise A1's durable queue against A3's actual validation and SQLite storage.
     await runtime.exercise.start(
-      [{ pose: 'full_fist', reps: 1 }],
+      [{ pose: 'open', reps: 1 }],
       DEFAULT_EXERCISE_SETTINGS,
     );
     runtime.therapy.notePatientSpeech('Yes, please.');

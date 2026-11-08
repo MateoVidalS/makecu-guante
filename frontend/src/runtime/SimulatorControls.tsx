@@ -8,19 +8,14 @@ import { useGlove } from '../glove';
 import { useVision } from '../vision';
 import { GLOVE_FINGERS, type GloveFinger } from '../contracts/glove';
 import { useRuntime } from './RuntimeProvider';
-import { PATIENT_PRESETS, type PatientPreset } from '../glove/sim/patient';
+import {
+  PATIENT_PRESET_OPTIONS,
+  type OpeningPatientPreset,
+} from '../glove/sim/patient';
 import { Button, Checkbox, Select, Stack } from '../design-system';
 import './fallback.css';
 
 /** Simulator-only controls for the resistance demo; no hardware commands. */
-const OPEN_PRESETS = [
-  'demo',
-  'mild',
-  'moderate',
-  'spastic',
-  'rigid_index',
-] as const;
-
 export function RuntimeSimulatorControls() {
   const { world, client } = useGlove();
   const vision = useVision();
@@ -33,24 +28,13 @@ export function RuntimeSimulatorControls() {
         label="Patient preset"
         value={world.patient.preset}
         onChange={(event) => {
-          const selected = event.target.value;
-          // O2 supplies the opening model. Until then, unsupported ids use moderate.
-          const preset = selected in PATIENT_PRESETS ? selected : 'moderate';
-          world.controls.setPreset(preset as PatientPreset);
+          world.controls.setPreset(event.target.value as OpeningPatientPreset);
           refresh((value) => value + 1);
         }}
       >
-        {OPEN_PRESETS.map((id) => (
-          <option key={id} value={id} disabled={!(id in PATIENT_PRESETS)}>
-            {
-              {
-                demo: 'Demo',
-                mild: 'Mild',
-                moderate: 'Moderate',
-                spastic: 'Spastic',
-                rigid_index: 'Rigid index',
-              }[id]
-            }
+        {PATIENT_PRESET_OPTIONS.map(({ id, label }) => (
+          <option key={id} value={id}>
+            {label}
           </option>
         ))}
       </Select>

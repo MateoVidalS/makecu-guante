@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { PATIENT_PRESETS } from '../glove/sim/patient';
+import { PATIENT_PRESET_OPTIONS } from '../glove/sim/patient';
 import {
   RuntimeSimulatorCalibration,
   RuntimeSimulatorControls,
@@ -33,19 +33,18 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
-it('offers the five opening presets, starts on moderate and falls back for unmerged presets', () => {
+it('offers the real opening presets and starts on moderate', () => {
   render(<RuntimeSimulatorControls />);
   const select = screen.getByRole('combobox', { name: 'Patient preset' });
   expect(select).toHaveValue('moderate');
-  for (const id of ['demo', 'mild', 'moderate', 'spastic', 'rigid_index']) {
-    const option = select.querySelector(`option[value="${id}"]`)!;
-    expect(option).toBeInTheDocument();
-    expect(option).toHaveProperty('disabled', !(id in PATIENT_PRESETS));
+  expect(select.querySelectorAll('option')).toHaveLength(5);
+  for (const { id, label } of PATIENT_PRESET_OPTIONS) {
+    const option = screen.getByRole('option', { name: label });
+    expect(option).toHaveValue(id);
+    expect(option).toBeEnabled();
+    fireEvent.change(select, { target: { value: id } });
+    expect(mocks.setPreset).toHaveBeenLastCalledWith(id);
   }
-  fireEvent.change(select, { target: { value: 'spastic' } });
-  expect(mocks.setPreset).toHaveBeenCalledWith(
-    'spastic' in PATIENT_PRESETS ? 'spastic' : 'moderate',
-  );
 });
 it('marks the runtime simulator shortcut as opening assistance', async () => {
   render(
