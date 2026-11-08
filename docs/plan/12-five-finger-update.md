@@ -1,5 +1,8 @@
 # 12 — Hardware update analysis and the 5-finger plan
 
+> **Note (Nov 7):** the glove now helps the hand open (`15-open-assist.md`). The 70%-of-a-fist reach limit (H6) and "close as far as the
+> glove goes" no longer apply; the power-aware stagger stays, plus a sustained-load governor for holding a hand open.
+
 The hardware team changed the glove after the software plan was written (main PRs #2–#9, #26). This doc lists **every hardware
 change and what it means for the software**, then the plan to update the whole project.
 

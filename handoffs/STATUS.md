@@ -28,6 +28,6 @@ Integration branch: `MateoVidalS/rehab-hub` · Repo id: `de782449-371b-4870-89e2
 | O4 | [runtime-calibrate](open/O4-runtime-calibrate.md) | OPEN-1 | high | `…/o4-runtime-calibrate` | `term_73e664b4` | `MateoVidalS/o4-runtime-calibrate` | #77 | merged | make test green after merge |
 | O5 | [backend-voice](open/O5-backend-voice.md) | OPEN-1 | high | `…/o5-backend-voice` | `term_32d94a24` | `MateoVidalS/o5-backend-voice` | #82 | merged | also regenerated MSW demo (authorized) |
 | O6 | [ui](open/O6-ui.md) | OPEN-2 | high | `…/o6-ui` | `term_07360c14` | `MateoVidalS/o6-ui` | #85 | merged | 21 pre-pivot e2e specs left for O7 |
-| O7 | [integration](open/O7-integration.md) | OPEN-3 | high | `…/o7-integration` | `term_8c3c3722` | `MateoVidalS/o7-integration` | | handed-off | after O1–O6 |
+| O7 | [integration](open/O7-integration.md) | OPEN-3 | high | `…/o7-integration` | `term_8c3c3722` | `MateoVidalS/o7-integration` | #86 | merged | make test + e2e 39/39 green (coordinator re-run) |
 
 Statuses: `queued` → `handed-off` → `pr-open` → `changes-requested` → `merged`.

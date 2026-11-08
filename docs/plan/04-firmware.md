@@ -1,5 +1,10 @@
 # 04 — Firmware (ESP32-WROOM-32)
 
+> **Superseded in part by `15-open-assist.md` (Nov 7): the glove helps the hand open.** Positions on the wire are tendon pull
+> (0 = slack, the safe state; 1 = fingers straight). In `run`, unwinding always moves at `V_RELEASE`; winding at `V_FOLLOW` (follow) or
+> `min(v, V_MAX)` (target). `FOLLOW_SLACK = 0.08`. Servo calibration: `min` = slack with a relaxed fist, `max` = straight, never bent back.
+> Bench: the opening gate in `firmware/BENCH.md` (watchdog fault ≤ 1005 ms, slack ≤ 1.5 s).
+
 Code: `firmware/` (WP1). PlatformIO, Arduino framework. Protocol and constants: `03-contracts.md §2`. Hardware: `README.md §3`.
 
 ## 1. Layout
