@@ -27,7 +27,7 @@ export function handInsideGuide(frame: VisionFrame | null): boolean {
 }
 
 /**
- * Clean landmark skeleton: thin white bones, small joint dots, no outlines.
+ * Clean landmark skeleton: thin white bones, small joint dots (green once calibrated), no outlines.
  * Glove fingertips take their state colour when they are not idle.
  * Sizes scale with the canvas so the drawing looks the same at any resolution.
  */
@@ -46,6 +46,8 @@ export function drawOverlay(
   const color = (token: string) => style.getPropertyValue(`--${token}`).trim();
   // White skeleton in both themes; it always sits on a dimmed video.
   const skeleton = color('vision-skeleton') || '#ffffff';
+  // Joint dots turn green once the camera is calibrated (finger closures are measured).
+  const dotColor = frame.closure ? color('reached') || skeleton : skeleton;
   const unit = Math.max(1, Math.min(width, height) / 240);
   const line = 1.25 * unit,
     dot = 2.25 * unit;
@@ -89,12 +91,12 @@ export function drawOverlay(
       joint(
         index,
         index === tip && fingerState !== 'idle'
-          ? color(fingerState) || skeleton
-          : skeleton,
+          ? color(fingerState) || dotColor
+          : dotColor,
         index === tip ? dot * 1.25 : dot,
       );
   }
-  joint(0, skeleton);
+  joint(0, dotColor);
 }
 
 /**

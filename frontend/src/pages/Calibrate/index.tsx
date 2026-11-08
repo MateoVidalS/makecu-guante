@@ -32,6 +32,7 @@ import {
   CURRENT_CAMERA_VIEW,
   CURRENT_FLEX_MODEL,
   CURRENT_ASSIST_DIRECTION,
+  type CameraCalibration,
   type ServoCalibration,
 } from '../../contracts/calibration';
 import type { VisionFrame } from '../../contracts/vision';
@@ -52,6 +53,7 @@ import {
 import {
   CalibrationIssueBanner,
   RelaxedHandSafetyStrip,
+  TestModeCard,
 } from '../../components/calibration';
 import {
   useCalibrationStatus,
@@ -62,6 +64,21 @@ import {
 
 import { SimulatorCalibrationShortcut } from './SimulatorCalibrationShortcut';
 import { usePracticePreflightGate } from '../../components/common/preflight';
+
+/** The camera calibration the current captures would save, or null until both exist. */
+function draftCamera(draft: Draft): CameraCalibration | null {
+  if (!draft.open || !draft.closed) return null;
+  return {
+    affected_hand: draft.hand,
+    camera_view: CURRENT_CAMERA_VIEW,
+    flex_model: CURRENT_FLEX_MODEL,
+    open_flex: draft.open.raw,
+    closed_flex: draft.closed.raw,
+    pinch_open: draft.open.pinch,
+    // Pinch practice is postponed; retain a valid contract value without another capture.
+    pinch_closed: Math.min(draft.closed.pinch, draft.open.pinch * 0.5),
+  };
+}
 
 export default function Calibrate() {
   const { checkPreflight } = usePracticePreflightGate();
@@ -150,6 +167,16 @@ export default function Calibrate() {
       });
     }
   }, [draft.step, draft.hand, vision]);
+  // Preview the new captures live: finger percentages appear and the points turn green, so the
+  // helper can check "open ≈ 0%, fist ≈ 100%" before saving. Leaving restores the saved range.
+  const previewCamera = draft.step > 0 ? draftCamera(draft) : null;
+  const previewKey = previewCamera ? JSON.stringify(previewCamera) : '';
+  useEffect(() => {
+    if (!previewKey) return;
+    vision.setCalibration(JSON.parse(previewKey));
+    return () =>
+      vision.setCalibration(runtime.calibration.current?.camera ?? null);
+  }, [previewKey, vision, runtime]);
   useEffect(() => {
     mounted.current = true;
     const unsub = client.onEvent((e) => {
@@ -385,16 +412,7 @@ export default function Calibrate() {
       draft.limit > 2200
     )
       throw new Error('Complete each calibration step before saving.');
-    const camera = {
-      affected_hand: draft.hand,
-      camera_view: CURRENT_CAMERA_VIEW,
-      flex_model: CURRENT_FLEX_MODEL,
-      open_flex: draft.open.raw,
-      closed_flex: draft.closed.raw,
-      pinch_open: draft.open.pinch,
-      // Pinch practice is postponed; retain a valid contract value without another capture.
-      pinch_closed: Math.min(draft.closed.pinch, draft.open.pinch * 0.5),
-    };
+    const camera = draftCamera(draft)!;
     await runtime.calibration.save({
       assist_direction: CURRENT_ASSIST_DIRECTION,
       servo: GLOVE_FINGERS.map((f) => draft.servo[f] as ServoCalibration),
@@ -540,6 +558,11 @@ export default function Calibrate() {
         title="Find your comfortable range"
         lead="Three short steps, about three minutes. Your progress is kept if you leave this page."
       />
+      {!simulated && (
+        <div className="cal-sim-top">
+          <TestModeCard hand={draft.hand} camera={draftCamera(draft)} />
+        </div>
+      )}
       {simulated && (
         <Section className="hp-plain cal-sim-top">
           <SimulatorCalibrationShortcut
@@ -600,7 +623,7 @@ export default function Calibrate() {
                   </p>
                 </div>
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   disabled={busy}
                   onClick={applySimulatedRanges}
                 >
@@ -716,7 +739,7 @@ export default function Calibrate() {
                     </div>
                     <Button
                       size="sm"
-                      variant={task === 'slack' ? 'primary' : 'secondary'}
+                      variant="secondary"
                       onClick={() => setRange('min_deg')}
                     >
                       Set slack
@@ -751,7 +774,7 @@ export default function Calibrate() {
                     </div>
                     <Button
                       size="sm"
-                      variant={task === 'open' ? 'primary' : 'secondary'}
+                      variant="secondary"
                       aria-describedby="hyperextension-warning"
                       onClick={() => setRange('max_deg')}
                     >
@@ -894,6 +917,16 @@ export default function Calibrate() {
                 <div className="hp-camera">
                   <CameraOverlay mirrored={mirror} />
                 </div>
+                <p className="cal-note" role="status">
+                  <Icon name="info" size={16} />
+                  <span>
+                    {previewCamera
+                      ? 'Calibrated: the points turn green. Check the numbers under the camera: about 0% with your hand open and about 100% in a fist.'
+                      : calibration
+                        ? 'Green points: your saved camera range is in use. New captures replace it.'
+                        : 'The points turn green and finger percentages appear once both captures are done.'}
+                  </span>
+                </p>
               </div>
               <ol className="cal-tasks cal-aside" aria-label="Camera captures">
                 <li
@@ -913,7 +946,7 @@ export default function Calibrate() {
                   </div>
                   <Button
                     size="sm"
-                    variant={!draft.closed ? 'primary' : 'secondary'}
+                    variant="secondary"
                     disabled={capture || !seen}
                     onClick={() => captureRange('closed')}
                   >
