@@ -126,7 +126,7 @@ export function CameraChip() {
 export const phaseLabels: Record<ExercisePhase, string> = {
   PRESENT: 'Get ready',
   ATTEMPT: 'Try now',
-  HOLD: 'Hold it',
+  HOLD: 'Got it! Hold it',
   ASSIST: 'The glove is helping you open',
   ASSIST_HOLD: 'Hold it',
   RELEASE: 'Relax your hand',
@@ -140,15 +140,24 @@ export function PhaseRing({
   duration,
   waiting = false,
   compact = false,
+  status = null,
 }: {
   phase: ExercisePhase;
   elapsed: number;
   duration: number | null;
   waiting?: boolean;
   compact?: boolean;
+  /** How this attempt is going or ended (reached, helped, not this time). */
+  status?: {
+    title: string;
+    tone: 'reached' | 'assist' | 'neutral';
+    done: boolean;
+  } | null;
 }) {
   const progress = duration ? Math.min(1, elapsed / duration) : 0;
-  const label = waiting ? 'Show me your hand' : phaseLabels[phase];
+  const label = waiting
+    ? 'Show me your hand'
+    : (status?.title ?? phaseLabels[phase]);
   return (
     <div className="phase-ring" aria-live="polite">
       <ProgressRing
@@ -156,16 +165,20 @@ export function PhaseRing({
         value={waiting ? undefined : progress}
         label={label}
         tone={
-          phase === 'PAUSED'
-            ? 'neutral'
-            : phase.startsWith('ASSIST')
-              ? 'assist'
-              : phase === 'HOLD'
-                ? 'reached'
-                : 'active'
+          status
+            ? status.tone
+            : phase === 'PAUSED'
+              ? 'neutral'
+              : phase.startsWith('ASSIST')
+                ? 'assist'
+                : phase === 'HOLD'
+                  ? 'reached'
+                  : 'active'
         }
       >
-        <Icon name={phase === 'PAUSED' ? 'pause' : 'hand'} />
+        <Icon
+          name={status?.done ? 'check' : phase === 'PAUSED' ? 'pause' : 'hand'}
+        />
       </ProgressRing>
       <strong>{label}</strong>
     </div>
