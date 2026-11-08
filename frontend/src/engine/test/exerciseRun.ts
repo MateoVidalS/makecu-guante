@@ -37,6 +37,9 @@ export class Run {
         plan ?? [{ pose, reps: 1 }],
         {
           ...DEFAULT_EXERCISE_SETTINGS,
+          // These runs test the help mechanics; production waits for the patient to ask
+          // (help_on_request), covered by helpOnRequest.test.ts.
+          help_on_request: false,
           present_s: 0,
           attempt_s: 1,
           rest_s: 0.1,

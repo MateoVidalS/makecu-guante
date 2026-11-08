@@ -10,13 +10,14 @@ import {
 } from '../src/contracts/poses';
 import { GLOVE_FINGERS } from '../src/contracts/glove';
 import type {} from './ai-therapist-harness';
-import { silenceCoach } from './helpers';
+import { silenceCoach, askForHelpWhenOffered } from './helpers';
 
 test('manual slack/open and camera calibration leads to the default plan (fist, open, finger by finger) and direction-marked history', async ({
   page,
 }) => {
   test.setTimeout(120_000);
   await silenceCoach(page);
+  await askForHelpWhenOffered(page);
   await page.route('**/api/calibrations/latest', (route) =>
     route.fulfill({ json: null }),
   );
@@ -143,6 +144,7 @@ test('physical STOP during an assisted opening pauses, unwinds to slack and pers
   page,
 }) => {
   await silenceCoach(page);
+  await askForHelpWhenOffered(page);
   await page.goto('/e2e/ai-therapist.html');
   await page
     .getByRole('button', { name: 'Calibrate simulator', exact: true })

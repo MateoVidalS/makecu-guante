@@ -12,18 +12,21 @@ import { GeminiLiveTransport } from './GeminiLiveTransport';
 import type { LiveTransport, ToolCall, TransportEvent } from './transport';
 import { BrowserLocalVoice, SafetyNet, type LocalVoice } from './safetyNet';
 import { fallbackPhrase } from './fallbackCoach';
-import { CueScheduler, eventCue } from './cues';
+import { CueScheduler, eventCue, type Cue } from './cues';
 import { liveContext, movementContext, summaryContext } from './context';
 import { claimsGloveHelp, HONESTY_CORRECTION } from './honesty';
 
 /** A tool call can arrive just after the words that describe it. */
 const HELP_CLAIM_GRACE_MS = 1500;
+/** Pause after which an unfinished help request is taken as complete. */
+const HELP_SENTENCE_MS = 700;
 import { dispatchTool } from './tools';
 import { TranscriptBatcher } from './transcript';
 import {
   patientBrakeReason,
   reportedPain,
   normalizePatientText,
+  namedFingers,
 } from './patientSafety';
 import {
   type PatientTranscriber,
@@ -90,6 +93,18 @@ export class VoiceController {
   private patientBraked = false;
   /** After an on-screen Brake, the coach stays quiet until the patient speaks. */
   private quietUntilPatient = false;
+  /** Attempt index the patient already asked help for (once per attempt). */
+  private helpAskedFor = -1;
+  /** A help request waits for the end of the sentence, which may name fingers. */
+  private helpTimer: ReturnType<typeof setTimeout> | undefined;
+  private helpText = '';
+  /** Outbox: context and the next spoken cue wait until nobody is speaking. */
+  private context: string[] = [];
+  private spoken: Cue | null = null;
+  private coachTalking = false;
+  private patientTalking = false;
+  private coachQuietTimer?: ReturnType<typeof setTimeout>;
+  private outboxTimer?: ReturnType<typeof setTimeout>;
   /** PRESENT re-prompts for the same attempt, and a rotating phrase variant (Simple voice). */
   private presentIndex = -1;
   private presentRepeats = 0;
@@ -123,9 +138,7 @@ export class VoiceController {
     private runtime: Runtime,
     private deps: VoiceDependencies,
   ) {
-    this.scheduler = new CueScheduler((cue) => {
-      if (this.connected) this.transport?.sendText(cue.text, cue.speak);
-    });
+    this.scheduler = new CueScheduler((cue) => this.outbox(cue));
     this.safety = new SafetyNet(
       deps.local,
       () => {
@@ -217,12 +230,13 @@ export class VoiceController {
     this.ending = false;
     this.coachSpokeSinceEnd = false;
     clearTimeout(this.endTimer);
-    this.liveTimer = setInterval(() => {
-      if (!this.active || !this.connected || this.state.mode !== 'live') return;
-      const state = this.runtime.therapy?.state();
-      if (state && ['ATTEMPT', 'ASSIST', 'HOLD'].includes(state.phase))
-        this.transport?.sendText(liveContext(state), false);
-    }, 1000);
+    // No per-second [live] stream: every message to Gemini Live can cut off the answer it
+    // is preparing (the coach sounded chopped and never answered). The latest live state
+    // rides along with the next message instead (see flushOutbox).
+    this.context = [];
+    this.spoken = null;
+    this.coachTalking = false;
+    this.patientTalking = false;
     this.update({
       unavailable: false,
       transcriptError: false,
@@ -370,6 +384,7 @@ export class VoiceController {
           performance.now() >= this.safetyUntil
         ) {
           this.deps.audio.play(event.data);
+          this.markCoachTalking();
           if (this.ending) this.coachSpokeSinceEnd = true;
           this.scheduler.noteCoachSpeech();
           this.update({ status: 'speaking' });
@@ -378,9 +393,12 @@ export class VoiceController {
       case 'interrupt':
         this.deps.audio.flush();
         this.finishTranscript('coach');
+        this.coachDone();
         break;
       case 'activity':
         this.scheduler.setTalking(event.talking);
+        this.patientTalking = event.talking;
+        if (!event.talking) this.flushOutbox();
         break;
       case 'transcript':
         if (
@@ -396,6 +414,7 @@ export class VoiceController {
         this.partial[event.role] += event.text;
         if (event.role === 'patient') {
           this.checkPatientSafety(this.partial.patient);
+          this.checkHelpRequest(this.partial.patient, !!event.finished);
           this.runtime.therapy?.notePatientSpeech?.(this.partial.patient);
           this.scheduler.setTalking(!event.finished);
         }
@@ -409,6 +428,8 @@ export class VoiceController {
       case 'turnComplete':
         this.finishTranscripts();
         this.scheduler.setTalking(false);
+        this.patientTalking = false;
+        this.coachDone();
         if (this.ending && this.coachSpokeSinceEnd) {
           clearTimeout(this.endTimer);
           // Let the last audio drain before hanging up.
@@ -576,6 +597,89 @@ export class VoiceController {
       false,
     );
   }
+  /** Non-safety messages to the coach: merged, and sent only when nobody is speaking. */
+  private outbox(cue: Cue) {
+    if (!this.connected) return;
+    if (cue.speak) {
+      // A newer spoken cue replaces an older one, unless the older one presents a pose.
+      if (this.spoken?.present && !cue.present) this.context.push(cue.text);
+      else {
+        if (this.spoken) this.context.push(this.spoken.text);
+        this.spoken = cue;
+      }
+    } else this.context.push(cue.text);
+    this.flushOutbox();
+  }
+  private flushOutbox() {
+    clearTimeout(this.outboxTimer);
+    if (!this.connected || !this.transport) return;
+    if (!this.context.length && !this.spoken) return;
+    if (this.coachTalking || this.patientTalking || this.safetySpeaking) {
+      // Retry later; never hold messages forever if an end-of-turn signal is lost.
+      this.outboxTimer = setTimeout(() => this.flushOutbox(), 1000);
+      return;
+    }
+    const state = this.runtime.therapy?.state();
+    const live =
+      state &&
+      ['ATTEMPT', 'ASSIST', 'HOLD', 'ASSIST_HOLD'].includes(state.phase)
+        ? [liveContext(state)]
+        : [];
+    const parts = [
+      ...this.context,
+      ...live,
+      ...(this.spoken ? [this.spoken.text] : []),
+    ];
+    const speak = !!this.spoken;
+    this.context = [];
+    this.spoken = null;
+    // Only the latest of repeated context lines matters; keep the message short.
+    this.transport.sendText(parts.slice(-6).join('\n'), speak);
+    if (speak) this.markCoachTalking(); // until its reply ends (or 6 s of silence)
+  }
+  private markCoachTalking() {
+    this.coachTalking = true;
+    clearTimeout(this.coachQuietTimer);
+    // If the end-of-turn signal never arrives, consider the coach done 6 s after its audio.
+    this.coachQuietTimer = setTimeout(() => this.coachDone(), 6000);
+  }
+  private coachDone() {
+    clearTimeout(this.coachQuietTimer);
+    this.coachTalking = false;
+    this.flushOutbox();
+  }
+  /**
+   * The glove only moves when the patient asks. "help" / "ayuda" always counts during an
+   * attempt; a plain "yes" / "si" / "dale" counts right after help was offered.
+   */
+  private checkHelpRequest(text: string, finished: boolean) {
+    const view = this.runtime.exercise.view();
+    if (view.phase !== 'ATTEMPT' || this.helpAskedFor === view.index) return;
+    const said = normalizePatientText(text);
+    const asks =
+      /\b(help|ayuda|ayudame|ayudar|ayudes)\b/.test(said) ||
+      (!!view.helpOffered &&
+        /^(yes|yeah|yep|sure|please|si|dale|bueno|ok|okay|por favor)\b/.test(
+          said,
+        ));
+    if (!asks) return;
+    // Speech arrives in pieces: "help" can come before "my index and middle". Wait for
+    // the end of the sentence (or a short pause) so the request covers the named fingers.
+    this.helpText = text;
+    clearTimeout(this.helpTimer);
+    const index = view.index;
+    const send = () => {
+      const now = this.runtime.exercise.view();
+      if (now.phase !== 'ATTEMPT' || now.index !== index) return;
+      if (this.helpAskedFor === index || this.brakeLatched) return;
+      this.helpAskedFor = index;
+      // "Help my index" helps the index; "help" or "the whole hand" helps every finger.
+      const fingers = namedFingers(this.helpText);
+      this.runtime.exercise.requestHelp(fingers.length ? fingers : undefined);
+    };
+    if (finished) send();
+    else this.helpTimer = setTimeout(send, HELP_SENTENCE_MS);
+  }
   private checkPatientSafety(text: string) {
     const awaitingPain = performance.now() < this.awaitingPainUntil;
     const reason = patientBrakeReason(text, awaitingPain);
@@ -604,6 +708,7 @@ export class VoiceController {
       this.partial.patient = text;
       if (text.trim()) this.quietUntilPatient = false;
       this.checkPatientSafety(text);
+      this.checkHelpRequest(text, !!finished);
       this.runtime.therapy?.notePatientSpeech?.(text);
       this.update({ lastPatientLine: text });
       if (finished) this.finishTranscript('patient');
@@ -763,6 +868,8 @@ export class VoiceController {
   }
   stop() {
     clearTimeout(this.endTimer);
+    clearTimeout(this.outboxTimer);
+    clearTimeout(this.coachQuietTimer);
     this.generation++;
     this.active = false;
     clearInterval(this.liveTimer);
@@ -774,6 +881,7 @@ export class VoiceController {
     this.update({ status: 'off' });
   }
   dispose() {
+    clearTimeout(this.helpTimer);
     this.stop();
     this.unsubscribe();
     clearTimeout(this.captionTimer);

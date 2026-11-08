@@ -1,5 +1,13 @@
 import type { TherapyRuntime } from './therapy';
-import { powerAwareSettings } from './power';
+import type { Quint } from '../contracts/glove';
+/** Speed for staged-release targets; unwinding always runs at the firmware release rate. */
+const ASSIST_SPEED_CAP = 0.2;
+import {
+  FollowShaper,
+  oneMotorAtATime,
+  powerAwareSettings,
+  StagedRelease,
+} from './power';
 import { benchMirror } from '../glove/benchMirror';
 import {
   ASSIST_DIRECTION_RECALIBRATE_MESSAGE,
@@ -19,7 +27,7 @@ import {
   type FrictionCurve,
 } from '../contracts/calibration';
 import type { TherapyApi } from '../contracts/therapist';
-import type { EngineEvent } from '../contracts/engine';
+import type { EngineEvent, ExerciseSettings } from '../contracts/engine';
 import {
   GLOVE_FINGERS,
   type GloveFinger,
@@ -77,6 +85,34 @@ export interface RuntimeOptions {
 }
 
 /** One real-time loop shared by the UI, voice, simulator and hardware transports. */
+/** The ExerciseSettings contract fields, without engine-local extensions. */
+function contractSettings(settings: ExerciseSettings): ExerciseSettings {
+  const {
+    present_s,
+    attempt_s,
+    hold_s,
+    assist_max_s,
+    rest_s,
+    tolerance,
+    reach_dwell_s,
+    assist_speed,
+    plateau_s,
+    assist_enabled,
+  } = settings;
+  return {
+    present_s,
+    attempt_s,
+    hold_s,
+    assist_max_s,
+    rest_s,
+    tolerance,
+    reach_dwell_s,
+    assist_speed,
+    plateau_s,
+    assist_enabled,
+  };
+}
+
 export class RehabRuntime implements TherapyRuntime {
   readonly exerciseStore = createStore<ExerciseView>(initialExercise);
   readonly evaluationStore = createStore<EvaluationView>(initialEvaluation);
@@ -208,6 +244,10 @@ export class RehabRuntime implements TherapyRuntime {
     return this.exerciseEngine.therapy;
   }
   readonly sources: Runtime['sources'];
+  /** One-motor mode: follow winds one finger at a time (runtime/power.ts). */
+  private lowPowerFollow = false;
+  private readonly followShaper = new FollowShaper();
+  private readonly stagedRelease = new StagedRelease();
   calibration: Runtime['calibration'] = {
     current: null,
     reload: async () => {
@@ -325,10 +365,11 @@ export class RehabRuntime implements TherapyRuntime {
       const calibration = this.requireReady();
       if (!plan.length) throw new Error('Choose at least one pose');
       // The bench mirror drives real motors too, on the same small supply.
-      const settings = powerAwareSettings(
-        requested,
-        this.sources.glove === 'serial' || benchMirror.active(),
-      );
+      const realMotors =
+        this.sources.glove === 'serial' || benchMirror.active();
+      const settings = powerAwareSettings(requested, realMotors);
+      this.lowPowerFollow = realMotors && oneMotorAtATime();
+      this.followShaper.reset();
       const out = this.exerciseEngine.start(
         plan,
         settings,
@@ -345,7 +386,9 @@ export class RehabRuntime implements TherapyRuntime {
         value: {
           mode: 'exercise',
           plan,
-          settings,
+          // Only the shared contract fields are stored; engine-local options
+          // (help_on_request, assist stagger, ...) would be rejected by the backend.
+          settings: contractSettings(settings),
           calibration_id: calibration.id,
           is_demo:
             this.sources.glove === 'sim' || this.sources.vision === 'sim',
@@ -364,6 +407,10 @@ export class RehabRuntime implements TherapyRuntime {
     skip: () => {
       if (this.mode === 'exercise')
         this.handle(this.exerciseEngine.skip(this.clock()));
+    },
+    requestHelp: (fingers) => {
+      if (this.mode === 'exercise')
+        this.handle(this.exerciseEngine.requestHelp(this.clock(), fingers));
     },
     stop: async () => {
       if (this.mode === 'exercise')
@@ -446,6 +493,11 @@ export class RehabRuntime implements TherapyRuntime {
       this.clientDetach = [
         client.onTelemetry((tel) => {
           this.observeEcho(tel);
+          if (this.stagedRelease.active()) {
+            const next = this.stagedRelease.step(tel);
+            if (next === 'release') client.release();
+            else if (next) client.target(next as Quint, ASSIST_SPEED_CAP);
+          }
           this.tick();
         }),
         client.onEvent((event) => {
@@ -524,6 +576,14 @@ export class RehabRuntime implements TherapyRuntime {
     }
   }
   private handle(out: Output) {
+    // One-motor mode stages only the routine end of help; anything else releases at once.
+    const routineRelease =
+      this.lowPowerFollow &&
+      out.events.some((e) => e.kind === 'phase' && e.phase === 'RELEASE') &&
+      !out.events.some(
+        (e) =>
+          e.kind === 'safety' || (e.kind === 'phase' && e.phase === 'PAUSED'),
+      );
     // A failed empty-glove measurement cannot supply a baseline. Unlike patient
     // evaluation, stop the whole friction run on the first safety event.
     if (
@@ -539,6 +599,7 @@ export class RehabRuntime implements TherapyRuntime {
     for (const command of out.commands) {
       const client = this.options.glove.client;
       if (command.t === 'target' || command.t === 'follow') {
+        this.stagedRelease.cancel(); // the engine moved on
         const frame = this.options.vision.latest;
         if (frame) this.sample(this.visionLatencies, this.clock() - frame.t);
         // Keep the oldest unacknowledged command; high frame rates must not reset its clock.
@@ -548,11 +609,24 @@ export class RehabRuntime implements TherapyRuntime {
           f: [...command.f],
         };
         if (command.t === 'target') client.target(command.f, command.v);
-        else client.follow(command.f);
+        else
+          client.follow(
+            this.lowPowerFollow
+              ? this.followShaper.shape(command.f, client.latest())
+              : command.f,
+          );
       } else if (command.t === 'release') {
+        this.followShaper.reset();
         this.echo = null;
         this.beforeRelease = client.latest();
-        client.release();
+        const first = routineRelease
+          ? this.stagedRelease.start(client.latest()?.a ?? [0, 0, 0, 0, 0])
+          : null;
+        if (first) client.target(first as Quint, ASSIST_SPEED_CAP);
+        else {
+          this.stagedRelease.cancel();
+          client.release();
+        }
       } else {
         this.activeCurrentLimit = command.ma;
         client.limit(command.ma);
@@ -626,6 +700,7 @@ export class RehabRuntime implements TherapyRuntime {
           state.phase === 'ASSIST' ||
           state.phase === 'ASSIST_HOLD' ||
           (state.phase === 'ATTEMPT' && this.exerciseEngine.hasAssistance()),
+        helpOffered: this.exerciseEngine.helpOffered(),
       });
     } else if (this.mode)
       this.evaluationStore.setState(

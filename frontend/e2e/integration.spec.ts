@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { calibrateSimulator, silenceCoach } from './helpers';
+import {
+  calibrateSimulator,
+  silenceCoach,
+  askForHelpWhenOffered,
+} from './helpers';
 import type { SessionDetail } from '../src/contracts/api';
 
 test('sim calibration, full default plan, rigid-index safety, history, replay, evaluation and doctor export', async ({
@@ -9,6 +13,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await silenceCoach(page);
+  await askForHelpWhenOffered(page);
   await page.route('**/api/summaries', async (route) => {
     const body = route.request().postDataJSON();
     expect(body.kind).toBe('session');

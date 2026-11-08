@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { calibrateSimulator, silenceCoach } from './helpers';
+import {
+  calibrateSimulator,
+  silenceCoach,
+  askForHelpWhenOffered,
+} from './helpers';
 const routes: [string, string | RegExp][] = [
   ['/', /^Hello/],
   ['/setup', 'Connect glove and camera'],
@@ -29,6 +33,7 @@ test('every route renders with its shell and accessibility slots', async ({
 });
 test('real exercise enters focus, pauses and ends safely', async ({ page }) => {
   await silenceCoach(page);
+  await askForHelpWhenOffered(page);
   await calibrateSimulator(page);
   await page
     .getByRole('button', { name: 'Start practice', exact: true })

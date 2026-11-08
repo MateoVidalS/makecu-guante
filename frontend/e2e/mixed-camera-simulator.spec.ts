@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
+import { askForHelpWhenOffered } from './helpers';
 
 test('no-port fallback simulates only the glove and retains the camera stream', async ({
   page,
 }) => {
   test.setTimeout(150_000);
+  await askForHelpWhenOffered(page);
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'serial', {
       configurable: true,

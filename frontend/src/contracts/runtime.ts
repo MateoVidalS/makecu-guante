@@ -24,6 +24,8 @@ export interface ExerciseView {
   phaseDuration: number | null;
   activeMax: Partial<Record<GloveFinger, number>>;
   assisting: boolean;
+  /** Not reached alone: help is offered and waits for the patient to ask. */
+  helpOffered?: boolean;
   paused: boolean;
   sessionId: number | null;
   lastResult: AttemptResult | null;
@@ -56,6 +58,8 @@ export interface Runtime {
     pause(): void;
     resume(): void;
     skip(): void;
+    /** The patient asks for the glove's help. The glove never moves without it. */
+    requestHelp(fingers?: readonly GloveFinger[]): void;
     stop(): Promise<void>;
     view(): ExerciseView;
     subscribe(cb: (v: ExerciseView) => void): Unsubscribe;

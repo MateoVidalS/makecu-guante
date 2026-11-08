@@ -37,6 +37,8 @@ export function fallbackPhrase(event: EngineEvent, variant = 0): string | null {
   if (event.kind === 'phase' && event.phase === 'PRESENT')
     return poseInvitation(event.pose, variant);
   if (event.kind === 'reached') return pick(PHRASES.reached, variant);
+  if (event.kind === 'help_offered')
+    return 'Want the glove to help you open? Say help, or press Help me open.';
   if (event.kind === 'assist_started') return pick(PHRASES.assist, variant);
   if (event.kind === 'attempt_done') return pick(PHRASES.done, variant);
   if (event.kind === 'session_done') return 'Session done. Well done today.';

@@ -21,7 +21,9 @@ import {
   OPEN_ASSIST_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
   POSES,
+  opensFinger,
 } from '../../contracts/poses';
+import { GLOVE_FINGERS } from '../../contracts/glove';
 import type {
   ExercisePlanItem,
   ExerciseSettings,
@@ -347,7 +349,15 @@ export default function Exercise() {
       ? Math.max(0, Math.ceil(v.phaseDuration - v.phaseElapsed))
       : 0,
   );
-  const status = attemptStatus(phase, lastResult, index);
+  const helpOffered = useExerciseView((v) => !!v.helpOffered);
+  const status =
+    phase === 'ATTEMPT' && helpOffered
+      ? {
+          title: 'Want the glove to help you open?',
+          tone: 'assist' as const,
+          done: false,
+        }
+      : attemptStatus(phase, lastResult, index);
   const next = plan.flatMap((p) =>
     Array.from({ length: Math.min(10, Math.max(0, p.reps)) }, () => p.pose),
   )[index + 1];
@@ -580,6 +590,18 @@ export default function Exercise() {
             )}
           </div>
           <Inline justify="center" gap={12} className="practice-actions">
+            {phase === 'ATTEMPT' &&
+              GLOVE_FINGERS.some((f) => opensFinger(pose, f)) && (
+                // The glove moves only when the patient asks: this button or saying "help".
+                <Button
+                  size="lg"
+                  variant={helpOffered ? 'primary' : 'secondary'}
+                  disabled={safetyVisible}
+                  onClick={() => runtime.exercise.requestHelp()}
+                >
+                  Help me open
+                </Button>
+              )}
             <Button
               size="lg"
               disabled={safetyVisible}

@@ -177,6 +177,8 @@ it('test mode (simulated glove, real camera) never trips overcurrent from the si
     wall += 50;
     world.advance(50);
     camera.emit(0.9);
+    // The glove moves only when the patient asks: ask as soon as help is offered.
+    if (runtime.exercise.view().helpOffered) runtime.exercise.requestHelp();
     assisted ||= runtime.exercise.view().assisting;
   }
   expect(assisted).toBe(true);

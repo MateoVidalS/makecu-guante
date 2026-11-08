@@ -80,6 +80,14 @@ class Exercise implements ExerciseEngine {
   private viewPoseSource: PoseDef | null = null;
   private viewPose: PoseDef | null = null;
   private forced = new Set<GloveFinger>();
+  /** Help on request: offered when time runs out, requested by the patient. */
+  private helpRequested = false;
+  /** Fingers the patient's request covers; null means every finger that needs opening. */
+  private helpScope: Set<GloveFinger> | null = null;
+  private helpOfferedAt: number | null = null;
+  private get onRequest(): boolean {
+    return this.settings.help_on_request !== false;
+  }
   private helped = new Set<GloveFinger>();
   private suppressed = new Set<GloveFinger>();
   private assistAt: number | null = null;
@@ -121,7 +129,12 @@ class Exercise implements ExerciseEngine {
       },
       assistNow: (finger) => {
         if (
-          this.phase !== 'ATTEMPT' ||
+          // The coach cannot start help on its own: only after the patient asks.
+          (this.onRequest && !this.helpRequested) ||
+          !(
+            this.phase === 'ATTEMPT' ||
+            (this.helpRequested && this.phase === 'ASSIST')
+          ) ||
           !this.settings.assist_enabled ||
           !this.input ||
           !motorSafe(this.input) ||
@@ -132,6 +145,7 @@ class Exercise implements ExerciseEngine {
         )
           return false;
         this.forced.add(finger);
+        this.helpScope?.add(finger);
         const out = output();
         this.scheduleAssist(out);
         options.onTherapyOutput?.(out);
@@ -248,6 +262,33 @@ class Exercise implements ExerciseEngine {
 
   hasAssistance(): boolean {
     return !!this.metrics?.assisted;
+  }
+  helpOffered(): boolean {
+    return (
+      this.phase === 'ATTEMPT' &&
+      this.helpOfferedAt !== null &&
+      !this.helpRequested
+    );
+  }
+  /**
+   * The glove only moves when the patient asks: button or voice. Named fingers limit the
+   * help to them ("help my index"); none means every finger that needs opening.
+   */
+  requestHelp(now: number, fingers?: readonly GloveFinger[]): Output {
+    this.now = now;
+    const out = output();
+    if (
+      this.phase === 'ATTEMPT' &&
+      this.settings.assist_enabled &&
+      this.input &&
+      motorSafe(this.input) &&
+      this.assistable().some(Boolean)
+    ) {
+      this.helpRequested = true;
+      this.helpScope = fingers?.length ? new Set(fingers) : null;
+      this.enter('ASSIST', out);
+    }
+    return out;
   }
   private assistClockStart(): number {
     if (this.assistAt !== null) return this.assistAt;
@@ -463,9 +504,15 @@ class Exercise implements ExerciseEngine {
         }
         break;
       case 'ATTEMPT':
-        this.startQueuedHelp();
+        if (this.startQueuedHelp() && this.onRequest) {
+          // The patient asked between attempts: that is their request for this one.
+          this.helpRequested = true;
+          this.enter('ASSIST', out);
+          break;
+        }
         if (
           this.settings.assist_enabled &&
+          !this.onRequest &&
           this.assistable().some(
             (unreached, i) => unreached && this.eligible(GLOVE_FINGERS[i]),
           )
@@ -499,16 +546,28 @@ class Exercise implements ExerciseEngine {
             t_rel: (this.dwellAt! - this.metrics!.start) / 1000,
           });
           this.enter(this.metrics!.assisted ? 'ASSIST_HOLD' : 'HOLD', out);
+        } else if (this.helpOfferedAt !== null) {
+          // Help offered: wait for the patient to reach it alone (dwell above) or to ask
+          // (requestHelp). Only the end of the offer ends the attempt.
+          if (
+            this.now - this.helpOfferedAt >=
+            (this.settings.help_offer_s ?? 8) * 1000
+          )
+            this.enter('RELEASE', out);
         } else if (
           elapsed >= this.therapy.attemptSeconds() ||
           this.isPlateau()
         ) {
-          this.enter(
-            this.settings.assist_enabled && this.assistable().some(Boolean)
-              ? 'ASSIST'
-              : 'RELEASE',
-            out,
-          );
+          const canHelp =
+            this.settings.assist_enabled && this.assistable().some(Boolean);
+          if (canHelp && this.onRequest) {
+            // Never move on its own: offer help and wait for the patient to ask.
+            this.helpOfferedAt = this.now;
+            out.events.push({
+              kind: 'help_offered',
+              fingers: GLOVE_FINGERS.filter((_, i) => this.assistable()[i]),
+            });
+          } else this.enter(canHelp ? 'ASSIST' : 'RELEASE', out);
         }
         break;
       case 'HOLD':
@@ -650,6 +709,9 @@ class Exercise implements ExerciseEngine {
       this.lastFollow = null;
     }
     if (phase === 'ATTEMPT') {
+      this.helpRequested = false;
+      this.helpScope = null;
+      this.helpOfferedAt = null;
       this.scheduler = null;
       this.targetSent = false;
       this.helped.clear();
@@ -915,19 +977,31 @@ class Exercise implements ExerciseEngine {
    * shortest help delay) in an attempt where that finger must open. It then uses the same
    * path as immediate help: stagger, motor cap, gentle speed and shaped target.
    */
-  private startQueuedHelp(): void {
-    if (!this.settings.assist_enabled || !this.metrics || !this.input) return;
-    if (this.now - this.metrics.start < 1000 || !motorSafe(this.input)) return;
+  private startQueuedHelp(): boolean {
+    if (!this.settings.assist_enabled || !this.metrics || !this.input)
+      return false;
+    if (this.now - this.metrics.start < 1000 || !motorSafe(this.input))
+      return false;
     const unreached = this.assistable();
+    let started = false;
     for (const finger of this.therapy.queuedHelp()) {
       const i = GLOVE_FINGERS.indexOf(finger);
       if (this.pose.closure[finger] === null || !unreached[i]) continue;
       this.forced.add(finger);
       this.suppressed.delete(finger);
       this.therapy.consumeQueuedHelp(finger);
+      (this.helpScope ??= new Set()).add(finger);
+      started = true;
     }
+    return started;
   }
   private eligible(finger: GloveFinger): boolean {
+    // Asked for help: every finger that needs opening is helped now (no extra waiting).
+    if (this.helpRequested)
+      return (
+        !this.suppressed.has(finger) &&
+        (!this.helpScope || this.helpScope.has(finger))
+      );
     return (
       !this.suppressed.has(finger) &&
       (this.forced.has(finger) ||

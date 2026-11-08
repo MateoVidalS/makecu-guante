@@ -13,7 +13,18 @@ class FakeBoard {
   private ev = new Set<(e: GloveEvent) => void>();
   private er = new Set<(e: GloveError) => void>();
   private co = new Set<(c: GloveConnection) => void>();
+  private te = new Set<(t: never) => void>();
+  onTelemetry = (cb: (t: never) => void) => {
+    this.te.add(cb);
+    return () => this.te.delete(cb);
+  };
+  tel(a: number[], tg: number[]) {
+    this.boardA = a;
+    this.te.forEach((cb) => cb({ a, tg, md: 'target' } as never));
+  }
   connection = () => this.status;
+  boardA: number[] | null = null;
+  latest = () => (this.boardA ? ({ a: this.boardA } as never) : null);
   connect = async () => {
     this.status = 'connected';
     return { fw: '0.1.0', fingers: 5, limit: 1500, calib: [] };
@@ -148,4 +159,24 @@ it('refuses an accelerated simulator, whose timing real motors cannot follow', a
   const { world } = await setup(3);
   await expect(mirror.start(world.glove)).rejects.toThrow(/real speed/);
   expect(board.status).toBe('disconnected');
+});
+
+it('holds a finger the app holds where the real board is, so lag never adds a wind', async () => {
+  const { world } = await setup();
+  await mirror.start(world.glove);
+  world.glove.target([0, 0.4, 0, 0, 0], 0.2);
+  world.advance(3000); // the simulated index arrives at 0.4
+  board.boardA = [0, 0.36, 0, 0, 0]; // the board lags a little behind
+  board.sent = [];
+  // The app starts help on the ring and keeps holding the index at 0.4.
+  world.glove.target([0, 0.4, 0, 0.95, 0], 0.2);
+  expect(board.sent).toEqual([['target', [0, 0.36, 0, 0.95, 0], 0.2]]);
+  // While the ring winds, the index waits.
+  board.tel([0, 0.36, 0, 0.5, 0], [0, 0.36, 0, 0.95, 0]);
+  expect(board.sent).toHaveLength(1);
+  // The ring arrived: the app's own target goes out and the index finishes.
+  board.tel([0, 0.36, 0, 0.95, 0], [0, 0.36, 0, 0.95, 0]);
+  expect(board.sent[1]).toEqual(['target', [0, 0.4, 0, 0.95, 0], 0.2]);
+  board.tel([0, 0.4, 0, 0.95, 0], [0, 0.4, 0, 0.95, 0]);
+  expect(board.sent).toHaveLength(2);
 });
