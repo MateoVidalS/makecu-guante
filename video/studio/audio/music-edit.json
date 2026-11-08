@@ -24,23 +24,18 @@
     },
     {
       "fromSeconds": 43.2,
-      "toSeconds": 141.6,
+      "toSeconds": 132.0,
       "sourceSeconds": 92.4
     },
     {
-      "fromSeconds": 141.6,
-      "toSeconds": 148.8,
+      "fromSeconds": 132.0,
+      "toSeconds": 156.0,
       "sourceSeconds": 190.8
     },
     {
-      "fromSeconds": 148.8,
-      "toSeconds": 160.8,
-      "sourceSeconds": 250.8
-    },
-    {
-      "fromSeconds": 160.8,
+      "fromSeconds": 156.0,
       "toSeconds": 168.0,
-      "sourceSeconds": 25.2
+      "sourceSeconds": 250.8
     },
     {
       "fromSeconds": 168.0,
@@ -52,13 +47,35 @@
   "percussionSeed": 100,
   "silentOpeningSeconds": 7.2,
   "pianoEntersAtFrame": 216,
-  "benchGain": 0.35,
+  "benchGain": {
+    "from": 0.32,
+    "to": 0.38,
+    "mean": 0.35
+  },
+  "benchPercussionPausedFrames": [
+    3960,
+    4680
+  ],
+  "sceneStartsSeconds": {
+    "team": 0.0,
+    "hook": 7.2,
+    "problem": 14.4,
+    "reveal": 24.0,
+    "build": 33.6,
+    "session": 43.2,
+    "coach": 76.8,
+    "gemini": 93.6,
+    "doctor": 108.0,
+    "bench": 132.0,
+    "underHood": 156.0,
+    "close": 168.0
+  },
   "mechanicalGrooveFrames": [
     1008,
     1296
   ],
   "resistanceDipFrames": [
-    2196,
-    2448
+    1968,
+    2164
   ]
 }
