@@ -4,7 +4,8 @@ import type { Handedness } from '../contracts/vision';
 import { tokens } from '../styles/tokens';
 import { applyJoints, FINGERS, JOINTS } from './rig';
 import { createHandScene } from './scene';
-import { HAND_LOOK_AT, PALM_DOWN_ROTATION, palmDownCamera } from './view';
+import { handPresentation } from './view';
+import { CURRENT_CAMERA_VIEW, type CameraView } from '../contracts/calibration';
 
 export const HAND_VIEW_FILL = 0.8;
 type Family = PoseDef['family'];
@@ -38,17 +39,22 @@ export function projectedHandBounds(root: Group, camera: OrthographicCamera) {
 /** One envelope per family includes open → closed motion. Pose updates cannot
  * zoom or recenter the hand; only a viewport or family change can reframe it.
  */
-export function handFamilyBounds(hand: Handedness, family: Family) {
-  const key = `${hand}:${family}`;
+export function handFamilyBounds(
+  hand: Handedness,
+  family: Family,
+  view: CameraView = CURRENT_CAMERA_VIEW,
+) {
+  const key = `${view}:${hand}:${family}`;
   const cached = cache.get(key);
   if (cached) return cached;
   const scene = createHandScene(hand, tokens.light);
   const root = new Group();
-  root.rotation.set(...PALM_DOWN_ROTATION);
+  const presentation = handPresentation(hand, view, family === 'pinch');
+  root.rotation.set(...presentation.rotation);
   root.add(scene.actual, scene.target);
   const camera = new OrthographicCamera();
-  camera.position.set(...palmDownCamera(hand, family === 'pinch'));
-  camera.lookAt(...HAND_LOOK_AT);
+  camera.position.set(...presentation.camera);
+  camera.lookAt(...presentation.lookAt);
   const bounds = new Box3();
   const sample = structuredClone(POSES.open.render);
   for (const pose of Object.values(POSES)) {

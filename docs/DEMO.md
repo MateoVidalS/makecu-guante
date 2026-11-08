@@ -64,14 +64,31 @@ to keep the header recovery controls available. Complete the hardware gate first
 - [ ] Volume audible; click a control to unlock browser audio. Confirm the local
   safety phrase is audible even with Voice mode Off. Simple voice needs no key;
   browsers without an installed speech voice still show captions.
-- [ ] Palm down, wrist module at the table edge, forearm on a towel. Camera
-  30–40 cm away, in front on the thumb side, diagonal and above the hand.
-  Check Setup’s five-second detection fraction with the actual light, thin glove.
-- [ ] Camera sees the whole affected hand, including all five fingertips. Use diffuse
-  light, a steady background, and an angle that keeps tendons from hiding joints.
+- [ ] Sit facing the laptop and use its **front webcam**. Raise the affected hand
+  upright beside the face, **palm toward the screen**, about **40–60 cm from the
+  laptop**. Open/close toward the camera; keep the elbow on the table with
+  comfortable padding and the forearm vertical. Adjust the screen to include the
+  wrist, whole hand and all five fingertips without lifting the elbow.
+- [ ] **Backlight check:** no window or bright light behind the presenter. Use
+  diffuse light from in front or the side and a steady background; check the
+  preview shows a clearly lit palm and fingers.
+- [ ] **Day 1, then recheck at the venue:** use Setup’s five-second glove detection
+  check while opening/closing with the actual thin light glove, thin light threads
+  and upright posture. The camera sees palm-side threads, guides and anchors;
+  record detection percentage, light and occlusions in
+  [HARDWARE_CHECKLIST.md](HARDWARE_CHECKLIST.md). If detection stays low, use the
+  simulated camera for the pitch and have the team review the physical setup.
+- [ ] The hardware team has resolved and recorded the **upright wrist-module
+  question**: the module now hangs from the forearm instead of resting on the
+  table. Check strap fit, weight, thread exit angle, elastic return and servo pull
+  on an empty fixture before any hand mounting; keep the physical glove off a
+  person while that decision is pending.
 - [ ] If using hardware: recorded bench gate, accessible physical STOP and supply
   switch, helper present, fresh calibration for this hand and mounting. Seeded
-  model ranges must never substitute for physical calibration.
+  model ranges must never substitute for physical calibration. Capture the camera
+  references in the upright posture; replace old palm-down/diagonal calibration.
+- [ ] Use short sets with the elbow supported. Ask about fatigue, allow rests and
+  pause/release if holding the hand up becomes tiring. Recheck framing after rests.
 - [ ] Without a glove, Setup → **Simulate glove** keeps the real camera
   tracking your hand. The live **Glove motors** strip labels simulated motors;
   use both simulators for a fully rehearsed synthetic-patient demo.
