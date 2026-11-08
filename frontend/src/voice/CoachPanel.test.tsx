@@ -16,7 +16,8 @@ afterEach(cleanup);
 it.each([
   ['live', false, true, false],
   ['live', true, false, false],
-  ['simple', false, false, true],
+  ['simple', false, true, false],
+  ['simple', true, false, false],
   ['off', false, false, true],
 ])(
   'microphone state agrees with %s mode and muted=%s',
