@@ -15,7 +15,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
     // The UI must wait until all attempts and the end marker have reached the backend.
     const stored = await page.request.get(`/api/sessions/${body.session_id}`);
     const detail = (await stored.json()) as SessionDetail;
-    expect(detail.summary?.attempts).toBe(10);
+    expect(detail.summary?.attempts).toBe(8);
     await route.fulfill({
       json: {
         id: 1,
@@ -24,7 +24,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
         session_id: body.session_id,
         days: null,
         model: 'e2e-mocked-gemini',
-        text: 'You completed 10 attempts. Good effort today.',
+        text: 'You completed 8 attempts. Good effort today.',
       },
     });
   });
@@ -97,9 +97,9 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await expect(
     page.getByRole('heading', { name: 'Session complete', exact: true }),
   ).toBeVisible({ timeout: 100_000 });
-  await expect(page.getByText(/^10 attempts ·/)).toBeVisible();
+  await expect(page.getByText(/^8 attempts ·/)).toBeVisible();
   await expect(
-    page.getByText('You completed 10 attempts. Good effort today.', {
+    page.getByText('You completed 8 attempts. Good effort today.', {
       exact: true,
     }),
   ).toBeVisible();
@@ -108,7 +108,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   ).toHaveText('Saved');
   const stored = await page.request.get(`/api/sessions/${sessionId}`);
   const detail = (await stored.json()) as SessionDetail;
-  expect(detail.attempts).toHaveLength(10);
+  expect(detail.attempts).toHaveLength(8);
   const fist = detail.attempts.find((a) => a.pose === 'full_fist')!;
   expect(fist.fingers.map((f) => f.finger)).toEqual([
     'thumb',
@@ -147,7 +147,7 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await expect(
     page.getByRole('img', { name: /Your attempt, moment by moment/ }),
   ).toBeVisible();
-  await expect(page.getByLabel('Attempt').locator('option')).toHaveCount(10);
+  await expect(page.getByLabel('Attempt').locator('option')).toHaveCount(8);
   await page.goto('/evaluate');
   const measureFriction = page.getByRole('button', {
     name: 'Measure thread friction (unhooked)',

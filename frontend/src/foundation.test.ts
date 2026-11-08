@@ -74,10 +74,29 @@ describe('shared contracts', () => {
     }
   });
   it('exports the exact poses, default plans, and patient-specific pinch threshold', () => {
-    expect(DEFAULT_PLAN.reduce((n, p) => n + p.reps, 0)).toBe(10);
-    expect(DEFAULT_PLAN.map((p) => p.pose)).toEqual(
-      Array.from({ length: 5 }, () => ['full_fist', 'open']).flat(),
-    );
+    expect(DEFAULT_PLAN.reduce((n, p) => n + p.reps, 0)).toBe(8);
+    expect(DEFAULT_PLAN.map((p) => p.pose)).toEqual([
+      'full_fist',
+      'open',
+      'thumbs_up',
+      'point',
+      'peace',
+      'pinky_up',
+      'full_fist',
+      'open',
+    ]);
+    // Finger by finger: raised fingers open, the others stay closed.
+    expect(POSES.point.raise).toEqual(['index']);
+    expect(POSES.point.closure).toEqual({
+      thumb: null,
+      index: 0,
+      middle: 0.8,
+      ring: 0.8,
+      pinky: 0.8,
+    });
+    expect(POSES.peace.raise).toEqual(['index', 'middle']);
+    expect(POSES.thumbs_up.closure.thumb).toBe(0);
+    expect(POSES.pinky_up.closure.pinky).toBe(0);
     expect(POSES.hook.closure.thumb).toBeNull();
     expect(POSES.hook.render.index).toEqual({ mcp: 0, pip: 90, dip: 70 });
     expect(POSES.tabletop.render.index).toEqual({ mcp: 90, pip: 0, dip: 0 });
@@ -212,7 +231,7 @@ describe('MSW REST client', () => {
 });
 
 describe('scripted runtime', () => {
-  it('plays all ten attempts with events, assist, one resistance event and summary', async () => {
+  it('plays every default-plan attempt with events, assist, one resistance event and summary', async () => {
     vi.useFakeTimers();
     const runtime: Runtime = new ScriptedRuntime({ persist: false });
     const script = runtime as ScriptedRuntime,
@@ -221,14 +240,14 @@ describe('scripted runtime', () => {
     await runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS);
     vi.advanceTimersByTime(450_000);
     expect(runtime.exercise.view().phase).toBe('DONE');
-    expect(runtime.exercise.view().summary!.attempts).toBe(10);
+    expect(runtime.exercise.view().summary!.attempts).toBe(8);
     expect(events.filter((e) => e.kind === 'resistance')).toHaveLength(1);
     expect(events.some((e) => e.kind === 'assist_started')).toBe(true);
     expect(events.some((e) => e.kind === 'progress')).toBe(true);
     const attempts = events
       .filter((e) => e.kind === 'attempt_done')
       .map((e) => e.result);
-    expect(attempts).toHaveLength(10);
+    expect(attempts).toHaveLength(8);
     expect(attempts.every((r) => r.trace.hz === 20)).toBe(true);
     for (const result of attempts) {
       expect(

@@ -4,7 +4,17 @@ import type { EvalSettings } from './evaluation';
 
 // ---------- poses (src/contracts/poses.ts) ----------
 export type PoseId =
-  'open' | 'hook' | 'full_fist' | 'tabletop' | 'straight_fist' | 'pinch';
+  | 'open'
+  | 'hook'
+  | 'full_fist'
+  | 'tabletop'
+  | 'straight_fist'
+  | 'pinch'
+  // Finger by finger: raise some fingers, keep the others closed.
+  | 'thumbs_up'
+  | 'point'
+  | 'peace'
+  | 'pinky_up';
 export interface PoseDef {
   id: PoseId;
   name: string;
@@ -13,7 +23,12 @@ export interface PoseDef {
   render: Record<FingerId, JointAngles>; // joint angles for drawing the target hand
   pinch?: { max_ratio: number }; // pinch only: thumb-index tip ratio must be ≤ this
   instruction: string; // spoken/displayed, e.g. "Make a full fist"
+  /** Finger-by-finger poses: the fingers to raise (open). The others stay closed. */
+  raise?: FingerId[];
 }
+/** True when this finger's goal is to open: every finger of `open`, the raised ones of a finger pose. */
+export const opensFinger = (pose: PoseDef, finger: FingerId): boolean =>
+  pose.id === 'open' || !!pose.raise?.includes(finger);
 // POSES (constant, in src/contracts/poses.ts; values in 06-session.md §2)
 
 /** Assist never pulls past 95% of the calibrated open range (hyperextension margin). Consented intensify may use 1.0. */
@@ -263,6 +278,90 @@ export const POSES: Record<PoseId, PoseDef> = {
       max_ratio: 0.13,
     },
   },
+  thumbs_up: {
+    id: 'thumbs_up',
+    name: 'Thumbs up',
+    family: 'tendon_glide',
+    raise: ['thumb'],
+    closure: {
+      thumb: 0,
+      index: 0.8,
+      middle: 0.8,
+      ring: 0.8,
+      pinky: 0.8,
+    },
+    render: {
+      thumb: { mcp: 0, pip: 0, dip: 0 },
+      index: { mcp: 80, pip: 90, dip: 70 },
+      middle: { mcp: 80, pip: 90, dip: 70 },
+      ring: { mcp: 80, pip: 90, dip: 70 },
+      pinky: { mcp: 80, pip: 90, dip: 70 },
+    },
+    instruction: 'Make a fist and raise your thumb',
+  },
+  point: {
+    id: 'point',
+    name: 'Point',
+    family: 'tendon_glide',
+    raise: ['index'],
+    closure: {
+      thumb: null,
+      index: 0,
+      middle: 0.8,
+      ring: 0.8,
+      pinky: 0.8,
+    },
+    render: {
+      thumb: { mcp: 45, pip: 45, dip: 0 },
+      index: { mcp: 0, pip: 0, dip: 0 },
+      middle: { mcp: 80, pip: 90, dip: 70 },
+      ring: { mcp: 80, pip: 90, dip: 70 },
+      pinky: { mcp: 80, pip: 90, dip: 70 },
+    },
+    instruction: 'Make a fist and point with your index finger',
+  },
+  peace: {
+    id: 'peace',
+    name: 'Two fingers up',
+    family: 'tendon_glide',
+    raise: ['index', 'middle'],
+    closure: {
+      thumb: null,
+      index: 0,
+      middle: 0,
+      ring: 0.8,
+      pinky: 0.8,
+    },
+    render: {
+      thumb: { mcp: 45, pip: 45, dip: 0 },
+      index: { mcp: 0, pip: 0, dip: 0 },
+      middle: { mcp: 0, pip: 0, dip: 0 },
+      ring: { mcp: 80, pip: 90, dip: 70 },
+      pinky: { mcp: 80, pip: 90, dip: 70 },
+    },
+    instruction: 'Raise your index and middle fingers',
+  },
+  pinky_up: {
+    id: 'pinky_up',
+    name: 'Little finger up',
+    family: 'tendon_glide',
+    raise: ['pinky'],
+    closure: {
+      thumb: null,
+      index: 0.8,
+      middle: 0.8,
+      ring: 0.8,
+      pinky: 0,
+    },
+    render: {
+      thumb: { mcp: 45, pip: 45, dip: 0 },
+      index: { mcp: 80, pip: 90, dip: 70 },
+      middle: { mcp: 80, pip: 90, dip: 70 },
+      ring: { mcp: 80, pip: 90, dip: 70 },
+      pinky: { mcp: 0, pip: 0, dip: 0 },
+    },
+    instruction: 'Make a fist and raise your little finger',
+  },
 };
 /** Observation glides: closing poses are practiced actively. */
 export const TENDON_GLIDE_PLAN: ExercisePlanItem[] = [
@@ -280,7 +379,23 @@ export const OPEN_ASSIST_PLAN: ExercisePlanItem[] = Array.from(
     { pose: 'open' as PoseId, reps: 1 },
   ],
 ).flat();
-export const DEFAULT_PLAN: ExercisePlanItem[] = OPEN_ASSIST_PLAN;
+/** Finger by finger: raise one or two fingers while the others stay closed. */
+export const FINGER_PLAN: ExercisePlanItem[] = (
+  ['thumbs_up', 'point', 'peace', 'pinky_up'] as PoseId[]
+).map((pose) => ({ pose, reps: 2 }));
+/** Default: a fist and a full opening, then each finger on its own, then a last full opening. */
+export const DEFAULT_PLAN: ExercisePlanItem[] = (
+  [
+    'full_fist',
+    'open',
+    'thumbs_up',
+    'point',
+    'peace',
+    'pinky_up',
+    'full_fist',
+    'open',
+  ] as PoseId[]
+).map((pose) => ({ pose, reps: 1 }));
 export const PINCH_PLAN: ExercisePlanItem[] = [{ pose: 'pinch', reps: 3 }];
 export const DEFAULT_EXERCISE_SETTINGS: ExerciseSettings = {
   present_s: 3,

@@ -9,7 +9,7 @@ import {
   closureFromPull,
 } from '../contracts/glove';
 import type { FingerId } from '../contracts/vision';
-import { POSES, MAX_ASSIST_PULL } from '../contracts/poses';
+import { POSES, MAX_ASSIST_PULL, opensFinger } from '../contracts/poses';
 import type { PoseDef, PoseId } from '../contracts/poses';
 import { THERAPY_LIMITS } from '../contracts/therapist';
 import type {
@@ -72,22 +72,19 @@ export function shapePose(
     closure[f] =
       pose.closure[f] === null
         ? null
-        : pose.id === 'open'
+        : opensFinger(pose, f)
           ? closureFromPull(pullFromClosure(pose.closure[f]!) * scales[f])
           : pose.closure[f]! * scales[f];
     render[f] = {
-      mcp:
-        pose.id === 'open'
-          ? POSES.full_fist.render[f].mcp * closure[f]!
-          : pose.render[f].mcp * scales[f],
-      pip:
-        pose.id === 'open'
-          ? POSES.full_fist.render[f].pip * closure[f]!
-          : pose.render[f].pip * scales[f],
-      dip:
-        pose.id === 'open'
-          ? POSES.full_fist.render[f].dip * closure[f]!
-          : pose.render[f].dip * scales[f],
+      mcp: opensFinger(pose, f)
+        ? POSES.full_fist.render[f].mcp * closure[f]!
+        : pose.render[f].mcp * scales[f],
+      pip: opensFinger(pose, f)
+        ? POSES.full_fist.render[f].pip * closure[f]!
+        : pose.render[f].pip * scales[f],
+      dip: opensFinger(pose, f)
+        ? POSES.full_fist.render[f].dip * closure[f]!
+        : pose.render[f].dip * scales[f],
     };
   }
   return { ...pose, closure, render };
@@ -337,7 +334,7 @@ export class TherapyController implements TherapyApi {
     for (const [finger, kinds] of this.activeRaised) {
       if (
         kinds.has('further') &&
-        base.id === 'open' &&
+        opensFinger(base, finger) &&
         base.closure[finger] !== null
       ) {
         pose.closure[finger] = closureFromPull(
@@ -793,7 +790,7 @@ export class TherapyController implements TherapyApi {
         if (
           target === null ||
           target === undefined ||
-          (kind === 'further' && state.pose !== 'open')
+          (kind === 'further' && !opensFinger(POSES[state.pose], finger))
         )
           return reject('The glove can only help this finger open.');
         const previousRaised = cloneRaised(this.raised);

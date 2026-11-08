@@ -15,6 +15,8 @@ import { useRuntime, useExerciseView, useSavingStatus } from '../../runtime';
 import {
   DEFAULT_PLAN,
   TENDON_GLIDE_PLAN,
+  FINGER_PLAN,
+  OPEN_ASSIST_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
   POSES,
 } from '../../contracts/poses';
@@ -433,6 +435,12 @@ export default function Exercise() {
         <Inline>
           {[
             { id: 'opening', label: 'Opening practice', plan: DEFAULT_PLAN },
+            { id: 'fingers', label: 'Finger by finger', plan: FINGER_PLAN },
+            {
+              id: 'open-close',
+              label: 'Open and close',
+              plan: OPEN_ASSIST_PLAN,
+            },
             { id: 'glides', label: 'Tendon glides', plan: TENDON_GLIDE_PLAN },
             {
               id: 'open',
