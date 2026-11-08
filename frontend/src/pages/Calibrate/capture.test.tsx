@@ -22,7 +22,12 @@ const state = vi.hoisted(() => ({
   runtime: {} as Record<string, unknown>,
 }));
 vi.mock('../../glove', () => ({
-  useGlove: () => ({ client: state.client }),
+  useGlove: () => ({
+    client: state.client,
+    store: {
+      getState: () => ({ client: state.client, connection: 'connected' }),
+    },
+  }),
   useGloveTelemetry: () => 0,
 }));
 vi.mock('../../vision', () => ({

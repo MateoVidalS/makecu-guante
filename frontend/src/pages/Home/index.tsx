@@ -32,7 +32,9 @@ import {
   useCurrentSensorMissing,
 } from '../Setup/CurrentSensorNotice';
 import './home.css';
+import { usePracticePreflightGate } from '../../components/common/preflight';
 export default function Home() {
+  const { checkPreflight } = usePracticePreflightGate();
   const profile = useProfile(),
     sessions = useSessions({ limit: 30 }),
     opening = useHistoryRom({ pose: 'open' });
@@ -48,6 +50,7 @@ export default function Home() {
   const calibrationStatus = useCalibrationStatus();
   const readiness = calibrationReadiness(calibrationStatus);
   async function start() {
+    if (!checkPreflight()) return;
     if (calibrationStatus.state !== 'ok') {
       navigate(readiness.href);
       return;

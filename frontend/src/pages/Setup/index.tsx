@@ -15,7 +15,8 @@ import { useStore } from 'zustand';
 import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision, useVisionFrame } from '../../vision';
 import { GLOVE_FINGERS } from '../../contracts/glove';
-import { CameraPlacement, GloveDetectionCheck } from './CameraPlacement';
+import { CameraPlacement, HandDetectionCheck } from './CameraPlacement';
+import { PracticeSafety } from './PracticeSafety';
 import { SetupCameraPreview } from './SetupCameraPreview';
 import {
   CurrentSensorNotice,
@@ -162,6 +163,10 @@ export default function Setup() {
         The glove helps you open your hand. When the thread is slack, your hand
         may rest curled. That is normal.
       </p>
+      <p className="hp-note">
+        Black guides attach to the backs of your fingers. Yellow anchors attach
+        at your fingertips. Both attach directly to skin with skin-safe tape.
+      </p>
       <RuntimeBrownoutNotice />
       <CurrentSensorNotice missing={missingCurrentSensor} />
       <BrowserSupportBanner />
@@ -192,7 +197,7 @@ export default function Setup() {
           />
         </Inline>
         <ButtonLink
-          variant="primary"
+          variant="secondary"
           to="/calibrate"
           aria-disabled={!connected || !seen || fault}
           onClick={(e) => {
@@ -343,7 +348,7 @@ export default function Setup() {
           </div>
         </Card>
       </div>
-      <GloveDetectionCheck />
+      <HandDetectionCheck />
       <details
         className="hp-disclosure"
         open={seen ? undefined : true}
@@ -352,6 +357,13 @@ export default function Setup() {
         <summary>How to place the camera</summary>
         <CameraPlacement />
       </details>
+      <PracticeSafety
+        connected={connected}
+        seen={seen}
+        fault={!!fault}
+        missingCurrentSensor={missingCurrentSensor}
+        connecting={busy || simulating || cameraBusy}
+      />
       <details className="hp-disclosure">
         <summary>Advanced</summary>
         <Readouts

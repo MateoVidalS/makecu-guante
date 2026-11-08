@@ -69,17 +69,40 @@ function mount({ fresh = false } = {}) {
 async function measure() {
   fireEvent.click(
     screen.getByRole('checkbox', {
-      name: 'The glove is empty and hanging freely',
+      name: 'Each thread is unhooked from its yellow fingertip anchor',
     }),
   );
   fireEvent.click(
-    screen.getByRole('button', { name: 'Measure glove friction' }),
+    screen.getByRole('button', { name: 'Measure thread friction (unhooked)' }),
   );
   await screen.findByText(
-    'Recent glove friction saved. Put the glove on, then relax.',
+    'Recent thread friction (unhooked) saved. Re-hook each thread to its yellow fingertip anchor, then relax.',
   );
 }
 describe('evaluation preflight', () => {
+  it('explains unhooking for friction and re-hooking before evaluation', () => {
+    mount();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Measure thread friction (unhooked) first',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Unhook each thread from its yellow fingertip anchor, keep the hand relaxed, then measure friction',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Re-hook each thread to its yellow fingertip anchor before evaluating.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(
+        /Take the glove off|Put the glove on|hanging freely|empty-glove/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
   it('asks for upright posture and a supported elbow', () => {
     mount();
     expect(
@@ -91,16 +114,20 @@ describe('evaluation preflight', () => {
       screen.queryByText(/palm down|table edge|towel/i),
     ).not.toBeInTheDocument();
   });
-  it('requires empty-glove confirmation, saves all five friction curves, then requires a relaxed hand', async () => {
+  it('requires unhooked-thread confirmation, saves all five friction curves, then requires a relaxed hand', async () => {
     const { curves, friction, save, runtime, start } = mount();
     expect(
-      screen.getByRole('button', { name: 'Measure glove friction' }),
+      screen.getByRole('button', {
+        name: 'Measure thread friction (unhooked)',
+      }),
     ).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Start evaluation' }),
     ).toBeDisabled();
     expect(
-      screen.getByRole('checkbox', { name: 'Hand relaxed in the glove' }),
+      screen.getByRole('checkbox', {
+        name: 'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      }),
     ).toBeDisabled();
     await measure();
     expect(friction).toHaveBeenCalledWith([...GLOVE_FINGERS]);
@@ -111,10 +138,14 @@ describe('evaluation preflight', () => {
       screen.getByRole('button', { name: 'Start evaluation' }),
     ).toBeDisabled();
     expect(
-      screen.getByRole('checkbox', { name: 'Hand relaxed in the glove' }),
+      screen.getByRole('checkbox', {
+        name: 'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      }),
     ).not.toBeChecked();
     fireEvent.click(
-      screen.getByRole('checkbox', { name: 'Hand relaxed in the glove' }),
+      screen.getByRole('checkbox', {
+        name: 'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Start evaluation' }));
     await waitFor(() => expect(start).toHaveBeenCalledOnce());
@@ -129,12 +160,16 @@ describe('evaluation preflight', () => {
   it('reuses recent complete friction for a selected evaluation subset', async () => {
     const { friction, start, runtime } = mount({ fresh: true });
     expect(
-      screen.queryByRole('button', { name: 'Measure glove friction' }),
+      screen.queryByRole('button', {
+        name: 'Measure thread friction (unhooked)',
+      }),
     ).not.toBeInTheDocument();
     for (const name of ['Thumb', 'Index', 'Middle'])
       fireEvent.click(screen.getByRole('checkbox', { name }));
     fireEvent.click(
-      screen.getByRole('checkbox', { name: 'Hand relaxed in the glove' }),
+      screen.getByRole('checkbox', {
+        name: 'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Start evaluation' }));
     await waitFor(() =>
@@ -169,11 +204,13 @@ describe('evaluation preflight', () => {
         });
       fireEvent.click(
         screen.getByRole('checkbox', {
-          name: 'The glove is empty and hanging freely',
+          name: 'Each thread is unhooked from its yellow fingertip anchor',
         }),
       );
       fireEvent.click(
-        screen.getByRole('button', { name: 'Measure glove friction' }),
+        screen.getByRole('button', {
+          name: 'Measure thread friction (unhooked)',
+        }),
       );
       expect(await screen.findByRole('alert')).toHaveTextContent(
         reason === 'save failure'
@@ -201,11 +238,13 @@ describe('evaluation preflight', () => {
     const stop = vi.spyOn(runtime.evaluation, 'stop');
     fireEvent.click(
       screen.getByRole('checkbox', {
-        name: 'The glove is empty and hanging freely',
+        name: 'Each thread is unhooked from its yellow fingertip anchor',
       }),
     );
     fireEvent.click(
-      screen.getByRole('button', { name: 'Measure glove friction' }),
+      screen.getByRole('button', {
+        name: 'Measure thread friction (unhooked)',
+      }),
     );
     act(() =>
       runtime.evaluationStore.setState({
@@ -215,8 +254,19 @@ describe('evaluation preflight', () => {
       }),
     );
     expect(
-      screen.getByRole('heading', { name: /Measuring empty-glove friction/ }),
+      screen.getByRole('heading', {
+        name: /Measuring thread friction \(unhooked\)/,
+      }),
     ).toBeVisible();
+    expect(screen.getByText('Thread friction (unhooked)')).toBeVisible();
+    expect(
+      screen.getByText(
+        'Keep each thread unhooked from its yellow fingertip anchor.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/empty and hanging freely|empty-glove/i),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Release glove now' }));
     expect(stop).toHaveBeenCalledOnce();
     await act(async () => {
@@ -265,7 +315,9 @@ it('blocks invalid saved calibration and links directly to the same repair', () 
     '/calibrate?step=camera&finger=index',
   );
   fireEvent.click(
-    screen.getByRole('checkbox', { name: 'Hand relaxed in the glove' }),
+    screen.getByRole('checkbox', {
+      name: 'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+    }),
   );
   expect(
     screen.getByRole('button', { name: 'Start evaluation' }),

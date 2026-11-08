@@ -143,7 +143,7 @@ function SweepChart({ measuringFriction }: { measuringFriction: boolean }) {
         </span>
         <span>
           <i className="hp-legend--friction" aria-hidden="true" />
-          <span className="hp-legend__text">Empty-glove friction</span>
+          <span className="hp-legend__text">Thread friction (unhooked)</span>
         </span>
       </p>
       <details className="hp-disclosure">
@@ -192,7 +192,7 @@ export default function Evaluate() {
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [again, setAgain] = useState(false),
-    [emptyGlove, setEmptyGlove] = useState(false),
+    [threadsUnhooked, setThreadsUnhooked] = useState(false),
     [measuringFriction, setMeasuringFriction] = useState(false),
     [ignoredResult, setIgnoredResult] = useState<typeof view.result>(null),
     [selected, setSelected] = useState<GloveFinger[]>([...GLOVE_FINGERS]);
@@ -217,7 +217,7 @@ export default function Evaluate() {
   }
   async function measureFriction() {
     const calibration = runtime.calibration.current;
-    if (!calibration || !calibrated || !emptyGlove || !connected || busy)
+    if (!calibration || !calibrated || !threadsUnhooked || !connected || busy)
       return;
     setError('');
     setBusy(true);
@@ -240,7 +240,7 @@ export default function Evaluate() {
         current_limit_ma: calibration.current_limit_ma,
         friction,
       });
-      if (mounted.current) setEmptyGlove(false);
+      if (mounted.current) setThreadsUnhooked(false);
     } catch (e) {
       if (mounted.current) setError((e as Error).message);
     } finally {
@@ -284,7 +284,7 @@ export default function Evaluate() {
         <PageHeader
           title={
             measuringFriction
-              ? `Measuring empty-glove friction · ${title(view.finger ?? 'thumb')}`
+              ? `Measuring thread friction (unhooked) · ${title(view.finger ?? 'thumb')}`
               : `Measuring ${view.finger ?? ''}`
           }
           lead={
@@ -298,10 +298,10 @@ export default function Evaluate() {
             </span>
           }
         />
-        <RelaxedHandSafetyStrip
-          emptyGlove={measuringFriction}
-          release={release}
-        />
+        <RelaxedHandSafetyStrip release={release} />
+        {measuringFriction && (
+          <p>Keep each thread unhooked from its yellow fingertip anchor.</p>
+        )}
         <progress
           className="hp-progress eval-progress"
           aria-label="Sweep progress"
@@ -347,8 +347,8 @@ export default function Evaluate() {
               How hard the glove pulled each finger open, slowly and then
               quickly. Fast − slow estimates velocity dependence (spasticity).{' '}
               {result.friction_used
-                ? 'Empty-glove friction was accounted for.'
-                : 'No empty-glove friction correction was used.'}
+                ? 'Thread friction (unhooked) was accounted for.'
+                : 'No thread friction (unhooked) correction was used.'}
             </>
           }
         >
@@ -363,7 +363,9 @@ export default function Evaluate() {
               )?.aborted_at,
             }))}
             axisLabel={
-              result.friction_used ? 'mA above glove friction' : 'mA measured'
+              result.friction_used
+                ? 'mA above thread friction (unhooked)'
+                : 'mA measured'
             }
           />
           <p className="hp-note">
@@ -479,33 +481,40 @@ export default function Evaluate() {
           />
           {!frictionReady ? (
             <div className="eval-friction">
-              <h3>Measure empty-glove friction first</h3>
-              <p>Take the glove off. Let it hang freely.</p>
+              <h3>Measure thread friction (unhooked) first</h3>
+              <p>
+                Unhook each thread from its yellow fingertip anchor, keep the
+                hand relaxed, then measure friction
+              </p>
               <p className="hp-note">
                 Required before evaluation. Allow about 2 minutes for all five
                 fingers.
               </p>
               <Checkbox
-                label="The glove is empty and hanging freely"
-                checked={emptyGlove}
+                label="Each thread is unhooked from its yellow fingertip anchor"
+                checked={threadsUnhooked}
                 disabled={busy}
-                onChange={(e) => setEmptyGlove(e.target.checked)}
+                onChange={(e) => setThreadsUnhooked(e.target.checked)}
               />
               <Button
                 variant="primary"
-                disabled={!emptyGlove || !connected || !calibrated || busy}
+                disabled={!threadsUnhooked || !connected || !calibrated || busy}
                 loading={busy}
                 onClick={() => void measureFriction()}
               >
-                {busy ? 'Measuring friction…' : 'Measure glove friction'}
+                {busy
+                  ? 'Measuring friction…'
+                  : 'Measure thread friction (unhooked)'}
               </Button>
               <p className="hp-note">
-                Put the glove back on after measurement finishes.
+                Re-hook each thread to its yellow fingertip anchor before
+                evaluating.
               </p>
             </div>
           ) : (
             <p role="status">
-              Recent glove friction saved. Put the glove on, then relax.
+              Recent thread friction (unhooked) saved. Re-hook each thread to
+              its yellow fingertip anchor, then relax.
             </p>
           )}
           <fieldset className="eval-fingers" disabled={busy}>
@@ -535,7 +544,7 @@ export default function Evaluate() {
             Raise your hand, palm to the screen. Support your elbow and relax.
           </p>
           <Checkbox
-            label="Hand relaxed in the glove"
+            label="Threads re-hooked to yellow fingertip anchors; hand relaxed"
             hint="Let your hand rest curled. The glove opens one finger at a time."
             disabled={!frictionReady || busy}
             checked={relaxed}
@@ -565,10 +574,10 @@ export default function Evaluate() {
                   ? (calibrationStatus.issues[0]?.message ??
                     'Calibrate your comfortable range first.')
                   : !frictionReady
-                    ? 'Measure empty-glove friction before evaluating.'
+                    ? 'Measure thread friction (unhooked) before evaluating.'
                     : !selectedFingers.length
                       ? 'Choose at least one finger to measure.'
-                      : 'Confirm your hand is relaxed to start.'}
+                      : 'Confirm the threads are re-hooked and your hand is relaxed to start.'}
             </p>
           )}
         </div>
