@@ -2,6 +2,7 @@ import type {
   GloveConnection,
   GloveError,
   GloveEvent,
+  Quint,
   SerialCommand,
 } from '../contracts/glove';
 import type { SimGlove } from './sim/simGlove';
@@ -21,6 +22,10 @@ import { WebSerialGlove } from './webSerialGlove';
  */
 export const BENCH_RANGE = { min_deg: 60, max_deg: 120 } as const;
 export const BENCH_LIMIT_MA = 700;
+/** Telemetry precision: a simulated finger this close to its goal is being held. */
+const HOLD_EPS = 0.011;
+/** A finger with more than this left to wind (~2.4 deg on the bench range) is winding. */
+const WINDING_EPS = 0.04;
 const FORWARDED: ReadonlySet<GloveEvent['e']> = new Set([
   'boot',
   'overcurrent',
@@ -50,13 +55,16 @@ type Real = Pick<
   | 'onEvent'
   | 'onError'
   | 'onConnection'
+  | 'onTelemetry'
   | 'connection'
+  | 'latest'
 >;
 
 export class BenchMirror {
   private real: Real | null = null;
   private sim: SimGlove | null = null;
   private unsubscribe: (() => void)[] = [];
+  private deferred: { f: Quint; v: number } | null = null;
   private listeners = new Set<() => void>();
   private snapshot: BenchMirrorState = {
     active: false,
@@ -94,6 +102,7 @@ export class BenchMirror {
     this.sim = sim;
     this.unsubscribe = [
       real.onEvent((event) => this.onRealEvent(event)),
+      real.onTelemetry((tel) => this.onRealTelemetry(tel)),
       real.onError((error) => this.update({ lastError: error })),
       real.onConnection((connection) => {
         this.update({ connection });
@@ -124,6 +133,7 @@ export class BenchMirror {
     const real = this.real;
     this.real = null;
     this.sim = null;
+    this.deferred = null;
     if (real) {
       real.release();
       void real.disconnect();
@@ -143,13 +153,21 @@ export class BenchMirror {
     const real = this.real;
     if (!real) return;
     switch (cmd.t) {
-      case 'target':
-        real.target(cmd.f, cmd.v);
+      case 'target': {
+        const held = this.holdOnBoard(cmd.f);
+        // Remember the app's own target until the board can take it without overlap.
+        this.deferred = held.some((g, i) => g !== cmd.f[i])
+          ? { f: cmd.f, v: cmd.v }
+          : null;
+        real.target(held, cmd.v);
         break;
+      }
       case 'follow':
+        this.deferred = null;
         real.follow(cmd.f);
         break;
       case 'release':
+        this.deferred = null;
         real.release();
         break;
       case 'calib':
@@ -163,6 +181,31 @@ export class BenchMirror {
         return; // jog belongs to the calibration wizard, not to bench practice
     }
     this.update({ commands: this.snapshot.commands + 1 });
+  }
+
+  /**
+   * A finger the app holds (already at its goal in the simulated glove) waits where the
+   * real board is while another finger winds, so the board's ~20-30 ms lag never turns a
+   * hold into a second motor winding. Once nothing winds, onRealTelemetry sends the app's
+   * own target and the held finger finishes, so the board converges on what the app
+   * commanded. (With the real glove the app reads the board's own telemetry.)
+   */
+  private holdOnBoard(f: Quint): Quint {
+    const sim = this.sim?.latest()?.a;
+    const board = this.real?.latest()?.a;
+    if (!sim || !board) return f;
+    return f.map((goal, i) =>
+      Math.abs(goal - sim[i]) <= HOLD_EPS ? Math.min(goal, board[i]) : goal,
+    ) as Quint;
+  }
+
+  private onRealTelemetry(tel: { a: Quint; tg: Quint | null; md: string }) {
+    const deferred = this.deferred;
+    if (!deferred || !this.real || tel.md !== 'target' || !tel.tg) return;
+    const winding = tel.tg.some((g, i) => g - tel.a[i] > WINDING_EPS);
+    if (winding) return;
+    this.deferred = null;
+    this.real.target(deferred.f, deferred.v);
   }
 
   private onRealEvent(event: GloveEvent) {
