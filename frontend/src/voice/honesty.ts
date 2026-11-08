@@ -9,6 +9,10 @@
 const HELP = /\b(?:help(?:s|ing)?|assist(?:s|ing)?)\b/;
 const ACTOR =
   /\b(?:glove|i(?:'m| am| will|'ll)?|let me|we(?:'ll| will| are|'re)?|now|already)\b/;
+// A claim is about help happening now, or about a specific finger. "The glove will help
+// you open" only describes the device (true while assistance is on) and is not a claim.
+const NOW_OR_FINGER =
+  /\b(?:helping|assisting|thumb|index|middle|ring|little|pinky|fingers?)\b/;
 const OFFER =
   /\b(?:would you like|do you want|shall i|should i|can i|if you (?:want|like)|ask me)\b/;
 
@@ -24,7 +28,8 @@ export function claimsGloveHelp(text: string): boolean {
         !OFFER.test(sentence) &&
         !/\b(?:no|not|can't|cannot|couldn't|won't)\b/.test(sentence) &&
         HELP.test(sentence) &&
-        ACTOR.test(sentence),
+        ACTOR.test(sentence) &&
+        NOW_OR_FINGER.test(sentence),
     );
 }
 
