@@ -1,7 +1,8 @@
 import { Icon } from '../../design-system';
 import { clamp01, fingerName, pct } from './format';
 
-export type GaugeState = 'idle' | 'active' | 'assist' | 'reached';
+/** `stopped`: the glove stopped helping because this finger resisted. */
+export type GaugeState = 'idle' | 'active' | 'assist' | 'reached' | 'stopped';
 
 /**
  * A tall live gauge for one glove finger (0% open at the bottom, 100% closed at the top).
@@ -50,15 +51,18 @@ export function FingerGauge({
     assisting && state !== 'idle' && b != null && v != null && v < b;
   const own = v ?? 0;
   const help = helping ? b! - v! : 0;
+  const stopped = !free && state === 'stopped';
   const status = free
     ? 'Free'
-    : v == null
-      ? 'Not seen'
-      : inBand
-        ? 'Reached'
-        : helping && help > 0.01
-          ? 'Glove helping'
-          : '';
+    : stopped
+      ? 'Stopped'
+      : v == null
+        ? 'Not seen'
+        : inBand
+          ? 'Reached'
+          : helping && help > 0.01
+            ? 'Glove helping'
+            : '';
   const valueText = [
     v == null ? 'not seen' : pct(v),
     free ? 'free finger' : `goal ${pct(target)}`,
@@ -74,11 +78,20 @@ export function FingerGauge({
       className="mx-gauge"
       data-highlighted={highlighted || undefined}
       data-state={
-        free ? 'free' : inBand ? 'reached' : helping ? 'assist' : state
+        free
+          ? 'free'
+          : stopped
+            ? 'stopped'
+            : inBand
+              ? 'reached'
+              : helping
+                ? 'assist'
+                : state
       }
     >
       <span className="mx-gauge__name">
         {highlighted && <span aria-hidden="true">↓</span>}
+        {stopped && <Icon name="caution" className="mx-gauge__icon" />}
         {status === 'Reached' && (
           <Icon name="check" className="mx-gauge__icon" />
         )}

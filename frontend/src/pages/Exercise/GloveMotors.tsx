@@ -100,8 +100,10 @@ export function GloveMotors() {
               />
             </span>
             <span className="glove-motor__name">{NAMES[m.finger]}</span>
+            {/* Two short lines ("20%" over "Letting go") so narrow cells never wrap to three. */}
             <span className="glove-motor__state">
-              {m.position}% · {WORDS[m.state]}
+              <span className="glove-motor__value">{m.position}%</span>{' '}
+              <span className="glove-motor__word">{WORDS[m.state]}</span>
             </span>
           </li>
         ))}

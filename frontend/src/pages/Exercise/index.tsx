@@ -10,7 +10,14 @@ import {
   Switch,
   Icon,
 } from '../../design-system';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useStore } from 'zustand';
 import { useRuntime, useExerciseView, useSavingStatus } from '../../runtime';
@@ -46,7 +53,8 @@ import type { AttemptResult } from '../../contracts/engine';
 import { liveFingerState } from './fingerState';
 import { LiveFingerMeters } from './LiveFingerMeters';
 import { GloveMotors } from './GloveMotors';
-import { attemptStatus } from './attemptStatus';
+import { attemptStatus, liveStop, stopFor, type LiveStop } from './attemptStatus';
+import { useResistanceStop } from './resistanceStop';
 import { SuccessTick } from './SuccessTick';
 import { SessionRecap, useSessionAttempts } from './SessionRecap';
 import {
@@ -117,9 +125,13 @@ const Hand = memo(function Hand() {
     return vision.source.onFrame(update);
   }, [vision, vision.source, runtime]);
   const actual = useCallback(() => actualJoints.current, []);
+  // Read per frame by the hand: a ref keeps the callback (and the canvas) stable.
+  const stopRef = useRef<LiveStop | null>(null);
+  stopRef.current = useResistanceStop();
   const state = useCallback(
     (finger: string) => {
       const v = runtime.exercise.view();
+      const stop = liveStop(stopRef.current, v.phase, v.index);
       const liveFinger =
         therapyState.current?.pose === v.pose.id
           ? therapyState.current.fingers.find((f) => f.finger === finger)
@@ -134,7 +146,8 @@ const Hand = memo(function Hand() {
             ? (vision.latest.closure?.[finger as FingerId] ?? null)
             : null,
         best: v.activeMax[finger as FingerId] ?? null,
-        assisting: v.assisting,
+        assisting: v.assisting && !stop,
+        stop: stopFor(stop, finger as FingerId),
       });
     },
     [runtime, vision],
@@ -170,8 +183,12 @@ function readCameraPreference(realCamera: boolean) {
     return realCamera;
   }
 }
-/** The virtual hand stays prominent next to an optional small camera panel: the virtual hand against its target, and what the camera sees. */
-export function LiveStage() {
+/**
+ * The virtual hand stays prominent with an optional small camera inset: the virtual hand against
+ * its target, and what the camera sees. `children` are overlays drawn over the stage (success
+ * tick, attempt feedback) so they never take layout space from the hand.
+ */
+export function LiveStage({ children }: { children?: ReactNode }) {
   const realCamera = useVision().source.kind === 'camera';
   const [camera, setCamera] = useState(() => readCameraPreference(realCamera));
   const toggle = (on: boolean) => {
@@ -206,6 +223,7 @@ export function LiveStage() {
           </div>
         </section>
       )}
+      {children}
     </div>
   );
 }
@@ -213,6 +231,7 @@ function LiveDetails({ onBrake }: { onBrake: () => void }) {
   const runtime = useRuntime();
   const view = useExerciseView();
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
+  const stop = useResistanceStop();
   return (
     <aside className="live-details">
       <PhaseRing
@@ -221,13 +240,14 @@ function LiveDetails({ onBrake }: { onBrake: () => void }) {
         elapsed={view.phaseElapsed}
         duration={view.phaseDuration}
         waiting={view.phase === 'PRESENT' && !seen}
-        status={attemptStatus(view.phase, view.lastResult, view.index)}
+        status={attemptStatus(view.phase, view.lastResult, view.index, stop)}
       />
       <LiveFingerMeters
         pose={view.pose}
         phase={view.phase}
         activeMax={view.activeMax}
         assisting={view.assisting}
+        stop={liveStop(stop, view.phase, view.index)}
       />
       <GloveMotors />
       <p className="hp-note live-direction-note">
@@ -350,6 +370,7 @@ export default function Exercise() {
       : 0,
   );
   const helpOffered = useExerciseView((v) => !!v.helpOffered);
+  const resistance = useResistanceStop();
   const status =
     phase === 'ATTEMPT' && helpOffered
       ? {
@@ -357,7 +378,7 @@ export default function Exercise() {
           tone: 'assist' as const,
           done: false,
         }
-      : attemptStatus(phase, lastResult, index);
+      : attemptStatus(phase, lastResult, index, resistance);
   const next = plan.flatMap((p) =>
     Array.from({ length: Math.min(10, Math.max(0, p.reps)) }, () => p.pose),
   )[index + 1];
@@ -411,8 +432,18 @@ export default function Exercise() {
   }, [live, runtime]);
   // Remember only our own automatic downgrade, so a helper's explicit "Simple voice" choice stays.
   const autoSimple = useRef(false);
+  // The coach starts once per session (a second start greets again). The session's server id
+  // arrives a moment after practice starts; wait for it so the transcript and the previous-session
+  // context are right, but not past 2 s (a slow or offline save): then start without it and
+  // attach the id if it arrives later. Safety announcements never wait: they are always armed.
+  const voiceSession = useRef<{ id: number | null } | null>(null);
+  const attachVoice = voice.attach;
   useEffect(() => {
-    if (!live || health.isPending) return;
+    if (!live) {
+      voiceSession.current = null;
+      return;
+    }
+    if (health.isPending) return;
     if (health.data?.gemini === false && voiceMode.current === 'live') {
       autoSimple.current = true;
       setVoiceMode('simple');
@@ -425,18 +456,41 @@ export default function Exercise() {
       autoSimple.current = false;
       setVoiceMode('live');
     }
-    void startVoice(voiceSessionId).catch((e) =>
-      setError((e as Error).message),
+    const started = voiceSession.current;
+    if (started) {
+      if (started.id === null && voiceSessionId !== null) {
+        started.id = voiceSessionId;
+        attachVoice(voiceSessionId);
+      }
+      return;
+    }
+    // Deferred even with an id, so StrictMode's mount/unmount/mount check never starts twice.
+    const timer = window.setTimeout(
+      () => {
+        voiceSession.current = { id: voiceSessionId };
+        void startVoice(voiceSessionId).catch((e) =>
+          setError((e as Error).message),
+        );
+      },
+      voiceSessionId === null ? 2000 : 0,
     );
+    return () => window.clearTimeout(timer);
   }, [
     live,
     voiceSessionId,
     startVoice,
+    attachVoice,
     setVoiceMode,
     health.isPending,
     health.data?.gemini,
   ]);
-  useEffect(() => () => stopVoice(), [stopVoice]);
+  useEffect(
+    () => () => {
+      voiceSession.current = null;
+      stopVoice();
+    },
+    [stopVoice],
+  );
   async function start() {
     if (!checkPreflight()) return;
     setBusy(true);
@@ -564,23 +618,32 @@ export default function Exercise() {
     >
       <div className="live-layout">
         <div className="live-hero">
-          <SuccessTick phase={phase} index={index} result={lastResult} />
           <div className="live-heading">
             <h1
               className={`instruction${status ? ` instruction--${status.tone}` : ''}`}
             >
               {status ? (
                 <>
-                  {status.done && <Icon name="check" />} {status.title}
+                  {status.done ? (
+                    <Icon name="check" />
+                  ) : (
+                    status.tone === 'caution' && <Icon name="caution" />
+                  )}{' '}
+                  {status.title}
                 </>
               ) : (
                 instruction
               )}
             </h1>
-            {status && phase !== 'REST' ? (
-              <p className="pose-hint">{instruction}</p>
+            {status?.hint ? (
+              <p className="pose-hint">{status.hint}</p>
+            ) : status ? (
+              // While holding, keep the pose in view; once relaxing, only "Next".
+              (phase === 'HOLD' || phase === 'ASSIST_HOLD') && (
+                <p className="pose-hint">{instruction}</p>
+              )
             ) : (
-              !status && hint && <p className="pose-hint">{hint}</p>
+              hint && <p className="pose-hint">{hint}</p>
             )}
             {(phase === 'REST' || phase === 'RELEASE') && (
               <p className="pose-next">
@@ -632,11 +695,13 @@ export default function Exercise() {
             </Button>
           </Inline>
           {/* After the actions in DOM (tab order), above them on screen. */}
-          <LiveStage />
+          <LiveStage>
+            <SuccessTick phase={phase} index={index} result={lastResult} />
+            <AttemptResultToast />
+          </LiveStage>
         </div>
         <LiveDetails onBrake={brake} />
       </div>
-      <AttemptResultToast />
       {confirm && (
         <ConfirmDialog
           title="Finish for today?"

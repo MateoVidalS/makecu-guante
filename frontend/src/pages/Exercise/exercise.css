@@ -1,6 +1,10 @@
-/* The hand owns the stage. Supporting information shares a compact column. */
+/*
+ * The hand owns the stage. Supporting information shares a compact column on the right
+ * (never the left edge: neglect). Attempt feedback, the success tick and the camera are
+ * overlays inside the stage, so they never shift the layout.
+ */
 .exercise-live {
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
 }
 .exercise-live .live-layout {
   grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--body) * 23));
@@ -39,6 +43,8 @@
   flex: 1;
   min-height: 0;
   display: flex;
+  /* Overlays size themselves to the stage, not to the viewport. */
+  container: live-stage / size;
 }
 .live-panel {
   position: relative;
@@ -85,15 +91,41 @@
   min-height: 0;
   border-radius: var(--radius-card);
 }
-/* Fixed stage corner: the camera never reduces the hand's canvas width. */
+/*
+ * Picture-in-picture in the stage's top-right corner, right under its switch: the camera never
+ * reduces the hand's canvas. It scales with the stage and keeps the webcam's 4:3 shape.
+ */
 .live-panel--camera {
   position: absolute;
+  z-index: 1;
   inset-inline-end: var(--space-12);
-  inset-block-end: var(--space-12);
-  width: calc(var(--control-lg) * 3);
-  height: calc(var(--control-lg) * 2);
+  inset-block-start: calc(var(--control-md) + var(--space-4));
+  width: min(
+    clamp(calc(var(--control-lg) * 3), 25cqw, calc(var(--control-lg) * 5)),
+    60cqh
+  );
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   background: var(--chrome);
+}
+/* No room for an inset next to the hand: the switch is not offered either. */
+@container live-stage (max-height: 260px) or (max-width: 560px) {
+  .live-camera-toggle,
+  .live-panel--camera {
+    display: none;
+  }
+}
+/* Attempt feedback floats over the bottom of the stage (the wrist), above Pause and Brake. */
+.exercise-live .live-stage > .attempt-toast {
+  position: absolute;
+  /* Above the success tick's veil, so the sentence stays crisp. */
+  z-index: 6;
+  inset-inline: 0;
+  inset-block-end: var(--space-12);
+  width: max-content;
+  max-width: calc(100% - var(--space-24));
+  margin-inline: auto;
+  box-shadow: var(--elevation-overlay);
 }
 .live-panel--camera .live-panel__title {
   color: var(--on-chrome);
@@ -102,6 +134,20 @@
   top: auto;
   bottom: var(--space-8);
 }
+/* "Simulated camera" sits under the title, clear of the confidence pill. */
+.live-panel--camera .camera-overlay__placeholder {
+  inset: calc(var(--control-md) - var(--space-8)) auto auto var(--space-12);
+  text-align: start;
+}
+/* The "can't see your hand" note keeps to the middle, clear of the camera inset. */
+@container live-stage (min-height: 261px) and (min-width: 561px) {
+  .live-stage[data-camera='shown'] .hand-message {
+    inset-inline: 0;
+    width: fit-content;
+    max-width: 40cqw;
+    margin-inline: auto;
+  }
+}
 .live-panel--camera .live-camera-toggle .ds-switch-row__text {
   display: none;
 }
@@ -109,9 +155,10 @@
   font-size: var(--small);
   color: var(--muted);
 }
+/* `safe`: if the column ever runs out of room it grows downward, never under the header. */
 .exercise-live .live-details {
   grid-template-columns: minmax(0, 1fr);
-  align-content: center;
+  align-content: safe center;
   align-items: stretch;
   gap: var(--space-16);
   text-align: start;
@@ -161,10 +208,6 @@
 .exercise-live .therapy-live .ds-button {
   padding-inline: var(--space-8);
 }
-.exercise-live .mx-attempt {
-  justify-self: center;
-  max-width: 100%;
-}
 .exercise-live .mx-gauge[data-highlighted] {
   outline: var(--focus-width) solid var(--accent);
   outline-offset: var(--space-4);
@@ -176,50 +219,69 @@
   .practice-actions {
   display: flex;
 }
+/*
+ * Laptops (down to 1280×670, a 1920×1200 screen at 150%): the hand is limited by height, so the
+ * column takes a little more width (fewer wrapped lines) and trims; the hand keeps its size.
+ */
+@media (max-height: 920px), (max-width: 1280px) {
+  .exercise-live .live-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--body) * 27));
+  }
+}
+@media (max-height: 920px) {
+  .exercise-live .live-details {
+    gap: var(--space-12);
+  }
+  .exercise-live .mx-gauge {
+    --gauge-h: calc(var(--control-lg) * 1.5);
+  }
+}
 @media (max-height: 800px) {
   .exercise-live .live-details {
     gap: var(--space-8);
   }
   .exercise-live .mx-gauge {
-    --gauge-h: var(--control-lg);
+    --gauge-h: var(--space-48);
   }
-  .exercise-live .mx-gauge__status {
-    display: none;
-  }
-  .exercise-live .mx-legend--gauge {
-    display: none;
-  }
-  .live-panel--camera {
+  .exercise-live .mx-gauge__status,
+  .exercise-live .mx-legend--gauge,
+  .exercise-live .glove-motors__note {
     display: none;
   }
 }
-/* At laptop width the details form a bottom strip; the camera yields first. */
-@media (max-width: 1280px) {
+@media (max-height: 700px) {
+  /* Each motor keeps its name, % and word; the small fill bar repeats the %. */
+  .exercise-live .glove-motor__bar {
+    display: none;
+  }
+}
+/* Tablet width: the details form a bottom strip, with the phase ring in the middle (neglect). */
+@media (max-width: 960px) {
   .exercise-live .live-layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
     gap: var(--space-12);
   }
   .exercise-live .live-details {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 2fr);
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 2fr);
     grid-template-rows: auto auto;
     column-gap: var(--space-24);
     row-gap: var(--space-8);
     align-content: start;
   }
   .exercise-live .phase-ring {
-    grid-column: 1;
+    grid-column: 2;
     grid-row: 1 / 3;
     justify-content: center;
     flex-direction: column;
     text-align: center;
   }
   .exercise-live .mx-gauges {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 1;
   }
   .exercise-live .glove-motors {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: 2;
   }
   .exercise-live .live-tools {
@@ -229,31 +291,35 @@
     padding: 0;
   }
   .exercise-live .mx-gauge {
-    --gauge-h: var(--control-lg);
+    --gauge-h: var(--space-48);
   }
   .exercise-live .mx-gauge__status,
   .exercise-live .mx-legend--gauge,
-  .live-panel--camera {
+  .exercise-live .glove-motors__note {
     display: none;
   }
 }
 @media (max-width: 800px) {
   .exercise-live .live-details {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
   }
   .exercise-live .phase-ring {
+    grid-column: 1 / -1;
     grid-row: 1;
+    flex-direction: row;
   }
   .exercise-live .mx-gauges {
-    grid-column: 2;
-  }
-  .exercise-live .glove-motors {
     grid-column: 1;
     grid-row: 2;
   }
+  .exercise-live .glove-motors {
+    grid-column: 1;
+    grid-row: 3;
+  }
   .exercise-live .live-tools {
     grid-column: 2;
-    grid-row: 2;
+    grid-row: 2 / 4;
   }
 }
 
@@ -365,6 +431,14 @@
 .glove-motor__name {
   color: var(--text);
 }
+.glove-motor__state {
+  display: grid;
+  justify-items: center;
+  line-height: var(--leading-snug);
+}
+.glove-motor__word {
+  white-space: nowrap;
+}
 .glove-motor[data-state='following'] .glove-motor__fill {
   background: var(--active);
   opacity: 0.6;
@@ -388,7 +462,7 @@
     transition: none;
   }
 }
-@media (max-width: 1280px) and (min-width: 801px) {
+@media (max-width: 960px) and (min-width: 801px) {
   .exercise-live .therapy-live {
     grid-template-columns: minmax(0, 1fr) auto auto auto;
     align-items: center;
@@ -400,7 +474,7 @@
     font-size: var(--body);
   }
 }
-@media (max-width: 1280px) {
+@media (max-width: 960px) {
   .exercise-live .live-tools {
     align-content: start;
   }
@@ -432,19 +506,36 @@
 }
 .shell--focus:has(#safety-banner-slot [role='alert'])
   .exercise-live
-  :is(.mx-gauge__status, .mx-legend--gauge, .live-panel--camera) {
+  :is(.mx-gauge__status, .mx-legend--gauge) {
   display: none;
+}
+/*
+ * Short screens with the banner: the header chip and the banner already say the glove stopped,
+ * and "make the pose yourself" does not apply while stopped. Brake, Resume, the gauges and
+ * "How I feel" keep their room.
+ */
+@media (max-height: 800px) {
+  .shell--focus:has(#safety-banner-slot [role='alert'])
+    .exercise-live
+    :is(.glove-motors, .live-direction-note) {
+    display: none;
+  }
 }
 
 .live-direction-note {
   margin: 0;
   font-size: var(--small);
 }
-@media (max-width: 1280px) {
+@media (max-width: 960px) {
   .exercise-live .live-direction-note {
     grid-column: 1 / -1;
     grid-row: 3;
     text-align: center;
+  }
+}
+@media (max-width: 800px) {
+  .exercise-live .live-direction-note {
+    grid-row: 4;
   }
 }
 
@@ -458,18 +549,19 @@
 .exercise-live .instruction--neutral {
   color: var(--muted);
 }
+.exercise-live .instruction--caution {
+  color: var(--caution-text);
+}
 .exercise-live .instruction svg {
   vertical-align: -0.1em;
 }
 
-/* Success tick: a big check drawn over the stage when the pose is reached and held. */
-.exercise-live .live-hero {
-  position: relative;
-}
+/* Success tick: a big check drawn over the stage (not the heading or Brake) when the pose is reached and held. */
 .success-tick {
   position: absolute;
   inset: 0;
   z-index: 5;
+  border-radius: var(--radius-card);
   display: grid;
   place-content: center;
   justify-items: center;
@@ -479,8 +571,9 @@
   animation: success-tick-fade var(--dur-slow) var(--ease);
 }
 .success-tick svg {
-  inline-size: 160px;
-  block-size: 160px;
+  /* Shrinks with a short stage so the label stays inside it. */
+  inline-size: min(160px, 45cqh);
+  block-size: min(160px, 45cqh);
   animation: success-tick-pop 500ms var(--ease) both;
 }
 .success-tick__circle {

@@ -10,10 +10,12 @@ import {
   fingerName,
   pct,
 } from './format';
+import { resistanceStop, stopPlace } from './stop';
 
 const ICON: Record<ReturnType<typeof attemptOutcome>, IconName> = {
   own: 'check',
   helped: 'glove',
+  partial: 'glove',
   paused: 'pause',
   tried: 'hand',
 };
@@ -28,7 +30,12 @@ export function AttemptFeedbackCard({
 }) {
   const fills = attemptFills(result);
   const outcome = attemptOutcome(result);
-  const sentence = attemptSentence(result);
+  // A resistance stop is a safety event the voice already announced: say it here too,
+  // not "the glove helped". A safety pause (interrupted) keeps its own sentence.
+  const stop = outcome === 'paused' ? null : resistanceStop(result);
+  const sentence = stop
+    ? `Good effort. We stopped to keep your ${stopPlace(stop)} safe.`
+    : attemptSentence(result);
   const handLabel = GLOVE_FINGERS.filter((f) => fills[f])
     .map((f) => {
       const fill = fills[f]!;
@@ -40,7 +47,7 @@ export function AttemptFeedbackCard({
   return (
     <div
       className="attempt-toast mx-attempt"
-      data-outcome={outcome}
+      data-outcome={stop ? 'stopped' : outcome}
       role="status"
       aria-live="polite"
     >
@@ -53,7 +60,7 @@ export function AttemptFeedbackCard({
       <div className="mx-attempt__text">
         <strong className="mx-attempt__title">
           <span className="mx-attempt__icon">
-            <Icon name={ICON[outcome]} />
+            <Icon name={stop ? 'caution' : ICON[outcome]} />
           </span>
           {sentence}
         </strong>

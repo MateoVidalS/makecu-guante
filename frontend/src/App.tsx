@@ -41,6 +41,7 @@ import {
   exerciseProgress,
   evaluationProgress,
 } from './components/common/SessionProgress';
+import { RouteFocus } from './components/common/RouteFocus';
 import Home from './pages/Home';
 import Setup from './pages/Setup';
 import Calibrate from './pages/Calibrate';
@@ -182,6 +183,7 @@ export function Shell() {
             <SafetyBanner />
           </div>
         </div>
+        <RouteFocus />
         <main id="main" tabIndex={-1}>
           <PageErrorBoundary resetKey={location.pathname}>
             <Routes>

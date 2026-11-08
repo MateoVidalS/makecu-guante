@@ -43,6 +43,7 @@ import {
   type TimelineEntry,
 } from './transforms';
 import { directionLabel, LEGACY_GLOVE } from './direction';
+import { meaningful, RANGE_MARGIN_POINTS } from './thresholds';
 import type { AssistDirection } from '../../contracts/calibration';
 import type { TherapyMarker } from '../therapy/data';
 import { PhaseStrip } from './PhaseStrip';
@@ -60,6 +61,7 @@ export { ResistanceDumbbells } from './ResistanceDumbbells';
 export { PhaseStrip } from './PhaseStrip';
 export { VisualCard, VisualLegend } from './VisualCard';
 export * from './visuals';
+export * from './thresholds';
 export {
   assistSeries,
   decimate,
@@ -639,9 +641,16 @@ export function trendTakeaway(rows: ChartRow[], opening: boolean) {
   const measured = rows
     .filter((r) => !r.direction || r.direction === rows.at(-1)?.direction)
     .flatMap((r) => (typeof r.active === 'number' ? [r.active] : []));
-  const improving =
-    measured.length > 1 &&
-    (opening ? measured.at(-1)! < measured[0] : measured.at(-1)! > measured[0]);
+  // Rows are in %: compare whole points, and only past the margin.
+  const change =
+    measured.length > 1
+      ? meaningful(
+          Math.round(measured.at(-1)!),
+          Math.round(measured[0]),
+          RANGE_MARGIN_POINTS,
+        )
+      : 0;
+  const improving = opening ? change < 0 : change > 0;
   return improving
     ? opening
       ? 'opening further on your own'

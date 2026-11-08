@@ -20,10 +20,87 @@ import {
 import type { AssistDirection } from '../../contracts/calibration';
 import { directionOf, latestCohort } from './direction';
 import { phaseBands, type TimelineEntry } from './transforms';
+import {
+  compareRange,
+  compareResistance,
+  meaningful,
+  toPoints,
+  RANGE_MARGIN_POINTS,
+} from './thresholds';
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const pct = (v: number) => `${Math.round(v * 100)}%`;
+/** Same format as `formatDate` (charts/index), kept here to avoid a circular import. */
+const longDate = (value: string) =>
+  new Date(value).toLocaleDateString('en', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+const byTime = (
+  a: { started_at: string; id: number },
+  b: { started_at: string; id: number },
+) => Date.parse(a.started_at) - Date.parse(b.started_at) || a.id - b.id;
+
+/* ---------- Which sessions have something to show ---------- */
+
+/**
+ * Whether a finished session has an active range to show: open-pose points for the
+ * opening glove, the summary's per-finger range for the earlier closing glove.
+ */
+export function hasRangeData(session: Session, openingPoints?: RomPoint[]) {
+  return directionOf(session) === 'open'
+    ? !!openingPoints?.some(
+        (p) => p.session_id === session.id && directionOf(p) === 'open',
+      )
+    : !!session.summary?.per_finger.some((f) => f.active_max_mean != null);
+}
+
+/** Copy for a newest session that had nothing to show, naming the session shown instead. */
+export function skippedSessionNote(
+  newest: { assist_direction?: AssistDirection } | undefined,
+  shownDate: string,
+) {
+  return `Latest session had no ${directionOf(newest) === 'open' ? 'measured open-hand attempts' : 'range measurements'}; showing the session from ${longDate(shownDate)}.`;
+}
+
+export interface RangeSessions {
+  /** Finished sessions with a range to show, one glove direction, oldest first. */
+  measured: Session[];
+  /** The newest finished session, with or without a range. */
+  newest?: Session;
+  direction: AssistDirection;
+  /** Set when the newest finished session had no range and an older one is shown. */
+  note?: string;
+}
+
+/**
+ * Finished sessions to compare in range views. A short or interrupted session without
+ * open-hand attempts (or an unfinished one) never blanks the views: the latest session
+ * with data is shown, with a note naming its date.
+ */
+export function rangeSessions(
+  sessions: Session[] | undefined,
+  openingPoints?: RomPoint[],
+): RangeSessions {
+  const finished = (sessions ?? []).filter((s) => s.summary).sort(byTime);
+  const measured = latestCohort(
+    finished.filter((s) => hasRangeData(s, openingPoints)),
+  ).sort(byTime);
+  const newest = finished.at(-1),
+    shown = measured.at(-1);
+  return {
+    measured,
+    newest,
+    direction: directionOf(shown ?? newest),
+    note:
+      newest && shown && newest.id !== shown.id
+        ? skippedSessionNote(newest, shown.started_at)
+        : undefined,
+  };
+}
 
 /* ---------- Hand map ---------- */
 
@@ -49,26 +126,18 @@ export function handFromOverview(
   if (sessions) {
     // The overview uses each finger's first measured session, which may be newer
     // than the date on the hand map when history mixes three and five fingers.
-    const ordered = latestCohort(sessions.filter((s) => s.summary)).sort(
-      (a, b) =>
-        Date.parse(a.started_at) - Date.parse(b.started_at) || a.id - b.id,
-    );
-    ordered[0]?.summary?.per_finger.forEach((f) => {
-      first[f.finger] = { own: f.active_max_mean };
-    });
-    ordered.at(-1)?.summary?.per_finger.forEach((f) => {
-      last[f.finger] = { own: f.active_max_mean };
-    });
-    const assistDirection = directionOf(ordered.at(-1));
-    if (assistDirection === 'open') {
-      for (const [values, session] of [
-        [first, ordered[0]],
-        [last, ordered.at(-1)],
-      ] as const) {
+    // Sessions are whole: a finger missing from a measured session stays a gap.
+    const { measured, direction } = rangeSessions(sessions, openingPoints);
+    for (const [values, session] of [
+      [first, measured[0]],
+      [last, measured.at(-1)],
+    ] as const) {
+      if (!session) continue;
+      if (directionOf(session) === 'open')
         GLOVE_FINGERS.forEach((finger) => {
           const point = openingPoints?.find(
             (p) =>
-              p.session_id === session?.id &&
+              p.session_id === session.id &&
               p.finger === finger &&
               directionOf(p) === 'open',
           );
@@ -76,9 +145,12 @@ export function handFromOverview(
             own: point ? pullFromClosure(point.active_max_mean) : null,
           };
         });
-      }
+      else
+        session.summary?.per_finger.forEach((f) => {
+          values[f.finger] = { own: f.active_max_mean };
+        });
     }
-    return { first, last, assistDirection };
+    return { first, last, assistDirection: direction };
   }
   overview?.per_finger.forEach((f) => {
     first[f.finger] = { own: f.active_max_first };
@@ -205,11 +277,80 @@ export function effortTakeaway(points: EffortPoint[], finger: GloveFinger) {
   const first = measured[0].own!,
     last = measured.at(-1)!.own!;
   if (measured.length === 1) return `${cap(finger)}: ${pct(last)} on your own`;
-  if (Math.round(last * 100) > Math.round(first * 100))
+  const change = compareRange(last, first);
+  if (change > 0)
     return `${cap(finger)}: ${pct(first)} → ${pct(last)} on your own`;
-  if (Math.round(last * 100) < Math.round(first * 100))
+  if (change < 0)
     return `${cap(finger)}: ${pct(last)} on your own, down from ${pct(first)}`;
-  return `${cap(finger)}: steady at ${pct(last)} on your own`;
+  return `${cap(finger)}: about the same, ${pct(last)} on your own`;
+}
+
+type EffortTimelineEntry = TimelineEntry & {
+  /** Present on sessions from the API: null until the session is finished. */
+  summary?: unknown;
+};
+
+export interface LatestEffort {
+  /** The latest finished session with an open-pose measurement on any finger. */
+  session?: EffortPoint;
+  /** One row per glove finger for that session; a finger it did not measure is a gap. */
+  rows: { finger: GloveFinger; row?: EffortPoint }[];
+  /** Set when a newer finished session had nothing to show. */
+  note?: string;
+}
+
+/**
+ * The "latest session" for the effort bars: the newest finished session that measured
+ * something, never an unfinished or fist-only session that would blank every finger.
+ */
+export function latestEffort(
+  series: { finger: GloveFinger; rows: EffortPoint[] }[],
+  timeline: EffortTimelineEntry[] = [],
+): LatestEffort {
+  const unfinished = new Set(
+    timeline.filter((s) => s.summary === null).map((s) => s.id),
+  );
+  const newestFirst = (a: EffortPoint, b: EffortPoint) =>
+    Date.parse(b.date) - Date.parse(a.date) || b.sessionId - a.sessionId;
+  const finished = series
+    .flatMap((s) => s.rows)
+    .filter((r) => !unfinished.has(r.sessionId))
+    .sort(newestFirst);
+  const session = finished.find((r) => r.own != null || r.glove != null);
+  const newest = finished[0];
+  return {
+    session,
+    rows: series.map(({ finger, rows }) => ({
+      finger,
+      row: !session
+        ? undefined
+        : (rows.find((r) => r.sessionId === session.sessionId) ?? {
+            ...session,
+            own: null,
+            glove: null,
+            rate: null,
+          }),
+    })),
+    note:
+      session && newest && newest.sessionId !== session.sessionId
+        ? skippedSessionNote(newest, session.date)
+        : undefined,
+  };
+}
+
+/** Title for the latest effort bars: name a finger only when it clearly did the most. */
+export function latestEffortTitle(
+  rows: { finger: GloveFinger; row?: Pick<EffortPoint, 'own'> }[],
+) {
+  const ranked = rows
+    .flatMap(({ finger, row }) =>
+      row?.own == null ? [] : [{ finger, own: toPoints(row.own) }],
+    )
+    .sort((a, b) => b.own - a.own);
+  if (ranked.length < 2) return 'Latest session';
+  return meaningful(ranked[0].own, ranked[1].own, RANGE_MARGIN_POINTS) > 0
+    ? `${cap(ranked[0].finger)} did the most on its own last time`
+    : 'Fingers did about the same on their own last time';
 }
 
 /* ---------- Practice calendar ---------- */
@@ -317,10 +458,23 @@ export interface DumbbellRow {
   fast: number | null;
   /** fast − slow: the speed-dependent part (spasticity proxy). */
   gap: number | null;
+  /** The sweep stopped safely before it finished: shown, never compared. */
+  stopped: boolean;
 }
+
+/** Evaluation records whose finger results say which sweeps stopped safely. */
+export type StoppedSweeps = Pick<Evaluation, 'id' | 'fingers'>[];
+
+/** A row with a measurement to show (slow or fast) from a sweep that finished. */
+export const dumbbellShown = (r: DumbbellRow) =>
+  (r.slow != null || r.fast != null) && !r.stopped;
+/** A row whose fast − slow can be compared with another evaluation. */
+export const dumbbellComparable = (r: DumbbellRow) =>
+  r.gap != null && !r.stopped;
 
 export function dumbbellRows(
   points: ResistancePoint[],
+  evaluations: StoppedSweeps = [],
 ): Record<GloveFinger, DumbbellRow[]> {
   const out = {
     thumb: [],
@@ -329,14 +483,20 @@ export function dumbbellRows(
     ring: [],
     pinky: [],
   } as Record<GloveFinger, DumbbellRow[]>;
-  const evaluations = new Map(points.map((p) => [p.evaluation_id, p]));
+  const stopped = new Set(
+    evaluations.flatMap((e) =>
+      e.fingers.filter((f) => f.aborted).map((f) => `${e.id}-${f.finger}`),
+    ),
+  );
+  const byEvaluation = new Map(points.map((p) => [p.evaluation_id, p]));
   const byFinger = new Map(
     points.map((p) => [`${p.evaluation_id}-${p.finger}`, p]),
   );
   // Legacy and subset evaluations retain a row for each unmeasured finger.
-  evaluations.forEach((evaluation) => {
+  byEvaluation.forEach((evaluation) => {
     GLOVE_FINGERS.forEach((finger) => {
-      const p = byFinger.get(`${evaluation.evaluation_id}-${finger}`);
+      const key = `${evaluation.evaluation_id}-${finger}`;
+      const p = byFinger.get(key);
       const slow = p?.slow ?? null;
       const fast = p?.fast ?? null;
       out[finger].push({
@@ -348,6 +508,7 @@ export function dumbbellRows(
         fast,
         gap:
           p?.dependence ?? (slow != null && fast != null ? fast - slow : null),
+        stopped: stopped.has(key),
       });
     });
   });
@@ -373,37 +534,87 @@ export function dumbbellDomain(rows: DumbbellRow[]): [number, number] {
   return [lo, hi];
 }
 
+/**
+ * Rows the compact chart keeps per finger: the first evaluation with a finished
+ * measurement and the latest one (the focus evaluation when it measured this finger).
+ * An evaluation that stopped early or skipped a finger never hides the earlier result.
+ */
+export function compactDumbbellRows(
+  rows: Record<GloveFinger, DumbbellRow[]>,
+  focusId: number | undefined,
+): Record<GloveFinger, DumbbellRow[]> {
+  const out = {} as Record<GloveFinger, DumbbellRow[]>;
+  GLOVE_FINGERS.forEach((f) => {
+    const list = rows[f];
+    const shown = list.filter(dumbbellShown);
+    const focus = list.find((r) => r.evaluationId === focusId);
+    const latest = focus && dumbbellShown(focus) ? focus : shown.at(-1);
+    // Nothing finished for this finger: keep the focus row so the gap stays visible.
+    const keep = new Set(latest ? [shown[0], latest] : [focus ?? list.at(-1)]);
+    out[f] = list.filter((r) => keep.has(r));
+  });
+  return out;
+}
+
+/** Per finger: the comparable fast − slow values of the latest glove direction, oldest first. */
+function comparableGaps(
+  rows: Record<GloveFinger, DumbbellRow[]>,
+  upTo?: number,
+) {
+  return GLOVE_FINGERS.map((finger) => ({
+    finger,
+    gaps: latestCohort(
+      rows[finger]
+        .filter((r) => upTo == null || Date.parse(r.date) <= upTo)
+        .map((r) => ({ ...r, started_at: r.date })),
+    )
+      .filter(dumbbellComparable)
+      .map((r) => r.gap!),
+  }));
+}
+
 export function resistanceTakeaway(
   rows: Record<GloveFinger, DumbbellRow[]>,
   upTo?: number,
 ) {
-  const changes = GLOVE_FINGERS.flatMap((f) => {
-    const list = latestCohort(
-      rows[f]
-        .map((r) => ({ ...r, started_at: r.date }))
-        .filter((r) => upTo == null || Date.parse(r.date) <= upTo),
-    ).filter(
-      (r) => r.gap != null && (upTo == null || Date.parse(r.date) <= upTo),
-    );
-    return list.length > 1 ? [list.at(-1)!.gap! - list[0].gap!] : [];
-  });
+  const perFinger = comparableGaps(rows, upTo);
+  // Compare whole mA, as shown, and only past the margin: smaller moves are noise.
+  const changes = perFinger
+    .filter((f) => f.gaps.length > 1)
+    .map((f) => ({
+      finger: f.finger,
+      dir: compareResistance(f.gaps.at(-1)!, f.gaps[0]),
+    }));
   if (!changes.length) {
-    const any = GLOVE_FINGERS.some((f) => rows[f].some((r) => r.gap != null));
-    return any
-      ? 'Fast sweeps met more resistance than slow ones'
-      : 'No resistance measured yet';
+    // One evaluation per finger: describe fast against slow, not a change.
+    const latest = perFinger.flatMap((f) =>
+      f.gaps.length ? [compareResistance(f.gaps.at(-1)!, 0)] : [],
+    );
+    if (!latest.length) return 'No resistance measured yet';
+    if (latest.every((d) => d > 0))
+      return 'Fast sweeps met more resistance than slow ones';
+    if (latest.every((d) => d === 0))
+      return 'Fast and slow sweeps met about the same resistance';
+    if (latest.every((d) => d < 0))
+      return 'Slow sweeps met more resistance than fast ones';
+    return 'Fast and slow resistance differed by finger';
   }
-  if (changes.every((c) => c < 0))
-    return changes.length === GLOVE_FINGERS.length
-      ? 'Speed-dependent resistance eased on every finger'
-      : 'Speed-dependent resistance eased on measured fingers';
-  if (changes.every((c) => c > 0))
-    return changes.length === GLOVE_FINGERS.length
-      ? 'Speed-dependent resistance rose on every finger'
-      : 'Speed-dependent resistance rose on measured fingers';
-  if (changes.every((c) => c === 0))
-    return 'Speed-dependent resistance held steady';
-  return 'Speed-dependent resistance changed unevenly across fingers';
+  const where = (dir: -1 | 1) => {
+    const fingers = changes.filter((c) => c.dir === dir);
+    if (fingers.length === GLOVE_FINGERS.length) return 'on every finger';
+    if (fingers.length === changes.length)
+      return fingers.length === 1
+        ? `on the ${fingers[0].finger}`
+        : 'on measured fingers';
+    return 'on some fingers';
+  };
+  const eased = changes.some((c) => c.dir < 0),
+    rose = changes.some((c) => c.dir > 0);
+  if (eased && rose)
+    return 'Speed-dependent resistance changed unevenly across fingers';
+  if (eased) return `Speed-dependent resistance eased ${where(-1)}`;
+  if (rose) return `Speed-dependent resistance rose ${where(1)}`;
+  return 'Speed-dependent resistance stayed about the same';
 }
 
 /** One evaluation plus the one before it (from history), so the dumbbells show the change. */

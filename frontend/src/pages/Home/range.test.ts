@@ -65,3 +65,57 @@ it('compares open poses within one direction and ignores directionless previous 
     rangeComparison([legacy, latest], opening)!.deltas[0].delta,
   ).toBeNull();
 });
+
+describe('a session without open-hand attempts', () => {
+  const open = (id: number, day: string, finished = true) => ({
+    ...session(id, day, null),
+    assist_direction: 'open' as const,
+    summary: finished ? session(id, day, null).summary : null,
+  });
+  const points = (id: number, day: string, closure: number) =>
+    (['thumb', 'index', 'middle', 'ring', 'pinky'] as const).map((finger) => ({
+      session_id: id,
+      started_at: `2026-11-${day}T10:00:00Z`,
+      finger,
+      pose: 'open' as const,
+      active_max_mean: closure,
+      is_demo: false,
+      assist_direction: 'open' as const,
+    }));
+  const rom = [...points(1, '01', 0.7), ...points(2, '06', 0.5)];
+
+  it('compares the latest measured sessions instead of claiming a first range', () => {
+    // Session 3 practiced only fists; session 4 never finished (0 attempts).
+    const r = rangeComparison(
+      [open(1, '01'), open(2, '06'), open(3, '07'), open(4, '08', false)],
+      rom,
+    )!;
+    expect(r.latest.id).toBe(2);
+    expect(r.deltas.every((d) => d.now != null)).toBe(true);
+    expect(r.deltas[0]).toMatchObject({ delta: 20 });
+    expect(r.changeText).toBe(
+      'Your thumb opens further on its own than the time before.',
+    );
+    expect(r.note).toBe(
+      'Latest session had no measured open-hand attempts; showing the session from Nov 6, 2026.',
+    );
+  });
+  it('says "first range" only when one session truly has data', () => {
+    const r = rangeComparison(
+      [open(1, '01'), open(2, '06'), open(3, '07')],
+      points(2, '06', 0.5),
+    )!;
+    expect(r.latest.id).toBe(2);
+    expect(r.changeText).toMatch(/first range/);
+    expect(rangeComparison([open(3, '07')], [])).toBeNull();
+  });
+  it('calls a change under the margin steady', () => {
+    const r = rangeComparison(
+      [open(1, '01'), open(2, '06')],
+      [...points(1, '01', 0.52), ...points(2, '06', 0.48)],
+    )!;
+    expect(r.deltas[0].delta).toBe(4);
+    expect(r.changeText).toBe('About the same as the time before. Steady.');
+    expect(r.note).toBeUndefined();
+  });
+});

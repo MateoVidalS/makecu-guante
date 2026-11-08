@@ -90,6 +90,7 @@ export function VisualCard({
   emptyText = 'No measurements recorded yet.',
   className,
   aside,
+  note,
   children,
 }: {
   title: ReactNode;
@@ -103,6 +104,8 @@ export function VisualCard({
   emptyText?: string;
   className?: string;
   aside?: ReactNode;
+  /** A short caveat on which records are shown, e.g. an older session than the newest. */
+  note?: ReactNode;
   children?: ReactNode;
 }) {
   const id = useId().replace(/:/g, '');
@@ -116,6 +119,7 @@ export function VisualCard({
           {title}
         </h3>
         {hint && <p className="chart-hint">{hint}</p>}
+        {note && !loading && <p className="chart-hint chart-note">{note}</p>}
       </header>
       {loading ? (
         <div role="status" className="viz-loading">

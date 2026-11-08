@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ExercisePhase, AttemptResult } from '../../contracts/engine';
+import { resistanceStop } from '../../components/metrics/stop';
 
 export type TickKind = 'own' | 'helped';
 
@@ -17,7 +18,9 @@ export function tickFor(
   if (previous === 'HOLD' && phase === 'RELEASE') return 'own';
   if (phase === 'REST' && result && result.index === index) {
     if (result.reached_active) return 'own';
-    if (result.assisted && result.reached_final) return 'helped';
+    // No celebration when the glove had to stop for resistance (the screen says so).
+    if (result.assisted && result.reached_final && !resistanceStop(result))
+      return 'helped';
   }
   return null;
 }

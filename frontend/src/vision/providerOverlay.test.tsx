@@ -257,6 +257,17 @@ describe('camera overlay', () => {
     act(() => source.emit(visible()));
     expect(screen.getByText('Hand detected 95%')).toBeDefined();
     expect(screen.getAllByText('50%')).toHaveLength(5);
+    // Overshoot past the calibrated range stays on the 0–100% scale.
+    act(() =>
+      source.emit({
+        ...visible(),
+        closure: { ...fingerMap(() => 1.04), index: -0.03, middle: NaN },
+      }),
+    );
+    expect(screen.getAllByText('100%')).toHaveLength(3);
+    expect(screen.getAllByText('0%')).toHaveLength(1);
+    expect(screen.getAllByText('—')).toHaveLength(1);
+    expect(screen.queryByText(/10[1-9]%/)).toBeNull();
     act(() => source.emit({ ...visible(), closure: null }));
     expect(screen.getAllByText('—')).toHaveLength(5);
     expect(

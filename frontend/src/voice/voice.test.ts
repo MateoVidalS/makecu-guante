@@ -1034,3 +1034,38 @@ describe('asking for help by voice', () => {
     s.controller.dispose();
   });
 });
+
+it('attaches a late session id without restarting or greeting again', async () => {
+  const s = setup();
+  const greetings = () =>
+    vi
+      .mocked(s.deps.local.speak)
+      .mock.calls.filter(([text]) =>
+        text.startsWith("Let's practice together."),
+      );
+  s.controller.setMode('simple');
+  s.controller.attach(5); // not coaching yet: nothing to attach to
+  expect(s.deps.sessions).not.toHaveBeenCalled();
+  await s.controller.start(null);
+  expect(greetings()).toHaveLength(1);
+  s.controller.attach(7);
+  s.controller.attach(8); // the first id wins
+  expect(greetings()).toHaveLength(1);
+  expect(s.controller.state.status).not.toBe('off');
+  // Previous-session context is looked up again with the real id.
+  expect(s.deps.sessions).toHaveBeenCalledTimes(2);
+  s.emit({ kind: 'safety', source: 'overcurrent', finger: 'index', ma: 950 });
+  s.controller.stop();
+  await Promise.resolve();
+  expect(s.deps.save).toHaveBeenCalledTimes(1);
+  expect(s.deps.save).toHaveBeenCalledWith(
+    7,
+    expect.arrayContaining([
+      expect.objectContaining({
+        role: 'system',
+        text: "I feel resistance opening your index, let's stop here.",
+      }),
+    ]),
+  );
+  s.controller.dispose();
+});

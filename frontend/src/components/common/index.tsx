@@ -37,6 +37,7 @@ import {
   type StatusTone,
 } from '../../design-system';
 import { tokens } from '../../styles/tokens';
+import { recoveryCopy, useSafetyRecovery } from './safetyRecovery';
 import './live.css';
 import './helper.css';
 export const percent = (v: number | null | undefined) =>
@@ -147,27 +148,35 @@ export function PhaseRing({
   duration: number | null;
   waiting?: boolean;
   compact?: boolean;
-  /** How this attempt is going or ended (reached, helped, not this time). */
+  /**
+   * How this attempt is going or ended (reached, helped, not this time). `caution` = the
+   * glove stopped for resistance; `label` is a shorter ring label than the title.
+   */
   status?: {
     title: string;
-    tone: 'reached' | 'assist' | 'neutral';
+    tone: 'reached' | 'assist' | 'neutral' | 'caution';
     done: boolean;
+    label?: string;
   } | null;
 }) {
+  const stopped = status?.tone === 'caution';
   // While trying there is no clock to beat: the ring stays empty. Once the pose is
-  // reached it becomes the only timer, a hold countdown with seconds.
-  const holding = phase === 'HOLD' || phase === 'ASSIST_HOLD';
+  // reached it becomes the only timer, a hold countdown with seconds. After a
+  // resistance stop there is nothing to hold: a full, still ring until the rest.
+  const holding = (phase === 'HOLD' || phase === 'ASSIST_HOLD') && !stopped;
   const progress =
-    phase === 'ATTEMPT' || phase === 'ASSIST'
-      ? 0
-      : duration
-        ? Math.min(1, elapsed / duration)
-        : 0;
+    stopped && phase !== 'REST'
+      ? 1
+      : phase === 'ATTEMPT' || phase === 'ASSIST'
+        ? 0
+        : duration
+          ? Math.min(1, elapsed / duration)
+          : 0;
   const secondsLeft =
     holding && duration ? Math.max(1, Math.ceil(duration - elapsed)) : null;
   const label = waiting
     ? 'Show me your hand'
-    : (status?.title ?? phaseLabels[phase]);
+    : (status?.label ?? status?.title ?? phaseLabels[phase]);
   return (
     <div className="phase-ring" aria-live="polite">
       <ProgressRing
@@ -193,7 +202,13 @@ export function PhaseRing({
         ) : (
           <Icon
             name={
-              status?.done ? 'check' : phase === 'PAUSED' ? 'pause' : 'hand'
+              status?.done
+                ? 'check'
+                : stopped
+                  ? 'caution'
+                  : phase === 'PAUSED'
+                    ? 'pause'
+                    : 'hand'
             }
           />
         )}
@@ -257,21 +272,8 @@ const safetyCopy: Record<Safety['source'], string> = {
   coach_brake: 'Glove released. Practice paused.',
 };
 export function SafetyBanner() {
-  const runtime = useRuntime(),
-    { client } = useGlove();
-  const [event, setEvent] = useState<Safety | null>(null),
-    [releasing, setReleasing] = useState(false);
+  const { event, releasing, recovery, resume: onResume } = useSafetyRecovery();
   const resume = useRef<HTMLButtonElement>(null);
-  useEffect(
-    () =>
-      runtime.exercise.onEvent((e) => {
-        if (e.kind === 'safety') {
-          setEvent(e);
-          setReleasing(false);
-        }
-      }),
-    [runtime],
-  );
   useEffect(() => {
     if (event) {
       document
@@ -282,26 +284,10 @@ export function SafetyBanner() {
       resume.current?.focus();
     }
   }, [event]);
-  useEffect(
-    () =>
-      runtime.exercise.subscribe((v) => {
-        if (v.phase === 'DONE' || v.phase === 'REST') {
-          setEvent(null);
-          setReleasing(false);
-        }
-      }),
-    [runtime],
-  );
-  useEffect(
-    () =>
-      client.onTelemetry((t) => {
-        if (releasing && t.st === 'idle') {
-          setEvent(null);
-          setReleasing(false);
-        }
-      }),
-    [client, releasing],
-  );
+  // A release that did not take hands Resume back; keep keyboard focus on it.
+  useEffect(() => {
+    if (!releasing) resume.current?.focus();
+  }, [releasing]);
   if (!event) return null;
   return (
     <Banner
@@ -309,20 +295,14 @@ export function SafetyBanner() {
       title={
         releasing
           ? 'Releasing the glove…'
-          : event.source === 'overcurrent'
-            ? `Stopped — I felt resistance in your ${event.finger ?? 'hand'}.`
-            : safetyCopy[event.source]
+          : recovery
+            ? recoveryCopy[recovery]
+            : event.source === 'overcurrent'
+              ? `Stopped — I felt resistance in your ${event.finger ?? 'hand'}.`
+              : safetyCopy[event.source]
       }
       action={
-        <Button
-          ref={resume}
-          size="lg"
-          disabled={releasing}
-          onClick={() => {
-            setReleasing(true);
-            runtime.exercise.resume();
-          }}
-        >
+        <Button ref={resume} size="lg" disabled={releasing} onClick={onResume}>
           Resume
         </Button>
       }
@@ -331,6 +311,11 @@ export function SafetyBanner() {
           {event.source.replaceAll('_', ' ')}
           {event.finger ? ` · ${event.finger}` : ''}
           {event.ma != null ? ` · ${Math.round(event.ma)} mA` : ''}
+          {recovery === 'stop_held'
+            ? ' · release refused while STOP is held'
+            : recovery === 'unconfirmed'
+              ? ' · release not confirmed by the glove'
+              : ''}
         </p>
       }
     />

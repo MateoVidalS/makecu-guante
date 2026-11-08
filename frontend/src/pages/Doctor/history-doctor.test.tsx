@@ -206,6 +206,48 @@ describe('record review pages', () => {
       expect(row.querySelectorAll('.effort-bars__seg')).toHaveLength(0);
     }
   });
+  it.each(['/history', '/doctor'])(
+    'keeps %s on the latest measured session after a fist-only and an unfinished one',
+    async (path) => {
+      const newest = mockState.sessions[0];
+      const later = (minutes: number) =>
+        new Date(
+          Date.parse(newest.started_at) + minutes * 60_000,
+        ).toISOString();
+      const add = (id: number, minutes: number, finished: boolean) => {
+        const s = {
+          ...newest,
+          id,
+          started_at: later(minutes),
+          ended_at: finished ? later(minutes + 5) : null,
+          plan: [{ pose: 'full_fist' as const, reps: 1 }],
+          summary: finished ? newest.summary : null,
+          n_attempts: 0,
+        };
+        mockState.sessions.unshift(s);
+        mockState.details[id] = {
+          ...s,
+          attempts: [],
+          transcript: [],
+          coach_decisions: [],
+          feelings: [],
+        };
+      };
+      add(900, 60, true);
+      add(901, 120, false);
+      mount(path);
+      const notes = await screen.findAllByText(
+        /^Latest session had no measured open-hand attempts; showing /,
+      );
+      expect(notes).toHaveLength(2);
+      expect(
+        screen.getByRole('img', { name: /Hand map, first session/ }),
+      ).not.toHaveAccessibleName(/Not measured now/);
+      expect(
+        await screen.findByRole('img', { name: /Latest session per finger/ }),
+      ).not.toHaveAccessibleName(/Not measured/);
+    },
+  );
   it.each(['absent', 'null'] as const)(
     'keeps legacy %s replay fingers visible as not measured',
     async (kind) => {

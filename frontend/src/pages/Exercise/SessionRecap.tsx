@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react';
 import type { AttemptResult, SessionSummary } from '../../contracts/engine';
-import { GLOVE_FINGERS, pullFromClosure } from '../../contracts/glove';
-import { POSES, opensFinger } from '../../contracts/poses';
+import { POSES } from '../../contracts/poses';
 import { Card, Heading } from '../../design-system';
-import { useRuntime } from '../../runtime';
+import { useExerciseView, useRuntime, useSavingStatus } from '../../runtime';
 import {
   AttemptStrip,
   SplitBars,
   ThenNow,
   attemptOutcome,
+  easedAtResistance,
   fingerDeltas,
+  recapCounts,
+  recapCountsText,
   recapSentence,
   type StripAttempt,
 } from '../../components/metrics';
+import {
+  openingByFinger,
+  useRecapComparison,
+  type RecapAttempt,
+  type RecapComparison,
+} from './recapData';
 
 /** Collects this session's attempt results as they finish (reset when a new session starts). */
 export function useSessionAttempts() {
@@ -35,20 +43,28 @@ export function useSessionAttempts() {
   return attempts;
 }
 
-/** Without the per-attempt list (e.g. after a reload), draw the counts in a fixed order. */
-function fromCounts(summary: SessionSummary): StripAttempt[] {
-  const helped = summary.assisted;
-  const own = summary.reached_active;
-  const paused = summary.interrupted;
-  const tried = Math.max(0, summary.attempts - own - helped - paused);
-  return [
-    ...Array<StripAttempt>(own).fill({ outcome: 'own' }),
-    ...Array<StripAttempt>(helped).fill({ outcome: 'helped' }),
-    ...Array<StripAttempt>(tried).fill({ outcome: 'tried' }),
-    ...Array<StripAttempt>(paused).fill({ outcome: 'paused' }),
-  ];
+const RESISTANCE_NOTE = 'It eased off when it felt resistance';
+
+function stripOf(attempts: readonly RecapAttempt[]): StripAttempt[] {
+  return [...attempts]
+    .sort((a, b) => a.index - b.index)
+    .map((a) => {
+      const outcome = attemptOutcome(a);
+      return {
+        group: POSES[a.pose]?.name ?? a.pose,
+        outcome,
+        note:
+          outcome !== 'paused' && a.assisted && easedAtResistance(a)
+            ? RESISTANCE_NOTE
+            : undefined,
+      };
+    });
 }
 
+/**
+ * The recap once the session is over. It renders straight away from the live results; when the
+ * session has been saved, the stored copy adds the comparison with the previous session.
+ */
 export function SessionRecap({
   summary,
   attempts,
@@ -58,77 +74,87 @@ export function SessionRecap({
   attempts: AttemptResult[];
   mirrored?: boolean;
 }) {
-  // Every pose where this finger had to open counts: the open hand, and the raised
-  // fingers of finger-by-finger poses (thumb in Thumbs up, index in Point, ...).
-  const opening = GLOVE_FINGERS.map((finger) => {
-    const readings = attempts
-      .filter((a) => POSES[a.pose] && opensFinger(POSES[a.pose], finger))
-      .flatMap((a) =>
-        a.fingers.filter(
-          (f) => f.finger === finger && f.scored && f.active_max != null,
-        ),
-      );
-    const mean = (values: number[]) =>
-      values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
-    return {
-      finger,
-      active_max_mean: mean(
-        readings.map((f) => pullFromClosure(f.active_max!)),
-      ),
-      assist_needed_mean: mean(
-        readings.flatMap((f) =>
-          f.assist_needed == null ? [] : [f.assist_needed],
-        ),
-      ),
-    };
-  });
-  const deltas = fingerDeltas(opening, null);
-  const strip: StripAttempt[] = attempts.length
-    ? [...attempts]
-        .sort((a, b) => a.index - b.index)
-        .map((a) => ({
-          group: POSES[a.pose]?.name ?? a.pose,
-          outcome: attemptOutcome(a),
-        }))
-    : fromCounts(summary);
+  const sessionId = useExerciseView((v) => v.sessionId);
+  const saved = useSavingStatus() === 'Saved';
+  // Errors and slow answers leave the recap as it is: the comparison is an addition.
+  const comparison = useRecapComparison(sessionId, saved);
+  return (
+    <SessionRecapView
+      summary={summary}
+      attempts={attempts}
+      mirrored={mirrored}
+      comparison={comparison.data ?? null}
+    />
+  );
+}
+
+export function SessionRecapView({
+  summary,
+  attempts,
+  mirrored,
+  comparison,
+}: {
+  summary: SessionSummary;
+  attempts: readonly RecapAttempt[];
+  mirrored?: boolean;
+  /** The saved session with `summary.previous`; null while loading or when unavailable. */
+  comparison: RecapComparison | null;
+}) {
+  // Live results first; when they are gone (the page was left and reopened), the saved ones.
+  const list = attempts.length ? attempts : (comparison?.attempts ?? []);
+  const today = openingByFinger(list);
+  const previous = comparison?.summary.previous;
+  // `summary.previous` says whether and with which session to compare. Its own numbers are
+  // all-pose means (fists mixed with openings), so the deltas use that session's openings instead:
+  // the same measure as today's. Not found = no deltas (a gap), never a mixed comparison.
+  const thenFingers = comparison?.then
+    ? openingByFinger(comparison.then.attempts)
+    : null;
+  const deltas = fingerDeltas(
+    today,
+    thenFingers?.some((f) => f.active_max_mean != null) ? thenFingers : null,
+  );
+  const demo = comparison?.then?.session.is_demo ?? false;
+  const counts = recapCounts(summary, list);
+  const strip = stripOf(list);
+  const anyGlove = today.some((f) => (f.glove_added_mean ?? 0) > 0.005);
   return (
     <div className="recap">
       <header className="recap__head">
         <Heading level={1}>Session complete</Heading>
-        <p className="recap__counts">
-          {summary.attempts} attempts · {summary.reached_active} on your own ·{' '}
-          {summary.assisted} with help
-        </p>
-        <p className="recap__sentence">{recapSentence(summary)}</p>
+        <p className="recap__counts">{recapCountsText(counts)}</p>
+        <p className="recap__sentence">{recapSentence(summary, list)}</p>
       </header>
       <Card
         title="Your active opening today"
         description="How far each finger opened on its own, in every pose where it had to open."
       >
-        <ThenNow deltas={deltas} mirrored={mirrored} size={128} />
-        {!summary.previous && (
+        <ThenNow
+          deltas={deltas}
+          mirrored={mirrored}
+          size={128}
+          thenLabel={demo ? 'Last time (demo data)' : 'Last time'}
+        />
+        {comparison && previous === null && (
           <p className="recap__note">
             This is your starting point. Next time you will see the change.
           </p>
         )}
         <p className="recap__note">
-          On your own and with the glove. Bar end = fully open.
+          {anyGlove
+            ? 'On your own and with the glove. Bar end = fully open.'
+            : 'Bar end = fully open.'}
         </p>
         <SplitBars
-          rows={opening.map((f) => ({
+          rows={today.map((f) => ({
             finger: f.finger,
             own: f.active_max_mean,
-            help: f.assist_needed_mean,
+            help: f.glove_added_mean,
           }))}
         />
       </Card>
       {strip.length > 0 && (
-        <Card
-          title="Every attempt"
-          description={
-            attempts.length ? 'In order, grouped by pose.' : 'Totals for today.'
-          }
-        >
+        <Card title="Every attempt" description="In order, grouped by pose.">
           <AttemptStrip attempts={strip} />
         </Card>
       )}

@@ -355,8 +355,11 @@ describe('session recap', () => {
     expect(
       screen.getByRole('heading', { name: 'Session complete' }),
     ).toBeVisible();
+    // Only totals are known here: an assisted attempt is "with the glove", not "with help".
     expect(
-      screen.getByText('3 attempts · 1 on your own · 1 with help'),
+      screen.getByText(
+        '3 attempts · 1 on your own · 1 with the glove · 1 ended early',
+      ),
     ).toBeVisible();
     expect(
       screen.getByText('You reached most poses on your own. Steady work.'),
@@ -368,8 +371,9 @@ describe('session recap', () => {
         name: 'Thumb: No reading',
       }),
     ).toBeVisible();
+    // No per-attempt results (and no saved session to read them from): no invented dots.
     expect(document.querySelectorAll('.mx-strip__groups .mx-dot')).toHaveLength(
-      3,
+      0,
     );
     expect(
       screen.getByRole('button', { name: 'Practice again' }),

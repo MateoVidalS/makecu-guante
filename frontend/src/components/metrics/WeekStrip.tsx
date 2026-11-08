@@ -48,23 +48,28 @@ const long = (d: Date) =>
     day: 'numeric',
   });
 
-/** Seven calm circles: filled with a check = practiced, open ring = not yet. */
+/**
+ * Seven calm circles: filled with a check = practiced, open ring = not yet.
+ * The count is out of the days shown; the weekly goal is its own line, so the copy never reads
+ * "6 of 5 days".
+ */
 export function WeekStrip({
   days,
   goal = 5,
 }: {
   days: WeekDay[];
+  /** Practice days a week to aim for; 0 hides the goal line. */
   goal?: number;
 }) {
   const count = days.filter((d) => d.practiced).length;
   const run = streak(days);
+  const met = goal > 0 && count >= goal;
   return (
     <div className="mx-week">
       <p className="mx-week__headline">
         <strong>
-          {count} of {goal} days
-        </strong>{' '}
-        <span className="mx-muted">in the last 7 days</span>
+          {count} of the last {days.length} days
+        </strong>
       </p>
       <ol className="mx-week__days" aria-label="Practice in the last 7 days">
         {days.map((d) => (
@@ -86,6 +91,17 @@ export function WeekStrip({
           </li>
         ))}
       </ol>
+      {goal > 0 && (
+        <p className="mx-week__goal mx-muted" data-met={met}>
+          Goal: {goal} days a week
+          {met && (
+            <>
+              {' '}
+              <Icon name="check" label="reached" />
+            </>
+          )}
+        </p>
+      )}
       {run >= 2 && (
         <p className="mx-week__streak mx-muted">
           {run} days in a row. Nice rhythm.

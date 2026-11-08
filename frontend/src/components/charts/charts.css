@@ -199,6 +199,10 @@ div.data-status p {
   font-size: var(--small);
   line-height: var(--leading-snug);
 }
+/* Which records are shown when the newest one had nothing to show: read it, not skim it. */
+.chart-note {
+  color: var(--text);
+}
 .chart__units {
   display: flex;
   justify-content: space-between;

@@ -23,6 +23,7 @@ export function createHandAnimator(
     active: new Color(palette.active),
     assist: new Color(palette.assist),
     reached: new Color(palette.reached),
+    stopped: new Color(palette.caution),
   };
   const smoother = createJointSmoother();
   const animator = {
@@ -76,7 +77,9 @@ export function createHandAnimator(
         material.opacity = scene.palm.opacity;
         material.transparent = scene.palm.transparent;
         if (status === 'reached') reached = true;
-        if (status === 'active' || status === 'assist') pending = true;
+        // A finger the glove stopped for is not reached: no success pulse.
+        if (status === 'active' || status === 'assist' || status === 'stopped')
+          pending = true;
       }
       reached &&= !pending;
       if (reached && !animator.reached && visible) animator.pulse = 0;

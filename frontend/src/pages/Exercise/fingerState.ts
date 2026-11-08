@@ -9,6 +9,7 @@ export function liveFingerState({
   value,
   best,
   assisting,
+  stop = null,
   tolerance = DEFAULT_EXERCISE_SETTINGS.tolerance,
 }: {
   phase: ExercisePhase;
@@ -16,14 +17,21 @@ export function liveFingerState({
   value: number | null;
   best: number | null;
   assisting: boolean;
+  /**
+   * The glove stopped helping this attempt for resistance: on this finger (`self`) or on
+   * another one (`other`). The resisting finger is marked; the others go quiet, since
+   * nothing is helping them any more (no orange "glove helping" tint).
+   */
+  stop?: 'self' | 'other' | null;
   tolerance?: number;
 }): FingerState {
   if (
     target === null ||
-    value === null ||
     !['ATTEMPT', 'HOLD', 'ASSIST', 'ASSIST_HOLD'].includes(phase)
   )
     return 'idle';
+  if (stop === 'self') return 'stopped';
+  if (stop === 'other' || value === null) return 'idle';
   const reached = (v: number) =>
     target <= 0.05 ? v <= target + tolerance : v >= target - tolerance;
   if (reached(value)) return 'reached';

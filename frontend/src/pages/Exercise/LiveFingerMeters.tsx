@@ -8,6 +8,8 @@ import { useRuntime } from '../../runtime';
 import type { Runtime } from '../../contracts/runtime';
 import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
 import { liveFingerState } from './fingerState';
+import { stopFor } from './attemptStatus';
+import type { ResistanceStop } from '../../components/metrics/stop';
 
 const LIVE: ExercisePhase[] = ['ATTEMPT', 'HOLD', 'ASSIST', 'ASSIST_HOLD'];
 
@@ -16,15 +18,19 @@ export function LiveFingerMeters({
   pose,
   phase,
   activeMax = {},
-  assisting = false,
+  assisting: helping = false,
+  stop = null,
   tolerance = DEFAULT_EXERCISE_SETTINGS.tolerance,
 }: {
   pose: PoseDef;
   phase: ExercisePhase;
   activeMax?: Partial<Record<string, number>>;
   assisting?: boolean;
+  /** This attempt's live resistance stop: mark that finger, nothing is helping now. */
+  stop?: ResistanceStop | null;
   tolerance?: number;
 }) {
+  const assisting = helping && !stop;
   const therapy = (useRuntime() as Runtime).therapy;
   const highlighted = useHighlightedFinger(therapy);
   const live = therapy?.state();
@@ -62,6 +68,7 @@ export function LiveFingerMeters({
                 value: closure?.[f] ?? null,
                 best: activeMax[f] ?? null,
                 assisting,
+                stop: stopFor(stop, f),
                 tolerance,
               })}
             />

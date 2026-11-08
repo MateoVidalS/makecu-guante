@@ -581,6 +581,10 @@ class Exercise implements ExerciseEngine {
       case 'ASSIST_HOLD':
         this.governLoad(out);
         if (!this.resistance) this.detectResistance(out);
+        // 03-contracts: reached_final means "reached by the end". Assistance can end on servo
+        // settle while the hand still lags behind the wire, so a reach during the hold counts too.
+        if (!this.metrics!.reachedFinal && this.reachedDwell())
+          this.metrics!.reachedFinal = true;
         this.refreshTarget();
         this.sendTarget(out);
         if (elapsed >= this.therapy.holdSeconds(this.settings.hold_s))

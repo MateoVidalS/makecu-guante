@@ -279,7 +279,7 @@ describe('metric components', () => {
     );
     expect(screen.getByRole('list', { name: 'Hook' })).toBeVisible();
     expect(screen.getByText('Attempt 2: Reached with the glove')).toBeTruthy();
-    expect(screen.getByText('Attempt 3: Paused')).toBeTruthy();
+    expect(screen.getByText('Attempt 3: Ended early')).toBeTruthy();
     expect(document.querySelectorAll('.mx-strip .mx-dot--helped')).toHaveLength(
       2,
     );
@@ -295,7 +295,7 @@ describe('metric components', () => {
     );
     expect(
       screen.getByRole('img', {
-        name: 'Thumb: 38% on your own, glove helped 20% more',
+        name: 'Thumb: 38% on your own, the glove added 20%',
       }),
     ).toBeVisible();
     expect(
@@ -313,14 +313,28 @@ describe('metric components', () => {
     expect(screen.getByText('(better)', { exact: false })).toBeTruthy();
     expect(screen.getByText('(lower)', { exact: false })).toBeTruthy();
   });
-  it('week strip counts days against the goal', () => {
+  it('week strip counts days out of the seven shown and keeps the goal apart', () => {
     const days = lastSevenDays([new Date().toISOString()], new Date());
     render(<WeekStrip days={days} />);
-    expect(screen.getByText('1 of 5 days')).toBeVisible();
+    expect(screen.getByText('1 of the last 7 days')).toBeVisible();
+    expect(screen.getByText('Goal: 5 days a week')).toBeVisible();
+    expect(screen.queryByRole('img', { name: 'reached' })).toBeNull();
     expect(
       screen.getByRole('list', { name: 'Practice in the last 7 days' })
         .children,
     ).toHaveLength(7);
+  });
+  it('week strip never claims more days than the goal (6 of the last 7, goal reached)', () => {
+    const now = new Date(2026, 10, 8, 12);
+    const started = [0, 1, 2, 3, 4, 6].map((back) =>
+      new Date(2026, 10, 8 - back, 9).toISOString(),
+    );
+    render(<WeekStrip days={lastSevenDays(started, now)} />);
+    expect(screen.getByText('6 of the last 7 days')).toBeVisible();
+    expect(screen.queryByText(/of 5 days/)).toBeNull();
+    expect(screen.getByText(/Goal: 5 days a week/)).toBeVisible();
+    expect(screen.getByRole('img', { name: 'reached' })).toBeVisible();
+    expect(screen.getByText('5 days in a row. Nice rhythm.')).toBeVisible();
   });
   it('dumbbell labels slow and fast and calls out stiffness at speed', () => {
     render(
