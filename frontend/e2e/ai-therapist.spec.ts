@@ -336,6 +336,23 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(gentleTargets.every((c) => c.v! <= 0.2)).toBe(true);
     await tool(
       page,
+      'assist_finger_now',
+      {
+        finger: 'middle',
+        reason: 'Help only to the smaller shaped target.',
+      },
+      'Immediate help',
+    );
+    const shaped = await page.evaluate(() => window.aiTherapist.advance(200));
+    const shapedCommand = shaped.commands
+      .filter((c) => c.kind === 'target')
+      .at(-1)!;
+    expect(shapedCommand.f![2]).toBeCloseTo(
+      POSES.full_fist.closure.middle! * 0.9,
+    );
+    expect(shapedCommand.f![2]).toBeGreaterThan(shapedCommand.from![2]);
+    await tool(
+      page,
       'brake',
       { reason: 'Rest after those changes.' },
       'Brake · glove released',
