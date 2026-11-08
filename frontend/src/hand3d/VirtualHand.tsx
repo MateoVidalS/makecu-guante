@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { DirectionalLight } from 'three';
+import { DirectionalLight, Vector3 } from 'three';
+import { Icon } from '../design-system';
 import { tokens } from '../styles/tokens';
 import { POSES } from '../contracts/poses';
 import type { FingerId, Handedness } from '../contracts/vision';
@@ -19,14 +20,21 @@ import { useHandPreferences } from './preferences';
 import { createHandAnimator } from './animation';
 import './hand.css';
 import { palmDownCamera, HAND_LOOK_AT, PALM_DOWN_ROTATION } from './view';
+import { fitHandViewport, handFamilyBounds } from './framing';
 export type { JointMap } from './rig';
 export interface VirtualHandProps {
   target: JointMap | null;
   actual: () => JointMap | null;
   state: (finger: FingerId) => FingerState;
+  /** A steady coach focus contour, independent of movement/assistance state. */
+  highlight?: FingerId | null;
   handedness?: Handedness;
-  /** Orthographic zoom for the page viewport; preserves the gallery default. */
+  /** Manual orthographic zoom when fit is false. */
   zoom?: number;
+  /** Fit the pose family's full motion envelope to the canvas (default true). */
+  fit?: boolean;
+  /** Developer comparison: retain the target after reaching. Default fades on hold. */
+  keepTargetOnReach?: boolean;
   /** Optional metadata: existing three-prop callers retain pose inference. */
   pose?: PoseId;
   reducedMotion?: boolean;
@@ -51,6 +59,9 @@ function HandScene({
   state,
   handedness = 'right',
   zoom = 85,
+  fit = true,
+  keepTargetOnReach = false,
+  highlight = null,
   reducedMotion,
   pose,
   palette,
@@ -70,6 +81,8 @@ function HandScene({
   );
   const rim = useRef<DirectionalLight>(null);
   const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
+  const family = pose === 'pinch' ? 'pinch' : 'tendon_glide';
   const tracking = useRef({
     frames: 0,
     elapsed: 0,
@@ -81,11 +94,23 @@ function HandScene({
     animator.resetReach();
   }, [scene, target, animator]);
   useEffect(() => {
-    camera.position.set(...palmDownCamera(handedness, pose === 'pinch'));
+    camera.position.set(...palmDownCamera(handedness, family === 'pinch'));
     camera.lookAt(...HAND_LOOK_AT);
-    camera.zoom = zoom;
+    if (fit) {
+      const framing = fitHandViewport(
+        handFamilyBounds(handedness, family),
+        size.width,
+        size.height,
+      );
+      camera.position.add(
+        new Vector3(framing.centerX, framing.centerY, 0).applyQuaternion(
+          camera.quaternion,
+        ),
+      );
+      camera.zoom = framing.zoom;
+    } else camera.zoom = zoom;
     camera.updateProjectionMatrix();
-  }, [camera, pose, zoom, handedness]);
+  }, [camera, family, zoom, fit, handedness, size.width, size.height]);
 
   useFrame((_frame, delta) => {
     const live = tracking.current;
@@ -95,6 +120,8 @@ function HandScene({
       target !== null,
       Boolean(reducedMotion),
       delta,
+      keepTargetOnReach,
+      highlight,
     );
     if (animator.visibilityChanged) onVisibility(animator.visible);
     if (rim.current) rim.current.intensity = animator.rimIntensity;
@@ -111,16 +138,16 @@ function HandScene({
       {/* Soft, even studio light: a matte hand with gentle form shading. */}
       {/* Light is neutral white in both themes; only the material follows the theme. */}
       <hemisphereLight
-        args={[tokens.light.surface, tokens.light.surface3, 1.5]}
+        args={[tokens.light.surface, tokens.light.surface3, 1]}
       />
       <directionalLight
         position={[handedness === 'left' ? 3 : -3, 6, 5]}
-        intensity={1.6}
+        intensity={1.1}
         color={tokens.light.surface}
       />
       <directionalLight
         position={[4, 3, 2]}
-        intensity={0.5}
+        intensity={0.3}
         color={tokens.light.surface}
       />
       <directionalLight
@@ -169,7 +196,7 @@ export function VirtualHand(props: VirtualHandProps) {
     <div
       className="hand-view"
       role="img"
-      aria-label={`${label} Palm down, ${props.handedness ?? 'right'} hand.`}
+      aria-label={`${label} Palm down, ${props.handedness ?? 'right'} hand.${props.highlight ? ` Focus on your ${props.highlight}.` : ''}`}
       data-visible={visible}
     >
       <HandFallback>
@@ -196,12 +223,18 @@ export function VirtualHand(props: VirtualHandProps) {
       </HandFallback>
       {!visible && (
         <p className="hand-message" role="status">
-          I can't see your hand. Move it into view.
+          <Icon name="camera" size="1.5em" />I can't see your hand. Move it into
+          view.
         </p>
       )}
       <div className="hand-legend" aria-hidden="true">
         <span className="hand-legend__target">Target</span>
         <span className="hand-legend__actual">You</span>
+        {props.highlight && (
+          <span className="hand-legend__focus">
+            Focus on your {props.highlight}
+          </span>
+        )}
       </div>
     </div>
   );

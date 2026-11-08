@@ -8,9 +8,11 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import case, func, or_
+from sqlalchemy.dialects.sqlite import insert
 from sqlmodel import Session as DbSession
 from sqlmodel import select
 
+from app.contracts import therapist as therapy
 from app.contracts import types as c
 from app.db import models as m
 
@@ -186,7 +188,7 @@ def _attempt(row, fingers) -> c.Attempt:
     )
 
 
-def get_session(db: DbSession, id: int) -> c.SessionDetail:
+def get_session(db: DbSession, id: int) -> therapy.SessionDetail:
     row = _required(db, m.Session, id)
     attempts = db.exec(
         select(m.Attempt).where(m.Attempt.session_id == id).order_by(m.Attempt.idx, m.Attempt.id)
@@ -205,10 +207,12 @@ def get_session(db: DbSession, id: int) -> c.SessionDetail:
         .where(m.TranscriptLine.session_id == id)
         .order_by(m.TranscriptLine.t, m.TranscriptLine.id)
     ).all()
-    return c.SessionDetail(
+    return therapy.SessionDetail(
         **_session(row, len(attempts)).model_dump(),
         attempts=[_attempt(a, by_attempt.get(a.id, [])) for a in attempts],
         transcript=[_values(r, exclude={"id", "session_id"}) for r in transcript],
+        coach_decisions=list_coach_decisions(db, {id}),
+        feelings=list_feelings(db, {id}),
     )
 
 
@@ -290,6 +294,100 @@ def add_transcript(db: DbSession, id: int, lines: list[c.TranscriptLine]) -> Non
     _required(db, m.Session, id)
     db.add_all([m.TranscriptLine(session_id=id, **line.model_dump()) for line in lines])
     db.commit()
+
+
+def _coach_decision(row) -> therapy.CoachDecision:
+    return therapy.CoachDecision(
+        **_values(row, exclude={"id", "decision_id", "requested_json", "applied_json"}),
+        id=row.decision_id,
+        requested=json.loads(row.requested_json),
+        applied=json.loads(row.applied_json) if row.applied_json is not None else None,
+    )
+
+
+def list_coach_decisions(db: DbSession, session_ids: set[int]) -> list[therapy.CoachDecision]:
+    return [
+        _coach_decision(row)
+        for row in db.exec(
+            select(m.CoachDecision)
+            .where(m.CoachDecision.session_id.in_(session_ids))
+            .order_by(m.CoachDecision.t, m.CoachDecision.id)
+        )
+    ]
+
+
+def list_feelings(db: DbSession, session_ids: set[int]) -> list[therapy.FeelingEntry]:
+    return [
+        therapy.FeelingEntry.model_validate(_values(row, exclude={"id"}))
+        for row in db.exec(
+            select(m.FeelingEntry)
+            .where(m.FeelingEntry.session_id.in_(session_ids))
+            .order_by(m.FeelingEntry.t, m.FeelingEntry.id)
+        )
+    ]
+
+
+def _append_audit_records(db, model, rows, identity):
+    """Retry identical uploads; never silently overwrite an existing audit record.
+
+    INSERT ON CONFLICT handles racing retries too. A conflicting payload rolls back
+    the whole batch, including rows already inserted earlier in that batch.
+    """
+    try:
+        for data in rows:
+            db.execute(insert(model).values(**data).on_conflict_do_nothing(index_elements=identity))
+            existing = db.exec(
+                select(model).where(*(getattr(model, key) == data[key] for key in identity))
+            ).one()
+            if _values(existing, exclude={"id"}) != data:
+                raise HTTPException(
+                    409,
+                    {
+                        "code": "audit_conflict",
+                        "message": "An audit record already has this identity",
+                    },
+                )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+def add_coach_decisions(db: DbSession, id: int, decisions: list[therapy.CoachDecision]) -> None:
+    _required(db, m.Session, id)
+    rows = []
+    for decision in decisions:
+        if decision.session_id not in (None, id):
+            _invalid("Decision session_id must match the URL")
+        rows.append(
+            {
+                **decision.model_dump(exclude={"id", "session_id", "requested", "applied"}),
+                "session_id": id,
+                "decision_id": decision.id,
+                "requested_json": json.dumps(
+                    decision.requested, sort_keys=True, separators=(",", ":"), allow_nan=False
+                ),
+                "applied_json": (
+                    json.dumps(
+                        decision.applied, sort_keys=True, separators=(",", ":"), allow_nan=False
+                    )
+                    if decision.applied is not None
+                    else None
+                ),
+            }
+        )
+    _append_audit_records(db, m.CoachDecision, rows, ["session_id", "decision_id"])
+
+
+def add_feelings(db: DbSession, id: int, feelings: list[therapy.FeelingEntry]) -> None:
+    _required(db, m.Session, id)
+    if any(feeling.session_id != id for feeling in feelings):
+        _invalid("Feeling session_id must match the URL")
+    # Pain policy is synchronous in Runtime.therapy, before this asynchronous upload.
+    # Persist the actual report even if the corresponding brake decision arrives later.
+    _append_audit_records(
+        db, m.FeelingEntry, [feeling.model_dump() for feeling in feelings], ["session_id", "t"]
+    )
 
 
 def _evaluation(db, row) -> c.Evaluation:
@@ -516,6 +614,8 @@ def therapist_digest(db: DbSession, days: int) -> dict:
             for a in attempts
             for event in json.loads(a.safety_json)
         ],
+        "coach_decisions": [d.model_dump() for d in list_coach_decisions(db, ids)],
+        "feelings": [f.model_dump() for f in list_feelings(db, ids)],
     }
 
 
@@ -527,6 +627,8 @@ def create_summary(db: DbSession, body: c.SessionSummaryIn | c.TherapistSummaryI
         context = {
             "summary": session.summary.model_dump() if session.summary else None,
             "is_demo": session.is_demo,
+            "coach_decisions": [d.model_dump() for d in session.coach_decisions],
+            "feelings": [f.model_dump() for f in session.feelings],
             "evaluation_trend": [
                 p.model_dump() for p in history_resistance(db) if p.is_demo == session.is_demo
             ],
@@ -601,6 +703,8 @@ def export_data(db: DbSession, format: str = "json") -> str:
         "settings",
         "summary",
         "n_attempts",
+        "coach_decisions",
+        "feelings",
     ]
     attempt_cols = ["attempt_id", *c.AttemptBase.model_fields.keys()]
     attempt_cols.remove("fingers")
@@ -614,7 +718,7 @@ def export_data(db: DbSession, format: str = "json") -> str:
         sd["session_id"] = sd.pop("id")
         sd["session_started_at"] = sd.pop("started_at")
         sd["session_ended_at"] = sd.pop("ended_at")
-        for key in ("plan", "settings", "summary"):
+        for key in ("plan", "settings", "summary", "coach_decisions", "feelings"):
             sd[key] = _json(sd[key])
         for attempt in session.attempts:
             ad = attempt.model_dump(exclude={"fingers", "session_id"})

@@ -3,13 +3,13 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session as DbSession
 
+from app.contracts.therapist import CoachDecisionsIn, FeelingsIn, SessionDetail
 from app.contracts.types import (
     ApiError,
     Attempt,
     AttemptResult,
     AttemptTrace,
     Session,
-    SessionDetail,
     SessionEndIn,
     SessionIn,
     TranscriptIn,
@@ -99,3 +99,23 @@ def get_attempts_id_trace(db: Db, id: int) -> AttemptTrace:
 )
 def post_sessions_id_transcript(db: Db, id: int, body: TranscriptIn) -> None:
     return repo.add_transcript(db, id, body.lines)
+
+
+@router.post(
+    "/sessions/{id}/coach_decisions",
+    response_model=None,
+    status_code=204,
+    responses={404: {"model": ApiError}, 409: {"model": ApiError}, 422: {"model": ApiError}},
+)
+def post_sessions_id_coach_decisions(db: Db, id: int, body: CoachDecisionsIn) -> None:
+    return repo.add_coach_decisions(db, id, body.decisions)
+
+
+@router.post(
+    "/sessions/{id}/feelings",
+    response_model=None,
+    status_code=204,
+    responses={404: {"model": ApiError}, 409: {"model": ApiError}, 422: {"model": ApiError}},
+)
+def post_sessions_id_feelings(db: Db, id: int, body: FeelingsIn) -> None:
+    return repo.add_feelings(db, id, body.feelings)

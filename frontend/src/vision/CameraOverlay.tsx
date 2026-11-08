@@ -56,15 +56,17 @@ function SourceOverlay({
   useEffect(() => {
     const host = preview.current;
     let video: HTMLVideoElement | null = null;
+    const attach = () => {
+      const currentVideo = source.videoElement();
+      if (currentVideo === video) return;
+      if (video?.parentElement === host) video.remove();
+      video = currentVideo;
+      if (video && host) host.prepend(video);
+      setHasVideo(!!video);
+    };
     const update = (latest: VisionFrame | null) => {
       setFrame(latest);
-      const currentVideo = source.videoElement();
-      if (currentVideo !== video) {
-        if (video?.parentElement === host) video.remove();
-        video = currentVideo;
-        if (video && host) host.prepend(video);
-        setHasVideo(!!video);
-      }
+      attach();
       if (canvas.current) {
         const width = video?.videoWidth || 640,
           height = video?.videoHeight || 480;
@@ -76,8 +78,12 @@ function SourceOverlay({
     };
     update(source.latest());
     const unsubscribe = source.onFrame(update);
+    // Frames only start once the hand model has loaded (tens of seconds on a slow CPU), but the
+    // camera stream is live before that: show it as soon as it exists, not on the first frame.
+    const poll = window.setInterval(attach, 250);
     return () => {
       unsubscribe();
+      window.clearInterval(poll);
       if (video?.parentElement === host) video?.remove();
     };
   }, [source, state]);

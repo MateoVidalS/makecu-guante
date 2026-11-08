@@ -11,11 +11,11 @@ test('the header simulator menu produces and saves a ring resistance stop', asyn
   await page
     .getByRole('button', { name: 'Fist only, 1 rep', exact: true })
     .click();
-  await page.getByText('Demo recovery', { exact: true }).click();
+  await page.getByText('Demo tools', { exact: true }).click();
   await page.getByLabel('Patient preset', { exact: true }).selectOption('mild');
   await page.getByLabel('Rigid finger', { exact: true }).selectOption('ring');
   await page.getByRole('checkbox', { name: 'Rigid ring', exact: true }).check();
-  await page.getByText('Demo recovery', { exact: true }).click();
+  await page.getByText('Demo tools', { exact: true }).click();
   const created = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&

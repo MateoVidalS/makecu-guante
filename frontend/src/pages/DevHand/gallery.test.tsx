@@ -24,6 +24,30 @@ afterEach(() => {
 });
 
 describe('hand gallery', () => {
+  it('offers four states side by side for every pose and a grayscale toggle', () => {
+    render(<DevHand />);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Compare states' }));
+    expect(screen.getAllByTestId('hand')).toHaveLength(5);
+    for (const pose of Object.values(POSES)) {
+      fireEvent.click(screen.getByRole('button', { name: pose.name }));
+      expect(
+        screen.getByRole('group', { name: `${pose.name} state comparison` }),
+      ).toBeDefined();
+      for (const name of [
+        'Resting',
+        'Moving alone',
+        'Glove helping',
+        'Reached',
+      ])
+        expect(screen.getByRole('heading', { name })).toBeDefined();
+    }
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Grayscale' }));
+    expect(
+      screen
+        .getByRole('heading', { name: 'Virtual hand gallery' })
+        .closest('section')?.dataset.grayscale,
+    ).toBe('true');
+  });
   it('offers all six targets, per-joint controls, mirroring and per-finger states', () => {
     render(<DevHand />);
     for (const pose of Object.values(POSES))

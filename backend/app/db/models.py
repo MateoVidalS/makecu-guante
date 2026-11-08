@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint
+from sqlalchemy import CheckConstraint, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -120,3 +120,36 @@ class Summary(SQLModel, table=True):
     days: int | None = None
     model: str
     text: str
+
+
+class CoachDecision(SQLModel, table=True):
+    __tablename__ = "coach_decision"
+    __table_args__ = (UniqueConstraint("session_id", "decision_id"),)
+    id: int | None = Field(default=None, primary_key=True)
+    session_id: int = Field(foreign_key="session.id", ondelete="CASCADE", index=True)
+    decision_id: str
+    t: str = Field(index=True)
+    tool: str
+    requested_json: str
+    applied_json: str | None = None
+    result: str
+    reason: str
+    source: str
+
+
+class FeelingEntry(SQLModel, table=True):
+    __tablename__ = "feeling_entry"
+    __table_args__ = (
+        UniqueConstraint("session_id", "t"),
+        CheckConstraint("pain >= 0 AND pain <= 10"),
+        CheckConstraint("fatigue >= 0 AND fatigue <= 10"),
+        CheckConstraint("attempt_index IS NULL OR attempt_index >= 0"),
+    )
+    id: int | None = Field(default=None, primary_key=True)
+    session_id: int = Field(foreign_key="session.id", ondelete="CASCADE", index=True)
+    t: str = Field(index=True)
+    attempt_index: int | None = None
+    pain: float
+    fatigue: float
+    note: str
+    source: str

@@ -184,16 +184,18 @@ export default function Calibrate() {
     setProgress(0);
     const frames: VisionFrame[] = [];
     const started = performance.now();
-    let holdStarted: number | null = kind === 'closed' ? null : started;
+    // With a simulated glove and the real camera, nothing can close the real hand:
+    // the closed capture is the patient's own best fist, held still like the open capture.
+    const gloveCloses = kind === 'closed' && !ownFist;
+    let holdStarted: number | null = gloveCloses ? null : started;
     let lastFrameAt = started;
     const telemetry = client.latest();
-    if (kind === 'closed' && !telemetry) {
+    if (gloveCloses && !telemetry) {
       setCapture(false);
       setError('Wait for glove readings, then try again.');
       return;
     }
-    const closure =
-      kind === 'closed' ? new CalibrationClosure(telemetry!.a) : null;
+    const closure = gloveCloses ? new CalibrationClosure(telemetry!.a) : null;
     if (closure) client.limit(Math.min(1500, draft.limit));
     const unsubscribe = vision.source.onFrame((frame) => {
       lastFrameAt = performance.now();
@@ -288,6 +290,22 @@ export default function Calibrate() {
   }
   const allRangesSet = GLOVE_FINGERS.every((f) => validRange(draft.servo[f]));
   const simulated = client.kind === 'sim' && vision.source.kind === 'sim';
+  /** Simulated glove with the real camera: no servos to range, the patient closes their own hand. */
+  const ownFist = client.kind === 'sim' && vision.source.kind === 'camera';
+  function applySimulatedRanges() {
+    update({
+      servo: Object.fromEntries(
+        GLOVE_FINGERS.map((f) => [f, { finger: f, min_deg: 20, max_deg: 150 }]),
+      ) as typeof draft.servo,
+      finger: GLOVE_FINGERS.length - 1,
+    });
+    void action(async () => {
+      GLOVE_FINGERS.forEach((_, i) =>
+        client.calib(i as 0 | 1 | 2 | 3 | 4, 20, 150),
+      );
+      update({ step: 1 });
+    });
+  }
   if (saved)
     return (
       <div className="hp-page">
@@ -370,6 +388,25 @@ export default function Calibrate() {
             title={`Step 1 · Glove range: ${title(finger)}`}
             description="Rest palm down, forearm on a towel. Stop if it hurts."
           >
+            {client.kind === 'sim' && (
+              <div className="hp-set-row">
+                <div>
+                  <p>
+                    The glove is simulated, so there are no motors to range.
+                  </p>
+                  <p className="hp-set-row__value">
+                    Use standard ranges and go straight to the camera step.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={applySimulatedRanges}
+                >
+                  Use simulated glove ranges
+                </Button>
+              </div>
+            )}
             <div
               className="hp-finger-tabs"
               role="group"
@@ -560,8 +597,9 @@ export default function Calibrate() {
               <div className="hp-set-row">
                 <div>
                   <p>
-                    Relax while the glove closes all five fingers in stages.
-                    Close only as far as the glove goes, without pain.
+                    {ownFist
+                      ? 'Close your hand as far as you comfortably can and hold it still.'
+                      : 'Relax while the glove closes all five fingers in stages. Close only as far as the glove goes, without pain.'}
                   </p>
                   <p className="hp-set-row__value">
                     {draft.closed ? 'Captured' : 'Not captured'}
@@ -572,7 +610,7 @@ export default function Calibrate() {
                   disabled={capture || !draft.open || !seen}
                   onClick={() => captureRange('closed')}
                 >
-                  Glove closes the hand
+                  {ownFist ? 'Capture my fist' : 'Glove closes the hand'}
                 </Button>
               </div>
             </div>
