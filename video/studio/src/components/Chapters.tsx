@@ -22,8 +22,8 @@ export const Chapters: React.FC = () => {
     <div
       style={{
         position: 'absolute',
-        left: 96,
-        top: 28,
+        left: 84,
+        top: 22,
         display: 'flex',
         alignItems: 'center',
         gap: 12,
@@ -33,6 +33,9 @@ export const Chapters: React.FC = () => {
         fontWeight: weight.semibold,
         color: c.muted,
         pointerEvents: 'none',
+        background: 'rgba(250,250,249,0.88)',
+        borderRadius: 999,
+        padding: '6px 14px 6px 12px',
       }}
     >
       <div style={{ display: 'flex', gap: 5 }}>
