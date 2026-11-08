@@ -21,7 +21,7 @@
 
 ```sh
 make setup        # instala backend y frontend
-make demo-seed    # optional: 14 demo sessions (2 legacy) and 4 opening evaluations
+make demo-seed    # optional: 25 demo sessions (3 legacy), 5 opening evaluations, coach and voice records
 make dev-sim      # API en :8000 + app en http://127.0.0.1:5173, guante simulado + cámara real (webcam)
 make dev-sim-all  # guante y cámara simulados (sin webcam)
 ```
@@ -35,7 +35,7 @@ make dev-sim-all  # guante y cámara simulados (sin webcam)
 | `make demo` | Compila el frontend y lo sirve desde el backend en http://127.0.0.1:8000 |
 | `make fw-build` / `make fw-flash` | Compilar / cargar el firmware (**solo después del banco de pruebas**) |
 
-- **Gemini:** copiar `backend/.env.example` a `backend/.env` y poner `GEMINI_API_KEY` (Google AI Studio). Es la única API key. Modelos: voz `gemini-3.8-live-extended-thinking` (razonamiento `medium`); resúmenes `gemini-4-argon` (requiere facturación), con caída automática a `gemini-3.8-flash` y `gemini-3.5-flash` si hay falta de cuota o saturación. Sin key, la app funciona igual con voz simple (frases fijas del navegador) y sin resúmenes.
+- **Gemini:** copiar `backend/.env.example` a `backend/.env` y poner `GEMINI_API_KEY` (Google AI Studio). Es la única API key. Modelos: voz `gemini-3.8-live-extended-thinking` (razonamiento `medium`); resúmenes `gemini-4-argon` (requiere facturación), con caída automática a `gemini-3.8-flash`, `gemini-3.5-flash` y `gemini-3.5-flash-lite` si hay falta de cuota, saturación o lentitud (cada modelo tiene ~20 s; el plan gratuito de AI Studio da solo 20 pedidos por día por modelo, así que para una demo conviene una key con facturación). `cd backend && uv run python -m tools.summary_check` prueba los resúmenes en vivo contra la historia demo. Sin key, la app funciona igual con voz simple (frases fijas del navegador) y sin resúmenes.
 - La app está **en inglés**. Este README es el concepto; el plan técnico detallado está en [`docs/plan/`](docs/plan/README.md) y el contrato (fuente de verdad) en [`docs/plan/03-contracts.md`](docs/plan/03-contracts.md).
 - Más detalle: [`docs/DEV.md`](docs/DEV.md) (desarrollo), [`docs/DEMO.md`](docs/DEMO.md) (guion de demo de 6 min y cómo recuperarse de fallas), [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md) (antes de ponerle el guante a alguien).
 
@@ -360,7 +360,7 @@ Gemini solo recibe métricas resumidas, nunca video. Todo se presenta como acomp
 
 ### 4.9 Datos
 
-SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con trazas, evaluaciones y transcripciones de voz. Exportable a JSON y CSV desde la vista del terapeuta. Demo data from `make demo-seed` contains 14 sessions (110 attempts, including two legacy closing sessions) and four opening evaluations over three weeks. All carry `is_demo`; directions remain separated in history.
+SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con trazas, evaluaciones y transcripciones de voz. Exportable a JSON y CSV desde la vista del terapeuta. Demo data from `make demo-seed` contains 25 sessions (212 attempts, including three legacy closing sessions) and five opening evaluations over six weeks, with voice-coach decisions, check-ins and transcripts in the last 18 days. All carry `is_demo`; directions remain separated in history.
 
 ### 4.10 Pendiente
 
