@@ -286,3 +286,74 @@ describe('phase segments', () => {
     expect(phaseSegments(undefined)).toEqual([]);
   });
 });
+
+it('does not compare opening and closing cohorts in hand maps or resistance changes', () => {
+  const history = structuredClone(sessions) as Session[];
+  const newest = history.reduce((a, b) =>
+    a.started_at > b.started_at ? a : b,
+  );
+  newest.assist_direction = 'open';
+  const points = [
+    {
+      session_id: newest.id,
+      started_at: newest.started_at,
+      finger: 'thumb' as const,
+      pose: 'open' as const,
+      active_max_mean: 0.3,
+      is_demo: false,
+      assist_direction: 'open' as const,
+    },
+  ];
+  const hand = handFromOverview(undefined, history, points);
+  expect(hand.first.thumb?.own).toBeCloseTo(0.7);
+  expect(hand.last.thumb?.own).toBeCloseTo(0.7);
+  expect(hand.assistDirection).toBe('open');
+  const current = {
+    ...(evaluations as Evaluation[]).reduce((a, b) =>
+      a.started_at > b.started_at ? a : b,
+    ),
+    assist_direction: 'open' as const,
+  };
+  expect(
+    compareWithPrevious(current, resistance as ResistancePoint[]).every(
+      (p) => p.evaluation_id === current.id && p.assist_direction === 'open',
+    ),
+  ).toBe(true);
+  const mixed = (resistance as ResistancePoint[]).map((p) => ({
+    ...p,
+    assist_direction:
+      p.evaluation_id === current.id ? ('open' as const) : ('close' as const),
+  }));
+  expect(resistanceTakeaway(dumbbellRows(mixed))).toBe(
+    'Fast sweeps met more resistance than slow ones',
+  );
+});
+
+it('shows camera closure as active opening in effort and attempt hand maps', () => {
+  const point = {
+    session_id: 1,
+    started_at: '2026-11-01',
+    finger: 'index' as const,
+    pose: 'open' as const,
+    active_max_mean: 0.7,
+    is_demo: false,
+    assist_direction: 'open' as const,
+  };
+  expect(effortSeries([point], [], 'index')[0].own).toBeCloseTo(0.3);
+  const hand = handFromAttempt(
+    [
+      {
+        finger: 'index',
+        scored: true,
+        target: 0,
+        active_max: 0.7,
+        assist_needed: 0.7,
+        final: 0.1,
+      },
+    ],
+    'open',
+  );
+  expect(hand.index?.own).toBeCloseTo(0.3);
+  expect(hand.index?.glove).toBeCloseTo(0.7);
+  expect(hand.index?.target).toBe(1);
+});

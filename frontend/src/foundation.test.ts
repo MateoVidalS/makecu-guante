@@ -74,14 +74,10 @@ describe('shared contracts', () => {
     }
   });
   it('exports the exact poses, default plans, and patient-specific pinch threshold', () => {
-    expect(DEFAULT_PLAN.reduce((n, p) => n + p.reps, 0)).toBe(15);
-    expect(DEFAULT_PLAN.map((p) => p.pose)).toEqual([
-      'open',
-      'hook',
-      'tabletop',
-      'straight_fist',
-      'full_fist',
-    ]);
+    expect(DEFAULT_PLAN.reduce((n, p) => n + p.reps, 0)).toBe(10);
+    expect(DEFAULT_PLAN.map((p) => p.pose)).toEqual(
+      Array.from({ length: 5 }, () => ['full_fist', 'open']).flat(),
+    );
     expect(POSES.hook.closure.thumb).toBeNull();
     expect(POSES.hook.render.index).toEqual({ mcp: 0, pip: 90, dip: 70 });
     expect(POSES.tabletop.render.index).toEqual({ mcp: 90, pip: 0, dip: 0 });
@@ -216,7 +212,7 @@ describe('MSW REST client', () => {
 });
 
 describe('scripted runtime', () => {
-  it('plays all fifteen attempts with events, assist, one resistance event and summary', async () => {
+  it('plays all ten attempts with events, assist, one resistance event and summary', async () => {
     vi.useFakeTimers();
     const runtime: Runtime = new ScriptedRuntime({ persist: false });
     const script = runtime as ScriptedRuntime,
@@ -225,14 +221,14 @@ describe('scripted runtime', () => {
     await runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS);
     vi.advanceTimersByTime(450_000);
     expect(runtime.exercise.view().phase).toBe('DONE');
-    expect(runtime.exercise.view().summary!.attempts).toBe(15);
+    expect(runtime.exercise.view().summary!.attempts).toBe(10);
     expect(events.filter((e) => e.kind === 'resistance')).toHaveLength(1);
     expect(events.some((e) => e.kind === 'assist_started')).toBe(true);
     expect(events.some((e) => e.kind === 'progress')).toBe(true);
     const attempts = events
       .filter((e) => e.kind === 'attempt_done')
       .map((e) => e.result);
-    expect(attempts).toHaveLength(15);
+    expect(attempts).toHaveLength(10);
     expect(attempts.every((r) => r.trace.hz === 20)).toBe(true);
     for (const result of attempts) {
       expect(

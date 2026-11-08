@@ -7,7 +7,8 @@ import {
   loadDraft,
 } from './draft';
 import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
-import { calibration } from '../../contracts/fixtures.check';
+import { calibration as fixture } from '../../contracts/fixtures.check';
+const calibration = { ...fixture, assist_direction: 'open' as const };
 import type { VisionFrame, FingerId } from '../../contracts/vision';
 function frames(): VisionFrame[] {
   return Array.from({ length: 61 }, (_, i) => ({
@@ -196,4 +197,37 @@ describe('flex-model-aware calibration drafts', () => {
       sessionStorage.clear();
     }
   });
+});
+
+it.each([undefined, 'close'] as const)(
+  'clears servo, camera and friction values from %s assistance',
+  (assist_direction) => {
+    const draft = draftFromCalibration({ ...calibration, assist_direction });
+    expect(draft).toMatchObject({
+      step: 0,
+      servo: {},
+      open: null,
+      closed: null,
+      friction: {},
+      assistDirection: 'open',
+    });
+  },
+);
+it('clears a resumed draft without an opening direction marker', () => {
+  const draft = draftFromCalibration({
+    ...calibration,
+    assist_direction: 'open',
+  });
+  sessionStorage.setItem(
+    'rehab-calibration',
+    JSON.stringify({ ...draft, assistDirection: undefined }),
+  );
+  expect(loadDraft()).toMatchObject({
+    step: 0,
+    servo: {},
+    open: null,
+    closed: null,
+    friction: {},
+  });
+  sessionStorage.clear();
 });

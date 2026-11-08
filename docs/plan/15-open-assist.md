@@ -160,3 +160,18 @@ relaxed fist, open at straight); (3) **extension strength gate**: a helper resis
 must open it and hold 2 s under the limit, record current; (4) all five held open on a relaxed hand, total current < limit;
 (5) STOP while held open → slack in < 0.5 s; (6) a fast fist during `follow` does not trip overcurrent. If (3) fails, the team needs
 stronger servos or a larger spool/lever before patient use. Software work does not wait for the gate.
+
+## 8. Outcome (Nov 7)
+
+Built by Codex workers through Orca handoffs, reviewed and merged by the coordinator with merge commits:
+O1 firmware #75 · O2 sim #76 · O3 engine #81 · O5 backend + voice #82 · O4 runtime + Setup/Calibrate #77 · O6 UI #85 · O7 integration #86.
+Final integration: `make test` (122 backend, 899 frontend, lint/typecheck, 48 native firmware) and `make e2e` (39/39) green; ESP32 builds.
+
+Coordinator review fixes during the wave:
+- O3: glove-started fingers oscillated (released 8%, re-pulled 150 ms later) once they reached tolerance; fixed with hysteresis
+  (started fingers keep their target until RELEASE unless resistance, the governor or therapy lowers it) plus regression tests.
+- O1: the watchdog gate "slack within 1 s" was impossible under the protocol (fault strictly after 1000 ms, then ≤ 335 ms unwinding);
+  reconciled to fault ≤ 1005 ms and slack ≤ 1.5 s.
+- O2 merged first and inverted the sim; engine/runtime/backend-demo callers were migrated by O3/O4/O5 on notice.
+
+Still open: the hardware gate (§7) is **not run**. Servo profiles are placeholders. No person uses the glove before BENCH's opening gate passes.

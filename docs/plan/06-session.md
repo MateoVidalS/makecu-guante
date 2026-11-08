@@ -1,5 +1,11 @@
 # 06 — Session engine: exercise, assist-as-needed, evaluation, metrics
 
+> **Superseded in part by `15-open-assist.md` (Nov 7): the glove helps the hand open.** Only fingers that must open are assisted
+> (`closure > target + tolerance`); closing poses are practiced alone (the glove follows and pays out); no assistable finger → no ASSIST.
+> Glove-started fingers keep their target until RELEASE (hysteresis); a sustained-load governor sheds pull at 80% of the current limit;
+> resistance = vision not opening. Default plan = `OPEN_ASSIST_PLAN` (5 × fist then open). Evaluation sweeps pull 0 → 0.95 = resistance to
+> opening (flexor tone). Ring and pinky are scored and assisted (five-finger update).
+
 Code: `frontend/src/engine/` (WP4). **Pure TypeScript**: no React, no DOM, no timers. It is driven by `tick(input)` calls
 carrying time, the latest `VisionFrame` and the latest `GloveTelemetry`, and it returns `{ commands: GloveCommand[], events: EngineEvent[] }`.
 The runtime (WP10) feeds it and executes the commands. Types: `03-contracts.md §3`.

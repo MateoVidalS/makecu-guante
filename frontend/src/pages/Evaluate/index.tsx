@@ -76,7 +76,7 @@ function SweepChart({ measuringFriction }: { measuringFriction: boolean }) {
         className="hp-chart"
         viewBox="0 0 1000 230"
         role="img"
-        aria-label="Resistance estimate by finger position"
+        aria-label="Resistance estimate by opening help"
       >
         {[0, 300, 600, 900].map((ma) => (
           <g key={ma}>
@@ -108,7 +108,7 @@ function SweepChart({ measuringFriction }: { measuringFriction: boolean }) {
           y={CHART.bottom + 44}
           textAnchor="middle"
         >
-          Finger position
+          Glove opening help
         </text>
         <text x={CHART.left - 8} y={CHART.top - 18} textAnchor="end">
           mA
@@ -332,7 +332,7 @@ export default function Evaluate() {
     return (
       <div className="hp-page">
         <PageHeader
-          title="Your evaluation"
+          title="Resistance to opening (flexor tone)"
           lead="An estimate inspired by clinical practice."
         />
         <Section
@@ -344,8 +344,8 @@ export default function Evaluate() {
           }
           description={
             <>
-              How hard the glove had to pull each finger, slowly and then
-              quickly. A big jump at speed can mean stiffness (spasticity).{' '}
+              How hard the glove pulled each finger open, slowly and then
+              quickly. Fast − slow estimates velocity dependence (spasticity).{' '}
               {result.friction_used
                 ? 'Empty-glove friction was accounted for.'
                 : 'No empty-glove friction correction was used.'}
@@ -454,7 +454,7 @@ export default function Evaluate() {
     <div className="hp-page">
       <PageHeader
         title="Check your comfortable movement"
-        lead="The glove moves each finger slowly, then quickly. You’ll see resistance estimates."
+        lead="The glove opens one finger at a time, slowly then quickly."
       />
       <div className="hp-wizard">
         <RelaxedHandSafetyStrip release={release} />
@@ -536,6 +536,7 @@ export default function Evaluate() {
           </p>
           <Checkbox
             label="Hand relaxed in the glove"
+            hint="Let your hand rest curled. The glove opens one finger at a time."
             disabled={!frictionReady || busy}
             checked={relaxed}
             onChange={(e) => setRelaxed(e.target.checked)}

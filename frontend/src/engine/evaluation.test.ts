@@ -65,7 +65,9 @@ describe('evaluation (06-session §5 and §6)', () => {
     ]);
     for (let i = 0; i < 20; i++) expect(r.step().commands).toEqual([]);
     const out = r.step();
-    expect(out.commands).toEqual([{ t: 'target', f: [1, 0, 0, 0, 0], v: 0.2 }]);
+    expect(out.commands).toEqual([
+      { t: 'target', f: [0.95, 0, 0, 0, 0], v: 0.2 },
+    ]);
     expect(r.engine.state()).toMatchObject({
       stage: 'sweep',
       finger: 'thumb',
@@ -81,16 +83,16 @@ describe('evaluation (06-session §5 and §6)', () => {
       .flatMap((o) => o.commands)
       .filter((c) => c.t === 'target');
     expect(targets).toEqual([
-      { t: 'target', f: [1, 0, 0, 0, 0], v: 0.2 },
-      { t: 'target', f: [1, 0, 0, 0, 0], v: 1 },
-      { t: 'target', f: [0, 1, 0, 0, 0], v: 0.2 },
-      { t: 'target', f: [0, 1, 0, 0, 0], v: 1 },
-      { t: 'target', f: [0, 0, 1, 0, 0], v: 0.2 },
-      { t: 'target', f: [0, 0, 1, 0, 0], v: 1 },
-      { t: 'target', f: [0, 0, 0, 1, 0], v: 0.2 },
-      { t: 'target', f: [0, 0, 0, 1, 0], v: 1 },
-      { t: 'target', f: [0, 0, 0, 0, 1], v: 0.2 },
-      { t: 'target', f: [0, 0, 0, 0, 1], v: 1 },
+      { t: 'target', f: [0.95, 0, 0, 0, 0], v: 0.2 },
+      { t: 'target', f: [0.95, 0, 0, 0, 0], v: 1 },
+      { t: 'target', f: [0, 0.95, 0, 0, 0], v: 0.2 },
+      { t: 'target', f: [0, 0.95, 0, 0, 0], v: 1 },
+      { t: 'target', f: [0, 0, 0.95, 0, 0], v: 0.2 },
+      { t: 'target', f: [0, 0, 0.95, 0, 0], v: 1 },
+      { t: 'target', f: [0, 0, 0, 0.95, 0], v: 0.2 },
+      { t: 'target', f: [0, 0, 0, 0.95, 0], v: 1 },
+      { t: 'target', f: [0, 0, 0, 0, 0.95], v: 0.2 },
+      { t: 'target', f: [0, 0, 0, 0, 0.95], v: 1 },
     ]);
     expect(result.sweeps).toHaveLength(10);
     expect(result.friction_used).toBe(true);
@@ -238,7 +240,7 @@ describe('evaluation (06-session §5 and §6)', () => {
     for (let i = 0; i < 30; i++) expect(r.step().commands).toEqual([]);
     r.world.confidence = 0.6;
     expect(r.step().commands).toEqual([
-      { t: 'target', f: [0, 1, 0, 0, 0], v: 0.2 },
+      { t: 'target', f: [0, 0.95, 0, 0, 0], v: 0.2 },
     ]);
   });
   it.each([
@@ -332,7 +334,7 @@ it('waits two seconds after a sweep and one second released before the next spee
   expect(r.engine.state().stage).toBe('prepare');
   for (let i = 0; i < 20; i++) expect(r.step().commands).toEqual([]);
   expect(r.step().commands).toEqual([
-    { t: 'target', f: [0, 1, 0, 0, 0], v: 1 },
+    { t: 'target', f: [0, 0.95, 0, 0, 0], v: 1 },
   ]);
 });
 
@@ -384,10 +386,10 @@ it('evaluates only a deduplicated ring/pinky subset and reports overall progress
       if (command.t === 'target') targets.push(command.f);
   }
   expect(targets).toEqual([
-    [0, 0, 0, 0, 1],
-    [0, 0, 0, 0, 1],
-    [0, 0, 0, 1, 0],
-    [0, 0, 0, 1, 0],
+    [0, 0, 0, 0, 0.95],
+    [0, 0, 0, 0, 0.95],
+    [0, 0, 0, 0.95, 0],
+    [0, 0, 0, 0.95, 0],
   ]);
   expect(
     progress.every(
@@ -462,4 +464,25 @@ it("stores independent friction curves for all five fingers and subtracts each f
     expect(result.resistance_slow_ma).toBeCloseTo(100);
     expect(result.resistance_fast_ma).toBeCloseTo(100);
   }
+});
+
+it('opens only the selected finger to the safe cap and completes at pull 0.93, retaining full-range friction sweeps', () => {
+  const r = new EvalRun(undefined, one);
+  r.until('sweep');
+  expect(r.outputs.at(-1)!.commands).toEqual([
+    { t: 'target', f: [0, 0.95, 0, 0, 0], v: 0.2 },
+  ]);
+  r.step(50, (input) => {
+    input.tel!.a[1] = 0.929;
+  });
+  expect(r.engine.state().stage).toBe('sweep');
+  r.step(50, (input) => {
+    input.tel!.a[1] = 0.93;
+  });
+  expect(r.engine.state().stage).toBe('cooldown');
+  const raw = new EvalRun(frictionRun(), one);
+  raw.until('sweep');
+  expect(raw.outputs.at(-1)!.commands).toEqual([
+    { t: 'target', f: [0, 1, 0, 0, 0], v: 0.2 },
+  ]);
 });

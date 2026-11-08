@@ -42,6 +42,7 @@ function mount({ fresh = false } = {}) {
     .mockImplementation(async (value) => {
       const saved: Calibration = {
         ...value,
+        assist_direction: 'open',
         id: 99,
         created_at: new Date().toISOString(),
       };
@@ -275,4 +276,18 @@ it('blocks invalid saved calibration and links directly to the same repair', () 
   expect(strip).toHaveClass('ds-banner--warning');
   expect(screen.getAllByText('Keep your hand relaxed.')).toHaveLength(1);
   expect(strip).toHaveTextContent('Press STOP anytime. Stop if it hurts.');
+});
+
+it('explains that the hand rests curled and the glove opens each finger', () => {
+  mount();
+  expect(
+    screen.getByText(
+      'The glove opens one finger at a time, slowly then quickly.',
+    ),
+  ).toBeVisible();
+  expect(
+    screen.getByText(
+      'Let your hand rest curled. The glove opens one finger at a time.',
+    ),
+  ).toBeVisible();
 });

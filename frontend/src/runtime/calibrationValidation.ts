@@ -1,5 +1,7 @@
+import { isCurrentCameraCalibration } from '../vision/calibrationCompatibility';
 import { useCallback, useSyncExternalStore } from 'react';
 import {
+  CURRENT_ASSIST_DIRECTION,
   type Calibration,
   type CameraCalibration,
 } from '../contracts/calibration';
@@ -8,13 +10,15 @@ import type { FingerId, VisionFrame } from '../contracts/vision';
 import { jointsFromClosure } from '../glove/sim/simVision';
 import { useVision, useVisionFrame } from '../vision';
 import { useRuntime } from './RuntimeProvider';
-import { isCurrentCameraCalibration } from '../vision/calibrationCompatibility';
+
+export const ASSIST_DIRECTION_RECALIBRATE_MESSAGE =
+  'The glove now helps the hand open. Calibrate it again.';
 
 export const CAMERA_VIEW_RECAPTURE_MESSAGE =
   'Your camera range needs to be updated. Redo the camera step with your hand raised, palm to the screen.';
 
 export interface CalibrationIssue {
-  /** Absent when the whole camera capture needs redoing. */
+  /** Absent when a whole calibration step needs redoing. */
   finger?: FingerId;
   step: 'glove' | 'camera';
   message: string;
@@ -48,7 +52,7 @@ function cameraRangeError(
       : undefined;
   // Match the runtime gate before normalization can hide an undersized range.
   if (expected !== undefined && (expected - open) / span > 1.05)
-    return `Camera range would report over 100% for your ${finger}. Recapture open and relaxed glove-closed positions together.`;
+    return `Camera range would report over 100% for your ${finger}. Recapture open and your own fist positions together.`;
   return null;
 }
 
@@ -66,12 +70,20 @@ export function validateCameraRange(
 
 /** Shared by saved readiness and the wizard's unsaved Review values. */
 export function selectCalibrationStatus(
-  calibration: Pick<Calibration, 'servo' | 'camera'> | null,
+  calibration: Pick<
+    Calibration,
+    'servo' | 'camera' | 'assist_direction'
+  > | null,
   simulatedCamera: boolean,
   frame: VisionFrame | null,
 ): CalibrationStatus {
   if (!calibration) return { state: 'missing', issues: [] };
   const issues: CalibrationIssue[] = [];
+  if (calibration.assist_direction !== CURRENT_ASSIST_DIRECTION)
+    issues.push({
+      step: 'glove',
+      message: ASSIST_DIRECTION_RECALIBRATE_MESSAGE,
+    });
   const add = (finger: FingerId, step: CalibrationIssue['step']) =>
     issues.push({
       finger,
@@ -138,7 +150,9 @@ export function calibrationReadiness(status: CalibrationStatus) {
         ? 'Ready'
         : status.state === 'invalid'
           ? status.issues.some(
-              (issue) => issue.message === CAMERA_VIEW_RECAPTURE_MESSAGE,
+              (issue) =>
+                issue.message === CAMERA_VIEW_RECAPTURE_MESSAGE ||
+                issue.message === ASSIST_DIRECTION_RECALIBRATE_MESSAGE,
             )
             ? 'Needed'
             : 'Needs a quick redo'

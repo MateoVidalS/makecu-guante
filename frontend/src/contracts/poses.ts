@@ -18,8 +18,6 @@ export interface PoseDef {
 
 /** Assist never pulls past 95% of the calibrated open range (hyperextension margin). Consented intensify may use 1.0. */
 export const MAX_ASSIST_PULL = 0.95;
-/** @deprecated closing-assist glove; use MAX_ASSIST_PULL. Removed once no consumer imports it (O3/O6). */
-export const MAX_ASSIST_CLOSURE = 0.95;
 
 export const POSES: Record<PoseId, PoseDef> = {
   open: {
@@ -188,10 +186,10 @@ export const POSES: Record<PoseId, PoseDef> = {
     family: 'tendon_glide',
     closure: {
       thumb: 0.7,
-      index: MAX_ASSIST_CLOSURE,
-      middle: MAX_ASSIST_CLOSURE,
-      ring: MAX_ASSIST_CLOSURE,
-      pinky: MAX_ASSIST_CLOSURE,
+      index: 0.95,
+      middle: 0.95,
+      ring: 0.95,
+      pinky: 0.95,
     },
     render: {
       index: {
@@ -266,20 +264,23 @@ export const POSES: Record<PoseId, PoseDef> = {
     },
   },
 };
-export const DEFAULT_PLAN: ExercisePlanItem[] = [
+/** Observation glides: closing poses are practiced actively. */
+export const TENDON_GLIDE_PLAN: ExercisePlanItem[] = [
   'open',
   'hook',
   'tabletop',
   'straight_fist',
   'full_fist',
 ].map((pose) => ({ pose: pose as PoseId, reps: 3 }));
-/** The pre-pivot plan: tendon glides. With the opening glove only `open` is assisted; the rest are practiced alone. */
-export const TENDON_GLIDE_PLAN: ExercisePlanItem[] = DEFAULT_PLAN.map((item) => ({ ...item }));
-/** Open-assist plan (docs/plan/15 §2.7): an active fist, then an assisted opening, five times. Becomes DEFAULT_PLAN in O7. */
-export const OPEN_ASSIST_PLAN: ExercisePlanItem[] = Array.from({ length: 5 }, () => [
-  { pose: 'full_fist' as PoseId, reps: 1 },
-  { pose: 'open' as PoseId, reps: 1 },
-]).flat();
+/** Open-assist plan (docs/plan/15 §2.7): an active fist, then an assisted opening, five times. */
+export const OPEN_ASSIST_PLAN: ExercisePlanItem[] = Array.from(
+  { length: 5 },
+  () => [
+    { pose: 'full_fist' as PoseId, reps: 1 },
+    { pose: 'open' as PoseId, reps: 1 },
+  ],
+).flat();
+export const DEFAULT_PLAN: ExercisePlanItem[] = OPEN_ASSIST_PLAN;
 export const PINCH_PLAN: ExercisePlanItem[] = [{ pose: 'pinch', reps: 3 }];
 export const DEFAULT_EXERCISE_SETTINGS: ExerciseSettings = {
   present_s: 3,

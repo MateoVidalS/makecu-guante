@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { calibration as fixture } from '../src/contracts/fixtures.check';
-import { CURRENT_CAMERA_VIEW } from '../src/contracts/calibration';
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+} from '../src/contracts/calibration';
 
 test('an undersized example camera range is flagged before practice sends motion', async ({
   page,
@@ -13,7 +16,12 @@ test('an undersized example camera range is flagged before practice sends motion
       // recapture rule) is what blocks practice.
       json: {
         ...fixture,
-        camera: { ...fixture.camera, camera_view: CURRENT_CAMERA_VIEW },
+        assist_direction: 'open',
+        camera: {
+          ...fixture.camera,
+          camera_view: CURRENT_CAMERA_VIEW,
+          flex_model: CURRENT_FLEX_MODEL,
+        },
         created_at: new Date().toISOString(),
       },
     }),
@@ -36,3 +44,52 @@ test('an undersized example camera range is flagged before practice sends motion
   await expect(page.locator('.focus')).toHaveCount(0);
   expect(sessionsCreated).toBe(0);
 });
+
+for (const direction of ['close', undefined] as const) {
+  test(`legacy ${direction ?? 'unmarked'} calibration blocks practice and evaluation before motion`, async ({
+    page,
+  }) => {
+    const calibration = {
+      ...fixture,
+      assist_direction: direction,
+      camera: {
+        ...fixture.camera,
+        camera_view: CURRENT_CAMERA_VIEW,
+        flex_model: CURRENT_FLEX_MODEL,
+        closed_flex: {
+          thumb: 100,
+          index: 270,
+          middle: 270,
+          ring: 270,
+          pinky: 270,
+        },
+      },
+    };
+    await page.route('**/api/calibrations/latest', (route) =>
+      route.fulfill({ json: calibration }),
+    );
+    let runs = 0;
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        /\/api\/(sessions|evaluations)$/.test(request.url())
+      )
+        runs++;
+    });
+    for (const [url, action] of [
+      ['/exercise', 'Start practice'],
+      ['/evaluate', 'Start evaluation'],
+    ]) {
+      await page.goto(url);
+      await expect(
+        page
+          .getByText('The glove now helps the hand open. Calibrate it again.')
+          .first(),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: action, exact: true }),
+      ).toBeDisabled();
+    }
+    expect(runs).toBe(0);
+  });
+}

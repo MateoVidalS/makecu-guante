@@ -29,6 +29,7 @@ import type { EvalSweep } from '../../contracts/evaluation';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
 import {
   assistSeries,
+  splitDirectionRows,
   decimate,
   phaseBands,
   replayRows,
@@ -38,6 +39,8 @@ import {
   type ChartRow,
   type TimelineEntry,
 } from './transforms';
+import { directionLabel, LEGACY_GLOVE } from './direction';
+import type { AssistDirection } from '../../contracts/calibration';
 import type { TherapyMarker } from '../therapy/data';
 import { PhaseStrip } from './PhaseStrip';
 import './charts.css';
@@ -276,8 +279,30 @@ function Chart({
   const hasData = rows.some((r) =>
     series.some((s) => typeof r[s.key] === 'number'),
   );
+  const directional = rows.some((r) => r.direction);
+  const plotRows = directional
+    ? splitDirectionRows(
+        rows,
+        series.map((s) => s.key),
+      )
+    : rows;
+  // Each direction gets its own line; null rows break paths at every transition.
+  const plotSeries = directional
+    ? series.flatMap((s) =>
+        (['open', 'close'] as const).map((direction) => ({
+          ...s,
+          key: `${s.key}_${direction}`,
+          label: `${s.label} · ${directionLabel({ assist_direction: direction })}`,
+          color: direction === 'close' ? MUTED : s.color,
+        })),
+      )
+    : series;
   const right = series.some((s) => s.right);
-  const first = rows.find((r) => typeof r[series[0]?.key] === 'number');
+  const first = rows.find(
+    (r) =>
+      (!directional || r.direction === rows.at(-1)?.direction) &&
+      typeof r[series[0]?.key] === 'number',
+  );
   const labelWidth = direct
     ? Math.max(...series.map((s) => (s.short ?? s.label).length)) * 6.5 + 12
     : 0;
@@ -342,7 +367,7 @@ function Chart({
               initialDimension={{ width: 320, height: 240 }}
             >
               <LineChart
-                data={rows}
+                data={plotRows}
                 margin={{
                   top: 8,
                   bottom: xKind === 'number' ? 16 : 0,
@@ -413,7 +438,7 @@ function Chart({
                       : `${numberLabel(Number(x))} ${xLabel}`
                   }
                   formatter={(value, name) => {
-                    const s = series.find((s) => s.label === name);
+                    const s = plotSeries.find((s) => s.label === name);
                     return [
                       numberLabel(
                         typeof value === 'number' ? value : Number(value),
@@ -433,12 +458,12 @@ function Chart({
                   />
                 )}
                 {children}
-                {series.map((s) => {
-                  const data = s.data ?? rows;
+                {plotSeries.map((s, seriesIndex) => {
+                  const data = s.data ?? plotRows;
                   const end = lastIndex(data, s.key);
                   return (
                     <Line
-                      key={s.key}
+                      key={`${s.key}-${seriesIndex}`}
                       yAxisId={s.right ? 'current' : 'primary'}
                       type="linear"
                       dataKey={s.key}
@@ -517,6 +542,12 @@ function Chart({
               </LineChart>
             </ResponsiveContainer>
           </div>
+          {directional && (
+            <p className="footnote">
+              Opening-assist glove · {LEGACY_GLOVE} shown muted. Trends stay
+              separate.
+            </p>
+          )}
           {legendItems.length > 0 && (
             <ul className="chart-legend" aria-label="Legend">
               {legendItems.map((item) => (
@@ -554,7 +585,12 @@ function Chart({
                           {numberLabel(r[s.key], s.unit)}
                         </td>
                       ))}
-                      <td>{r.demo ? 'Demo data' : 'Recorded'}</td>
+                      <td>
+                        {r.demo ? 'Demo data' : 'Recorded'}
+                        {r.direction
+                          ? ` · ${directionLabel({ assist_direction: r.direction as AssistDirection })}`
+                          : ''}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -576,9 +612,9 @@ interface TrendProps {
 
 /** Takeaway title for a finger's active-range trend. */
 export function trendTakeaway(rows: ChartRow[], opening: boolean) {
-  const measured = rows.flatMap((r) =>
-    typeof r.active === 'number' ? [r.active] : [],
-  );
+  const measured = rows
+    .filter((r) => !r.direction || r.direction === rows.at(-1)?.direction)
+    .flatMap((r) => (typeof r.active === 'number' ? [r.active] : []));
   const improving =
     measured.length > 1 &&
     (opening ? measured.at(-1)! < measured[0] : measured.at(-1)! > measured[0]);
@@ -653,7 +689,7 @@ export function AssistTrend({
       series={[
         {
           key: 'needed',
-          label: 'Help needed',
+          label: 'Opening the glove completed',
           short: 'Help',
           unit: '%',
           color: color(finger),
@@ -734,7 +770,7 @@ const phaseColor: Record<ExercisePhase, string> = {
   DONE: 'transparent',
 };
 const safetyLabel = (e: AttemptResult['safety_events'][number]) =>
-  `${e.source.replaceAll('_', ' ')} · ${e.t_rel.toFixed(1)} s · ${e.finger ?? 'finger unknown'} · ${numberLabel(e.ma, ' mA')}`;
+  `${e.source === 'load_shed' ? 'Eased off to protect the glove' : e.source.replaceAll('_', ' ')} · ${e.t_rel.toFixed(1)} s · ${e.finger ?? 'finger unknown'} · ${numberLabel(e.ma, ' mA')}`;
 
 export function ReplayChart({
   trace,
@@ -742,7 +778,9 @@ export function ReplayChart({
   therapyMarkers = [],
   isDemo = false,
   loading = false,
+  assistDirection = 'open',
 }: {
+  assistDirection?: AssistDirection;
   trace?: AttemptTrace;
   safety?: AttemptResult['safety_events'];
   therapyMarkers?: TherapyMarker[];
@@ -793,7 +831,9 @@ export function ReplayChart({
           <g transform={`translate(${props.cx}, ${props.cy})`}>
             <path
               d="M0 5L-5.5 -4.5H5.5Z"
-              fill="var(--danger)"
+              fill={
+                e.source === 'load_shed' ? 'var(--caution)' : 'var(--danger)'
+              }
               stroke="var(--chart-surface)"
               strokeWidth={2}
               paintOrder="stroke"
@@ -807,29 +847,40 @@ export function ReplayChart({
     <div className="data-stack">
       <Chart
         title="Your attempt, moment by moment"
-        hint="Higher means further closed. Solid lines: camera. Dashed: where the glove was told to go."
+        hint={
+          assistDirection === 'open'
+            ? 'Solid: camera closure (0% open, 100% curled). Dashed: glove opening help (0% slack, 100% full pull). These scales run in opposite directions.'
+            : `${LEGACY_GLOVE}. Solid: camera closure. Dashed: commanded closing help.`
+        }
         rows={reduced}
         series={GLOVE_FINGERS.flatMap((f) => [
           {
             key: `${f}Closure`,
             label: `${fingerName(f)} camera`,
             unit: '%',
-            color: color(f),
+            color: assistDirection === 'close' ? MUTED : color(f),
           },
           {
             key: `${f}Servo`,
-            label: `${fingerName(f)} servo`,
+            label: `${fingerName(f)} ${assistDirection === 'open' ? 'opening help' : 'closing help (earlier glove)'}`,
             unit: '%',
-            color: color(f),
+            color: assistDirection === 'close' ? MUTED : color(f),
             dashed: true,
           },
         ])}
         legend={[
           ...GLOVE_FINGERS.map((f) => ({
             label: fingerName(f),
-            color: color(f),
+            color: assistDirection === 'close' ? MUTED : color(f),
           })),
-          { label: 'Servo (commanded)', color: MUTED, dashed: true },
+          {
+            label:
+              assistDirection === 'open'
+                ? 'Opening help (commanded pull)'
+                : LEGACY_GLOVE,
+            color: MUTED,
+            dashed: true,
+          },
         ]}
         xKind="number"
         xLabel="Time (s)"
@@ -877,7 +928,14 @@ export function ReplayChart({
       {safety.length > 0 && (
         <ul aria-label="Safety events" className="safety-list">
           {safety.map((e, i) => (
-            <li key={i}>
+            <li
+              key={i}
+              style={
+                e.source === 'load_shed'
+                  ? { color: 'var(--caution-text)' }
+                  : undefined
+              }
+            >
               <svg viewBox="0 0 10 10" aria-hidden="true">
                 <path d="M5 9L1 1H9Z" />
               </svg>
@@ -948,7 +1006,7 @@ export function SweepCurves({
           { label: 'Stored friction', color: MUTED },
         ]}
         xKind="number"
-        xLabel="Commanded position (%)"
+        xLabel="Commanded pull (%)"
         yLabel="Total current, mA"
         loading={loading}
         compact={compact}

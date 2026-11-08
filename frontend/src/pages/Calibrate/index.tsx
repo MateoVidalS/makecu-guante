@@ -21,11 +21,12 @@ import {
   practicePlan,
   useShortPractice,
 } from '../../components/common/practice';
-import { CalibrationClosure } from './closure';
+import { CalibrationOpening } from './closure';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
   CURRENT_CAMERA_VIEW,
   CURRENT_FLEX_MODEL,
+  CURRENT_ASSIST_DIRECTION,
   type ServoCalibration,
 } from '../../contracts/calibration';
 import type { VisionFrame } from '../../contracts/vision';
@@ -221,7 +222,7 @@ export default function Calibrate() {
   async function sendRanges() {
     if (!GLOVE_FINGERS.every((f) => validRange(draft.servo[f])))
       throw new Error(
-        'Set comfortable open and closed angles for every finger.',
+        'Set comfortable slack and open angles for every finger.',
       );
     if (client.connection() !== 'connected')
       throw new Error('Connect the glove first.');
@@ -246,19 +247,22 @@ export default function Calibrate() {
     setProgress(0);
     const frames: VisionFrame[] = [];
     const started = performance.now();
-    // With a simulated glove and the real camera, nothing can close the real hand:
-    // the closed capture is the patient's own best fist, held still like the open capture.
-    const gloveCloses = kind === 'closed' && !ownFist;
-    let holdStarted: number | null = gloveCloses ? null : started;
+    // Closed is always an active fist. A simulated glove cannot open a real hand.
+    const gloveOpens = kind === 'open' && !ownFist;
+    client.release();
+    let holdStarted: number | null = gloveOpens ? null : started;
     let lastFrameAt = started;
     const telemetry = client.latest();
-    if (gloveCloses && !telemetry) {
+    if (gloveOpens && !telemetry) {
       setCapture(false);
       setError('Wait for glove readings, then try again.');
       return;
     }
-    const closure = gloveCloses ? new CalibrationClosure(telemetry!.a) : null;
-    if (closure) client.limit(Math.min(1500, draft.limit));
+    const opening = gloveOpens ? new CalibrationOpening(telemetry!.a) : null;
+    if (opening) client.limit(Math.min(1500, draft.limit));
+    let resistanceSince: number | null = null;
+    let previousRaw = vision.latest?.rawFlexSum ?? null;
+    let resistanceCheckAt = started;
     const unsubscribe = vision.source.onFrame((frame) => {
       lastFrameAt = performance.now();
       if (!frame.detected || frame.confidence < 0.6) {
@@ -286,11 +290,40 @@ export default function Calibrate() {
         );
         return;
       }
-      const position = client.latest()?.a;
-      if (closure && holdStarted === null && position) {
-        if (closure.advance(now, position))
-          client.target([...closure.target], 0.3);
-        if (closure.settled(position)) holdStarted = now;
+      const reading = client.latest();
+      if (opening && reading?.st === 'fault') {
+        cleanup();
+        setError('Glove stopped. Check the glove before continuing.');
+        return;
+      }
+      // Stop a loaded stretch that is no longer opening the fingers.
+      if (opening && reading && now - resistanceCheckAt >= 300) {
+        const raw = vision.latest?.rawFlexSum;
+        const stalled =
+          raw &&
+          previousRaw &&
+          GLOVE_FINGERS.some(
+            (f, i) =>
+              opening.target[i] > 0 &&
+              reading.a[i] > 0.1 &&
+              previousRaw![f] - raw[f] < 2,
+          );
+        if (stalled && reading.ma >= Math.min(1500, draft.limit) * 0.8) {
+          resistanceSince ??= now;
+          if (now - resistanceSince >= 300) {
+            cleanup();
+            setError('Resistance while opening. Check the fit and try again.');
+            return;
+          }
+        } else resistanceSince = null;
+        previousRaw = raw ?? null;
+        resistanceCheckAt = now;
+      }
+      const position = reading?.a;
+      if (opening && holdStarted === null && position) {
+        if (opening.advance(now, position))
+          client.target([...opening.target], 0.3);
+        if (opening.settled(position)) holdStarted = now;
       }
       if (holdStarted === null) {
         if (now - started > 20_000) {
@@ -306,15 +339,15 @@ export default function Calibrate() {
         if (frames.some((f) => f.handedness !== draft.hand))
           throw new Error('Show the selected hand and try again.');
         if (
-          kind === 'closed' &&
-          draft.open &&
-          GLOVE_FINGERS.some((f) => value.raw[f] - draft.open!.raw[f] < 20)
+          kind === 'open' &&
+          draft.closed &&
+          GLOVE_FINGERS.some((f) => draft.closed!.raw[f] - value.raw[f] < 20)
         )
-          throw new Error('Move further from your open position. Try again.');
+          throw new Error('Move further from your fist position. Try again.');
         if (kind === 'pinch' && draft.open && value.pinch >= draft.open.pinch)
           throw new Error('Touch your thumb and index finger. Try again.');
         update(
-          kind === 'open' ? { open: value, closed: null } : { [kind]: value },
+          kind === 'closed' ? { closed: value, open: null } : { [kind]: value },
         );
       } catch (e) {
         setError((e as Error).message);
@@ -344,6 +377,7 @@ export default function Calibrate() {
       pinch_closed: Math.min(draft.closed.pinch, draft.open.pinch * 0.5),
     };
     await runtime.calibration.save({
+      assist_direction: CURRENT_ASSIST_DIRECTION,
       servo: GLOVE_FINGERS.map((f) => draft.servo[f] as ServoCalibration),
       camera,
       friction: draft.friction,
@@ -356,6 +390,7 @@ export default function Calibrate() {
   }
   const draftStatus = selectCalibrationStatus(
     {
+      assist_direction: draft.assistDirection,
       servo: GLOVE_FINGERS.map(
         (f) => draft.servo[f] as ServoCalibration,
       ).filter(Boolean),
@@ -397,6 +432,7 @@ export default function Calibrate() {
       finger: GLOVE_FINGERS.length - 1,
     });
     void action(async () => {
+      client.release();
       GLOVE_FINGERS.forEach((_, i) =>
         client.calib(i as 0 | 1 | 2 | 3 | 4, 20, 150),
       );
@@ -524,9 +560,10 @@ export default function Calibrate() {
               ))}
             </div>
             <p className="hp-note">
-              Five servos share a 5 V, 2.5 A supply. Adjust one finger at a
-              time. The normal limit is 1500 mA; never exceed 2200 mA. Keep your
-              elbow supported and your raised hand relaxed.
+              First check the range on a mannequin or helper hand. Five servos
+              share a 5 V, 2.5 A supply. Adjust one finger at a time. The normal
+              limit is 1500 mA; never exceed 2200 mA. Keep your elbow supported
+              and your raised hand relaxed.
             </p>
             <Readouts
               label="Live glove readings"
@@ -560,41 +597,54 @@ export default function Calibrate() {
             <div>
               <div className="hp-set-row">
                 <div>
-                  <p>Open: thread just tight, finger fully open.</p>
+                  <p>
+                    Slack: Make a relaxed full fist. Jog until the thread is
+                    just taut.
+                  </p>
                   <p className="hp-set-row__value">
                     {range?.min_deg != null
-                      ? `Open at ${range.min_deg}°`
-                      : 'Open not set'}
+                      ? `Slack at ${range.min_deg}°`
+                      : 'Slack not set'}
                   </p>
                 </div>
                 <Button size="sm" onClick={() => setRange('min_deg')}>
-                  Set open
+                  Set slack
                 </Button>
               </div>
               <div className="hp-set-row">
                 <div>
-                  <p>Closed: finger comfortably closed, without pain.</p>
+                  <p>
+                    Open: Jog until the finger is straight. Never bend it back.
+                  </p>
+                  <p id="hyperextension-warning" className="hp-alert">
+                    Hyperextension warning: stop at straight. Never bend the
+                    finger back.
+                  </p>
                   <p className="hp-set-row__value">
                     {range?.max_deg != null
-                      ? `Closed at ${range.max_deg}°`
-                      : 'Closed not set'}
+                      ? `Open at ${range.max_deg}°`
+                      : 'Open not set'}
                   </p>
                 </div>
-                <Button size="sm" onClick={() => setRange('max_deg')}>
-                  Set closed
+                <Button
+                  size="sm"
+                  aria-describedby="hyperextension-warning"
+                  onClick={() => setRange('max_deg')}
+                >
+                  Set open
                 </Button>
               </div>
             </div>
             <p className="hp-note">
-              Open and closed must differ by at least 20°.
+              Slack and open must differ by at least 20°.
               {client.kind !== 'sim' &&
                 ' After sending, wait for the glove to confirm its ranges.'}
             </p>
             {(!validRange(range) || !allRangesSet) && (
               <p id="next-finger-hint" className="hp-note">
                 {!validRange(range)
-                  ? 'Set open and closed first, at least 20° apart.'
-                  : 'Set open and closed for every finger before continuing.'}
+                  ? 'Set slack and open first, at least 20° apart.'
+                  : 'Set slack and open for every finger before continuing.'}
               </p>
             )}
             <div className="hp-wizard__footer">
@@ -684,36 +734,36 @@ export default function Calibrate() {
             <div>
               <div className="hp-set-row">
                 <div>
-                  <p>Open hand, fingers straight.</p>
-                  <p className="hp-set-row__value">
-                    {draft.open ? 'Captured' : 'Not captured'}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={capture || !seen}
-                  onClick={() => captureRange('open')}
-                >
-                  Capture open hand
-                </Button>
-              </div>
-              <div className="hp-set-row">
-                <div>
-                  <p>
-                    {ownFist
-                      ? 'Close your hand as far as you comfortably can and hold it still.'
-                      : 'Relax while the glove closes all five fingers in stages. Close only as far as the glove goes, without pain.'}
-                  </p>
+                  <p>Closed: Make your own fist and hold it still.</p>
                   <p className="hp-set-row__value">
                     {draft.closed ? 'Captured' : 'Not captured'}
                   </p>
                 </div>
                 <Button
                   size="sm"
-                  disabled={capture || !draft.open || !seen}
+                  disabled={capture || !seen}
                   onClick={() => captureRange('closed')}
                 >
-                  {ownFist ? 'Capture my fist' : 'Glove closes the hand'}
+                  Capture my fist
+                </Button>
+              </div>
+              <div className="hp-set-row">
+                <div>
+                  <p>
+                    {ownFist
+                      ? 'Open your own hand, fingers straight. Hold it still.'
+                      : 'Relax. The glove opens all five fingers in stages.'}
+                  </p>
+                  <p className="hp-set-row__value">
+                    {draft.open ? 'Captured' : 'Not captured'}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={capture || !draft.closed || !seen}
+                  onClick={() => captureRange('open')}
+                >
+                  {ownFist ? 'Capture open hand' : 'Glove opens the hand'}
                 </Button>
               </div>
             </div>
@@ -755,10 +805,10 @@ export default function Calibrate() {
                   <tr>
                     <th scope="col">Finger</th>
                     <th scope="col" className="hp-num">
-                      Open
+                      Slack
                     </th>
                     <th scope="col" className="hp-num">
-                      Closed
+                      Open
                     </th>
                     <th scope="col">Review</th>
                   </tr>

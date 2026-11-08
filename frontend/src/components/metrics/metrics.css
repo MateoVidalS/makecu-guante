@@ -685,3 +685,8 @@
     forced-color-adjust: none;
   }
 }
+
+.mx-load-shed {
+  color: var(--caution-text);
+  font-size: var(--small);
+}

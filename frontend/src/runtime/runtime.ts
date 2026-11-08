@@ -1,5 +1,8 @@
 import type { TherapyRuntime } from './therapy';
-import { validateCameraRange } from './calibrationValidation';
+import {
+  ASSIST_DIRECTION_RECALIBRATE_MESSAGE,
+  validateCameraRange,
+} from './calibrationValidation';
 import { createStore } from 'zustand/vanilla';
 import * as api from '../api/client';
 import type {
@@ -8,7 +11,11 @@ import type {
   EvaluationView,
   Unsubscribe,
 } from '../contracts/runtime';
-import type { Calibration, FrictionCurve } from '../contracts/calibration';
+import {
+  CURRENT_ASSIST_DIRECTION,
+  type Calibration,
+  type FrictionCurve,
+} from '../contracts/calibration';
 import type { TherapyApi } from '../contracts/therapist';
 import type { EngineEvent } from '../contracts/engine';
 import {
@@ -100,6 +107,7 @@ export class RehabRuntime implements TherapyRuntime {
   private mounted = false;
   private switching = false;
   private evaluationLimit = 600;
+  private activeCurrentLimit = 1500;
   private retryAt = 0;
   private pendingEvents: GloveEvent[] = [];
   private beforeRelease: GloveTelemetry | null = null;
@@ -113,7 +121,11 @@ export class RehabRuntime implements TherapyRuntime {
           ? options.glove.world.timestamp()
           : performance.now());
     const epoch = Date.now() - this.clock();
+    const currentLimit = () => this.activeCurrentLimit;
     const engineOptions = {
+      get currentLimitMa() {
+        return currentLimit();
+      },
       therapy: {
         now: options.now ?? (() => performance.now()),
         simulated: () => this.options.glove.client.kind === 'sim',
@@ -205,7 +217,10 @@ export class RehabRuntime implements TherapyRuntime {
         this.sources.vision === 'sim',
         this.options.vision.latest,
       );
-      const saved = await api.createCalibration(value);
+      const saved = await api.createCalibration({
+        ...value,
+        assist_direction: CURRENT_ASSIST_DIRECTION,
+      });
       this.requireIdle();
       this.setCalibration(saved);
       return saved;
@@ -233,18 +248,23 @@ export class RehabRuntime implements TherapyRuntime {
   private sendCalibration() {
     const c = this.calibration.current,
       client = this.options.glove.client;
-    if (!c || client.connection() !== 'connected') return;
+    if (
+      !c ||
+      c.assist_direction !== CURRENT_ASSIST_DIRECTION ||
+      client.connection() !== 'connected'
+    )
+      return;
     client.release();
     for (const [i, finger] of GLOVE_FINGERS.entries()) {
       const servo = c.servo.find((s) => s.finger === finger);
       if (!servo) throw new Error(`Missing ${finger} servo calibration`);
       client.calib(i as 0 | 1 | 2 | 3 | 4, servo.min_deg, servo.max_deg);
     }
-    client.limit(
+    this.activeCurrentLimit =
       this.mode === 'evaluation' || this.mode === 'friction'
         ? this.evaluationLimit
-        : c.current_limit_ma,
-    );
+        : c.current_limit_ma;
+    client.limit(this.activeCurrentLimit);
   }
   private async switchSource(
     kind: 'serial' | 'camera' | 'sim',
@@ -276,6 +296,8 @@ export class RehabRuntime implements TherapyRuntime {
     this.requireIdle();
     if (!this.calibration.current)
       throw new Error('Calibrate the glove and camera first');
+    if (this.calibration.current.assist_direction !== CURRENT_ASSIST_DIRECTION)
+      throw new Error(ASSIST_DIRECTION_RECALIBRATE_MESSAGE);
     if (this.options.glove.client.connection() !== 'connected')
       throw new Error('Connect the glove first');
     validateCameraRange(
@@ -510,7 +532,10 @@ export class RehabRuntime implements TherapyRuntime {
         this.echo = null;
         this.beforeRelease = client.latest();
         client.release();
-      } else client.limit(command.ma);
+      } else {
+        this.activeCurrentLimit = command.ma;
+        client.limit(command.ma);
+      }
     }
     for (const event of out.events) {
       if (event.kind === 'phase' && this.sources.vision === 'sim')
@@ -606,7 +631,7 @@ export class RehabRuntime implements TherapyRuntime {
     if (!pending) return;
     const goal =
       pending.mode === 'follow'
-        ? pending.f.map((f) => Math.max(0, f - 0.05))
+        ? pending.f.map((f) => Math.max(0, f - 0.08))
         : pending.f;
     if (
       tel.md === pending.mode &&

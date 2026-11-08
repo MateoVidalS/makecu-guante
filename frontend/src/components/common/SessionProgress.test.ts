@@ -1,11 +1,11 @@
 import { expect, it } from 'vitest';
-import { DEFAULT_PLAN } from '../../contracts/poses';
+import { DEFAULT_PLAN, TENDON_GLIDE_PLAN } from '../../contracts/poses';
 import { exerciseProgress, evaluationProgress } from './SessionProgress';
 
 it('counts plan poses separately from attempts throughout tendon glides', () => {
   for (let index = 0; index < 15; index++) {
     const rep = (index % 3) + 1;
-    expect(exerciseProgress(DEFAULT_PLAN, index, rep)).toBe(
+    expect(exerciseProgress(TENDON_GLIDE_PLAN, index, rep)).toBe(
       `Pose ${Math.floor(index / 3) + 1} of 5 · Rep ${rep} of 3`,
     );
   }
@@ -25,4 +25,11 @@ it('counts evaluation sweeps from the selected fingers', () => {
   expect(evaluationProgress(['index', 'pinky'], 'pinky', 'fast', 'sweep')).toBe(
     'Pinky · fast (4 of 4)',
   );
+});
+
+it('counts all ten alternating opening-practice entries', () => {
+  for (let index = 0; index < 10; index++)
+    expect(exerciseProgress(DEFAULT_PLAN, index, 1)).toBe(
+      `Pose ${index + 1} of 10 · Rep 1 of 1`,
+    );
 });

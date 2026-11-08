@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ResistancePoint } from '../../contracts/api';
+import { directionOf, directionLabel, LEGACY_GLOVE } from './direction';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
   dumbbellDomain,
@@ -115,7 +116,7 @@ export function ResistanceDumbbells({
   const plotBottom = cursor - groupGap + 4;
   const height = plotBottom + M.axis;
   const row = (f: string, r: DumbbellRow, cy: number) => {
-    const on = r.evaluationId === focus;
+    const on = r.evaluationId === focus && directionOf(r) === 'open';
     const cls = `${on ? 'db-on' : 'db-off'}${r.demo ? ' viz-demo' : ''}`;
     const color = on ? `var(--chart-${f})` : undefined;
     return (
@@ -125,7 +126,7 @@ export function ResistanceDumbbells({
         style={color ? { color } : undefined}
       >
         <title>
-          {`${fingerName(f)} · ${longDate(r.date)}${r.demo ? ' · Demo data' : ''} · Slow ${ma(r.slow)} · Fast ${ma(r.fast)} · Fast − slow ${ma(r.gap)}`}
+          {`${fingerName(f)} · ${directionLabel(r)} · ${longDate(r.date)}${r.demo ? ' · Demo data' : ''} · Slow ${ma(r.slow)} · Fast ${ma(r.fast)} · Fast − slow ${ma(r.gap)}`}
         </title>
         <rect
           className="viz-hit"
@@ -142,7 +143,7 @@ export function ResistanceDumbbells({
           textAnchor="end"
         >
           {shortDate(r.date)}
-          {r.demo ? ' · demo' : ''}
+          {directionOf(r) === 'close' ? ' · earlier' : r.demo ? ' · demo' : ''}
         </text>
         {r.slow != null && r.fast != null && (
           <line
@@ -185,7 +186,7 @@ export function ResistanceDumbbells({
       title={title ?? resistanceTakeaway(groups, upTo)}
       hint={
         hint ??
-        'Circle: slow sweep. Diamond: fast sweep. The bar between them is the speed-dependent part. Shorter and further left is better.'
+        `Resistance to opening (flexor tone). Fast − slow: velocity dependence (spasticity). ${LEGACY_GLOVE} is muted; changes use the same direction.`
       }
       label={`Resistance per finger and evaluation, in mA of extra motor current. ${layout
         .map(
@@ -193,7 +194,7 @@ export function ResistanceDumbbells({
             `${fingerName(g.finger)}: ${g.rows
               .map(
                 (r) =>
-                  `${shortDate(r.date)} slow ${ma(r.slow)}, fast ${ma(r.fast)}, gap ${ma(r.gap)}`,
+                  `${shortDate(r.date)} ${directionLabel(r)} slow ${ma(r.slow)}, fast ${ma(r.fast)}, gap ${ma(r.gap)}`,
               )
               .join('; ')}`,
         )
@@ -239,7 +240,9 @@ export function ResistanceDumbbells({
                     <td className="num">{ma(r.slow)}</td>
                     <td className="num">{ma(r.fast)}</td>
                     <td className="num">{ma(r.gap)}</td>
-                    <td>{r.demo ? 'Demo data' : 'Recorded'}</td>
+                    <td>
+                      {r.demo ? 'Demo data' : 'Recorded'} · {directionLabel(r)}
+                    </td>
                   </tr>
                 )),
               )}

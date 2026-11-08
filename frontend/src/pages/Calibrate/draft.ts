@@ -3,6 +3,8 @@ import type { CalibrationIn } from '../../contracts/api';
 import type { FingerId, VisionFrame } from '../../contracts/vision';
 import {
   CURRENT_CAMERA_VIEW,
+  CURRENT_ASSIST_DIRECTION,
+  type AssistDirection,
   CURRENT_FLEX_MODEL,
   type CameraView,
   type Calibration,
@@ -24,6 +26,7 @@ export interface Draft {
   sourceId?: number;
   cameraView?: CameraView;
   flexModel?: number;
+  assistDirection?: AssistDirection;
   edited?: boolean;
   step: number;
   finger: number;
@@ -45,6 +48,7 @@ export interface Draft {
 export const freshDraft = (): Draft => ({
   cameraView: CURRENT_CAMERA_VIEW,
   flexModel: CURRENT_FLEX_MODEL,
+  assistDirection: CURRENT_ASSIST_DIRECTION,
   step: 0,
   finger: 0,
   angle: 90,
@@ -57,8 +61,10 @@ export const freshDraft = (): Draft => ({
   friction: {},
   limit: 1500,
 });
-/** A posture or math change invalidates camera captures, never glove ranges or friction. */
+/** Routing changes reset every range; posture or math changes reset camera captures only. */
 function currentCameraDraft(draft: Draft): Draft {
+  if (draft.assistDirection !== CURRENT_ASSIST_DIRECTION)
+    return { ...freshDraft(), sourceId: draft.sourceId };
   return isCurrentCameraCalibration({
     camera_view: draft.cameraView,
     flex_model: draft.flexModel,
@@ -88,6 +94,7 @@ export function loadDraft(): Draft {
         ...saved,
         cameraView: parsed.cameraView,
         flexModel: parsed.flexModel,
+        assistDirection: parsed.assistDirection,
         step: Math.min(2, saved.step),
       });
     }
@@ -150,6 +157,7 @@ export function draftFromCalibration(calibration: Calibration): Draft {
     ...freshDraft(),
     cameraView: calibration.camera.camera_view,
     flexModel: calibration.camera.flex_model,
+    assistDirection: calibration.assist_direction,
     step: 2,
     sourceId: calibration.id,
     servo: Object.fromEntries(

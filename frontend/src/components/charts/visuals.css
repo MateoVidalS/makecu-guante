@@ -489,3 +489,22 @@
     display: none;
   }
 }
+
+/* Closing-assist records have different mechanics and stay visually separate. */
+[data-legacy='true'] {
+  color: var(--muted);
+}
+.viz-col[data-legacy='true'] :is(.viz-own, .viz-glove),
+.legacy-map :is(.hand-own, .hand-glove) {
+  fill: var(--chart-muted);
+}
+.effort-bars__row[data-legacy='true'] .effort-bars__seg {
+  background: var(--chart-muted);
+}
+.safety-list li svg {
+  fill: currentColor;
+}
+
+.data-table [data-legacy='true'] a {
+  color: var(--muted);
+}

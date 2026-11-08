@@ -19,7 +19,7 @@
 
 ```sh
 make setup        # instala backend y frontend
-make demo-seed    # opcional: 11 sesiones y 4 evaluaciones de ejemplo (marcadas como demo)
+make demo-seed    # optional: 14 demo sessions (2 legacy) and 4 opening evaluations
 make dev-sim      # API en :8000 + app en http://127.0.0.1:5173, con guante y cámara simulados
 ```
 
@@ -38,65 +38,71 @@ make dev-sim      # API en :8000 + app en http://127.0.0.1:5173, con guante y c�
 
 ---
 
-## 1. La idea
+## 1. Extension-assist concept
 
-Un guante que **ayuda a mover los dedos** de una mano afectada (por ejemplo, después de un ACV) y **mide cuánto puede moverlos la persona sola**.
+Rehab Hub practices active hand closing and helps the patient **open** against
+flexor tone. The same five servos wind tendons routed over the **back of the
+fingers** (dorsal routing). Winding straightens a finger; unwinding releases it.
+The glove can only reduce closure. A webcam measures the patient's movement,
+a virtual hand shows the target, and a voice coach guides practice.
 
-- La pantalla muestra una **mano virtual** con la posición que hay que hacer: puño, gancho, pinza.
-- El paciente **intenta hacerla** con la mano afectada. Una webcam mide hasta dónde llega cada dedo.
-- Si no llega, **el guante completa el movimiento**: servos en un módulo bajo la muñeca tiran de hilos que funcionan como tendones y cierran los dedos.
-- Un medidor de corriente detecta cuánto **se resiste la mano** al movimiento (rigidez o espasticidad, muy comunes después de un ACV).
-- Un asistente de voz (Gemini) guía la sesión y resume la evolución para el terapeuta.
+After a stroke, a hand may close into a fist but struggle to open. The patient
+first makes a fist alone, then tries to open. The glove supplies only the missing
+opening. Evaluation estimates **resistance to opening (flexor tone)** at slow and
+fast speeds, with empty-glove friction subtracted. These are estimates inspired
+by clinical practice, not validated clinical measurements.
 
-**Problema clínico.** Después de un ACV, muchas personas no pueden cerrar o abrir bien la mano. Recuperarla requiere cientos de repeticiones por día, y no hay terapeutas para tantas horas. El guante permite practicar en casa, ayuda solo lo que hace falta ("assist-as-needed") y mide el progreso sesión a sesión.
+## 2. A practice session
 
----
+1. Calibrate the five servo ranges and camera in the current upright posture.
+2. Make a fist actively. The glove follows with slack and pays out as you close.
+3. Try to open. The camera records the opening achieved without help.
+4. Only fingers still short of the opening target receive slow assistance.
+   Orange means opening help; reaching the target turns the hand green.
+5. Repeat fist → open five times: **10 attempts**. History, replay and Doctor view
+   retain each attempt, assistance, current and safety events. Earlier records
+   remain labeled **Earlier closing-assist glove**, with separate trend paths.
 
-## 2. Cómo es una sesión
+A calibration from the earlier closing glove (direction absent or `close`) must
+be replaced. Its endpoints are unsuitable for dorsal routing.
 
-1. La mano virtual muestra la posición objetivo y la voz dice: "Vamos a hacer un puño. Intentalo".
-2. El paciente intenta. La cámara mide cuánto cierra cada dedo (0% abierto, 100% cerrado).
-3. Después de unos segundos, el sistema registra hasta dónde llegó solo: por ejemplo, índice al 40%.
-4. El guante completa el resto. La mano virtual se pone verde.
-5. Al final, Gemini resume: "Hoy cerraste el índice solo hasta el 55%. La semana pasada llegabas al 40%".
+## 3. Hardware and direction
 
-Se trabaja **solo con la mano afectada**. El objetivo lo pone la mano virtual.
+Existing CAD and wrist module: `hardware/`. The upright mounting, thread exits,
+friction, usable travel and extension strength still require team validation.
+The earlier palm-side routing is superseded by **dorsal tendons**. Do not copy
+old diagrams or angle ranges into a person-mounted calibration.
 
----
+- Wire order: thumb, index, middle, ring, pinky. Each has a servo/spool.
+- `pull = 0`: slack tendon at calibrated `min`; a relaxed hand may remain curled.
+- `pull = 1`: full calibrated opening at `max`, finger straight and neutral.
+- Never swap `min` and `max` to reverse the anatomy: release, fault, STOP and
+  watchdog always unwind to pull 0. Slack is the safe state.
+- Calibrate **Slack** with a relaxed fist, tendon just taut; calibrate **Open**
+  at straight, never bent back. Normal assist is capped at 95% of that range.
+- Winding defaults to ≤0.20 range/s for assistance (≤0.30 only with consent).
+  Unwinding in target and follow runs at 3.0/s; follow leaves 0.08 slack.
+- Starts are staggered ≥150 ms with at most three winding motors. A sustained-load
+  governor eases pull before the aggregate firmware current limit; all five held
+  open can still consume substantial current.
 
-## 3. Hardware
+**Hardware gate — pending, team only:** complete the electrical/firmware bench
+checks and the ordered opening gates in [firmware/BENCH.md](firmware/BENCH.md),
+recorded in [HARDWARE_CHECKLIST.md](docs/HARDWARE_CHECKLIST.md). Confirm winding
+opens each finger on an empty fixture, calibrate, prove extension strength and a
+2 s hold under the limit, measure the five-finger sustained hold, verify STOP
+releases to slack in <0.5 s on a fixture, and test fast closing during follow.
+Keep the glove off patients until every gate passes. If extension strength fails,
+the team must revise the servo or spool/lever mechanism and repeat the gate.
+Simulator acceptance does not establish physical force, comfort or safety.
 
-Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piezas y CAD en `hardware/`.
+### Spools and routing
 
-### Resumen
-
-```
-   Vista de costado (palma hacia abajo)
-
-        correa      correa
-   ═════[══]═════════[══]══╗ mano ═══ guías ═══ ● punta
-   antebrazo  ┌─────────────┐ ╲ hilos pegados a la palma
-              │ MÓDULO DE   │──╲───────────────────────────
-              │ MUÑECA      │ salen por arriba del frente, ~10° hacia la palma
-              │ 5 servos    │
-   ───────────┴─────────────┴──── borde de la mesa
-```
-
-- **Módulo de muñeca** impreso (80,5 × 80 × 47 mm con la tapa) debajo de la muñeca y el antebrazo, sujeto con **dos correas de velcro**: una alrededor de la mano y otra del antebrazo.
-- **Fija la muñeca:** el módulo es rígido y abarca la muñeca. Si la muñeca no se dobla, el largo de cada hilo no cambia. Por eso no hacen falta fundas ni tubos.
-- **5 servos adentro, uno por dedo**, cada uno en su propio soporte.
-- **Hilos pegados a la piel:** salen por arriba del frente del módulo y corren por la palma, por guías cosidas al guante, hasta la punta de cada dedo.
-- **Elásticos en el dorso:** abren el dedo cuando el servo afloja. El guante solo tira para cerrar.
-
-### Física del enrollado (por qué el módulo es así)
-
-- **El hilo tiene que salir del carrete en su plano** (desvío ≤ 2–4°). Si sale inclinado se sube al ala del carrete, enrolla desparejo, se puede salir y carga de costado el eje del servo. Por eso:
-  - los **5 carretes están a la misma altura**, justo debajo de la tapa;
-  - cada hilo sale **horizontal y tangente** a su carrete, por una salida abocinada del frente;
-  - desde ahí sube **unos 10°** hasta la guía de la palma (la única curva del módulo, ~4% de fricción extra).
-- **Zigzag:** 5 carretes de Ø22 no entran en 80 mm en una fila. Van 3 adelante (pulgar, medio, meñique) y 2 atrás (índice, anular); los hilos de atrás pasan por el **hueco de 1,5 mm** entre los carretes de adelante.
-- **Fricción total estimada:** el servo tira ~2–2,7× lo que llega a la punta (las curvas de las articulaciones son inevitables). Un diseño anterior con hilos saliendo a 45° por la tapa daba ~4–5× y no habría cerrado la mano.
-- **Carrete:** radio de enrollado 10 mm → brazo de palanca constante y ~31 mm de hilo por 180°. Cerrar un dedo del todo pediría ~40–45 mm (estimado): con 31 mm se llega a ~70% de un puño. **Medir** en el guante; si falta, subir el radio (más recorrido, menos fuerza).
+Keep thread exits tangent and in the spool plane, with strain relief and smooth
+guides. A 10 mm winding radius gives about 31 mm travel per half turn; measure
+actual opening travel and force on the dorsal fixture. Greater radius increases
+travel and reduces force. Micro-servo torque and the estimated 2–2.7× friction
+loss do not prove the mechanism can open a spastic hand.
 
 ### Servos (los que tenemos)
 
@@ -156,14 +162,14 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 - **Corte por corriente:** si el INA219 mide más que un umbral, los servos aflojan. Si la mano se resiste, el guante para en vez de forzar.
 - **Botón STOP:** afloja todos los servos al instante.
 - **Límite de corriente de la fuente** como última barrera.
-- Extensión pasiva: el guante solo tira para cerrar.
+- Extension assist: winding opens; releasing leaves the tendons slack.
 
 ### Puesta en la mesa
 
 - **Laptop delante del paciente; cámara = webcam frontal de la laptop.** Levantar la mano afectada junto a la cara, vertical, con la **palma hacia la pantalla**, como al saludar en una videollamada. Abrir y cerrar los dedos hacia la cámara.
 - **Codo apoyado en la mesa**, con una toalla o almohadilla cómoda; antebrazo vertical. Mantener la muñeca, la mano completa y las cinco puntas dentro del encuadre, a unos **40–60 cm de la laptop**. Ajustar la pantalla para encuadrar sin levantar el codo.
 - **Luz difusa de frente o de costado, sin ventana detrás del paciente.** Comprobar en la vista de cámara que la palma y los dedos se vean iluminados, sin contraluz.
-- **Guante claro y fino, hilo fino y claro:** la cámara ahora ve la palma con hilos, guías y anclajes. El primer día, comprobar la detección en Setup durante cinco segundos al abrir y cerrar con el guante real y la luz del lugar; registrar el porcentaje y las oclusiones. Si falla, ajustar luz/encuadre y pedir revisión al equipo antes de usarlo.
+- **Thin, light glove and thread:** the camera sees the palm; check whether dorsal guides or anchors occlude any joints. El primer día, comprobar la detección en Setup durante cinco segundos al abrir y cerrar con el guante real y la luz del lugar; registrar el porcentaje y las oclusiones. Si falla, ajustar luz/encuadre y pedir revisión al equipo antes de usarlo.
 - **Calibración nueva en esta postura:** no reutilizar las capturas con la palma hacia abajo y cámara diagonal. Hacer series cortas, descansar y pausar si sostener la mano levantada cansa.
 
 **Hallazgos del banco real — leer [`hardware/BANCO.md`](hardware/BANCO.md) antes de conectar:** la primera sesión de Matias fue sin tendones ni guante y no reemplaza la aceptación de [`firmware/BENCH.md`](firmware/BENCH.md).
@@ -174,7 +180,7 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 - **Verificar la polaridad de los rieles con multímetro antes de conectar servos.** No asumir el orden de las filas: un servo con rojo/marrón invertidos se calentó en segundos durante la prueba.
 - **Banco manual con el firmware del repo:** enviar `ping` cada **~300 ms** durante el `jog` (JSON: `{"t":"ping"}`, terminado en salto de línea). Sin mensajes válidos durante más de 1 s, el watchdog afloja y entra en falla; no desactivarlo para probar.
 
-**Pregunta pendiente para el equipo de hardware — resolver antes de usar el guante en una persona:** el módulo de muñeca se diseñó para descansar en la mesa con la palma hacia abajo. Con la mano vertical queda colgado del antebrazo. Las dos correas lo sostienen sin deslizarse ni apretar, su peso resulta cómodo y el ángulo de salida de los hilos permite cerrar y aflojar sin roces ni tirones? Comprobar también cómo cambia la acción de los elásticos y la tracción de los servos con la gravedad. Registrar la decisión y la evidencia en [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), primero en un soporte vacío; no asumir que el montaje anterior ya está validado.
+**Pregunta pendiente para el equipo de hardware — resolver antes de usar el guante en una persona:** el módulo de muñeca se diseñó para descansar en la mesa con la palma hacia abajo. Con la mano vertical queda colgado del antebrazo. Las dos correas lo sostienen sin deslizarse ni apretar, su peso resulta cómodo y does the dorsal thread exit allow opening and slack release without rubbing or snagging? Comprobar también cómo cambia la acción de los elásticos y la tracción de los servos con la gravedad. Registrar la decisión y la evidencia en [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), primero en un soporte vacío; no asumir que el montaje anterior ya está validado.
 
 ### Piezas impresas
 
@@ -201,7 +207,7 @@ Modelo 3D interactivo: https://claude.ai/artifact/S1sEcqtCqwnj84THoCpWto · Piez
 Una app web local (**Rehab Hub**) que corre en la laptop:
 1. Le muestra al paciente una **mano virtual** con la posición objetivo (fantasma) y su mano real (sólida) superpuestas.
 2. Mide con la **webcam** cuánto cierra cada dedo.
-3. Le pide al **guante** (ESP32 por USB) que complete el movimiento cuando el paciente no llega.
+3. Commands the **glove** (ESP32 over USB) to supply missing opening only; closing is active practice.
 4. Registra cada intento, lo muestra en un **historial** con gráficos y genera resúmenes con **Gemini**.
 5. Un **coach de voz** (Gemini Live) guía la sesión. Los avisos de seguridad son locales e inmediatos.
 
@@ -255,10 +261,10 @@ USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). L
 
 | Laptop → ESP32 | Ejemplo | Qué hace |
 |---|---|---|
-| `target` | `{"t":"target","f":[0.8,0.6,0.6,0.5,0.5],"v":0.5}` | Ir al cierre objetivo (0–1) a velocidad `v` (fracción del rango por segundo) |
-| `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | Enrollar el hilo flojo hasta 5% menos de lo que ve la cámara, sin tirar |
+| `target` | `{"t":"target","f":[0.8,0.6,0.6,0.5,0.5],"v":0.5}` | Target tendon pull (0 = slack, 1 = calibrated straight finger) at speed `v` |
+| `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | Follow vision converted to pull, subtracting 0.08 slack; unwind at 3.0/s |
 | `release` | `{"t":"release"}` | Aflojar todo; también sale de `fault` |
-| `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | Ángulos del servo para 0% y 100% del dedo `i` (no se guardan en la placa) |
+| `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | Servo angles for slack `min` and neutral-open `max`; not persisted on the board |
 | `jog` | `{"t":"jog","i":1,"deg":95}` | Mover un servo a un ángulo, para calibrar |
 | `limit` / `ping` / `hello` | `{"t":"limit","ma":1500}` | Umbral de corriente / keepalive / pedir `info` |
 
@@ -276,11 +282,11 @@ USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). L
 
 Se aplica siempre, aunque la laptop diga otra cosa (detalle en [`firmware/README.md`](firmware/README.md)):
 - Al arrancar, PWM desconectado: no recuerda calibración ni movimiento. `target` y `follow` se rechazan hasta calibrar todos los dedos.
-- Nunca sale del rango calibrado; rampa con tope de 1 rango/s.
+- Stays within calibration: target winding ≤1 range/s, follow winding 1.5/s, unwinding 3.0/s.
 - **Corte por corriente:** más del umbral (filtrado) durante 100 ms → afloja todo y queda en `fault`.
 - **STOP:** se engancha al primer flanco; para seguir hay que soltarlo y mandar `release`.
 - **Watchdog:** 1 s sin mensajes válidos → afloja todo.
-- Al aflojar, desenrolla hasta abierto y recién 500 ms después desconecta el PWM.
+- Release unwinds to pull 0 (slack), then detaches PWM after 500 ms.
 
 ### 4.6 Visión
 
@@ -294,18 +300,18 @@ Se aplica siempre, aunque la laptop diga otra cosa (detalle en [`firmware/README
 Motor determinista en TypeScript (`frontend/src/engine/`), sin reloj propio, testeado con el simulador.
 
 ```
- PRESENTAR ──> INTENTO (servos en follow) ──llegó?──sí──> SOSTENER ──> REGISTRAR
-                    │                           no
-                    │                           ▼
-                    │                    ASISTENCIA (target, velocidad baja)
-                    └──── corriente / STOP / cámara perdida ──> PAUSA (aviso por voz)
+ PRESENT → ATTEMPT (follow) → reached → HOLD → RELEASE → REST
+                  │
+                  ├─ missing opening → ASSIST → ASSIST_HOLD → RELEASE
+                  ├─ closing attempt ends → RELEASE (no help)
+                  └─ fault / STOP / camera loss → PAUSED + slack
 ```
 
-- **Plan por defecto:** mano abierta, gancho, mesa, puño recto y puño completo, 3 repeticiones cada una (15 intentos). La pinza pulgar–índice es un plan aparte, opcional.
-- Assistance begins after the attempt timeout or plateau. Unreached fingers start at least **150 ms apart**, with at most **three moving at once**. Glove-assisted targets are capped at **0.95 of the calibrated range**; 100% calibration means as far as the relaxed glove comfortably goes, not an anatomical full fist.
-- All five fingers are scored and assisted in tendon glides; pinch uses thumb and index. Evaluation accepts any subset, with one slow and one fast sweep per selected finger. Old three-finger sessions remain readable with missing ring/little-finger measurements.
+- **Default plan:** active full fist → assisted open, five pairs (10 attempts). `TENDON_GLIDE_PLAN` retains the five observation glides, three reps each; pinch remains optional.
+- Assistance begins after the attempt timeout or plateau. Unreached fingers start at least **150 ms apart**, with at most **three moving at once**. Glove-assisted targets are capped at **0.95 of the calibrated range**; 100% calibration means a straight, neutral finger; never hyperextension. Only fingers lacking opening are assisted.
+- All five fingers are scored in fist/open practice; closing poses receive follow only; pinch uses thumb and index. Evaluation accepts any subset, with one slow and one fast sweep per selected finger. Old three-finger sessions remain readable with missing ring/little-finger measurements.
 - The simulator exposes rigid-finger resistance. Detection also covers a stall already present in the initial assist baseline; a single stall need not exceed the aggregate firmware current limit. See `docs/DEV.md` for the browser and unit regressions.
-- **Evaluación:** con la mano relajada, cierra cada dedo lento y rápido y registra corriente vs. posición, restando la fricción del guante vacío medida en la calibración.
+- **Evaluation:** from a relaxed, curled hand, sweep opening pull slowly and quickly. Subtract recent empty-glove friction measured in Evaluate preflight; fast − slow estimates velocity dependence of flexor tone.
 
 **Métricas por intento:** cierre activo máximo por dedo, tiempo hasta la posición, ayuda necesaria, corriente pico y media, eventos de seguridad, y una traza a 20 Hz para repetir el intento después.
 
@@ -322,7 +328,7 @@ Gemini solo recibe métricas resumidas, nunca video. Todo se presenta como acomp
 
 ### 4.9 Datos
 
-SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con trazas, evaluaciones y transcripciones de voz. Exportable a JSON y CSV desde la vista del terapeuta. Los datos de ejemplo de `make demo-seed` (11 sesiones en 3 semanas, paciente simulado que mejora de severo a leve) llevan `is_demo` y se marcan en la UI.
+SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con trazas, evaluaciones y transcripciones de voz. Exportable a JSON y CSV desde la vista del terapeuta. Demo data from `make demo-seed` contains 14 sessions (110 attempts, including two legacy closing sessions) and four opening evaluations over three weeks. All carry `is_demo`; directions remain separated in history.
 
 ### 4.10 Pendiente
 
@@ -341,7 +347,7 @@ SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con
 | Modo | Qué hace | Qué mide |
 |---|---|---|
 | **Ejercicio** (principal) | Posiciones de terapia. El paciente intenta solo y el guante ayuda lo que falta | Cuánto llega solo cada dedo, tiempo hasta la posición, cuánta ayuda necesitó |
-| **Evaluación** | Con la mano relajada, el guante cierra cada dedo despacio y después rápido | Resistencia de cada dedo según la velocidad |
+| **Evaluación** | From a relaxed curled hand, opens each selected finger slowly then quickly | Resistencia de cada dedo según la velocidad |
 | **Espejo** (no construido) | Una mano sana frente a la cámara controla el guante | Nada: es para practicar y para la demo |
 
 **Posiciones** (ejercicios reales de terapia de mano):
@@ -357,7 +363,7 @@ SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con
 
 Por dedo y por intento:
 
-- **Rango activo:** cuánto cierra el dedo solo (0–100%). Es la versión aproximada de lo que el terapeuta mide con un goniómetro.
+- **Active opening:** how far the finger opens alone (0–100%), derived from open-pose closure. Closing ability is recorded separately by pose.
 - **Tiempo hasta la posición.**
 - **Ayuda necesaria:** cuánto recorrido completó el guante.
 - **Resistencia:** corriente de los servos durante el modo evaluación, menos la del guante vacío (calibración).
@@ -374,7 +380,7 @@ La rigidez después de un ACV aumenta con la velocidad del movimiento. Comparar 
 |---|---|
 | **ACV con mano parética** (protagonista) | Repeticiones asistidas y medición del rango y la rigidez |
 | Lesión de tendón o post-cirugía de mano | Ejercicios de deslizamiento de tendones en casa |
-| Lesión medular cervical | Asistencia para cerrar la mano en tareas diarias |
+| Lesión medular cervical | Opening practice after team and clinical assessment |
 | Esclerosis múltiple, parálisis cerebral | Seguimiento de la rigidez en el tiempo |
 
 **Telerrehabilitación:** el paciente practica en casa y el terapeuta ve el dashboard a distancia. Gemini genera un resumen semanal para el terapeuta.
@@ -385,10 +391,10 @@ La rigidez después de un ACV aumenta con la velocidad del movimiento. Comparar 
 
 El guion detallado (6 minutos, con qué decir en cada paso y cómo recuperarse si falla la cámara, el guante o Gemini) está en [`docs/DEMO.md`](docs/DEMO.md). Todo lo que fuerce resistencia o STOP se muestra con el simulador, nunca con la mano de una persona.
 
-1. Un integrante se pone el guante con la mano relajada. La mano virtual pide un puño, el integrante intenta a medias y el guante completa el movimiento.
-2. **Momento clave:** el integrante pone el índice rígido a propósito. En pantalla sube la corriente, **el guante se detiene solo** y la voz dice "detecto resistencia en el índice, paramos acá". Muestra la medición clínica y la seguridad a la vez.
-3. Dashboard con la evolución entre sesiones (datos de prueba marcados como tales).
-4. Si se puede, hablar 10 minutos con un terapeuta ocupacional o fisiatra antes del evento y meter una frase suya en el video.
+1. Use both simulators with the moderate patient. Make a fist alone, then watch the glove help open. Show blue active movement, orange opening help and green reach.
+2. In the simulator, enable Rigid index during an opening. Show the resistance stop and its saved event. For STOP/overcurrent, show pause and slack; never deliberately stall a person's hand.
+3. Show opening trends, an Open hand replay, and the two labeled legacy closing sessions. Evaluation measures resistance to opening (flexor tone).
+4. Open Doctor view, request a summary if available, and export the marked records. Rehearse [docs/DEMO.md](docs/DEMO.md).
 
 ### Video de Devpost (3 min)
 
@@ -468,7 +474,7 @@ Piezas en `hardware/`: módulo de muñeca, tapa, carretes, guías y anclajes (ve
 | Software | App, backend, firmware, simulador, voz | **Hecho** (WP0–WP12). Falta probarlo con hardware real |
 | Mecánica | Imprimir módulo, tapa y carretes; coser guías, anclajes y elásticos al guante | Guías y anclajes impresos |
 | Electrónica | Cablear ESP32, INA219, STOP y servos; banco de pruebas de `firmware/BENCH.md` | Pendiente |
-| Integración | Un dedo de punta a punta: calibrar, `follow`, asistencia, corte por corriente | Pendiente. **Hito: un dedo cerrando con el servo antes de la medianoche del sábado** |
+| Integración | Un dedo de punta a punta: calibrar, `follow`, asistencia, corte por corriente | Software integrated; physical opening strength gate pending |
 | Pitch | Ensayar `docs/DEMO.md`, video de Devpost | Pendiente |
 
 **Orden:** primero **un dedo + un servo + la cámara de punta a punta**. Después los otros cuatro.
@@ -477,7 +483,7 @@ Piezas en `hardware/`: módulo de muñeca, tapa, carretes, guías y anclajes (ve
 
 - **La mecánica es lo más difícil:** fricción del hilo, anclajes que se sueltan, guante que se corre. Probar con un solo dedo lo antes posible.
 - **Servos:** ya los tenemos (SG92R, MG90S, 2× S51 y uno negro sin identificar). Falta medir el negro y confirmar que los 5 entran en sus alojamientos.
-- **Recorrido del hilo:** 31 mm por media vuelta puede no alcanzar para un puño completo. Medir con un dedo antes de imprimir los carretes definitivos.
+- **Opening travel and force:** measure dorsal travel, extension strength and sustained current on a fixture before finalizing spools.
 - **Cámara con dedos tapados:** probar la posición de la webcam temprano.
 - **Firmware nunca probado en una placa:** hacer el banco de pruebas temprano, con el guante sin poner.
 - Si la mecánica falla, la app con el simulador (o con la cámara real y el guante simulado) sigue siendo una demo que funciona sola.

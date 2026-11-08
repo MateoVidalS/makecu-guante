@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { CoachDecision } from '../src/contracts/therapist';
 import type { SessionDetail } from '../src/contracts/api';
+import { pullFromClosure } from '../src/contracts/glove';
 import { POSES } from '../src/contracts/poses';
 import type { TherapistSnapshot } from './ai-therapist-harness';
 import { silenceCoach } from './helpers';
@@ -60,7 +61,7 @@ test.describe('scripted Live AI therapist through the production app', () => {
     ).toBeVisible();
     await page.getByRole('link', { name: 'Continue to practice' }).click();
     await page
-      .getByRole('button', { name: 'Fist only, 1 rep', exact: true })
+      .getByRole('button', { name: 'Open only, 1 rep', exact: true })
       .click();
     // Deliver genuine simulated camera/telemetry before the first attempt.
     await page.evaluate(() => window.aiTherapist.advance(200));
@@ -273,7 +274,7 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(attempt.state.adjustments.assist_speed.index).toBe(0.15);
     expect(
       attempt.state.fingers.find((f) => f.finger === 'middle')?.target,
-    ).toBeCloseTo(POSES.full_fist.closure.middle! * 0.9);
+    ).toBeCloseTo(1 - (1 - POSES.open.closure.middle!) * 0.9);
     await tool(
       page,
       'assist_finger_now',
@@ -307,7 +308,9 @@ test.describe('scripted Live AI therapist through the production app', () => {
     ).toBe(true);
     expect(
       normalTargets.every(
-        (c) => c.f![2] <= POSES.full_fist.closure.middle! * 0.9,
+        (c) =>
+          c.f![2] <=
+          pullFromClosure(1 - (1 - POSES.open.closure.middle!) * 0.9),
       ),
     ).toBe(true);
     expect(
@@ -320,7 +323,7 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(next.state.adjustments.assist_delay_s.thumb).toBe(5);
     expect(
       next.state.fingers.find((f) => f.finger === 'middle')?.target,
-    ).toBeCloseTo(POSES.full_fist.closure.middle! * 0.9);
+    ).toBeCloseTo(1 - (1 - POSES.open.closure.middle!) * 0.9);
     await tool(
       page,
       'assist_finger_now',
@@ -348,7 +351,7 @@ test.describe('scripted Live AI therapist through the production app', () => {
       .filter((c) => c.kind === 'target')
       .at(-1)!;
     expect(shapedCommand.f![2]).toBeCloseTo(
-      POSES.full_fist.closure.middle! * 0.9,
+      pullFromClosure(1 - (1 - POSES.open.closure.middle!) * 0.9),
     );
     expect(shapedCommand.f![2]).toBeGreaterThan(shapedCommand.from![2]);
     await tool(
@@ -365,7 +368,9 @@ test.describe('scripted Live AI therapist through the production app', () => {
   }) => {
     await start(page);
     await page.evaluate(() => window.aiTherapist.untilPhase('ASSIST'));
-    const pulling = await page.evaluate(() => window.aiTherapist.advance(400));
+    const pulling = await page.evaluate(() =>
+      window.aiTherapist.untilPulling(),
+    );
     expect(pulling.firmware.mode).toBe('target');
     const response = await page.evaluate(() =>
       window.aiTherapist.tool('record_feeling', {
@@ -519,7 +524,7 @@ test.describe('scripted Live AI therapist through the production app', () => {
       await page.evaluate(
         ({ finger, kind }) => {
           window.aiTherapist.coach(
-            `Would you like ${kind} practice for your ${finger}?`,
+            `Would you like to open ${kind} for your ${finger}?`,
           );
           window.aiTherapist.patient('yes');
         },
@@ -539,7 +544,7 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(attempt.state.adjustments.hold_extra_s).toBe(2);
     expect(
       attempt.state.fingers.find((f) => f.finger === 'middle')?.target,
-    ).toBe(1);
+    ).toBe(0);
     expect(attempt.state.adjustments.intensified).toEqual([
       'index',
       'middle',

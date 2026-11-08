@@ -45,16 +45,11 @@ export function FingerGauge({
     v != null &&
     target != null &&
     (opening ? v <= hi : v >= target - tolerance);
-  // Glove-helped part: above their own best while assisting (closing targets only).
+  // Keep camera values in closure units. Opening help spans live → active best.
   const helping =
-    assisting &&
-    state !== 'idle' &&
-    !opening &&
-    b != null &&
-    b < lo &&
-    v != null;
-  const own = helping ? Math.min(v!, b!) : (v ?? 0);
-  const help = helping ? Math.max(0, v! - b!) : 0;
+    assisting && state !== 'idle' && b != null && v != null && v < b;
+  const own = v ?? 0;
+  const help = helping ? b! - v! : 0;
   const status = free
     ? 'Free'
     : v == null
@@ -111,7 +106,7 @@ export function FingerGauge({
           <span
             className="mx-gauge__fill mx-gauge__fill--help mx-fill--help"
             style={{ bottom: pos(own), height: pos(help) }}
-            title="Glove helped"
+            title="Glove helped you open"
           />
         )}
         {!free && (

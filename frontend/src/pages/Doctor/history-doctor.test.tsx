@@ -21,7 +21,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
-import { mockState, resetMocks } from '../../mocks/handlers';
+import { mockState, resetMocks, historyRom } from '../../mocks/handlers';
 import { getProfile } from '../../api/client';
 import History from '../History';
 import Profile from '../Profile';
@@ -103,13 +103,18 @@ describe('record review pages', () => {
       (s) => s.assist_direction === 'open',
     );
     mount('/history');
-    expect(await screen.findByText('66% → 60%')).toBeVisible();
+    const points = historyRom(null, 'open').filter((p) => p.finger === 'thumb');
+    const first = Math.round((1 - points[0].active_max_mean) * 100);
+    const last = Math.round((1 - points.at(-1)!.active_max_mean) * 100);
+    expect(await screen.findByText(`${first}% → ${last}%`)).toBeVisible();
     expect(
       screen.getByRole('img', { name: /Hand map, first session/ }),
-    ).toHaveAccessibleName(/Thumb 66% then, 60% now/);
+    ).toHaveAccessibleName(new RegExp(`Thumb ${first}% then, ${last}% now`));
     expect(
       await screen.findByRole('img', { name: /Latest session per finger/ }),
-    ).toHaveAccessibleName(/Index 59% on your own and 12% from the glove/);
+    ).toHaveAccessibleName(
+      /Index Opening-assist glove 77% on your own and 12% from the glove/,
+    );
     expect(
       screen.getByRole('img', { name: /Practice calendar/ }),
     ).toBeInTheDocument();
@@ -125,7 +130,7 @@ describe('record review pages', () => {
     await waitFor(() =>
       expect(within(table).queryAllByText('Loading…')).toHaveLength(0),
     );
-    expect(within(table).getAllByText('Demo data')).toHaveLength(
+    expect(within(table).getAllByText(/Demo data/)).toHaveLength(
       mockState.sessions.filter((s) => s.is_demo).length,
     );
     expect(within(table).getAllByRole('row')).toHaveLength(
@@ -148,7 +153,9 @@ describe('record review pages', () => {
     const bars = await screen.findByRole('img', {
       name: /Latest session per finger/,
     });
-    expect(bars).toHaveAccessibleName(/Ring Not measured.*Pinky Not measured/);
+    expect(bars).toHaveAccessibleName(
+      /Ring .*Not measured.*Pinky .*Not measured/,
+    );
     expect(within(bars).getAllByText('Not measured')).toHaveLength(2);
     for (const finger of ['Ring', 'Pinky']) {
       const row = within(bars).getByText(finger).closest('.effort-bars__row')!;
@@ -206,7 +213,7 @@ describe('record review pages', () => {
     );
     mount(`/history/evaluations/${evaluation.id}`);
     const table = await screen.findByRole('table', {
-      name: /Mean excess current over 20–90% commanded position/,
+      name: /Mean excess current over 20–90% commanded pull/,
     });
     for (const finger of ['Ring', 'Pinky']) {
       const row = within(table).getByRole('row', { name: new RegExp(finger) });

@@ -24,10 +24,10 @@ Integration branch: `MateoVidalS/rehab-hub` · Repo id: `de782449-371b-4870-89e2
 | U4 | [live-screen](ux/U4-live-screen.md) | UX-2 | xhigh | `…/u4-live-screen` | `term_62e15241` | `MateoVidalS/u4-live-screen` | #72 | merged | |
 | O1 | [firmware](open/O1-firmware.md) | OPEN-1 | xhigh | `…/o1-firmware` | `term_69cdc21e` | `MateoVidalS/o1-firmware` | #75 | merged | safety review done; watchdog gate reconciled to 1.5 s in BENCH |
 | O2 | [glove-sim](open/O2-glove-sim.md) | OPEN-1 | high | `…/o2-glove-sim` | `term_147111d7` | `MateoVidalS/o2-glove-sim` | #76 | merged | sim inverted; engine/runtime/backend-demo callers fixed by O3/O4/O5 (notified) |
-| O3 | [engine](open/O3-engine.md) | OPEN-1 | xhigh | `…/o3-engine` | `term_1aeb8484` | `MateoVidalS/o3-engine` | #81 | changes-requested | held-finger oscillation: needs hysteresis for glove-started fingers |
-| O4 | [runtime-calibrate](open/O4-runtime-calibrate.md) | OPEN-1 | high | `…/o4-runtime-calibrate` | `term_73e664b4` | `MateoVidalS/o4-runtime-calibrate` | #77 | pr-open | approved; re-running on top of O5 |
+| O3 | [engine](open/O3-engine.md) | OPEN-1 | xhigh | `…/o3-engine` | `term_1aeb8484` | `MateoVidalS/o3-engine` | #81 | merged | hysteresis fix f235977 reviewed |
+| O4 | [runtime-calibrate](open/O4-runtime-calibrate.md) | OPEN-1 | high | `…/o4-runtime-calibrate` | `term_73e664b4` | `MateoVidalS/o4-runtime-calibrate` | #77 | merged | make test green after merge |
 | O5 | [backend-voice](open/O5-backend-voice.md) | OPEN-1 | high | `…/o5-backend-voice` | `term_32d94a24` | `MateoVidalS/o5-backend-voice` | #82 | merged | also regenerated MSW demo (authorized) |
-| O6 | [ui](open/O6-ui.md) | OPEN-2 | high | | | | | queued | after O3 + O5 |
-| O7 | [integration](open/O7-integration.md) | OPEN-3 | high | | | | | queued | after O1–O6 |
+| O6 | [ui](open/O6-ui.md) | OPEN-2 | high | `…/o6-ui` | `term_07360c14` | `MateoVidalS/o6-ui` | #85 | merged | 21 pre-pivot e2e specs left for O7 |
+| O7 | [integration](open/O7-integration.md) | OPEN-3 | high | `…/o7-integration` | `term_8c3c3722` | `MateoVidalS/o7-integration` | #86 | merged | make test + e2e 39/39 green (coordinator re-run) |
 
 Statuses: `queued` → `handed-off` → `pr-open` → `changes-requested` → `merged`.

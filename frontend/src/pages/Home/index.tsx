@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useStore } from 'zustand';
-import { useProfile, useSessions } from '../../api/client';
+import { useProfile, useSessions, useHistoryRom } from '../../api/client';
 import { useRuntime } from '../../runtime';
 import { useGlove } from '../../glove';
 import { useVisionFrame } from '../../vision';
@@ -16,6 +16,7 @@ import {
 } from '../../design-system';
 import { formatDate } from '../../components/charts';
 import { ThenNow, WeekStrip, lastSevenDays } from '../../components/metrics';
+import { directionLabel, directionOf } from '../../components/charts/direction';
 import { rangeComparison } from './range';
 import {
   practicePlan,
@@ -33,7 +34,8 @@ import {
 import './home.css';
 export default function Home() {
   const profile = useProfile(),
-    sessions = useSessions({ limit: 30 });
+    sessions = useSessions({ limit: 30 }),
+    opening = useHistoryRom({ pose: 'open' });
   const runtime = useRuntime(),
     navigate = useNavigate(),
     { store } = useGlove();
@@ -82,7 +84,7 @@ export default function Home() {
               : null;
   const list = sessions.data ?? [];
   const week = lastSevenDays(list.map((s) => s.started_at));
-  const range = rangeComparison(list);
+  const range = rangeComparison(list, opening.data);
   const mirrored = runtime.calibration.current?.camera.affected_hand === 'left';
   return (
     <div className="hp-page">
@@ -170,7 +172,11 @@ export default function Home() {
         </Stack>
         <Section
           title="Your active range"
-          description="How far each finger closes on its own."
+          description={
+            range && directionOf(range.latest) === 'close'
+              ? 'How far each finger closed with the earlier glove.'
+              : 'How far each finger opens on its own in open poses.'
+          }
           actions={list.some((s) => s.is_demo) ? <DemoBadge /> : undefined}
         >
           {range ? (
@@ -183,7 +189,7 @@ export default function Home() {
                 mirrored={mirrored}
               />
               <p className="hp-note">
-                {range.changeText}{' '}
+                {directionLabel(range.latest)}. {range.changeText}{' '}
                 <Link to={`/history/sessions/${range.latest.id}`}>
                   See session
                 </Link>

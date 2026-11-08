@@ -19,12 +19,13 @@ Open **http://127.0.0.1:5173** in Chrome or Edge. Open Calibrate, choose
 **Calibrate simulator**, then **Continue to practice**. This calibration is for
 simulated sources only. The seed is stored in `backend/data/rehab.db` by default;
 `make dev-sim` uses that same database. `make dev-mock` uses browser fixtures and
-will not show the seed.
+uses the same generated story through MSW rather than the SQLite records.
 
 `make demo-seed` is opt-in and idempotent: existing demo sessions are left alone.
-It generates eleven sessions (165 attempts) over three weeks and four evaluations
-by running the real exercise/evaluation engines on SimWorld. Patient presets
-improve from severe to moderate to mild. Traces, assistance and any genuine
+It generates fourteen sessions (110 attempts) over three weeks and four opening
+evaluations. Twelve sessions use opening assist; two are marked legacy closing
+examples. The opening sessions run the real engine on SimWorld, progressing from
+spastic to moderate to mild. Traces, assistance and any genuine
 simulator safety interruptions are retained. Every session/evaluation is flagged
 `is_demo`; these are synthetic examples, not evidence of treatment benefit.
 
@@ -74,7 +75,7 @@ to keep the header recovery controls available. Complete the hardware gate first
   preview shows a clearly lit palm and fingers.
 - [ ] **Day 1, then recheck at the venue:** use Setup’s five-second glove detection
   check while opening/closing with the actual thin light glove, thin light threads
-  and upright posture. The camera sees palm-side threads, guides and anchors;
+  and upright posture. Check whether dorsal guides or anchors occlude the palm view;
   record detection percentage, light and occlusions in
   [HARDWARE_CHECKLIST.md](HARDWARE_CHECKLIST.md). If detection stays low, use the
   simulated camera for the pitch and have the team review the physical setup.
@@ -90,7 +91,7 @@ to keep the header recovery controls available. Complete the hardware gate first
 - [ ] Use short sets with the elbow supported. Ask about fatigue, allow rests and
   pause/release if holding the hand up becomes tiring. Recheck framing after rests.
 - [ ] Without a glove, Setup → **Simulate glove** keeps the real camera
-  tracking your hand. The live **Glove motors** strip labels simulated motors;
+  tracking your hand. The live **Glove opening help** strip labels simulated motors;
   use both simulators for a fully rehearsed synthetic-patient demo.
 - [ ] Rehearse source recovery: open **Demo tools** → **Use simulated glove**
   (or **Restart simulated glove** when already connected)
@@ -102,11 +103,11 @@ to keep the header recovery controls available. Complete the hardware gate first
 
 | Time | Action | What to say / show |
 | --- | --- | --- |
-| 0:00–0:45 | Home → Exercise. Choose **Fist only, 1 rep**; Start practice. | “Try on your own first. The glove helps with the rest.” Explain ghost = target, solid = your hand. For a physical demo, the helper remains beside STOP. |
-| 0:45–1:30 | Let the moderate simulated patient try halfway; watch blue movement, orange assistance, then green hold. | “The camera estimates how far each finger closes. Assistance fills the remaining movement.” Show all five finger labels and the stagger: starts are at least 150 ms apart, at most three motors move. Targets stay within 95% of the calibrated glove range. |
-| 1:30–2:30 | Start another full-fist repetition. Open **Demo tools**, choose Index under **Rigid finger**, check **Rigid index**, and wait for assistance. | “Here is resistance. The glove stops and releases on its own.” A firmware fault releases and pauses with a safety banner. A softer resistance stop holds the achieved command briefly, then releases; it is also saved in replay. Listen for “Stopping. I felt resistance in your index.” Uncheck Rigid index before Resume or another attempt. Show the current trace later in replay, where technical units belong. Never deliberately stiffen or stall a person's finger. |
-| 2:30–3:15 | Finish/end the run; wait for Saved. Open History → Sessions and a demo session → replay. Pick a Full fist attempt. | Show the attempt, assistance and current trace. “These examples are labeled demo data.” Use Show as table if the projector obscures a chart. |
-| 3:15–4:00 | History → range/assistance trends, then resistance/evaluations. | “The synthetic patient improves over three weeks.” Evaluation resistance is an estimate inspired by clinical practice; total servo current cannot isolate a muscle or establish a diagnosis. |
+| 0:00–0:45 | Home → Exercise. Choose **Opening practice** and the **moderate** patient in Demo tools; Start practice. | “Make a fist yourself. Then try to open; the glove helps you open.” Explain ghost = target, solid = your hand. For a physical demo, the helper remains beside STOP. |
+| 0:45–1:30 | Watch the active fist, then the opening attempt: blue movement, orange opening help, then green reach. | “Closing is your effort alone. The camera measures the missing opening, and the glove helps only those fingers.” Show all five finger labels and the stagger: starts are at least 150 ms apart, at most three motors wind at once. Targets stay within 95% of the calibrated glove range. |
+| 1:30–2:30 | For a quick repeat choose **Open only, 1 rep**. Open **Demo tools**, choose Index under **Rigid finger**, check **Rigid index**, and wait for assistance. | “Here is resistance. The glove stops and releases on its own.” A firmware fault releases and pauses with a safety banner. A softer resistance stop holds the achieved command briefly, then releases; it is also saved in replay. Listen for “I feel resistance opening your index, let's stop here.” Uncheck Rigid index before Resume or another attempt. Show the current trace later in replay, where technical units belong. Never deliberately stiffen or stall a person's finger. |
+| 2:30–3:15 | Finish/end the run; wait for Saved. Open History → Sessions and a demo session → replay. Pick an Open hand attempt. | Show the attempt, assistance and current trace. “These examples are labeled demo data.” Use Show as table if the projector obscures a chart. |
+| 3:15–4:00 | History → range/assistance trends, then resistance/evaluations. | “These synthetic examples show active opening and resistance to opening (flexor tone).” Point out **Earlier closing-assist glove** labels and separated trend paths. Evaluation resistance is an estimate inspired by clinical practice; total servo current cannot isolate a muscle or establish a diagnosis. |
 | 4:00–5:00 | Doctor view → Generate summary (when available). | “The therapist can review trends and request a summary.” Read the actual generated text; do not promise a particular conclusion. Without a key/network, show the unavailable state and the underlying charts. |
 | 5:00–6:00 | Doctor export JSON/CSV; optionally Print. Exit doctor view. | Show the read-only banner and demo labels in output. Explain that practice still works with simple voice and simulated sources. End any active run and release before removing hardware. |
 
@@ -123,27 +124,34 @@ current-plus-stalled-vision resistance stop. Host tests do not prove real force.
 For an evaluation demo, first measure empty-glove friction for all five fingers
 when prompted (missing or older than 24 hours). Stop/reject incomplete or aborted
 measurements. Put the glove back on, reconfirm Hand relaxed, and select any finger
-subset. Two selected fingers produce four slow/fast sweeps; all five produce ten.
+subset. The glove opens from a curled resting hand; fast − slow estimates velocity
+dependence (spasticity), not a diagnosis. Two selected fingers produce four
+slow/fast sweeps; all five produce ten.
 Do this during rehearsal or allow extra time outside the six-minute pitch.
 
-The full default plan is fifteen attempts; do not run it during this six-minute
-pitch. A single fist demonstrates the core behavior promptly. All deliberate
-resistance/STOP/unplug demonstrations use the simulator or an empty bench fixture.
+The full default plan alternates fist/open five times: ten attempts. Use
+**Open only, 1 rep** for a short assisted-opening demonstration. **Fist only**
+demonstrates active movement and follow, without assistance. Normal assistance
+stays at ≤0.20/s and ≤95% pull; only explicit consent permits more intensity.
+The governor's amber “Eased off to protect the glove” entry records load shedding
+without pausing. Release always means slack, so a flexed resting hand can curl.
+All deliberate resistance/STOP/unplug demonstrations use the simulator or an
+empty bench fixture.
 
 ## AI therapist moment
 
 Allow another minute with **both sources simulated** and Live coach connected.
 Ask for help with one finger: “Please help my index sooner.” Show **Coach
 decisions**: more help means an earlier start, while gentler help slows the pull
-within 0.10–0.20 of the calibrated range per second. A smaller target takes effect
+within 0.10–0.20 of the calibrated range per second. Less opening takes effect
 on the next attempt. Use **Undo** to reverse an adjustment, and **Timeline** to
 show its reason and requested/applied values. When the coach names a finger,
 point out its steady focus contour on the virtual hand.
 
 Let the coach offer a little more intensity, then answer “yes.” This is optional:
 it requires a matching patient utterance within 20 seconds, stays inside the
-calibrated range, and may allow up to 0.30/s, a further reach, or up to two extra
-seconds of hold. Without consent, the request is rejected. In the simulator,
+calibrated range, and may allow up to 0.30/s, further opening up to the calibrated
+neutral endpoint, or up to two extra seconds of hold. Without consent, the request is rejected. In the simulator,
 enable **Rigid index** during assistance to show the automatic return to gentle
 practice; clear rigidity afterward. Never demonstrate resistance on a person.
 

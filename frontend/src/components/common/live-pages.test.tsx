@@ -169,7 +169,7 @@ describe('Home and Setup', () => {
     fireEvent.click(
       screen.getByRole('button', { name: "Start today's practice" }),
     );
-    await waitFor(() => expect(runtime.exercise.view().total).toBe(5));
+    await waitFor(() => expect(runtime.exercise.view().total).toBe(10));
   });
   it('opens Customize plan after an earlier session has finished', () => {
     const runtime = new ScriptedRuntime({ persist: false });
@@ -539,18 +539,18 @@ describe('Calibration wizard', () => {
       ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Set slack' }));
     fireEvent.click(screen.getByRole('button', { name: 'Set open' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Set closed' }));
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Servo angle'), {
       target: { value: '120' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Set closed/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Set open/ }));
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeEnabled();
     first.unmount();
     mount(<Calibrate />, freshRuntime());
-    expect(screen.getByText('Open at 90°')).toBeVisible();
-    expect(screen.getByText('Closed at 120°')).toBeVisible();
+    expect(screen.getByText('Slack at 90°')).toBeVisible();
+    expect(screen.getByText('Open at 120°')).toBeVisible();
   });
   it('sends five ranges automatically, reviews captures and starts the default plan', async () => {
     const first = mount(<Calibrate />, freshRuntime());
@@ -561,11 +561,11 @@ describe('Calibration wizard', () => {
       fireEvent.change(screen.getByLabelText('Servo angle'), {
         target: { value: '20' },
       });
-      fireEvent.click(screen.getByRole('button', { name: /^Set open/ }));
+      fireEvent.click(screen.getByRole('button', { name: /^Set slack/ }));
       fireEvent.change(screen.getByLabelText('Servo angle'), {
         target: { value: '150' },
       });
-      fireEvent.click(screen.getByRole('button', { name: /^Set closed/ }));
+      fireEvent.click(screen.getByRole('button', { name: /^Set open/ }));
     }
     fireEvent.click(
       screen.getByRole('button', { name: 'Continue to camera range' }),
@@ -608,7 +608,10 @@ describe('Calibration wizard', () => {
     const start = vi.spyOn(runtime.exercise, 'start');
     fireEvent.click(screen.getByRole('button', { name: 'Start practice' }));
     expect(start).toHaveBeenCalledWith(
-      expect.arrayContaining([{ pose: 'full_fist', reps: 3 }]),
+      expect.arrayContaining([
+        { pose: 'full_fist', reps: 1 },
+        { pose: 'open', reps: 1 },
+      ]),
       DEFAULT_EXERCISE_SETTINGS,
     );
     expect(runtime.calibration.current!.friction).toEqual({});
@@ -682,12 +685,14 @@ describe('Evaluation', () => {
     act(() => runtime.advance(1));
     expect(
       screen.getByRole('img', {
-        name: 'Resistance estimate by finger position',
+        name: 'Resistance estimate by opening help',
       }),
     ).toBeVisible();
     for (let i = 0; i < 100; i++) act(() => runtime.advance(0.5));
     expect(
-      screen.getByRole('heading', { name: 'Your evaluation' }),
+      screen.getByRole('heading', {
+        name: 'Resistance to opening (flexor tone)',
+      }),
     ).toBeVisible();
     expect(
       screen.getByText('An estimate inspired by clinical practice.'),

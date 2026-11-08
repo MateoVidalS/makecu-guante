@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { AttemptResult, SessionSummary } from '../../contracts/engine';
+import { GLOVE_FINGERS, pullFromClosure } from '../../contracts/glove';
 import { POSES } from '../../contracts/poses';
 import { Card, Heading } from '../../design-system';
 import { useRuntime } from '../../runtime';
@@ -57,10 +58,28 @@ export function SessionRecap({
   attempts: AttemptResult[];
   mirrored?: boolean;
 }) {
-  const deltas = fingerDeltas(
-    summary.per_finger,
-    summary.previous?.per_finger ?? null,
-  );
+  const openAttempts = attempts.filter((a) => a.pose === 'open');
+  const opening = GLOVE_FINGERS.map((finger) => {
+    const readings = openAttempts.flatMap((a) =>
+      a.fingers.filter(
+        (f) => f.finger === finger && f.scored && f.active_max != null,
+      ),
+    );
+    const mean = (values: number[]) =>
+      values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+    return {
+      finger,
+      active_max_mean: mean(
+        readings.map((f) => pullFromClosure(f.active_max!)),
+      ),
+      assist_needed_mean: mean(
+        readings.flatMap((f) =>
+          f.assist_needed == null ? [] : [f.assist_needed],
+        ),
+      ),
+    };
+  });
+  const deltas = fingerDeltas(opening, null);
   const strip: StripAttempt[] = attempts.length
     ? [...attempts]
         .sort((a, b) => a.index - b.index)
@@ -80,8 +99,8 @@ export function SessionRecap({
         <p className="recap__sentence">{recapSentence(summary)}</p>
       </header>
       <Card
-        title={summary.previous ? 'Last time → today' : 'Your hand today'}
-        description="How far each finger closed on its own."
+        title="Your active opening today"
+        description="How far each finger opened on its own in open poses."
       >
         <ThenNow deltas={deltas} mirrored={mirrored} size={128} />
         {!summary.previous && (
@@ -90,10 +109,10 @@ export function SessionRecap({
           </p>
         )}
         <p className="recap__note">
-          On your own and with the glove. Bar end = fully closed.
+          On your own and with the glove. Bar end = fully open.
         </p>
         <SplitBars
-          rows={summary.per_finger.map((f) => ({
+          rows={opening.map((f) => ({
             finger: f.finger,
             own: f.active_max_mean,
             help: f.assist_needed_mean,
