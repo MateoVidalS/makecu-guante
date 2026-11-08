@@ -51,12 +51,16 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe('camera placement and glove check', () => {
-  it('describes the palm-down diagonal camera position and free fingers', () => {
+  it('describes upright webcam framing, elbow support and lighting', () => {
     render(<CameraPlacement />);
     expect(screen.getByRole('img')).toHaveAccessibleName(
-      /thumb side.*above.*30–40 cm/,
+      /Raised hand beside the face.*palm to the laptop screen.*elbow.*40–60 cm/,
     );
-    expect(screen.getByText(/wrist module at the table edge/)).toBeVisible();
+    expect(screen.getByText(/Raise your hand beside your face/)).toBeVisible();
+    expect(screen.getByText(/Avoid a bright window behind you/)).toBeVisible();
+    expect(
+      screen.queryByText(/palm down|towel|table edge/i),
+    ).not.toBeInTheDocument();
   });
   it('shows detection percentage and all five finger visibility estimates', () => {
     render(<GloveDetectionCheck />);
@@ -64,6 +68,7 @@ describe('camera placement and glove check', () => {
       'Hand detected: 92% of the last 5 s',
     );
     expect(screen.getByText('Tracking looks steady.')).toBeVisible();
+    expect(screen.getByText(/Lighting check/)).toBeVisible();
     for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
       expect(screen.getByText(finger)).toBeInTheDocument();
   });

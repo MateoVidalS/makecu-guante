@@ -5,51 +5,51 @@ import { StatusDot } from '../../design-system';
 import { percent, title } from '../../components/common';
 import './setup.css';
 
-/** Side/front diagram: the camera looks diagonally down from the thumb side. */
+/** Front webcam framing with an upright hand and a supported elbow. */
 export function CameraPlacement() {
   return (
     <figure className="setup-placement">
       <figcaption>Camera placement</figcaption>
       <svg
-        viewBox="0 0 400 150"
+        viewBox="0 0 400 190"
         role="img"
-        aria-label="Camera in front on the thumb side, diagonally above the palm-down hand, 30–40 cm from the fingers"
+        aria-label="Raised hand beside the face, palm to the laptop screen, elbow on the table, 40–60 cm from the laptop"
       >
-        <path className="setup-placement__surface" d="M16 125H240V144" />
-        <path
-          className="setup-placement__hand"
-          d="M35 106H178L210 98L267 102Q280 104 277 112L211 117H35Z"
-        />
+        <path className="setup-placement__surface" d="M16 166H384" />
         <rect
-          className="setup-placement__module"
-          x="164"
-          y="117"
-          width="48"
-          height="24"
+          className="setup-placement__camera"
+          x="280"
+          y="30"
+          width="90"
+          height="105"
           rx="4"
         />
-        <g
+        <circle cx="325" cy="37" r="2" />
+        <path
           className="setup-placement__camera"
-          transform="translate(315 12) rotate(25)"
-        >
-          <rect width="42" height="24" rx="4" />
-          <circle cx="21" cy="12" r="7" />
-          <path d="M21 24V41M21 41L7 57M21 41L35 57" />
-        </g>
-        <path className="setup-placement__sight" d="M314 44L261 93" />
-        <text x="216" y="55">
-          30–40 cm
+          d="M280 135L265 159H385L370 135"
+        />
+        <circle cx="60" cy="55" r="22" />
+        <path d="M24 148V115Q24 87 60 87Q90 87 96 114L114 158Q124 168 136 158L150 103" />
+        <path
+          className="setup-placement__hand"
+          d="M140 104L130 82Q127 74 133 72L142 83V44Q142 35 148 38L151 65V30Q152 22 158 27L160 65V34Q162 26 167 32L169 68V45Q171 37 176 43L176 86Q174 102 164 106Z"
+        />
+        <path d="M164 106L154 158Q146 171 128 166" />
+        <path className="setup-placement__sight" d="M185 70L275 40" />
+        <text x="185" y="101">
+          40–60 cm
         </text>
-        <text x="24" y="91">
-          Palm down
-        </text>
-        <text x="18" y="143">
-          Forearm on a towel
+        <text x="20" y="185">
+          Elbow supported
         </text>
       </svg>
-      <p>Place the camera in front, on the thumb side, diagonally above.</p>
-      <p>Rest palm down. Keep the wrist module at the table edge.</p>
-      <p>Let your fingers close freely beyond the edge.</p>
+      <p>
+        Raise your hand beside your face, palm to the screen, elbow resting on
+        the table, about 40–60 cm from the laptop.
+      </p>
+      <p>Keep your hand relaxed and all five fingers in view.</p>
+      <p>Face a light source. Avoid a bright window behind you.</p>
     </figure>
   );
 }
@@ -75,6 +75,12 @@ export function GloveDetectionCheck() {
         <p className="hp-note">
           Simulator check · Estimates only. Repeat with the real glove and
           camera.
+        </p>
+      )}
+      {!simulated && (
+        <p className="hp-note">
+          Lighting check: a bright window behind you can hide your hand. Face
+          the light or close the curtain.
         </p>
       )}
       <p className="hp-capture-status" role="status">

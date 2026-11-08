@@ -108,6 +108,9 @@ export default function Home() {
           </p>
         )}
       </Section>
+      <p className="hp-note">
+        Raise your hand, palm to the screen. Support your elbow and relax.
+      </p>
       <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
       <div className="hp-columns">
         <Stack gap={32}>

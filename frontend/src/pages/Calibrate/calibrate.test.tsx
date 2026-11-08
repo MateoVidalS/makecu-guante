@@ -118,7 +118,6 @@ it('the single simulator shortcut saves both sources and refreshes Review', asyn
     expect.objectContaining({
       camera: expect.objectContaining({
         camera_view: 'front_upright',
-        camera_view: 'front_upright',
         closed_flex: {
           thumb: 100,
           index: 270,
@@ -148,9 +147,7 @@ it('opens legacy calibration at the camera step with glove ranges retained', () 
   ).toBeVisible();
   expect(screen.getByText(/Raise your hand, palm to the screen/)).toBeVisible();
   expect(screen.getAllByText('Not captured')).toHaveLength(2);
-  fireEvent.click(
-    screen.getByRole('button', { name: /Glove range/, exact: false }),
-  );
+  fireEvent.click(screen.getByRole('button', { name: /Glove range/ }));
   for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
     expect(
       screen.getByRole('button', { name: `${finger} · Set` }),

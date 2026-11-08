@@ -25,6 +25,7 @@ afterEach(() => {
 });
 function mount({ fresh = false } = {}) {
   const runtime = new ScriptedRuntime({ persist: false });
+  runtime.calibration.current!.camera.camera_view = 'front_upright';
   if (fresh) runtime.calibration.current!.created_at = new Date().toISOString();
   runtime.calibration.current!.camera.closed_flex = {
     thumb: 100,
@@ -76,6 +77,17 @@ async function measure() {
   );
 }
 describe('evaluation preflight', () => {
+  it('asks for upright posture and a supported elbow', () => {
+    mount();
+    expect(
+      screen.getByText(
+        /Raise your hand, palm to the screen. Support your elbow and relax/,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/palm down|table edge|towel/i),
+    ).not.toBeInTheDocument();
+  });
   it('requires empty-glove confirmation, saves all five friction curves, then requires a relaxed hand', async () => {
     const { curves, friction, save, runtime, start } = mount();
     expect(
@@ -215,6 +227,7 @@ describe('evaluation preflight', () => {
 });
 it('accepts only complete, recent slow/fast baselines, including ring and pinky', () => {
   const runtime = new ScriptedRuntime({ persist: false });
+  runtime.calibration.current!.camera.camera_view = 'front_upright';
   const calibration = runtime.calibration.current!;
   calibration.created_at = new Date().toISOString();
   expect(hasCompleteFriction(calibration.friction)).toBe(true);
