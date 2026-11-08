@@ -172,14 +172,12 @@ export function LiveStage() {
       <section className="live-panel" aria-label="Target and your hand">
         <header className="live-panel__head">
           <h2 className="live-panel__title">Target &amp; your hand</h2>
-          {!camera && (
-            <Switch
-              className="live-camera-toggle"
-              label="Show camera"
-              checked={camera}
-              onCheckedChange={toggle}
-            />
-          )}
+          <Switch
+            className="live-camera-toggle"
+            label="Show camera"
+            checked={camera}
+            onCheckedChange={toggle}
+          />
         </header>
         <Hand />
       </section>
@@ -187,12 +185,6 @@ export function LiveStage() {
         <section className="live-panel live-panel--camera" aria-label="Camera">
           <header className="live-panel__head">
             <h2 className="live-panel__title">Camera</h2>
-            <Switch
-              className="live-camera-toggle"
-              label="Show camera"
-              checked={camera}
-              onCheckedChange={toggle}
-            />
           </header>
           <div className="live-panel__body live-panel__body--camera">
             <CameraOverlay bare mirrored />
@@ -467,38 +459,40 @@ export default function Exercise() {
           <Link to="/setup">Connect your glove</Link>
         )}
         {error && <p role="alert">{error}</p>}
-        <Button
-          size="lg"
-          variant="primary"
-          disabled={
-            busy ||
-            calibrationStatus.state !== 'ok' ||
-            (settings.assist_enabled && !connected) ||
-            !plan.length ||
-            plan.some(
-              (p) => !Number.isInteger(p.reps) || p.reps < 1 || p.reps > 10,
-            ) ||
-            Object.values(settings).some(
-              (v) => typeof v === 'number' && (!Number.isFinite(v) || v <= 0),
-            )
-          }
-          aria-describedby={
-            calibrationStatus.state !== 'ok' || !connected
-              ? 'practice-start-hint'
-              : undefined
-          }
-          onClick={() => void start()}
-        >
-          Start practice
-        </Button>
-        {(calibrationStatus.state !== 'ok' || !connected) && (
-          <p id="practice-start-hint" className="muted">
-            {calibrationStatus.issues[0]?.message ??
-              (calibrationStatus.state === 'missing'
-                ? 'Calibrate your comfortable range first.'
-                : 'Connect your glove in Setup first.')}
-          </p>
-        )}
+        <Inline>
+          <Button
+            size="lg"
+            variant="primary"
+            disabled={
+              busy ||
+              calibrationStatus.state !== 'ok' ||
+              (settings.assist_enabled && !connected) ||
+              !plan.length ||
+              plan.some(
+                (p) => !Number.isInteger(p.reps) || p.reps < 1 || p.reps > 10,
+              ) ||
+              Object.values(settings).some(
+                (v) => typeof v === 'number' && (!Number.isFinite(v) || v <= 0),
+              )
+            }
+            aria-describedby={
+              calibrationStatus.state !== 'ok' || !connected
+                ? 'practice-start-hint'
+                : undefined
+            }
+            onClick={() => void start()}
+          >
+            Start practice
+          </Button>
+          {(calibrationStatus.state !== 'ok' || !connected) && (
+            <p id="practice-start-hint" className="muted">
+              {calibrationStatus.issues[0]?.message ??
+                (calibrationStatus.state === 'missing'
+                  ? 'Calibrate your comfortable range first.'
+                  : 'Connect your glove in Setup first.')}
+            </p>
+          )}
+        </Inline>
       </Stack>
     );
   return (

@@ -54,7 +54,11 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await page.getByText('Coach controls', { exact: true }).click();
   await page.getByLabel('Voice mode').selectOption('off');
   await page.getByText('Coach controls', { exact: true }).click();
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   await page
     .getByRole('checkbox', { name: 'Rigid index', exact: true })
     .check();
@@ -70,7 +74,11 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
       ),
     )
     .toContain('Stopping. I felt resistance in your index.');
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollHeight <= innerHeight,
