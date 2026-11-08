@@ -17,7 +17,7 @@ import {
   type GloveTelemetry,
   type GloveEvent,
 } from '../contracts/glove';
-import { POSES, calibratedPinch } from '../contracts/poses';
+import { POSES } from '../contracts/poses';
 import type { createGloveController } from '../glove/GloveProvider';
 import type { createVisionController } from '../vision/VisionProvider';
 import {
@@ -115,6 +115,7 @@ export class RehabRuntime implements TherapyRuntime {
     const epoch = Date.now() - this.clock();
     const engineOptions = {
       therapy: {
+        simulated: () => this.options.glove.client.kind === 'sim',
         sessionId: () => this.exerciseStore.getState().sessionId,
         onDecision: (
           decision: import('../contracts/therapist').CoachDecision,
@@ -568,15 +569,16 @@ export class RehabRuntime implements TherapyRuntime {
     if (this.mode === 'exercise') {
       const state = this.exerciseEngine.state();
       const duration = this.exerciseEngine.phaseDuration();
+      const pose = this.exerciseEngine.poseDef();
       this.exerciseStore.setState({
         ...state,
-        pose:
-          state.pose === 'pinch'
-            ? calibratedPinch(this.runCalibration!.camera.pinch_closed)
-            : POSES[state.pose],
+        pose,
         phaseDuration: duration,
         paused: state.phase === 'PAUSED',
-        assisting: state.phase === 'ASSIST' || state.phase === 'ASSIST_HOLD',
+        assisting:
+          state.phase === 'ASSIST' ||
+          state.phase === 'ASSIST_HOLD' ||
+          (state.phase === 'ATTEMPT' && this.exerciseEngine.hasAssistance()),
       });
     } else if (this.mode)
       this.evaluationStore.setState(

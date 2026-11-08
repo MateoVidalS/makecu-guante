@@ -38,6 +38,8 @@ export interface PowerAwareExerciseSettings extends ExerciseSettings {
 export interface ExerciseEngine {
   readonly therapy: TherapyController;
   phaseDuration(): number | null;
+  hasAssistance(): boolean;
+  poseDef(): import('../contracts/poses').PoseDef;
   brake(now: number): Output;
   start(
     plan: ExercisePlanItem[],
@@ -72,7 +74,9 @@ export interface EvaluationEngine {
 
 /** Inject a monotonic-to-UTC mapping in live runtime; default interprets now as epoch ms. */
 export interface EngineOptions {
-  therapy?: Pick<TherapyContext, 'sessionId' | 'onDecision' | 'onFeeling'>;
+  therapy?: Pick<TherapyContext, 'sessionId' | 'onDecision' | 'onFeeling'> & {
+    simulated?: () => boolean;
+  };
   onTherapyOutput?: (out: Output) => void;
   timestamp?: (now: number) => string;
   /** Bench-measured stall currents can replace the provisional engine profiles. */
