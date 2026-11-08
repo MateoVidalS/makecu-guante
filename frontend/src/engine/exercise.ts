@@ -81,7 +81,7 @@ class Exercise implements ExerciseEngine {
     this.therapy = new TherapyController({
       snapshot: () => this.therapySnapshot(),
       sessionId: () => options.therapy?.sessionId() ?? null,
-      now: () => this.now,
+      now: () => options.therapy?.now?.() ?? this.now,
       brake: () => {
         const out = this.brake(this.now);
         options.onTherapyOutput?.(out);
@@ -412,6 +412,12 @@ class Exercise implements ExerciseEngine {
       }
       // A fault telemetry frame can arrive before its event. Do not invent a cause.
       if (input.tel?.st === 'fault') {
+        this.lastSafety = {
+          source: 'firmware_fault',
+          finger: null,
+          at: this.now,
+        };
+        this.therapy.safety('firmware_fault', null);
         this.interrupt(out);
         return out;
       }

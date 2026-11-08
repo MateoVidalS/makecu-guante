@@ -115,6 +115,7 @@ export class RehabRuntime implements TherapyRuntime {
     const epoch = Date.now() - this.clock();
     const engineOptions = {
       therapy: {
+        now: options.now ?? (() => performance.now()),
         simulated: () => this.options.glove.client.kind === 'sim',
         sessionId: () => this.exerciseStore.getState().sessionId,
         onDecision: (

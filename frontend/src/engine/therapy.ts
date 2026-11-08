@@ -247,7 +247,7 @@ export class TherapyController implements TherapyApi {
     this.patientSpeech = [];
     const normalized = normalizeSpeech(text);
     if (
-      /^(no\b(?! problem)|stop|pause|cancel|don t|do not|not now|basta|para)\b|\b(don t want|do not want|no quiero|please stop)\b/.test(
+      /^(no\b(?! (problem|pain|discomfort|tingling|fatigue|dolor)\b| me duele\b)|stop|pause|cancel|don t|do not|not now|basta|para)\b|\b(don t want|do not want|no quiero|please stop)\b/.test(
         normalized,
       )
     ) {

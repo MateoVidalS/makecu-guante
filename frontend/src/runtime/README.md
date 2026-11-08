@@ -133,8 +133,9 @@ so the existing replay and summary storage can retain their exact text.
 Only `intensify` may exceed the gentle defaults. It requires a quoted, matching
 patient request or affirmative response from the latest patient turn, reported by
 `notePatientSpeech` within 20 seconds. A2 should report every patient line; omit the
-optional timestamp or supply the runtime's monotonic clock in milliseconds, never
-UTC milliseconds. Future/stale timestamps, unrelated quotes and explicit negative
+optional timestamp or use `performance.now()` milliseconds, never UTC milliseconds.
+Consent, cooldown and highlight timing use this wall-time monotonic clock even in a
+3× simulator; deterministic tests can inject `RuntimeOptions.now`. Future/stale timestamps, unrelated quotes and explicit negative
 responses cannot grant consent. Pending intensity expires if consent becomes stale
 before the next ATTEMPT. A new patient turn supersedes the previous one.
 

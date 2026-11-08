@@ -76,6 +76,7 @@ export interface EvaluationEngine {
 export interface EngineOptions {
   therapy?: Pick<TherapyContext, 'sessionId' | 'onDecision' | 'onFeeling'> & {
     simulated?: () => boolean;
+    now?: () => number;
   };
   onTherapyOutput?: (out: Output) => void;
   timestamp?: (now: number) => string;

@@ -1150,3 +1150,68 @@ it('property: consented intensity remains inside calibration, 0.30/s, hold, shap
     expect(calibration).toEqual(original);
   }
 });
+
+it('caps early assistance duration even after that finger reaches and other delays are still pending', () => {
+  const h = harness({ attempt_s: 9, assist_max_s: 2 });
+  h.until(() => h.engine.state().phase === 'ATTEMPT');
+  h.call('assist_finger_now', { finger: 'index', reason: 'Help now.' });
+  h.world.hand = [0, 0.95, 0, 0, 0];
+  h.tick(2000);
+  expect(h.engine.state().phase).toBe('ASSIST_HOLD');
+});
+
+it('uses an injected consent clock independently of accelerated motor time', () => {
+  let wall = 10_000;
+  const world = new FakeWorld();
+  const engine = createExerciseEngine({
+    therapy: { sessionId: () => 1, now: () => wall },
+  });
+  world.apply(
+    engine.start(
+      [{ pose: 'full_fist', reps: 1 }],
+      { ...DEFAULT_EXERCISE_SETTINGS, present_s: 0 },
+      calibration,
+      0,
+    ).commands,
+  );
+  engine.therapy.notePatientSpeech('Yes, please.', wall);
+  const d = engine.therapy.adjust(
+    'intensify',
+    {
+      finger: 'index',
+      kind: 'faster',
+      consent: 'accepted_offer',
+      patient_quote: 'Yes, please.',
+    },
+    'coach',
+  );
+  expect(d.result).toBe('applied');
+  wall += 1000;
+  world.apply(engine.tick(world.step(30_000)).commands);
+  world.apply(engine.tick(world.step(500)).commands);
+  expect(engine.state().phase).toBe('ATTEMPT');
+  expect(engine.therapy.current().assist_speed.index).toBe(0.3);
+});
+
+it('an unattributed firmware fault revokes intensity and a mutable UI pose cannot change motor goals', () => {
+  const h = harness({ assist_max_s: 6 });
+  h.therapy.notePatientSpeech('Yes, please.');
+  h.call('intensify', {
+    finger: 'index',
+    kind: 'faster',
+    consent: 'accepted_offer',
+    patient_quote: 'Yes, please.',
+  });
+  h.until(() => h.engine.state().phase === 'ATTEMPT');
+  h.engine.poseDef().closure.index = 999;
+  h.until(() => h.engine.state().phase === 'ASSIST');
+  expect(h.commands().at(-1)).toMatchObject({ f: [0, 0.95, 0, 0, 0], v: 0.3 });
+  h.world.tel.st = 'fault';
+  h.tick();
+  expect(h.engine.state().phase).toBe('PAUSED');
+  expect(h.commands().at(-1)).toEqual({ t: 'release' });
+  expect(h.therapy.state()?.adjustments.intensified).toEqual([]);
+  expect(h.therapy.state()?.last_safety).toMatchObject({
+    source: 'firmware_fault',
+  });
+});
