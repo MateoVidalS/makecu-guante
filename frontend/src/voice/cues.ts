@@ -65,7 +65,7 @@ export function eventCue(
       };
     case 'session_done':
       return {
-        text: `[session] Session complete. Summary: ${summaryContext(event.summary)}`,
+        text: `[session] Session complete. Summary: ${summaryContext(event.summary)} In one or two short sentences, recap and say goodbye. The session is over: do not start new exercises or ask questions.`,
         speak: true,
       };
   }
