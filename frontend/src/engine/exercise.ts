@@ -270,8 +270,11 @@ class Exercise implements ExerciseEngine {
       !this.helpRequested
     );
   }
-  /** The glove only moves when the patient asks: button or voice. */
-  requestHelp(now: number): Output {
+  /**
+   * The glove only moves when the patient asks: button or voice. Named fingers limit the
+   * help to them ("help my index"); none means every finger that needs opening.
+   */
+  requestHelp(now: number, fingers?: readonly GloveFinger[]): Output {
     this.now = now;
     const out = output();
     if (
@@ -282,7 +285,7 @@ class Exercise implements ExerciseEngine {
       this.assistable().some(Boolean)
     ) {
       this.helpRequested = true;
-      this.helpScope = null;
+      this.helpScope = fingers?.length ? new Set(fingers) : null;
       this.enter('ASSIST', out);
     }
     return out;

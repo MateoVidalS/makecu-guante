@@ -953,13 +953,36 @@ describe('asking for help by voice', () => {
     inAttempt(s, false);
     const ask = vi.spyOn(s.runtime.exercise, 'requestHelp');
     t.emit({ type: 'transcript', role: 'patient', text: 'Ayúdame por favor' });
+    // The request waits for the end of the sentence, which may name fingers.
+    expect(ask).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(700);
     expect(ask).toHaveBeenCalledTimes(1);
+    expect(ask).toHaveBeenCalledWith(undefined);
     t.emit({
       type: 'transcript',
       role: 'patient',
       text: ' help',
       finished: true,
     });
+    expect(ask).toHaveBeenCalledTimes(1);
+    s.controller.dispose();
+  });
+  it('"help my index and middle" asks for those two fingers, even when spoken in pieces', async () => {
+    const s = setup();
+    await s.controller.start(8);
+    const t = s.transports[0];
+    inAttempt(s, false);
+    const ask = vi.spyOn(s.runtime.exercise, 'requestHelp');
+    t.emit({ type: 'transcript', role: 'patient', text: 'Can you help' });
+    await vi.advanceTimersByTimeAsync(300);
+    t.emit({
+      type: 'transcript',
+      role: 'patient',
+      text: ' my index and middle?',
+      finished: true,
+    });
+    expect(ask).toHaveBeenCalledExactlyOnceWith(['index', 'middle']);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(ask).toHaveBeenCalledTimes(1);
     s.controller.dispose();
   });
