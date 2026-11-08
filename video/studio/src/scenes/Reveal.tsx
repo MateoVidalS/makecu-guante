@@ -6,19 +6,24 @@ import { Hand } from '../components/story/Hand';
 import { HardwareTurntable } from '../components/story/HardwarePlaceholder';
 import { progress } from '../components/story/motion';
 import { Landmarks, Waveform } from '../components/story/Signals';
+import { Wordmark } from '../components/story/Wordmark';
 import { COPY } from '../script';
 
 export const Reveal: React.FC = () => {
   const f = useCurrentFrame();
   const triad = [COPY.reveal.watches, COPY.reveal.coaches, COPY.reveal.helps];
+  const settle = progress(f, 36);
+  const markSize = 240 - settle * 120;
   return (
     <Fill>
       {f < 96 ? (
-        <div style={{ position: 'absolute', left: 0, right: 0, top: 160, display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
-          <Mark size={240} tile={progress(f, 0)} ghost={progress(f, 9)} reach={progress(f, 21)} />
-          <div style={{ marginTop: space.s48, opacity: progress(f, 36), transform: `translateY(${(1 - progress(f, 36)) * 12}px)` }}><Lockup height={96} /></div>
-          <T size="h2" w={400} style={{ marginTop: space.s32, opacity: progress(f, 45) }}>{COPY.reveal.tagline}</T>
-        </div>
+        <>
+          <div style={{ position: 'absolute', left: 840 - settle * 75, top: 250 + settle * 70, opacity: progress(f, 0, 9) }}>
+            <Mark size={markSize} tile={progress(f, 0)} ghost={progress(f, 9)} reach={progress(f, 21)} />
+          </div>
+          <div style={{ position: 'absolute', left: 925, top: 320, opacity: progress(f, 42) }}><Wordmark height={120} /></div>
+          <T size="h2" w={400} style={{ position: 'absolute', left: 0, right: 0, top: 488, textAlign: 'center', opacity: progress(f, 51) }}>{COPY.reveal.tagline}</T>
+        </>
       ) : f < 216 ? (
         <>
           <div style={{ position: 'absolute', left: safe.x, top: safe.y }}><Lockup height={64} /></div>

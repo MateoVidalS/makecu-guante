@@ -15,6 +15,15 @@ const fingers: Finger[] = [
   { radius: 15, closed: [[233, 249], [231, 207], [236, 207], [240, 242]], open: [[233, 249], [247, 181], [255, 151], [261, 128]] },
 ];
 
+// Two-joint wrapping pose for the mug body, in the same hand coordinates.
+const graspJoints: readonly (readonly Point[])[] = [
+  [[151, 198], [174, 167], [193, 159]],
+  [[150, 190], [171, 139], [182, 123]],
+  [[187, 180], [204, 143], [216, 135]],
+  [[215, 190], [227, 151], [238, 147]],
+  [[238, 207], [247, 178], [254, 169]],
+];
+
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
 // A rounded ribbon around a joint chain. Quadratic corners keep the vector
@@ -39,21 +48,25 @@ export interface HandProps {
   openness: number;
   side: 'left' | 'right';
   ghost?: boolean;
-  person?: keyof typeof skin;
   fill?: string;
   fingerFill?: string;
   armLength?: number;
+  grasp?: number;
   style?: React.CSSProperties;
 }
 
-export const Hand: React.FC<HandProps> = ({ openness, side, ghost = false, person = 'rosa', fill, fingerFill, armLength = 0, style }) => {
+export const Hand: React.FC<HandProps> = ({ openness, side, ghost = false, fill, fingerFill, armLength = 0, grasp = 0, style }) => {
   const t = Math.max(0, Math.min(1, openness));
-  const color = ghost ? 'none' : fill ?? skin[person];
+  const color = ghost ? 'none' : fill ?? skin.rosa;
   const stroke = ghost ? c.target : c.text;
-  const paths = fingers.map((finger) => finger.closed.map((p, i): Point => [mix(p[0], finger.open[i][0], t), mix(p[1], finger.open[i][1], t)]));
+  const paths = fingers.map((finger, fingerIndex) => finger.closed.map((p, i): Point => {
+    const open: Point = [mix(p[0], finger.open[i][0], t), mix(p[1], finger.open[i][1], t)];
+    const wrapped = i === 0 ? p : graspJoints[fingerIndex][i - 1];
+    return [mix(open[0], wrapped[0], grasp), mix(open[1], wrapped[1], grasp)];
+  }));
   const pathStyle = { stroke, strokeWidth: 6, strokeLinecap: 'round', strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke' } as const;
   return (
-    <svg viewBox="0 0 320 430" width="100%" height="100%" role="img" aria-label={`${ghost ? 'Goal: ' : ''}${person === 'rosa' ? 'Rosa' : 'Grandson'}’s ${t > 0.8 ? 'open hand' : t < 0.2 ? 'fist' : 'opening hand'}`} style={{ overflow: 'visible', ...style }}>
+    <svg viewBox="0 0 320 430" width="100%" height="100%" role="img" aria-label={`${ghost ? 'Goal: ' : ''}Rosa’s ${grasp > 0.5 ? 'hand grasping the mug' : t > 0.8 ? 'open hand' : t < 0.2 ? 'fist' : 'opening hand'}`} style={{ overflow: 'visible', ...style }}>
       <g transform={side === 'right' ? 'translate(320 0) scale(-1 1)' : undefined} opacity={ghost ? 0.6 : 1}>
         {/* Fingers sit behind the palm so their roots never form extra seams. */}
         {paths.slice(1).map((points, i) => <path key={i} d={outline(points, fingers[i + 1].radius)} fill={ghost ? 'none' : fingerFill ?? color} {...pathStyle} />)}

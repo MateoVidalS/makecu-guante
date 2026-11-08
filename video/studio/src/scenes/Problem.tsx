@@ -23,14 +23,10 @@ export const Problem: React.FC = () => {
             <div style={{ height: 1, background: c.border, marginTop: space.s64, marginBottom: space.s24 }} />
             <T size="caption" w={400} color={c.muted}>{COPY.problem.citation}</T>
           </div>
-          <div style={{ position: 'absolute', left: 1100, top: 130, width: 520, height: 699 }}>
-            <Hand openness={1} side="left" ghost />
-            <div style={{ position: 'absolute', inset: 0 }}><Hand openness={0.08} side="left" /></div>
-          </div>
         </>
       ) : (
         <>
-          <div style={{ position: 'absolute', left: safe.x, top: 150, width: 1150 }}>
+          <div style={{ position: 'absolute', left: safe.x, top: 150, width: 960 }}>
             <Words text={COPY.problem.a} start={12} stagger={4} size="display" w={400} />
             <div style={{ marginTop: space.s64, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.28em', fontSize: type.display }}>
               <div style={{ position: 'relative', opacity: progress(f, 144, 9) }}>
@@ -42,11 +38,12 @@ export const Problem: React.FC = () => {
               <Words text={b.slice(1).join(' ')} start={148} stagger={4} size="display" w={400} />
             </div>
           </div>
-          <div style={{ position: 'absolute', right: 110, top: 315, width: 360, height: 484, opacity: progress(f, 24) }}>
-            <Hand openness={0.12 * progress(f, 144, 24)} side="left" />
-          </div>
         </>
       )}
+      <div style={{ position: 'absolute', left: 1100, top: 130, width: 520, height: 699 }}>
+        <Hand openness={1} side="left" ghost style={{ position: 'absolute', inset: 0, opacity: progress(f, statAt) }} />
+        <Hand openness={0.08 * progress(f, 144, 24)} side="left" style={{ position: 'absolute', inset: 0 }} />
+      </div>
     </Fill>
   );
 };
