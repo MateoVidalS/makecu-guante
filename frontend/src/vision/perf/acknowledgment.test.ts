@@ -27,6 +27,12 @@ import { report, round, runVision, stream } from './harness';
 import { attempt, cal, reach, row, SEEDS, summarize } from './scenarios';
 
 const SLOW = { timeout: 120_000 };
+/**
+ * These sweeps run for 10-20 s of synchronous work. Vitest's worker must answer its runner
+ * within 60 s, and on a busy machine one uninterrupted sweep can exceed that ("Timeout calling
+ * onTaskUpdate", reported as an unhandled error while every test passes). Yield between rows.
+ */
+const breathe = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 const VIEWS: CameraView[] = ['front_upright', 'front_diagonal'];
 const HANDS: Handedness[] = ['right', 'left'];
 const TENDON: PoseId[] = [
@@ -81,7 +87,7 @@ describe('acknowledges every pose the patient really makes', SLOW, () => {
     }
   });
 
-  it('benchmarked noise: every pose, view, hand and patient is acknowledged in time', () => {
+  it('benchmarked noise: every pose, view, hand and patient is acknowledged in time', async () => {
     const rows = [];
     for (const view of VIEWS)
       for (const hand of HANDS)
@@ -94,6 +100,7 @@ describe('acknowledges every pose the patient really makes', SLOW, () => {
               ),
             );
             rows.push({ view, hand, patient: patient.name, pose, ...row(s) });
+            await breathe();
           }
     report('Acknowledgment at benchmarked noise (8 attempts per row)', rows);
     for (const r of rows) {
@@ -103,7 +110,7 @@ describe('acknowledges every pose the patient really makes', SLOW, () => {
     }
   });
 
-  it('poor-light noise (2x): reports hit rate and latency', () => {
+  it('poor-light noise (2x): reports hit rate and latency', async () => {
     const rows = [];
     for (const view of VIEWS)
       for (const patient of Object.values(PATIENTS))
@@ -115,6 +122,7 @@ describe('acknowledges every pose the patient really makes', SLOW, () => {
             ),
           );
           rows.push({ view, patient: patient.name, pose, ...row(s) });
+          await breathe();
         }
     report('Acknowledgment at 2x noise (poor light)', rows);
     const overall = rows.reduce((a, r) => a + r.hitRate, 0) / rows.length;
@@ -127,25 +135,22 @@ describe(
   SLOW,
   () => {
     // The rendered pinch must satisfy its target even with full-range calibration.
-    it(
-      'copying the on-screen pinch is acknowledged (full-range calibration)',
-      () => {
-        const patient = PATIENTS.healthy;
-        const scene: Scene = {
-          view: 'front_upright',
-          hand: 'right',
-          noise: NOISE.ideal,
-        };
-        const result = attempt(
-          patient,
-          scene,
-          'pinch',
-          reach(patient, 'pinch', performed(patient, 'pinch')),
-          1,
-        );
-        expect(result.reachedAt).not.toBeNull();
-      },
-    );
+    it('copying the on-screen pinch is acknowledged (full-range calibration)', () => {
+      const patient = PATIENTS.healthy;
+      const scene: Scene = {
+        view: 'front_upright',
+        hand: 'right',
+        noise: NOISE.ideal,
+      };
+      const result = attempt(
+        patient,
+        scene,
+        'pinch',
+        reach(patient, 'pinch', performed(patient, 'pinch')),
+        1,
+      );
+      expect(result.reachedAt).not.toBeNull();
+    });
 
     // Signed flexion must preserve the thumb's margin inside the reach tolerance.
     it('a thumb exactly on its straight-fist target keeps at least half the tolerance of margin (upright, benchmarked noise)', () => {
@@ -267,7 +272,7 @@ describe(
         ),
       );
 
-    it('psychometric curve: acknowledgment probability vs how far each finger stops from the target', () => {
+    it('psychometric curve: acknowledgment probability vs how far each finger stops from the target', async () => {
       const offsets = [-0.3, -0.2, -0.15, -0.12, -0.1, -0.08, -0.05, 0];
       const rows: ({ view: CameraView; pose: PoseId } & Record<
         string,
@@ -276,12 +281,14 @@ describe(
       for (const view of VIEWS)
         for (const pose of TENDON) {
           const rates: Record<string, number> = {};
-          for (const offset of offsets)
+          for (const offset of offsets) {
             rates[`${offset}`] = round(
               ackRate(PATIENTS.healthy, NOISE.bench, view, pose, offset).hits /
                 SEEDS.length,
               2,
             );
+            await breathe();
+          }
           rows.push({ view, pose, ...rates });
         }
       report(
