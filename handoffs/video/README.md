@@ -9,6 +9,7 @@ A ~2:53 launch video for memo (MakeCU 2026, healthcare track), in the style of a
 | V2 | [V2-audio.md](V2-audio.md) | `video/studio/audio/**`, `video/studio/public/audio/**`, `video/studio/src/audio/**` | – |
 | V3 | [V3-story.md](V3-story.md) | `src/scenes/{Hook,Problem,Reveal,Close}.tsx`, `src/components/story/**` | V4 `HardwareTurntable` (placeholder until merged) |
 | V4 | [V4-hardware-hood.md](V4-hardware-hood.md) | `src/components/hardware/**`, `src/scenes/UnderHood.tsx` | – |
+| V6 | [V6-gemini.md](V6-gemini.md) | `src/scenes/Gemini.tsx`, `src/components/gemini/**` | – |
 | V5 | [V5-screen.md](V5-screen.md) | `src/components/screen/**`, `src/scenes/{Session,Coach,Doctor}.tsx` | V1 recordings (mock until merged) |
 | – | coordinator | everything else in `video/studio/` (timeline, script, contracts, brand, Main, Team, Next) | – |
 
