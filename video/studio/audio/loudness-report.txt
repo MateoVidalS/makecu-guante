@@ -1,70 +1,63 @@
-Main audio verification — 2026-11-08, latest judging cut
+V2b audio verification — 2026-11-08, early build montage
 
 Cut: 5328 frames / 30 fps = 177.6 s.
-Music: 8,524,800 samples at 48 kHz stereo.
-VO: 27 active lines; all WAV durations fit their current slots.
-Narrator: Sulafat; coach: Puck. coach-2 is retired from the manifest.
+Music: 8,524,800 samples at 48 kHz stereo, 100 BPM.
+All approved voice WAVs and the coordinator-updated 26-line VO manifest
+are byte-for-byte unchanged (29 hashes in audio/remix-report.json).
+Gemini requests for this remix: 0. Same approved track and license.
 
-Latest owner requests: 10 changed/new lines in 4 batched TTS requests.
-17 unaffected WAVs remain byte-for-byte unchanged (audio/revision-report.json).
-No active owned text assets retain the removed device wording.
-
-Starts (s): team 0, hook 7.2, problem 14.4, reveal 24, session 36,
-coach 79.2, gemini 96, doctor 110.4, build 134.4, bench 144,
+Starts (s): team 0, hook 7.2, problem 14.4, reveal 24, build 33.6,
+session 43.2, coach 86.4, gemini 103.2, doctor 117.6, bench 141.6,
 underHood 148.8, next 160.8, close 168, end 177.6.
-Bed is exactly silent before 7.2 s; piano starts in the first hook frame.
-Bench cue stays at 0.35 on every frame from 144 to 148.8 s;
-percussion pauses there to leave space for real servo sound.
+Piano enters at the hard cut at 7.2 s; reveal lift at 24.0 s.
+Tight mechanical groove only from 33.6 to 43.2 s; lighter demo bed follows.
+Near-silence holds from resistance at 73.2 s until release at 81.6 s.
+Bench's full 7.2 s holds cue gain 0.35, with percussion paused.
+Founders hold cue gain 0.34 from 160.8 to 168 s; resolve begins at 168 s.
 
 Render:
-npx remotion render Main out/v2-mix-raw.mp4 --concurrency=2 --log=error
+npx remotion render Main out/v2b-mix-raw.mp4 --concurrency=2
 
 Raw mix measurement:
-audio/loudness.sh out/v2-mix-raw.mp4
+audio/loudness.sh out/v2b-mix-raw.mp4
 Summary:
 
   Integrated loudness:
-    I:         -17.5 LUFS
-    Threshold: -28.4 LUFS
+    I:         -17.6 LUFS
+    Threshold: -28.7 LUFS
 
   Loudness range:
-    LRA:        11.2 LU
-    Threshold: -38.4 LUFS
-    LRA low:   -26.9 LUFS
+    LRA:        12.7 LU
+    Threshold: -38.7 LUFS
+    LRA low:   -28.5 LUFS
     LRA high:  -15.8 LUFS
 
   True peak:
-    Peak:       -3.4 dBFS
+    Peak:       -3.2 dBFS
 
 Master and encoded-file measurement:
-audio/loudness.sh --normalize out/v2-mix-raw.mp4 out/v2-mix.mp4
+audio/loudness.sh --normalize out/v2b-mix-raw.mp4 out/v2b-mix.mp4 0.2
 Summary:
 
   Integrated loudness:
     I:         -14.0 LUFS
-    Threshold: -24.7 LUFS
+    Threshold: -24.8 LUFS
 
   Loudness range:
-    LRA:         9.2 LU
-    Threshold: -34.7 LUFS
-    LRA low:   -21.3 LUFS
-    LRA high:  -12.1 LUFS
+    LRA:         9.1 LU
+    Threshold: -34.8 LUFS
+    LRA low:   -21.1 LUFS
+    LRA high:  -12.0 LUFS
 
   True peak:
     Peak:       -1.2 dBFS
 
-Final deliverable: out/v2-mix.mp4.
-Compatibility copy: out/v2-mix-master.mp4 (identical final file).
-Video stream copied; audio mastered from the raw render, not a prior AAC master.
+The optional 0.2 dB measured gain calibrates the AAC result before the limiter.
+Video copied; final audio encoded from the raw render, never a previous AAC master.
+Final: out/v2b-mix.mp4; identical compatibility copy: out/v2b-mix-master.mp4.
 ffprobe: both final streams are 177.600000 s; video has 5328 frames.
 True peak is the oversampled ebur128 peak (dBTP), printed as dBFS by ffmpeg.
-Target: -14 LUFS integrated, true peak <= -1 dBTP.
-Measured encoded final: -14.0 LUFS, -1.2 dBTP, 9.2 LU LRA.
+Target and measured final: -14.0 LUFS integrated, -1.2 dBTP, 9.1 LU LRA.
 
-Transcript QC: 26 exact isolated-file matches plus 1 context-verified match.
-For doctor-2, isolated ASR inserted a leading word. Whole-take recognition
-and source word timestamps confirm the exact phrase and exclude adjacent words.
-See audio/vo-transcripts.json for recognition and context evidence.
-
-Evidence: 5 Main stills (including judging labels) + 1 diagnostic mix map.
-V2 captions remain below the reserved top 64 px.
+Evidence: 5 refreshed Main stills + 1 actual waveform/automation map.
+No changes to scene files, script, timeline, voice audio, SFX or contracts.

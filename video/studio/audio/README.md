@@ -15,15 +15,17 @@ All shipping audio lives in `public/audio/`. Scene copy and timeline are unchang
 
 ```sh
 pnpm studio
-npx remotion render Main out/v2-mix-raw.mp4
-audio/loudness.sh --normalize out/v2-mix-raw.mp4 out/v2-mix.mp4
-audio/loudness.sh out/v2-mix.mp4
+npx remotion render Main out/v2b-mix-raw.mp4
+audio/loudness.sh --normalize out/v2b-mix-raw.mp4 out/v2b-mix.mp4 0.2
+audio/loudness.sh out/v2b-mix.mp4
 ```
 
 The raw render is the dialogue/music mix with headroom. The mastering pass targets
 −14 LUFS integrated and ≤ −1 dBTP, copies the video stream, and leaves 0.2 dB
 of limiter headroom before AAC encoding. Re-measure the encoded file. Re-master
 after adding the team's real footage; its dialogue changes the integrated level.
+The optional final gain (0.2 dB for this cut) calibrates the measured AAC result
+before the limiter, retaining true-peak headroom.
 
 Scenes opt into SFX explicitly, using their recording's actual event frame:
 
@@ -43,10 +45,14 @@ so overlapping ramps do not multiply. Real `team-intro`, `team-next`, and
 
 `public/audio/music/manifest.json` controls the scene arc independently of VO
 ducking: exact silence during the founders from 0–7.2 s; piano enters on the
-hook cut at 7.2 s; reveal lift at 24 s; resistance drop at 66 s for 2.5 s;
-restrained rebuild until release at 74.4 s; build groove at 134.4 s; bench gain fixed at 35%
-from 144–148.8 s (percussion pauses for servo sound); board lift at 148.8 s; founders pullback at 160.8 s; resolution at 168 s; fade to zero at
+hook cut at 7.2 s; reveal lift at 24 s; tight mechanical build groove from 33.6–43.2 s, then the lighter demo bed;
+resistance near-silence from 73.2 s until release at 81.6 s; bench gain fixed at
+35% from 141.6–148.8 s (percussion pauses for servo sound); board lift at 148.8 s; founders pullback at 160.8 s; resolution at 168 s; fade to zero at
 the 177.6-second end. All boundaries are derived from the current timeline.
+
+The V2b remix preserves every approved voice WAV and the coordinator-updated
+manifest (26 active lines; `reveal-2` is retired). No Gemini requests were made.
+Hashes are in `audio/remix-report.json`.
 
 ## Reproduce and check
 
@@ -127,17 +133,17 @@ API request shapes were checked against Google's current
 
 ## Verified render
 
-The final delivery file is `out/v2-mix.mp4`; mastering is included in the
-workflow above. `out/v2-mix-master.mp4` is refreshed with an identical copy.
+The final delivery file is `out/v2b-mix.mp4`; mastering is included in the
+workflow above. `out/v2b-mix-master.mp4` is refreshed with an identical copy.
 
 The encoded 177.6-second master measured **−14.0 LUFS integrated**, **−1.2 dBTP**
-and 9.2 LU loudness range. The raw mix measured −17.5 LUFS / −3.4 dBTP.
+and 9.1 LU loudness range. The raw mix measured −17.6 LUFS / −3.2 dBTP.
 Full measurement commands and ffmpeg summaries are in `audio/loudness-report.txt`.
 Six review PNGs (reveal, safety coach, Gemini, build, bench and the mix map) are in `evidence/V2/`.
 
 ## Integration notes
 
-The base branch has visual and team-footage placeholders. V2 changes no scenes
+The integration branch supplies the visual scenes; team-footage slots await the team's clips. V2 changes no scenes
 and adds no SFX calls to other workers' files. The coordinator must place the
 music credit on the close card (the manifest contains it), align SFX with V1/V5
 recording events, and re-master after inserting team dialogue.
