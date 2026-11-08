@@ -8,7 +8,8 @@
  * error, so regressions and design limits show up as numbers.
  *
  * Hand frame (metres): wrist at the origin, fingers along +y, palm in the
- * xy plane, palmar side (the direction fingers curl to) = +z. Same bone
+ * xy plane, palmar side = +z. Returned canonical geometry is anatomically right:
+ * +y distal cross +z palmar points toward the thumb at +x. Same bone
  * lengths as fixtures/generateFixtures.py.
  */
 import type { CameraView } from '../../contracts/calibration';
@@ -100,22 +101,40 @@ export function handLandmarks(
   { size = 1, contact = 0 }: { size?: number; contact?: number } = {},
 ): V[] {
   const p: V[] = Array.from({ length: 21 }, () => [0, 0, 0] as V);
-  const chain = (start: number, dir: V, flex: number[], lengths: number[]) => {
+  const chain = (
+    start: number,
+    dir: V,
+    flex: number[],
+    lengths: number[],
+    bend: V = [0, 0, 1],
+  ) => {
     let cumulative = 0;
     flex.forEach((angle, k) => {
       cumulative += rad(angle);
-      const bone = add(scale(dir, Math.cos(cumulative)), [
-        0,
-        0,
-        Math.sin(cumulative),
-      ]);
+      const bone = add(
+        scale(dir, Math.cos(cumulative)),
+        scale(bend, Math.sin(cumulative)),
+      );
       p[start + k + 1] = add(p[start + k], scale(bone, lengths[k]));
     });
   };
   p[1] = [-0.035, 0.025, 0];
   const thumbDir = unit([-1, 1, 0]);
   p[2] = add(p[1], scale(thumbDir, 0.028));
-  chain(2, thumbDir, [angles.thumb.mcp, angles.thumb.pip], [0.028, 0.022]);
+  // Opposition curls across the palm toward the pinky, with a palmar component.
+  // Project out the metacarpal direction so the requested angles stay exact.
+  const towardPinky = sub([LONG[3].at[0], LONG[3].at[1], 0], p[2]);
+  const ulnar = unit(
+    sub(towardPinky, scale(thumbDir, dot(towardPinky, thumbDir))),
+  );
+  const thumbBend = unit(add(ulnar, [0, 0, 0.5]));
+  chain(
+    2,
+    thumbDir,
+    [angles.thumb.mcp, angles.thumb.pip],
+    [0.028, 0.022],
+    thumbBend,
+  );
   const names: FingerId[] = ['index', 'middle', 'ring', 'pinky'];
   LONG.forEach(({ base, at, lengths }, i) => {
     p[base] = [at[0], at[1], 0];
@@ -124,11 +143,18 @@ export function handLandmarks(
   });
   if (contact > 0) {
     const target = add(p[8], [0.001, 0, 0]);
-    const knuckle = add(lerpV(p[2], target, 0.6), [0, 0, -0.008]);
+    const axis = unit(
+      cross(thumbDir, sub([LONG[3].at[0], LONG[3].at[1], 0], p[2])),
+    );
+    // Keep the IP bend toward the ulnar side as the helper brings the tips together.
+    const outside = unit(cross(sub(target, p[2]), axis));
+    const knuckle = add(lerpV(p[2], target, 0.6), scale(outside, 0.008));
     p[3] = lerpV(p[3], knuckle, contact);
     p[4] = lerpV(p[4], target, contact);
   }
-  return p.map((v) => scale(v, size));
+  // The construction coordinates above put the thumb at -x: anatomically left.
+  // Reflect once here to return a right hand; observe() mirrors it only for left.
+  return p.map(([x, y, z]) => scale([-x, y, z], size));
 }
 
 export const sumOf = (a: JointAngles) => a.mcp + a.pip + a.dip;
@@ -258,7 +284,7 @@ interface Placement {
   rotation: M; // hand frame -> camera frame (x right, y down, z away from the camera)
   wrist: V; // wrist position in the camera frame (metres)
 }
-function placement(view: CameraView, tilt: Tilt): Placement {
+function placement(view: CameraView, tilt: Tilt, hand: Handedness): Placement {
   const extra = mulM(
     rotZ(tilt.roll ?? 0),
     mulM(rotY(tilt.yaw ?? 0), rotX(tilt.pitch ?? 0)),
@@ -274,7 +300,10 @@ function placement(view: CameraView, tilt: Tilt): Placement {
   }
   // Legacy palm-down setup: same camera as fixtures/generateFixtures.py (36 cm, thumb side, above).
   const target: V = [0, 0.065, 0];
-  const position = add(target, scale(unit([-0.55, 0.65, -0.52]), 0.36));
+  const position = add(
+    target,
+    scale(unit([hand === 'right' ? 0.55 : -0.55, 0.65, -0.52]), 0.36),
+  );
   const forward = unit(sub(target, position));
   const right = unit(cross(forward, [0, 0, -1]));
   const up = cross(right, forward);
@@ -362,7 +391,11 @@ export function observe(
   scene: Scene,
   rand: () => number = rng(1),
 ): HandResult {
-  const { rotation, wrist } = placement(scene.view, scene.tilt ?? {});
+  const { rotation, wrist } = placement(
+    scene.view,
+    scene.tilt ?? {},
+    scene.hand,
+  );
   // A left hand is the mirror image of the modelled right hand.
   const mirrored = points.map(([x, y, z]): V => [
     scene.hand === 'left' ? -x : x,

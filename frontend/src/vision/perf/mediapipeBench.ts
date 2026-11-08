@@ -50,6 +50,8 @@ export interface BenchShot {
   seed?: number;
   /** Video timestamp in ms (VIDEO mode); omit for IMAGE mode. */
   videoMs?: number;
+  /** Render a geometrically correct hand for `hand` (default: the legacy rig chirality). */
+  anatomical?: boolean;
 }
 export interface BenchResult {
   detected: boolean;
@@ -117,7 +119,10 @@ function skinnedRig(hand: Handedness) {
   }
   return rig;
 }
+// createHandRig('right') has the thumb at -x with +Y distal and +Z palmar: geometrically a
+// left hand. Anatomical rigs swap them so a "right" shot is a real right hand.
 const rigs = { right: skinnedRig('right'), left: skinnedRig('left') };
+const anatomical = { right: skinnedRig('left'), left: skinnedRig('right') };
 const holder = new Group();
 scene.add(holder);
 
@@ -133,7 +138,7 @@ function rand(seed: number) {
 
 function pose(shot: BenchShot) {
   holder.clear();
-  const rig = rigs[shot.hand];
+  const rig = (shot.anatomical ? anatomical : rigs)[shot.hand];
   applyJoints(rig, shot.joints, 1);
   holder.add(rig);
   holder.rotation.set(0, 0, 0);
@@ -213,6 +218,7 @@ function toResult(
   r: HandLandmarkerResult,
   inferenceMs: number,
   view: CameraView,
+  hand: Handedness,
 ): BenchResult {
   const i = r.handedness.length ? 0 : -1;
   if (i < 0)
@@ -230,7 +236,7 @@ function toResult(
     p.map((q): [number, number, number] => [q.x, q.y, q.z]);
   const world = tuples(r.worldLandmarks[i]);
   const image = tuples(r.landmarks[i]);
-  const joints = jointAngles(world, view);
+  const joints = jointAngles(world, view, hand);
   const flex = Object.fromEntries(
     FINGERS.map((f) => [f, joints[f].mcp + joints[f].pip + joints[f].dip]),
   ) as Record<FingerId, number>;
@@ -259,7 +265,7 @@ function shoot(shot: BenchShot): BenchResult {
     shot.videoMs === undefined
       ? imageLandmarker!.detect(image)
       : videoLandmarker!.detectForVideo(image, shot.videoMs);
-  return toResult(r, performance.now() - start, shot.view);
+  return toResult(r, performance.now() - start, shot.view, shot.hand);
 }
 async function resetVideo(delegate: 'GPU' | 'CPU' = 'CPU') {
   videoLandmarker?.close();

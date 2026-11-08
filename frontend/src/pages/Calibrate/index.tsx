@@ -25,6 +25,7 @@ import { CalibrationClosure } from './closure';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
   CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
   type ServoCalibration,
 } from '../../contracts/calibration';
 import type { VisionFrame } from '../../contracts/vision';
@@ -335,6 +336,7 @@ export default function Calibrate() {
     const camera = {
       affected_hand: draft.hand,
       camera_view: CURRENT_CAMERA_VIEW,
+      flex_model: CURRENT_FLEX_MODEL,
       open_flex: draft.open.raw,
       closed_flex: draft.closed.raw,
       pinch_open: draft.open.pinch,
@@ -360,6 +362,7 @@ export default function Calibrate() {
       camera: {
         affected_hand: draft.hand,
         camera_view: draft.cameraView,
+        flex_model: draft.flexModel,
         open_flex: draft.open?.raw ?? {
           thumb: 0,
           index: 0,

@@ -25,6 +25,8 @@ def test_generated_measurements_cover_all_five_fingers(generated):
     calibration = generated["calibration"]
     assert [f["finger"] for f in calibration["servo"]] == list(repo.FINGERS)
     assert set(calibration["camera"]["closed_flex"]) == set(repo.FINGERS)
+    assert calibration["camera"]["camera_view"] == "front_upright"
+    assert calibration["camera"]["flex_model"] == 2
     for session in generated["sessions"]:
         assert [f["finger"] for f in session["summary"]["per_finger"]] == list(repo.FINGERS)
         for attempt in session["attempts"]:
@@ -122,6 +124,9 @@ def test_real_engine_seed_reset_and_provenance(tmp_path, generated, monkeypatch)
         index = [p for p in trend if p.finger == "index"]
         assert index[-1].slow < index[0].slow
         calibration_id = sessions[0].calibration_id
+        camera = repo.latest_calibration(db).camera
+        assert camera.camera_view == "front_upright"
+        assert camera.flex_model == 2
         real = repo.create_session(
             db,
             c.SessionIn(
