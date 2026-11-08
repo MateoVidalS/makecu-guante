@@ -29,7 +29,9 @@ def test_direction_roundtrip_and_derived_responses(
     ).json()
     assert session["assist_direction"] == derived
     id = session["id"]
-    assert client.post(f"/api/sessions/{id}/attempts", json=attempt_body).status_code == 200
+    # The open pose is the one the opening glove assists (its fists are practiced alone).
+    opening = {**attempt_body, "pose": "open"}
+    assert client.post(f"/api/sessions/{id}/attempts", json=opening).status_code == 200
     assert client.get(f"/api/sessions/{id}").json()["assist_direction"] == derived
     assert client.get("/api/sessions").json()[0]["assist_direction"] == derived
     for path in ("rom", "assist"):
@@ -87,7 +89,7 @@ def test_no_cross_direction_comparisons(db, calibration, session_body, attempt_b
             ),
             started_at=stamp,
         )
-        attempt = c.AttemptResult.model_validate(attempt_body)
+        attempt = c.AttemptResult.model_validate({**attempt_body, "pose": "open"})
         # Deliberately disjoint cohorts, including a later legacy session.
         attempt.fingers = [
             f.model_copy(update={"active_max": active, "assist_needed": active})

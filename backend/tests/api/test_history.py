@@ -38,6 +38,14 @@ def add_session(db, body, attempt, days, values, *, demo=False, pose="full_fist"
 
 
 def test_hand_computed_history(client, db, session_body, attempt_body, payload, calibration):
+    # Generic aggregation over assisted fists and hooks: the earlier closing-assist glove cohort.
+    legacy = repo.create_calibration(
+        db,
+        c.CalibrationIn.model_validate(
+            {**calibration.model_dump(exclude={"id", "created_at"}), "assist_direction": None}
+        ),
+    )
+    session_body = {**session_body, "calibration_id": legacy.id}
     first = add_session(
         db,
         session_body,
@@ -224,3 +232,36 @@ def test_history_endpoints_under_100ms_for_200_sessions(
         assert not any("attempt_trace" in sql or "sweeps_blob" in sql for sql in statements)
     finally:
         event.remove(db.bind, "before_cursor_execute", record)
+
+
+def test_opening_glove_assistance_counts_only_open_attempts(
+    client, db, session_body, attempt_body, calibration
+):
+    """Fists with the opening glove are never assisted; their zeros must not halve the help."""
+    assert calibration.assist_direction == "open"
+    session = add_session(
+        db,
+        session_body,
+        attempt_body,
+        1,
+        [([0.6, 0.6, 0.6], [0.5, 0.5, 0.5])],
+        pose="open",
+    )
+    fist = {**attempt_body, "index": 1, "pose": "full_fist", "assisted": False}
+    fist["fingers"] = [
+        {
+            "finger": f,
+            "scored": True,
+            "target": 0.95,
+            "active_max": 0.97,
+            "assist_needed": 0.02,  # the engine's overshoot artifact on a fist
+            "final": 0.95,
+        }
+        for f in repo.FINGERS
+    ]
+    repo.create_attempt(db, session, c.AttemptResult.model_validate(fist))
+    assist = [c.AssistPoint.model_validate(p) for p in client.get("/api/history/assist").json()]
+    assert [p.assist_needed_mean for p in assist] == pytest.approx([0.5] * 5)
+    assert [p.assisted_rate for p in assist] == pytest.approx([1.0] * 5)
+    overview = c.HistoryOverview.model_validate(client.get("/api/history/overview").json())
+    assert [f.assist_needed_last for f in overview.per_finger] == pytest.approx([0.5] * 5)
