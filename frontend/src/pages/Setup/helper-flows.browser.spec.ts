@@ -4,6 +4,7 @@ const usable = {
   ...calibration,
   camera: {
     ...calibration.camera,
+    camera_view: 'front_upright' as const,
     closed_flex: { thumb: 100, index: 270, middle: 270, ring: 270, pinky: 270 },
   },
 };
@@ -98,4 +99,57 @@ test('valid saved calibration opens Review and offers one simulator shortcut', a
         'xpath=ancestor::div[contains(concat(" ",normalize-space(@class)," ")," ds-banner ")][1]',
       ),
   ).toHaveClass(/ds-banner--warning/);
+});
+
+test('legacy camera capture routes to upright recapture while keeping glove ranges', async ({
+  page,
+}) => {
+  await page.route('**/api/calibrations/latest', (route) =>
+    route.fulfill({
+      json: {
+        ...usable,
+        camera: { ...usable.camera, camera_view: 'front_diagonal' },
+      },
+    }),
+  );
+  await page.goto('/');
+  await expect(
+    page.getByText(
+      'Your camera range was captured in the old position. Recapture it with your hand raised.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page.getByRole('button', { name: "Start today's practice" }).click();
+  await expect(page).toHaveURL(/calibrate\?step=camera/);
+  await expect(
+    page.getByText(/Raise your hand, palm to the screen/),
+  ).toBeVisible();
+  await expect(page.getByText('Not captured', { exact: true })).toHaveCount(2);
+  await expect(
+    page.getByRole('button', { name: 'Continue to review' }),
+  ).toBeDisabled();
+  await page.getByRole('button', { name: /Glove range/ }).click();
+  for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
+    await expect(
+      page.getByRole('button', { name: `${finger} · Set` }),
+    ).toBeVisible();
+});
+
+test('upright placement diagram and lighting guide are visible', async ({
+  page,
+}) => {
+  await page.goto('/setup');
+  await page.getByText('How to place the camera', { exact: true }).click();
+  await expect(
+    page.getByRole('img', { name: /Raised hand beside the face/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Raise your hand beside your face/),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/Avoid a bright window behind you/),
+  ).toBeVisible();
+  await page
+    .locator('.setup-placement')
+    .screenshot({ path: '/tmp/v2-upright-placement.png' });
 });

@@ -23,7 +23,10 @@ import {
 } from '../../components/common/practice';
 import { CalibrationClosure } from './closure';
 import { GLOVE_FINGERS } from '../../contracts/glove';
-import type { ServoCalibration } from '../../contracts/calibration';
+import {
+  CURRENT_CAMERA_VIEW,
+  type ServoCalibration,
+} from '../../contracts/calibration';
 import type { VisionFrame } from '../../contracts/vision';
 import { Readouts, Section, Stepper, title } from '../../components/common';
 import {
@@ -207,6 +210,7 @@ export default function Calibrate() {
   }
   function setRange(key: 'min_deg' | 'max_deg') {
     update({
+      friction: {},
       servo: {
         ...draft.servo,
         [finger]: { ...range, finger, [key]: draft.angle },
@@ -330,6 +334,7 @@ export default function Calibrate() {
       throw new Error('Complete each calibration step before saving.');
     const camera = {
       affected_hand: draft.hand,
+      camera_view: CURRENT_CAMERA_VIEW,
       open_flex: draft.open.raw,
       closed_flex: draft.closed.raw,
       pinch_open: draft.open.pinch,
@@ -339,7 +344,7 @@ export default function Calibrate() {
     await runtime.calibration.save({
       servo: GLOVE_FINGERS.map((f) => draft.servo[f] as ServoCalibration),
       camera,
-      friction: {},
+      friction: draft.friction,
       current_limit_ma: draft.limit,
     });
     await runtime.calibration.sendToGlove();
@@ -354,6 +359,7 @@ export default function Calibrate() {
       ).filter(Boolean),
       camera: {
         affected_hand: draft.hand,
+        camera_view: draft.cameraView,
         open_flex: draft.open?.raw ?? {
           thumb: 0,
           index: 0,
@@ -381,6 +387,7 @@ export default function Calibrate() {
   const ownFist = client.kind === 'sim' && vision.source.kind === 'camera';
   function applySimulatedRanges() {
     update({
+      friction: {},
       servo: Object.fromEntries(
         GLOVE_FINGERS.map((f) => [f, { finger: f, min_deg: 20, max_deg: 150 }]),
       ) as typeof draft.servo,
@@ -471,7 +478,7 @@ export default function Calibrate() {
           <Section
             flush
             title={`Step 1 · Glove range: ${title(finger)}`}
-            description="Rest palm down, forearm on a towel. Stop if it hurts."
+            description="Support your elbow. Keep your raised hand relaxed. Stop if it hurts."
           >
             {ownFist && (
               <div className="hp-set-row">
@@ -515,8 +522,8 @@ export default function Calibrate() {
             </div>
             <p className="hp-note">
               Five servos share a 5 V, 2.5 A supply. Adjust one finger at a
-              time. The normal limit is 1500 mA; never exceed 2200 mA. Keep the
-              wrist module at the table edge, fingers free.
+              time. The normal limit is 1500 mA; never exceed 2200 mA. Keep your
+              elbow supported and your raised hand relaxed.
             </p>
             <Readouts
               label="Live glove readings"
@@ -625,7 +632,7 @@ export default function Calibrate() {
           <Section
             flush
             title={`Step 2 · Camera range${linkedStep === 'camera' ? `: ${title(finger)}` : ''}`}
-            description="Palm down. Keep still for two seconds during each capture."
+            description="Raise your hand, palm to the screen, with your elbow supported. Keep still for two seconds during each capture."
           >
             <div className="hp-actions hp-actions--between">
               <Select
