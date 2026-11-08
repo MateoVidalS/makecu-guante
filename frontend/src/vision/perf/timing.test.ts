@@ -142,7 +142,7 @@ describe('camera frame rate', SLOW, () => {
 });
 
 describe('detection dropouts (MediaPipe misses a frame)', SLOW, () => {
-  // A missed detection publishes a missing frame; the engine resets the 0.5 s dwell on it.
+  // Missing detections pause the dwell for up to 200 ms without counting invisible time.
   const rates = [0, 0.01, 0.02, 0.05, 0.1, 0.2];
   const run = (dropRate: number, pose: PoseId) =>
     summarize(
@@ -167,26 +167,21 @@ describe('detection dropouts (MediaPipe misses a frame)', SLOW, () => {
       })),
     );
     report(
-      'Acknowledgment vs random detection misses (each miss restarts the 0.5 s dwell)',
+      'Acknowledgment vs random detection misses (gaps up to 200 ms pause the dwell)',
       rows,
     );
     for (const r of rows.filter((x) => x.dropRate <= 0.02)) {
       expect(r.hitRate, `${r.dropRate} ${r.pose}`).toBe(1);
-      expect(r.latencyP95ms, `${r.dropRate} ${r.pose}`).toBeLessThan(1500);
+      expect(r.latencyP95ms, `${r.dropRate} ${r.pose}`).toBeLessThan(1000);
     }
   });
 
-  // Known gap: one missed frame restarts the whole dwell, so the dwell needs ~15 consecutive good frames.
-  // At a 10% miss rate (plausible with a glove or poor light) some correct poses are never acknowledged.
-  it.fails(
-    'at a 10% miss rate, at least 95% of correct poses are acknowledged',
-    () => {
-      const s = [run(0.1, 'hook'), run(0.1, 'full_fist')];
-      expect(
-        s.reduce((a, x) => a + x.hits, 0) / s.reduce((a, x) => a + x.runs, 0),
-      ).toBeGreaterThanOrEqual(0.95);
-    },
-  );
+  it('at a 10% miss rate, at least 95% of correct poses are acknowledged', () => {
+    const s = [run(0.1, 'hook'), run(0.1, 'full_fist')];
+    expect(
+      s.reduce((a, x) => a + x.hits, 0) / s.reduce((a, x) => a + x.runs, 0),
+    ).toBeGreaterThanOrEqual(0.95);
+  });
 
   it('a 150 ms occlusion during the hold delays acknowledgment by at most the dwell, never loses it', () => {
     const patient = PATIENTS.healthy;
