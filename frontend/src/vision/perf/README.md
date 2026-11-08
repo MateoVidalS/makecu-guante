@@ -1,0 +1,149 @@
+# Hand-position performance suite
+
+How well does Rehab Hub recognize the hand position, and does the engine
+**acknowledge** a pose (`reached`) when the patient makes it, and only then?
+This folder measures that end to end, with numbers, in two layers:
+
+| Layer                                       | Runs in                                              | What is real                                                                                                         | What is simulated                                                                              |
+| ------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **Pipeline suite** (`*.test.ts`)            | `make test` (vitest, ~20 s)                          | `FrameProcessor`, `jointAngles`, One Euro filters, `captureStats` calibration, `ExerciseEngine` reach rule and dwell | MediaPipe: a forward-kinematic hand projected into the camera plus a landmark-error model      |
+| **MediaPipe bench** (`mediapipe-bench.mjs`) | `pnpm --dir frontend bench:vision` (opt-in, minutes) | The bundled MediaPipe Hand Landmarker (CPU, headless Chromium) and the production joint math                         | The hand: a skin-toned capsule model on the virtual hand's rig, rendered at known joint angles |
+
+Neither layer replaces recordings of the real glove on a real patient (see
+"Limits" below). Everything is seeded and deterministic.
+
+```sh
+pnpm --dir frontend test:vision-perf     # pipeline suite with every result table printed
+pnpm --dir frontend bench:vision         # real MediaPipe bench -> mediapipe-bench.result.json
+REHAB_BENCH_QUICK=1 pnpm --dir frontend bench:vision   # ~1 min smoke run
+```
+
+## Files
+
+| File                                                               | Purpose                                                                                                                                                                                                 |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `handModel.ts`                                                     | Synthetic hand (same bones as `fixtures/generateFixtures.py`), two patients, both camera views (`front_upright` laptop webcam, legacy `front_diagonal`), posture tilt, noise model, minimum-jerk motion |
+| `harness.ts`                                                       | Streams frames through the **production** `FrameProcessor`, calibrates with the production `captureStats`, and drives the **production** `ExerciseEngine` (observation only) to get `reached` times     |
+| `scenarios.ts`                                                     | Shared attempt scenarios (rest 1 s, reach in 1.5 s, hold) and summaries                                                                                                                                 |
+| `accuracy.test.ts`                                                 | Static accuracy: bias, jitter, p95 error per pose/finger/view/patient; size, tilt, depth-flattening, linearity, calibration success                                                                     |
+| `acknowledgment.test.ts`                                           | Hit rate and latency for every pose × view × hand × patient; psychometric curve; false acknowledgments; confusion matrix; known gaps                                                                    |
+| `timing.test.ts`                                                   | Tracking lag and settling, frame rate (30/20/15 fps), detection dropouts, occlusion, per-frame CPU cost                                                                                                 |
+| `mediapipe-bench.html`, `mediapipeBench.ts`, `mediapipe-bench.mjs` | Real-MediaPipe bench page and its Playwright driver (starts its own Vite server on a free port)                                                                                                         |
+| `mediapipe-bench.result.json`                                      | Last full bench run (evidence)                                                                                                                                                                          |
+
+## Noise model and where it comes from
+
+The bench measured real MediaPipe on a still rendered hand with webcam-like
+sensor noise: landmark jitter ≈ 1.2 mm (x/y) and 2.2 mm (depth), giving a raw
+per-finger flex-sum jitter of 2.5–12°. MediaPipe's error is correlated across
+landmarks, so independent synthetic noise needs smaller sigmas for the same
+angle jitter: **`bench` = 0.6 mm x/y, 1.2 mm depth** reproduces it. `glove`
+(2×) and `severe` (3.5×) stand for a gloved hand, poor light or a far camera.
+Replace these with numbers from real recordings when the team has them.
+
+## Results (pipeline suite, `bench` noise unless stated)
+
+**What works**
+
+- Noise-free, the math is exact (< 0.005) in both views, both hands, both
+  patients, hand sizes 0.75–1.25×, and with the hand turned ±30° after calibration.
+- Every library pose made correctly is acknowledged: **100% of 384 attempts**
+  (6 poses × 2 views × 2 hands × 2 patients × 8 seeds). Latency from "the real
+  hand satisfies the rule" to `reached`: **p50 ≈ 0.65–0.8 s, p95 < 1 s** for
+  the tendon glides (the 0.5 s dwell + ~0.15–0.3 s smoothing).
+- No false acknowledgments: holding every finger 0.2 or 0.3 short is never
+  accepted; one finger 0.25 short blocks the pose; an almost-closed pinch is refused.
+- Works at 15 fps. Per-frame CPU cost is ~10 µs (`FrameProcessor`) and ~3 µs
+  (`ExerciseEngine.tick`), negligible next to MediaPipe inference.
+- A 150 ms occlusion during the hold costs ~40 ms and never loses the pose.
+
+**What to know (findings)**
+
+1. **Low closures read low; the thumb most.** Joint angles are `acos` of noisy
+   bone vectors, which is never negative, so near-zero angles read high. That
+   inflates the open-hand calibration and compresses the low range:
+   at closure 0.1–0.3 the long fingers read **−0.05** and the thumb **−0.11**
+   (upright view; −0.10 / −0.19 at 2× noise). The thumb has only two short
+   bones and ~100° of range, so it suffers most.
+2. **The effective tolerance is not the nominal 0.10.** Because of (1), a
+   thumb exactly on its straight-fist target (0.50) reads ~0.42, only 0.02
+   above the 0.40 acceptance line. A straight fist or full fist held 0.05 short
+   (inside the tolerance) is **never** acknowledged in the upright view
+   (psychometric table). `open` is the opposite: 0.12 still-closed is accepted.
+3. **One missed detection restarts the 0.5 s dwell.** 1–2% misses push p95
+   latency from 0.77 s to 1.3 s; 5% to 2.1 s; **10% loses 12% of correct
+   hooks; 20% loses 75%** of correct poses. MediaPipe miss rates with the
+   glove are unknown; this is the most important number to measure on day 1.
+4. **Pinch is slow to acknowledge:** p50 ≈ 1.0 s, p95 up to 2.2 s. The pinch
+   ratio has its own One Euro filter and the fingertips approach slowly at
+   the end of the reach.
+5. **The pinch render misses its own target.** `POSES.pinch.render` index =
+   50/50/20 = 120° of flexion = 0.44 of a full-fist calibration, but the index
+   target is 0.55 (accepted from 0.45). A patient who copies the virtual hand
+   exactly is never acknowledged (with a full-range calibration).
+6. **Smoothing tail.** The closure is within 0.05 of the hand ~0.35 s after
+   the hand stops, but the last 2% takes ~0.7–0.8 s (One Euro `minCutoff`
+   0.3 Hz once the hand is still).
+7. **Shape is not checked** (documented in `06-session.md §2`): a hook is
+   accepted as a tabletop and any fuller pose satisfies a lighter one.
+8. **Calibration capture** succeeds at 1× and 2× noise (≥ 90%) and refuses
+   at 3.5× ("Too much movement"), which is the intended behavior.
+
+Re-measured after V1 (#61, palm-plane MCP in the upright view): findings 1–5
+are unchanged (V1 keeps `Math.abs`, so near-zero angles still rectify), and two
+small upright regressions appeared: tabletop long-finger bias 0.033 (was < 0.03)
+and spastic-hand calibration capture at 2× noise 70% (was 90%).
+
+Known gaps 2, 3 and 5 and both V1 regressions are written as `it.fails` tests in
+`accuracy.test.ts`, `acknowledgment.test.ts` and `timing.test.ts`: they pass while
+the gap exists and start failing once it is fixed; then change `it.fails` to `it`.
+
+### Directions for the owners of `vision/` and `engine/` (not done here)
+
+- (1, 2) Measure flexion as a **signed** angle in the finger's flexion plane
+  (against the palm normal from wrist / index MCP / pinky MCP), so noise
+  averages out instead of rectifying; or subtract the noise floor; or give the
+  thumb its own tolerance. The V1 brief already plans "MCP against the palm plane".
+- (3) Let the dwell survive short gaps (e.g. hold the last valid frame for up
+  to ~150–200 ms, like `FrameProcessor` already does for its filters) instead of
+  resetting on a single missing frame.
+- (4) Tune the pinch filter (or score pinch on the joint filter's timeline).
+- (5) Make the pinch render and target agree (render ≈ 0.55 of the range, or
+  lower the index target).
+
+## Results (real MediaPipe bench)
+
+Last full run (`mediapipe-bench.result.json` has every row; CPU delegate,
+SwiftShader, so inference is slower than a laptop GPU):
+
+| Measure                                              | front_upright                 | front_diagonal                              |
+| ---------------------------------------------------- | ----------------------------- | ------------------------------------------- |
+| Detection over the closure sweep (right / left hand) | 100% / 91%                    | open pose not detected (right) / 46% (left) |
+| Calibrated closure error, mean / p95 (right hand)    | 0.13 / 0.32                   | –                                           |
+| Landmark jitter, still open hand (x / y / depth)     | 0.9 / 0.7 / 2.0 mm            | 1.3 / 1.2 / 4.1 mm                          |
+| Raw flex-sum jitter per finger, half-closed          | 2.4–12 °                      | 2–4 °                                       |
+| Detection of a still fist in VIDEO mode              | 19%                           | 70%                                         |
+| Inference time p50 / p95                             | 69 / 80 ms (CPU, SwiftShader) |                                             |
+
+How to read it: the upright (laptop webcam) view is the better view for
+detection, which matches the plan in `docs/plan/14`. The rendered fist is hard
+for MediaPipe (a proxy artefact as much as a real risk), and calibrated
+closure errors of 0.1–0.3 on this proxy are larger than in the pipeline
+suite. The hook read low in 4 of 4 right-hand upright shots (fingers curl
+toward the lens), and tilting the hand ±25° after calibration produced errors
+up to 1.0 on single shots. Treat these as the reasons to record the real glove
+soon, not as the glove's real accuracy. The previous GPU measurement on a real
+photo (`fixtures/browser-benchmark.json`) gave 24.5 ms p50 inference.
+
+## Limits
+
+- The pipeline suite's hand is ideal geometry and its noise is a model. Real
+  failure modes (thread and anchors on the palm, a dark glove, motion blur,
+  backlight) are not simulated beyond "more noise" and "missed frames".
+- The bench hand is a rendered capsule model, not a human hand: MediaPipe
+  detects it less reliably than a real hand (especially a fist), so its
+  detection rates are pessimistic and its accuracy is indicative only.
+- Neither layer measures the physical camera-to-screen delay.
+- **Next step that matters most:** record the real glove with
+  `vision/recorder.ts` (see `vision/README.md`), in the upright posture, and
+  add those recordings here as a third layer.

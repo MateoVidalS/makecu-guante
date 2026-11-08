@@ -30,6 +30,8 @@ import {
 type Safety = Extract<EngineEvent, { kind: 'safety' }>;
 type Gap = { now: number; gaps: Quint };
 
+const DWELL_GAP_MS = 200;
+
 class Exercise implements ExerciseEngine {
   private phase: ExercisePhase = 'DONE';
   private phaseAt = 0;
@@ -45,6 +47,8 @@ class Exercise implements ExerciseEngine {
   private lowAt: number | null = null;
   private releasedForVision = false;
   private dwellAt: number | null = null;
+  private dwellGapAt: number | null = null;
+  private dwellPausedMs = 0;
   private settledAt: number | null = null;
   private repromptAt = 0;
   private lastFollow: number | null = null;
@@ -586,7 +590,7 @@ class Exercise implements ExerciseEngine {
       this.restDuration = this.settings.rest_s + overrides.extra_rest_s;
     this.phase = phase;
     this.phaseAt = this.now;
-    this.dwellAt = null;
+    this.resetDwell();
     this.settledAt = null;
     if (!continuingAssist) {
       this.lowAt = null;
@@ -732,7 +736,6 @@ class Exercise implements ExerciseEngine {
       this.lowAt = null;
       return true;
     }
-    this.dwellAt = null;
     if (
       this.phase !== 'ASSIST' &&
       this.phase !== 'ASSIST_HOLD' &&
@@ -779,19 +782,44 @@ class Exercise implements ExerciseEngine {
           : value >= target - this.settings.tolerance))
     );
   }
+  private resetDwell(): void {
+    this.dwellAt = null;
+    this.dwellGapAt = null;
+    this.dwellPausedMs = 0;
+  }
+
+  /** 06-session §3 reach: count visible dwell time, tolerating gaps of at most 200 ms. */
   private reachedDwell(): boolean {
+    if (!visible(this.input!)) {
+      if (this.dwellAt !== null) {
+        this.dwellGapAt ??= this.now;
+        if (this.now - this.dwellGapAt > DWELL_GAP_MS) this.resetDwell();
+      }
+      return false;
+    }
+    if (this.dwellGapAt !== null) {
+      const gap = this.now - this.dwellGapAt;
+      if (gap > DWELL_GAP_MS) this.resetDwell();
+      else {
+        this.dwellPausedMs += gap;
+        this.dwellGapAt = null;
+      }
+    }
     if (
-      !visible(this.input!) ||
       !GLOVE_FINGERS.every((f) => this.fingerReached(f)) ||
       (this.pose.pinch &&
         (this.input!.vision!.pinch === null ||
           this.input!.vision!.pinch! > this.pose.pinch.max_ratio))
     ) {
-      this.dwellAt = null;
+      this.resetDwell();
       return false;
     }
     this.dwellAt ??= this.now;
-    return this.now - this.dwellAt >= this.settings.reach_dwell_s * 1000;
+    // Keep dwellAt on the first satisfying frame for t_rel/time_to_position_s.
+    return (
+      this.now - this.dwellAt - this.dwellPausedMs >=
+      this.settings.reach_dwell_s * 1000
+    );
   }
   private reportProgress(out: Output): void {
     for (const f of GLOVE_FINGERS) {
