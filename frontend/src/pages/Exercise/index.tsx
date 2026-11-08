@@ -44,6 +44,7 @@ import { liveFingerState } from './fingerState';
 import { LiveFingerMeters } from './LiveFingerMeters';
 import { GloveMotors } from './GloveMotors';
 import { attemptStatus } from './attemptStatus';
+import { SuccessTick } from './SuccessTick';
 import { SessionRecap, useSessionAttempts } from './SessionRecap';
 import {
   practicePlan,
@@ -543,6 +544,7 @@ export default function Exercise() {
     >
       <div className="live-layout">
         <div className="live-hero">
+          <SuccessTick phase={phase} index={index} result={lastResult} />
           <div className="live-heading">
             <h1
               className={`instruction${status ? ` instruction--${status.tone}` : ''}`}

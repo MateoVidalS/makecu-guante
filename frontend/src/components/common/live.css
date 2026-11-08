@@ -251,3 +251,11 @@
 .shell--focus:has(#safety-banner-slot [role='alert']) .practice-actions {
   display: none;
 }
+
+/* Hold countdown inside the ring: the only timer, once the pose is reached. */
+.phase-ring__count {
+  font-size: var(--h2);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--reached-text);
+}
