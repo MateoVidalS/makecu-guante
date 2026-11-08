@@ -30,7 +30,6 @@ export const AudioLayer: React.FC = () => {
   // Real footage carries its own dialogue; reserve the same headroom when it
   // arrives. Placeholders have no audio and do not trigger these extra ducks.
   if (hasStatic('footage/team-intro.mp4')) intervals.push([SCENE_START.team, SCENE_START.hook]);
-  if (hasStatic('footage/team-next.mp4')) intervals.push([SCENE_START.next, SCENE_START.close]);
   if (hasStatic('footage/coach-talk.mp4')) intervals.push([SCENE_START.coach + 144, SCENE_START.coach + 468]);
   return (
     <>

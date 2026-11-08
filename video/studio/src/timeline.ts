@@ -20,7 +20,6 @@ export type SceneId =
   | 'doctor'
   | 'bench'
   | 'underHood'
-  | 'next'
   | 'close';
 
 export interface SceneDef {
@@ -43,7 +42,6 @@ export const SCENES: SceneDef[] = [
   { id: 'doctor', bars: 10, title: 'The therapist', owner: 'V5', what: 'History then vs. now, replay, therapist summary in one click, export.' },
   { id: 'bench', bars: 3, title: 'It works', owner: 'team', what: 'Real footage: the app on the laptop driving the real board; the five servos wind and release the threads on a hand-shaped fixture (never on a person). Natural servo sound.' },
   { id: 'underHood', bars: 5, title: 'Under the hood', owner: 'V4', what: 'The board decides, not the browser: 4 safety layers, architecture, three numbers.' },
-  { id: 'next', bars: 3, title: 'What is next', owner: 'team', what: 'Founders: the bench safety gate, then a pilot with therapists.' },
   { id: 'close', bars: 4, title: 'Your hand remembers', owner: 'V3', what: 'Rosa opens her hand (blue on her own, orange memo helped, green reached) and holds her mug (illustrative). End card: lockup, tagline, credits, disclaimer.' },
 ];
 
@@ -80,6 +78,5 @@ export const CHAPTER: Partial<Record<SceneId, Criterion>> = {
   build: 'Innovation',
   bench: 'Completion',
   underHood: 'Technology',
-  next: 'Completion',
 };
 export const CRITERIA: Criterion[] = ['Problem solving', 'Innovation', 'Design', 'Technology', 'Completion'];
