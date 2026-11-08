@@ -4,6 +4,9 @@ Registro de la primera prueba del firmware del repo en la placa real, sin tendon
 y sin guante. **No reemplaza [firmware/BENCH.md](../firmware/BENCH.md)** ni marca
 ninguno de sus pasos como aprobado: anota lo que vimos y lo que falta.
 
+> Tercera sesión (8/11, mañana, 5 servos S51, arreglos de [ARREGLOS.md](ARREGLOS.md)):
+> [BANCO-3.md](BANCO-3.md).
+
 ## Hardware real (distinto de lo que asume el repo)
 
 | Pieza | Lo que asume el repo | Lo que usamos |
