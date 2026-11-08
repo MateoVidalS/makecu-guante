@@ -930,6 +930,25 @@ export class TherapyController implements TherapyApi {
         if (!GLOVE_FINGERS.includes(args.finger as FingerId))
           return reject('Unknown finger.');
         const finger = args.finger as FingerId;
+        if (state.phase === 'ASSIST' || state.phase === 'ASSIST_HOLD') {
+          // The patient already asked and the glove is helping: add the finger now,
+          // never queue more motion for a later attempt.
+          if (this.changed.has(`${state.index}:${finger}`))
+            return reject('Change each finger only once per attempt.');
+          if (!this.context.assistNow(finger))
+            return reject(
+              'The glove is already helping in this attempt; this finger needs no more help now.',
+            );
+          this.changed.add(`${state.index}:${finger}`);
+          return this.decision(
+            tool,
+            args,
+            { finger, applies: 'now, within the power stagger' },
+            'applied',
+            reason,
+            source,
+          );
+        }
         if (state.phase !== 'ATTEMPT') {
           // Asked between attempts: start it at the next opening attempt, so the
           // request always has a real effect the coach can truthfully describe.

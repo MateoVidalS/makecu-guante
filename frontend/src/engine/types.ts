@@ -34,11 +34,21 @@ export interface Output {
 export interface PowerAwareExerciseSettings extends ExerciseSettings {
   assist_stagger_ms?: number;
   assist_max_parallel?: number;
+  /**
+   * The glove moves only when the patient asks (default true): when an attempt is not
+   * reached, help is offered and waits up to help_offer_s for a request.
+   */
+  help_on_request?: boolean;
+  help_offer_s?: number;
 }
 export interface ExerciseEngine {
   readonly therapy: TherapyController;
   phaseDuration(): number | null;
   hasAssistance(): boolean;
+  /** Help has been offered this attempt and not requested yet. */
+  helpOffered(): boolean;
+  /** The patient asks for the glove's help (button or voice). */
+  requestHelp(now: number): Output;
   poseDef(): import('../contracts/poses').PoseDef;
   brake(now: number): Output;
   start(

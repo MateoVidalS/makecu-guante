@@ -41,6 +41,7 @@ export type EngineEvent =
   | { kind: 'progress'; finger: GloveFinger; active_max: number } // throttled to at most 2 Hz per finger
   | { kind: 'assist_started'; fingers: GloveFinger[]; from: Quint; to: Quint } // closure units (vision), not pull; the glove only opens
   | { kind: 'resistance'; finger: GloveFinger; ma: number } // current high + finger not following
+  | { kind: 'help_offered'; fingers: GloveFinger[] } // not reached alone; the glove waits for the patient to ask
   | {
       kind: 'safety';
       source:

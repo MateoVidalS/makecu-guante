@@ -2,7 +2,11 @@ import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { calibrateSimulator, silenceCoach } from './helpers';
+import {
+  calibrateSimulator,
+  silenceCoach,
+  askForHelpWhenOffered,
+} from './helpers';
 
 async function inspect(page: Page, name: string, testInfo: TestInfo) {
   await expect(page.locator('main')).toBeVisible();
@@ -85,6 +89,7 @@ for (const size of [
         }
       }, theme);
       await silenceCoach(page);
+      await askForHelpWhenOffered(page);
       await calibrateSimulator(page);
       const sessions = (await (
         await page.request.get('/api/sessions')

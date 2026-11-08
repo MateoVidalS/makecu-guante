@@ -37,3 +37,23 @@ export async function silenceCoach(page: Page) {
     };
   });
 }
+/**
+ * The glove moves only when the patient asks. In UI specs the simulated patient presses
+ * "Help me open" whenever the app offers help, like a real patient would.
+ */
+export async function askForHelpWhenOffered(page: Page) {
+  await page.addInitScript(() => {
+    setInterval(() => {
+      if (
+        !document.body?.textContent?.includes(
+          'Want the glove to help you open?',
+        )
+      )
+        return;
+      const button = [...document.querySelectorAll('button')].find(
+        (b) => b.textContent?.trim() === 'Help me open' && !b.disabled,
+      );
+      button?.click();
+    }, 100);
+  });
+}
