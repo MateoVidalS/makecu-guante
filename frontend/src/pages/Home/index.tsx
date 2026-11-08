@@ -21,6 +21,11 @@ import {
   practicePlan,
   useShortPractice,
 } from '../../components/common/practice';
+import {
+  useCalibrationStatus,
+  calibrationReadiness,
+} from '../../runtime/calibrationValidation';
+import { CalibrationIssueBanner } from '../../components/calibration';
 import './home.css';
 export default function Home() {
   const profile = useProfile(),
@@ -33,10 +38,11 @@ export default function Home() {
   const [short, setShort] = useShortPractice();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
-  const calibrated = !!runtime.calibration.current;
+  const calibrationStatus = useCalibrationStatus();
+  const readiness = calibrationReadiness(calibrationStatus);
   async function start() {
-    if (!runtime.calibration.current) {
-      navigate('/calibrate');
+    if (calibrationStatus.state !== 'ok') {
+      navigate(readiness.href);
       return;
     }
     if (!connected || !seen) {
@@ -56,13 +62,16 @@ export default function Home() {
       setBusy(false);
     }
   }
-  const blocker = !calibrated
-    ? 'Calibration needed. Start opens calibration first.'
-    : !connected
-      ? 'Glove not connected. Start opens Setup first.'
-      : !seen
-        ? "The camera can't see the hand. Start opens Setup first."
-        : null;
+  const blocker =
+    calibrationStatus.state === 'invalid'
+      ? `${calibrationStatus.issues[0].message} Start opens calibration first.`
+      : calibrationStatus.state === 'missing'
+        ? 'Calibration needed. Start opens calibration first.'
+        : !connected
+          ? 'Glove not connected. Start opens Setup first.'
+          : !seen
+            ? "The camera can't see the hand. Start opens Setup first."
+            : null;
   const list = sessions.data ?? [];
   const week = lastSevenDays(list.map((s) => s.started_at));
   const range = rangeComparison(list);
@@ -99,6 +108,7 @@ export default function Home() {
           </p>
         )}
       </Section>
+      <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
       <div className="hp-columns">
         <Stack gap={32}>
           <Section title="This week">
@@ -121,14 +131,8 @@ export default function Home() {
                   ),
                 },
                 {
-                  label: 'Calibration',
-                  value: calibrated ? 'Saved' : 'Needed',
-                  tone: calibrated ? 'reached' : 'caution',
-                  action: (
-                    <Link to="/calibrate">
-                      {calibrated ? 'Review' : 'Calibrate'}
-                    </Link>
-                  ),
+                  ...readiness,
+                  action: <Link to={readiness.href}>{readiness.action}</Link>,
                 },
                 {
                   label: 'Camera',
