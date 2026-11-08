@@ -1,17 +1,23 @@
 import { createStore } from 'zustand/vanilla';
 import * as api from '../api/client';
 import type { SessionIn, EvaluationIn } from '../contracts/api';
+import type { CoachDecision, FeelingEntry } from '../contracts/therapist';
 import type { AttemptResult, SessionSummary } from '../contracts/engine';
 
 export type RuntimeApi = Pick<
   typeof api,
   'createSession' | 'addAttempt' | 'endSession' | 'createEvaluation'
->;
+> & {
+  addCoachDecisions?: (id: number, decisions: CoachDecision[]) => Promise<void>;
+  addFeelings?: (id: number, feelings: FeelingEntry[]) => Promise<void>;
+};
 type Job =
   | { kind: 'session'; key: string; value: SessionIn }
   | { kind: 'attempt'; key: string; value: AttemptResult }
   | { kind: 'end'; key: string; value: SessionSummary }
-  | { kind: 'evaluation'; value: EvaluationIn };
+  | { kind: 'evaluation'; value: EvaluationIn }
+  | { kind: 'decision'; key: string; value: CoachDecision }
+  | { kind: 'feeling'; key: string; value: FeelingEntry };
 export interface QueueStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -98,7 +104,24 @@ export class PersistenceQueue {
           if (!id) throw new Error('Session must be saved before its results');
           if (job.kind === 'attempt')
             await this.api.addAttempt({ id, result: job.value });
-          else {
+          else if (job.kind === 'decision') {
+            const decisions = [{ ...job.value, session_id: id }];
+            if (this.api.addCoachDecisions)
+              await this.api.addCoachDecisions(id, decisions);
+            else
+              await api.request<void>(`/sessions/${id}/coach_decisions`, {
+                method: 'POST',
+                body: JSON.stringify({ decisions }),
+              });
+          } else if (job.kind === 'feeling') {
+            const feelings = [{ ...job.value, session_id: id }];
+            if (this.api.addFeelings) await this.api.addFeelings(id, feelings);
+            else
+              await api.request<void>(`/sessions/${id}/feelings`, {
+                method: 'POST',
+                body: JSON.stringify({ feelings }),
+              });
+          } else {
             await this.api.endSession({ id, summary: job.value });
             delete this.ids[job.key];
           }

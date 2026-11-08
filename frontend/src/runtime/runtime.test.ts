@@ -493,3 +493,149 @@ it('keeps camera-source frames driving five simulated motors after glove-only fa
     posts.addAttempt.mock.calls[0][0].result.fingers.filter((f) => f.scored),
   ).toHaveLength(5);
 });
+
+it('exposes therapy, releases immediately on pain, and persists audit and feelings with the eventual session id', async () => {
+  const { runtime, world, posts, storage } = await harness();
+  const auditPosts = Object.assign(posts, {
+    addCoachDecisions: vi.fn().mockResolvedValue(undefined),
+    addFeelings: vi.fn().mockResolvedValue(undefined),
+  });
+  posts.createSession.mockRejectedValue(new Error('offline'));
+  await runtime.exercise.start(
+    [{ pose: 'full_fist', reps: 2 }],
+    DEFAULT_EXERCISE_SETTINGS,
+  );
+  until(world, () => runtime.exercise.view().phase === 'ASSIST');
+  runtime.therapy.adjust(
+    'adjust_help',
+    { finger: 'index', direction: 'less', reason: 'Gentler help.' },
+    'coach',
+  );
+  runtime.therapy.adjust(
+    'set_attempt_time',
+    { seconds: 9, reason: 'More time to try.' },
+    'coach',
+  );
+  runtime.therapy.recordFeeling({
+    pain: 5,
+    fatigue: 7,
+    note: 'My hand hurts.',
+    source: 'ui',
+  });
+  expect(runtime.exercise.view().phase).toBe('PAUSED');
+  expect(world.firmware.mode).toBe('none');
+  world.advance(1000);
+  expect(runtime.exercise.view().phase).toBe('PAUSED');
+  expect(runtime.therapy.decisions().some((d) => d.tool === 'brake')).toBe(
+    true,
+  );
+  await runtime.exercise.stop();
+  await runtime.persistence.flush();
+  expect(runtime.persistence.store.getState().status).toBe('Offline');
+  expect(auditPosts.addCoachDecisions).not.toHaveBeenCalled();
+
+  // Reloaded queues retain audits and remap the offline placeholder to SQLite's real id.
+  auditPosts.createSession.mockResolvedValue({ id: 99 } as Awaited<
+    ReturnType<RuntimeApi['createSession']>
+  >);
+  const restored = new PersistenceQueue(auditPosts, storage);
+  await restored.flush();
+  expect(restored.store.getState()).toMatchObject({
+    pending: 0,
+    status: 'Saved',
+  });
+  expect(auditPosts.addCoachDecisions).toHaveBeenCalledTimes(4);
+  expect(
+    auditPosts.addCoachDecisions.mock.calls.every(
+      ([id, decisions]) =>
+        id === 99 &&
+        decisions.every((d: { session_id: number }) => d.session_id === 99),
+    ),
+  ).toBe(true);
+  expect(auditPosts.addFeelings).toHaveBeenCalledWith(99, [
+    expect.objectContaining({
+      session_id: 99,
+      pain: 5,
+      fatigue: 7,
+      attempt_index: 0,
+    }),
+  ]);
+  const attempt = posts.addAttempt.mock.calls[0][0].result;
+  expect(attempt.safety_events).toContainEqual(
+    expect.objectContaining({ source: 'coach_brake' }),
+  );
+  expect(attempt.interrupted).toBe(true);
+});
+
+it('therapy brake cancels evaluation and friction without raising the lower current limit or restarting motion', async () => {
+  const { runtime, world } = await harness();
+  await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
+  until(world, () => runtime.evaluation.view().stage === 'sweep');
+  const target = vi.spyOn(world.glove, 'target');
+  const limit = vi.spyOn(world.glove, 'limit');
+  runtime.therapy.brake('Stop all movement.', 'local_rule');
+  expect(runtime.evaluation.view().stage).toBe('aborted');
+  expect(world.firmware.mode).toBe('none');
+  expect(limit).not.toHaveBeenCalled();
+  world.advance(2000);
+  expect(target).not.toHaveBeenCalled();
+  expect(world.firmware.info().limit).toBe(600);
+
+  const friction = runtime.evaluation.runFriction(['index']);
+  until(world, () => runtime.evaluation.view().stage === 'sweep');
+  limit.mockClear();
+  target.mockClear();
+  runtime.therapy.brake('Stop the measurement.', 'patient_ui');
+  expect(await friction).toEqual({});
+  expect(limit).not.toHaveBeenCalled();
+  world.advance(2000);
+  expect(target).not.toHaveBeenCalled();
+  expect(world.firmware.mode).toBe('none');
+});
+
+it('resets therapy limits, feelings, undo and rate limits between sessions without reusing audit session ids', async () => {
+  const { runtime, world, posts } = await harness();
+  const audit = Object.assign(posts, {
+    addCoachDecisions: vi.fn().mockResolvedValue(undefined),
+    addFeelings: vi.fn().mockResolvedValue(undefined),
+  });
+  await runtime.exercise.start(
+    [{ pose: 'full_fist', reps: 1 }],
+    DEFAULT_EXERCISE_SETTINGS,
+  );
+  await runtime.persistence.flush();
+  runtime.therapy.adjust('add_rest', { seconds: 20, reason: 'Rest.' }, 'coach');
+  runtime.therapy.recordFeeling({
+    pain: 1,
+    fatigue: 2,
+    note: 'Okay.',
+    source: 'voice',
+  });
+  await runtime.exercise.stop();
+  await runtime.persistence.flush();
+  audit.createSession.mockResolvedValue({ id: 88 } as Awaited<
+    ReturnType<RuntimeApi['createSession']>
+  >);
+  await runtime.exercise.start(
+    [{ pose: 'hook', reps: 1 }],
+    DEFAULT_EXERCISE_SETTINGS,
+  );
+  await runtime.persistence.flush();
+  expect(runtime.therapy.decisions()).toEqual([]);
+  expect(runtime.therapy.feelings()).toEqual([]);
+  expect(runtime.therapy.undo()).toBeNull();
+  expect(runtime.therapy.state()?.adjustments).toMatchObject({
+    attempt_s: 6,
+    extra_rest_s: 0,
+    next_pose: null,
+  });
+  runtime.therapy.adjust(
+    'adjust_help',
+    { finger: 'index', direction: 'less', reason: 'Gentler.' },
+    'coach',
+  );
+  await runtime.persistence.flush();
+  expect(audit.addCoachDecisions.mock.lastCall?.[0]).toBe(88);
+  expect(runtime.therapy.decisions().at(-1)?.session_id).toBe(88);
+  until(world, () => runtime.exercise.view().phase === 'ATTEMPT');
+});

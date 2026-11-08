@@ -24,6 +24,15 @@ export class AssistScheduler {
   readonly target: Quint;
   readonly goal: Quint;
   private moving = new Set<number>();
+  private started = new Set<number>();
+  hasStarted(index: number) {
+    return this.started.has(index);
+  }
+  suspend(index: number, position: number) {
+    this.moving.delete(index);
+    this.started.delete(index);
+    this.target[index] = position;
+  }
   private lastStart = -Infinity;
 
   constructor(
@@ -31,13 +40,29 @@ export class AssistScheduler {
     position: Quint,
     private readonly staggerMs: number,
     private readonly maxParallel: number,
+    private readonly caps: Quint = [
+      MAX_ASSIST_CLOSURE,
+      MAX_ASSIST_CLOSURE,
+      MAX_ASSIST_CLOSURE,
+      MAX_ASSIST_CLOSURE,
+      MAX_ASSIST_CLOSURE,
+    ],
   ) {
     this.target = [...position];
     this.goal = GLOVE_FINGERS.map((f, i) =>
       pose.closure[f] === null
         ? position[i]
-        : Math.min(MAX_ASSIST_CLOSURE, pose.closure[f]!),
+        : Math.min(this.caps[i], pose.closure[f]!),
     ) as Quint;
+  }
+
+  reduceGoals(pose: PoseDef, caps: Quint): void {
+    for (const [i, f] of GLOVE_FINGERS.entries()) {
+      if (pose.closure[f] === null) continue;
+      const goal = Math.min(caps[i], pose.closure[f]!);
+      this.goal[i] = Math.min(this.goal[i], goal);
+      this.target[i] = Math.min(this.target[i], goal);
+    }
   }
 
   candidates(position: Quint, vision: Quint, unreached: boolean[]): number[] {
@@ -74,6 +99,7 @@ export class AssistScheduler {
     if (next === undefined) return false;
     this.target[next] = this.goal[next];
     this.moving.add(next);
+    this.started.add(next);
     this.lastStart = now;
     return true;
   }
