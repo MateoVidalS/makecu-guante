@@ -20,10 +20,13 @@ export const CURRENT_ASSIST_DIRECTION: AssistDirection = 'open';
  */
 export type CameraView = 'front_upright' | 'front_diagonal';
 export const CURRENT_CAMERA_VIEW: CameraView = 'front_upright';
+export const CURRENT_FLEX_MODEL = 2;
 export interface CameraCalibration {
   affected_hand: Handedness;
   /** Absent in calibrations saved before Nov 7 = 'front_diagonal' (invalid for the current view). */
   camera_view?: CameraView;
+  /** absent = 1, the unsigned math before P1 */
+  flex_model?: number;
   open_flex: Record<FingerId, number>; // raw flex sum, relaxed hand opened by the glove (sim glove: the patient's own open hand)
   closed_flex: Record<FingerId, number>; // raw flex sum, the patient's own fist (the glove cannot close)
   pinch_closed: number; // pinch ratio when thumb and index touch

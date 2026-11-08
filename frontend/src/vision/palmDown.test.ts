@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import type { Handedness } from '../contracts/vision';
 import { captureStats } from './calibration';
 import { FINGERS, fingerMap, jointAngles, type Landmark } from './flex';
@@ -94,6 +95,8 @@ describe('synthetic palm-down, thumb-side diagonal view (not hardware validation
         const processor = new FrameProcessor();
         processor.calibration = {
           affected_hand: hand,
+          camera_view: 'front_diagonal',
+          flex_model: CURRENT_FLEX_MODEL,
           open_flex: sums('open'),
           closed_flex: sums('full_fist'),
           pinch_open: 1,

@@ -32,6 +32,21 @@ def test_profile_and_calibration_roundtrip(client, payload):
     assert client.get("/api/calibrations").json() == [second, first]
 
 
+@pytest.mark.parametrize("flex_model", [None, 1, 2, 3])
+def test_calibration_flex_model_roundtrip(client, db, payload, flex_model):
+    body = {k: v for k, v in payload("calibration").items() if k not in ("id", "created_at")}
+    body["camera"]["camera_view"] = "front_upright"
+    body["camera"]["flex_model"] = flex_model
+    response = client.post("/api/calibrations", json=body)
+    assert response.status_code == 200, response.text
+    saved = response.json()
+    assert saved["camera"]["flex_model"] == flex_model
+    row = db.get(m.Calibration, saved["id"])
+    assert json.loads(row.camera_json)["flex_model"] == flex_model
+    assert client.get("/api/calibrations/latest").json() == saved
+    assert client.get("/api/calibrations").json() == [saved]
+
+
 def test_session_attempt_trace_transcript_and_cascade(
     client, db, payload, session_body, attempt_body
 ):

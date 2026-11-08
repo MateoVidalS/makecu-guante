@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isCurrentCameraCalibration } from '../vision/calibrationCompatibility';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { createDemoState, demoOnDate, referenceDemo } from './demo';
@@ -20,6 +21,8 @@ describe('shared backend and MSW demo story', () => {
     const date = '2026-12-11T10:00:00.000Z';
     const story = demoOnDate(date);
     const state = createDemoState(date);
+    expect(isCurrentCameraCalibration(story.calibration.camera)).toBe(true);
+    expect(isCurrentCameraCalibration(state.calibrations[0].camera)).toBe(true);
     expect(state.sessions).toHaveLength(14);
     expect(state.evaluations).toHaveLength(4);
     expect(state.sessions.every((s) => s.is_demo)).toBe(true);

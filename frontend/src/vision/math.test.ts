@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -38,6 +39,13 @@ const clips = Object.fromEntries(
     ) as Clip,
   ]),
 );
+// Frozen legacy contract recordings use the old mirrored "right" geometry.
+// Reflect their test input into an anatomical right hand without changing fixtures.
+for (const clip of Object.values(clips))
+  for (const frame of clip.frames) {
+    frame.worldLandmarks = frame.worldLandmarks.map(([x, y, z]) => [-x, y, z]);
+    frame.landmarks = frame.landmarks.map(([x, y, z]) => [1 - x, y, z]);
+  }
 const result = (clip: Clip, i = 0): HandResult => ({
   landmarks: [
     clip.frames[i].landmarks.map(([x, y, z]) => ({ x, y, z, visibility: 1 })),
@@ -61,6 +69,7 @@ const flex = (pose: string) => {
 const calibration = {
   affected_hand: 'right' as const,
   camera_view: 'front_upright' as const,
+  flex_model: CURRENT_FLEX_MODEL,
   open_flex: flex('open'),
   closed_flex: flex('full_fist'),
   pinch_open: 1.5,

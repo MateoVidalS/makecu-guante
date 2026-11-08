@@ -3,6 +3,8 @@
 Run from the repository root. Writes only this owned fixture directory; the
 legacy shared contract fixtures remain frozen. Distances are metres. The camera
 is 36 cm away, in front on the thumb side and above a palm-down right hand.
+Hand frame: +Y distal, +Z palmar, anatomical right thumb at +X. The thumb
+opposes across the palm toward the pinky, with a palmar bend component.
 """
 
 import json
@@ -46,10 +48,13 @@ def model(name, angles, thumb_angles):
     points[1] = [-0.035, 0.025, 0.0]
     direction = unit([-1, 1, 0])
     points[2] = add(points[1], scale(direction, 0.028))
+    toward_pinky = add([0.045, 0.06, 0], scale(points[2], -1))
+    ulnar = unit(add(toward_pinky, scale(direction, -dot(toward_pinky, direction))))
+    thumb_bend = unit(add(ulnar, [0, 0, 0.5]))
     cumulative = 0
     for i, (angle, length) in enumerate(zip(thumb_angles, (0.028, 0.022)), 3):
         cumulative += math.radians(angle)
-        bone = add(scale(direction, math.cos(cumulative)), [0, 0, math.sin(cumulative)])
+        bone = add(scale(direction, math.cos(cumulative)), scale(thumb_bend, math.sin(cumulative)))
         points[i] = add(points[i - 1], scale(bone, length))
     for base, x, y, lengths in [
         (5, -0.028, 0.073, (0.038, 0.024, 0.018)),
@@ -68,16 +73,19 @@ def model(name, angles, thumb_angles):
     if name == "pinch":
         # Synthetic helper-assisted thumb tip contact, not anatomical validation.
         target = add(points[8], [0.001, 0, 0])
-        points[3] = add(scale(points[2], 0.4), scale(target, 0.6))
-        points[3][2] -= 0.008
+        axis = unit(cross(unit([-1, 1, 0]), add([0.045, 0.06, 0], scale(points[2], -1))))
+        outside = unit(cross(add(target, scale(points[2], -1)), axis))
+        points[3] = add(add(scale(points[2], 0.4), scale(target, 0.6)), scale(outside, 0.008))
         points[4] = target
-    return points
+    # Construction coordinates are left-handed; +Y distal x +Z palmar must
+    # point toward the right thumb (+X). Fixtures are anatomically right.
+    return [[-x, y, z] for x, y, z in points]
 
 
 for view in ("front_diagonal", "front_upright"):
     target = [0, 0.065, 0]
     upright = view == "front_upright"
-    position = add(target, [0, 0, 0.5] if upright else scale(unit([-0.55, 0.65, -0.52]), 0.36))
+    position = add(target, [0, 0, 0.5] if upright else scale(unit([0.55, 0.65, -0.52]), 0.36))
     forward = unit(add(target, scale(position, -1)))
     right = unit(cross(forward, [0, 1, 0] if upright else [0, 0, -1]))
     up = cross(right, forward)

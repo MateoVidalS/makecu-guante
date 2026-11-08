@@ -12,10 +12,11 @@ import { createHandAnimator } from './animation';
  * hand animator at 60 fps -> rendered joint rotations. The camera runs at 30 fps.
  */
 type Clip = { frames: { worldLandmarks: Landmark[]; landmarks: Landmark[] }[] };
+// Use anatomical right-hand inputs; the frozen contract fixtures are mirrored.
 const clip = (pose: string) =>
   JSON.parse(
     readFileSync(
-      resolve('..', 'contracts', 'fixtures', `landmarks_${pose}.json`),
+      resolve('src', 'vision', 'fixtures', `front_upright_${pose}.json`),
       'utf8',
     ),
   ) as Clip;

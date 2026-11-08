@@ -1,5 +1,5 @@
 import { CURRENT_CAMERA_VIEW, type CameraView } from '../contracts/calibration';
-import type { FingerId, JointAngles } from '../contracts/vision';
+import type { FingerId, Handedness, JointAngles } from '../contracts/vision';
 
 export type Landmark = [number, number, number];
 export const FINGERS: FingerId[] = [
@@ -28,11 +28,19 @@ const vector = (a: Landmark, b: Landmark): Landmark => [
   b[2] - a[2],
 ];
 const length = (v: Landmark) => Math.hypot(...v);
-function angle(a: Landmark, b: Landmark): number {
-  const denominator = length(a) * length(b);
-  if (denominator < 1e-12) throw new Error('Degenerate hand landmarks');
-  const cosine = a.reduce((sum, v, i) => sum + v * b[i], 0) / denominator;
-  return (Math.acos(Math.max(-1, Math.min(1, cosine))) * 180) / Math.PI;
+const dot = (a: Landmark, b: Landmark) =>
+  a.reduce((sum, value, i) => sum + value * b[i], 0);
+const unit = (v: Landmark): Landmark => {
+  const magnitude = length(v);
+  if (magnitude < 1e-12) throw new Error('Degenerate hand landmarks');
+  return v.map((value) => value / magnitude) as Landmark;
+};
+
+/** Signed rotation in a flexion plane; retain hyperextension until normalization. */
+function signedAngle(a: Landmark, b: Landmark, axis: Landmark): number {
+  unit(a);
+  unit(b);
+  return (Math.atan2(dot(cross(a, b), axis), dot(a, b)) * 180) / Math.PI;
 }
 
 const cross = (a: Landmark, b: Landmark): Landmark => [
@@ -58,30 +66,75 @@ function palmNormal(points: Landmark[]): Landmark {
 }
 
 /** World-space flexion; upright MCP is the proximal bone's angle to the palm plane.
- * In-plane finger splay does not count as flexion. PIP/DIP and thumb are unchanged.
+ * Axes point toward palmar flexion for the configured hand, independently of labels.
  */
 export function jointAngles(
   landmarks: Landmark[],
   view: CameraView = CURRENT_CAMERA_VIEW,
+  hand: Handedness = 'right',
 ): Record<FingerId, JointAngles> {
   if (!validLandmarks(landmarks))
     throw new Error('Expected 21 finite hand landmarks');
   const bone = (a: number, b: number) => vector(landmarks[a], landmarks[b]);
-  const normal = view === 'front_upright' ? palmNormal(landmarks) : null;
+  // For an anatomical right hand, distal x palmar points to the thumb side.
+  // The MCP arch's area normal is palmar on right hands and dorsal on left.
+  // Use the configured hand, never the detector label, to orient long flexion.
+  const normal = unit(palmNormal(landmarks)).map(
+    (value) => value * (hand === 'right' ? 1 : -1),
+  ) as Landmark;
+  const flexionAxis = (reference: Landmark) => unit(cross(reference, normal));
+  const forward = cross(normal, bone(5, 17)).map(
+    (value) => value * (hand === 'right' ? -1 : 1),
+  ) as Landmark;
   return fingerMap((finger) => {
-    if (finger === 'thumb')
+    if (finger === 'thumb') {
+      // Full 3D bend, signed by where it points: real thumbs flex partly palmar and
+      // partly across the palm, so the reference is palmar normal + the ulnar
+      // direction toward the pinky MCP. A bend along it is flexion; away from it is
+      // extension. (Signing by the across-palm component alone flips on real
+      // MediaPipe output because that component is small for a mostly palmar bend.)
+      const ulnar = unit(bone(2, 17));
+      const reference: Landmark = [
+        normal[0] + ulnar[0],
+        normal[1] + ulnar[1],
+        normal[2] + ulnar[2],
+      ];
+      const thumbAngle = (a: Landmark, b: Landmark) => {
+        unit(a);
+        unit(b);
+        const turn = cross(a, b);
+        const sign = dot(turn, cross(a, reference)) < 0 ? -1 : 1;
+        return (Math.atan2(sign * length(turn), dot(a, b)) * 180) / Math.PI;
+      };
       return {
-        mcp: angle(bone(1, 2), bone(2, 3)),
-        pip: angle(bone(2, 3), bone(3, 4)),
+        mcp: thumbAngle(bone(1, 2), bone(2, 3)),
+        pip: thumbAngle(bone(2, 3), bone(3, 4)),
         dip: 0,
       };
+    }
     const base = { index: 5, middle: 9, ring: 13, pinky: 17 }[finger];
+    const axis = flexionAxis(bone(0, base));
+    const proximal = bone(base, base + 1);
     return {
-      mcp: normal
-        ? Math.abs(90 - angle(normal, bone(base, base + 1)))
-        : angle(bone(0, base), bone(base, base + 1)),
-      pip: angle(bone(base, base + 1), bone(base + 1, base + 2)),
-      dip: angle(bone(base + 1, base + 2), bone(base + 2, base + 3)),
+      // Keep the palm-plane elevation, including splay invariance. Give its
+      // in-plane component a forward/backward sign so noise at a 90° MCP can
+      // land on either side of 90°, rather than rectifying downward at a fist.
+      mcp:
+        view === 'front_upright'
+          ? (Math.atan2(
+              dot(normal, proximal),
+              length(cross(normal, proximal)) *
+                (dot(forward, proximal) < 0 ? -1 : 1),
+            ) *
+              180) /
+            Math.PI
+          : signedAngle(bone(0, base), proximal, axis),
+      pip: signedAngle(proximal, bone(base + 1, base + 2), axis),
+      dip: signedAngle(
+        bone(base + 1, base + 2),
+        bone(base + 2, base + 3),
+        axis,
+      ),
     };
   });
 }

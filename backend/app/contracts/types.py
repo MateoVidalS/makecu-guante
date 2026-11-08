@@ -34,6 +34,8 @@ class CameraCalibration(ContractModel):
     affected_hand: Handedness
     # Absent in older calibrations (treated as front_diagonal by the app).
     camera_view: Literal["front_upright", "front_diagonal"] | None = None
+    # Absent or null = 1, the unsigned math before P1.
+    flex_model: int | None = None
     open_flex: dict[FingerId, float]
     closed_flex: dict[FingerId, float]
     pinch_closed: float
