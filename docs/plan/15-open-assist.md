@@ -155,7 +155,7 @@ Merge order: O1 → O3 → O2 → O5 → O4 → O6 → O7 (O5 brings the Pydanti
 6. `make test`, `make e2e`, `pio test -e native`, `pio run -e esp32dev` green.
 
 ## 7. Hardware gate (team, before any person)
-`firmware/BENCH.md` gains, in order: (1) dorsal routing: winding opens each finger on an empty glove; (2) calibration (slack with a
+`firmware/BENCH.md` gains, in order: (1) dorsal routing: winding opens each finger on a hand-shaped fixture (no glove since 16-bare-hand.md); (2) calibration (slack with a
 relaxed fist, open at straight); (3) **extension strength gate**: a helper resists opening one finger with moderate effort; the servo
 must open it and hold 2 s under the limit, record current; (4) all five held open on a relaxed hand, total current < limit;
 (5) STOP while held open → slack in < 0.5 s; (6) a fast fist during `follow` does not trip overcurrent. If (3) fails, the team needs

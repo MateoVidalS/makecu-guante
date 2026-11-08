@@ -19,7 +19,7 @@ const held = (change: (frame: VisionFrame) => VisionFrame = (f) => f) => {
   return tracker;
 };
 
-describe('five-second glove robustness', () => {
+describe('five-second hand robustness', () => {
   it('collects a complete window before declaring ready and exposes thresholds', () => {
     const tracker = held();
     expect(tracker.stats(5000)).toMatchObject({
@@ -32,6 +32,14 @@ describe('five-second glove robustness', () => {
     tracker.reset(5000);
     tracker.add(seen(5000));
     expect(tracker.stats(5050).status).toBe('collecting');
+    const guidance = tracker.stats(5050).guidance.join(' ');
+    for (const text of [
+      'whole hand in frame',
+      'Roll up your sleeve',
+      'remove rings, your watch and bracelets',
+      'Keep points clear of the joint creases on your palm side',
+    ])
+      expect(guidance).toContain(text);
     expect(ROBUSTNESS_THRESHOLDS.windowMs).toBe(5000);
   });
   it('weights time rather than sample count and counts missing confidence as zero', () => {
@@ -46,7 +54,10 @@ describe('five-second glove robustness', () => {
     });
     expect(tracker.stats(5000).guidance.join(' ')).toContain('40–60 cm');
     expect(tracker.stats(5000).guidance.join(' ')).toContain(
-      'light, thin glove',
+      'keep points small and on the back of your fingers',
+    );
+    expect(tracker.stats(5000).guidance.join(' ')).toContain(
+      'good light from in front of you, with no window behind you',
     );
   });
   it('expires stalled frames and ages old detections out of the rolling window', () => {

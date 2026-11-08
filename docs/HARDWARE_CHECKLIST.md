@@ -1,7 +1,7 @@
 # Event-day hardware checklist
 
 **Team-operated procedure. No hardware checks have been run by the coding worker.**
-Start with disconnected tendons and an empty glove/fixture. Never run deliberate
+Start with disconnected tendons and a hand-shaped fixture. Never run deliberate
 stall, unplug, STOP-fault or resistance tests on a person's hand. The simulator
 supplies the pitch's resistance demonstration.
 
@@ -101,6 +101,17 @@ is the supply on the bench.
 
 ## 2. Mount only after the gate passes
 
+- [ ] Test all hardware on a **hand-shaped fixture before anything is attached to
+  a person**. Small BLACK guides go on the backs of proximal and middle phalanges;
+  YELLOW anchors go on the backs of fingertips. Attach directly to skin with
+  skin-safe tape; the hardware team must confirm the attachment method and exact
+  positions/sizes. The device remains named "glove" in the app.
+- [ ] Check skin before and after every session for redness, marks or pain.
+  Post-stroke patients may not feel rubbing. Stop and review any skin concern.
+- [ ] Re-attaching any guide or anchor requires fresh glove (servo) calibration
+  before practice. Full pull is set at straight fingers; a moved anchor can
+  over-straighten a finger.
+
 - [ ] Power off/released and tendons slack. Check the helper can remove the glove
   quickly. Mount to a mannequin first; a helper's hand is allowed only after the
   recorded bench gate. Never start on a patient.
@@ -135,12 +146,17 @@ not the mechanical limits of this mounting.
 - [ ] **Backlight check**: no window or bright light behind the person. Use
   diffuse light from in front or the side; check the preview for a clearly lit
   palm and fingers before capturing calibration.
-- [ ] **Day-1 glove detection check**: with the actual light, thin light glove,
-  thin light threads and upright posture, observe Setup’s detected fraction over
+- [ ] **Day-1 bare-hand-with-points detection check**: with the actual BLACK dorsal
+  proximal/middle-phalange guide points, YELLOW dorsal fingertip anchors,
+  dorsal threads and upright posture, observe Setup’s detected fraction over
   five seconds while opening and closing. The camera sees the palm; check whether dorsal routing leaves
   guides or anchors visible; record the percentage, lighting and any joint occlusions.
+  Keep points/tape off palm-side joint creases; sleeve up, no rings/watch, good
+  front light. Save a real landmark recording with `frontend/src/vision/recorder.ts`
+  covering `bare-hand-points`; record results in the bench’s new **points** section
+  (team to add/complete). See DEV for the current recorder metadata limitation.
   Low detection blocks the physical-camera demo; adjust light/framing or have the
-  team assess exposed fingertips/bare-hand vision. Repeat for the configured
+  team assess point placement and bare-hand tracking. Repeat for the configured
   affected hand; that setting remains authoritative, with selfie handedness as a
   cross-check. Repeat the check at the event if conditions change.
 - [ ] **Camera range**. Confirm affected hand, lighting, full-hand visibility and
@@ -151,11 +167,13 @@ not the mechanical limits of this mounting.
   be replaced. Repeat a capture if movement/tracking makes it unreliable.
 - [ ] **Review** every servo range and camera capture, then save calibration.
   The wizard has three steps: Glove range → Camera range → Review.
-  Empty-glove friction belongs to Evaluate preflight, off the hand. If it cannot
+  **Thread friction (unhooked)** belongs to Evaluate preflight. If it cannot
   be measured safely, leave evaluation unavailable and use practice only.
 - [ ] Before evaluation, measure complete slow/fast friction for all five
-  fingers with an empty glove. Refresh it when missing or older than 24 hours;
-  reject aborted/incomplete curves, then put the glove back on and reconfirm the
+  fingers with each thread unhooked from its YELLOW fingertip anchor and the hand
+  relaxed (or a hand-shaped fixture with guides attached the same way). Refresh
+  when missing or older than 24 hours; reject aborted/incomplete curves, then
+  re-hook every thread before evaluation and reconfirm the
   relaxed-hand checklist. A skipped baseline still permits practice.
 - [ ] Review every range, camera capture and current limit (firmware default
   1500 mA, maximum 2200 mA; choose only a bench-approved limit). Save; verify **Saved**.
@@ -185,8 +203,8 @@ not the mechanical limits of this mounting.
 | Calibration ID / mounting reference | Pending |
 | Five channel mapping / fifth PWM output | Pending |
 | Upright module fit / elbow support / backlight check | Pending |
-| Glove detection fraction / posture / camera evidence | Pending |
-| Slow/fast empty-glove friction timestamp / completeness | Pending |
+| Bare-hand-with-points detection fraction / posture / camera evidence | Pending |
+| Slow/fast Thread friction (unhooked) timestamp / completeness | Pending |
 | Helper / observer | Pending |
 | Practice / voice / tracking | Pending |
 | Simulator handoff wall time (target <5 s) | Pending |
@@ -195,6 +213,6 @@ not the mechanical limits of this mounting.
 
 Pack laptop/charger, tested data USB cable plus spare, separate regulated supply
 with a team-approved fuse or current limit, wired INA219, DMM, spare servo/board,
-STOP switch, glove, tendons/guides/anchors, tape/Velcro,
+STOP switch, tendons/BLACK guides/YELLOW anchors, skin-safe tape/Velcro,
 strain relief, and the recorded bench evidence. Keep the fully simulated demo
 ready even when hardware passes.

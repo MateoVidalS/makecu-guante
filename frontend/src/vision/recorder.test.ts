@@ -26,6 +26,29 @@ const miss = (t: number): LandmarkCapture => ({
 afterEach(() => vi.useRealTimers());
 
 describe('opt-in real landmark recording', () => {
+  it('defaults new recordings to a bare hand with points', async () => {
+    const { source } = setup();
+    const recorder = recordLandmarks(source, {
+      pose: 'open',
+      affectedHand: 'right',
+    });
+    expect(recorder.stop().glove).toBe('bare-hand-points');
+    expect((await recorder.finished).glove).toBe('bare-hand-points');
+  });
+  it.each([
+    'bare-hand-points',
+    'glove',
+    'bare-hand',
+    'exposed-fingertips',
+  ] as const)('preserves explicit covering metadata: %s', (glove) => {
+    const { source } = setup();
+    const recorder = recordLandmarks(source, {
+      pose: 'open',
+      affectedHand: 'right',
+      glove,
+    });
+    expect(recorder.stop().glove).toBe(glove);
+  });
   it('copies raw buffers, keeps missed detections, labels real setup and stops after 30s', async () => {
     const { source, emit, detach } = setup();
     const recorder = recordLandmarks(source, {
