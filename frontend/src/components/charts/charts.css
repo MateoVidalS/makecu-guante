@@ -117,6 +117,14 @@
   color: var(--muted);
   font-size: var(--small);
 }
+div.data-status {
+  display: grid;
+  gap: var(--space-8);
+  justify-items: start;
+}
+div.data-status p {
+  margin: 0;
+}
 
 /* ---------- KPI row: numbers, not boxes ---------- */
 .kpi-row {

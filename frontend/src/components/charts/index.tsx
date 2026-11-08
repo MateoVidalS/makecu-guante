@@ -1,4 +1,5 @@
 import {
+  Button,
   KpiTile as DSKpiTile,
   DemoBadge as DSDemoBadge,
   Skeleton,
@@ -6,6 +7,8 @@ import {
   cx,
 } from '../../design-system';
 import { useId, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ApiRequestError } from '../../api/client';
 import {
   CartesianGrid,
   Line,
@@ -165,13 +168,35 @@ export function DataStatus({
         Loading your records…
       </p>
     );
-  if (error)
-    return (
-      <p className="data-status" role="alert">
-        Records are unavailable. Please try again.
-      </p>
-    );
+  if (error) return <DataError error={error} />;
   return <>{children}</>;
+}
+
+/** A failed load says why and, unless the record is gone, offers a retry instead of a dead end. */
+function DataError({ error }: { error: unknown }) {
+  const queryClient = useQueryClient();
+  const missing = error instanceof ApiRequestError && error.status === 404;
+  return (
+    <div className="data-status" role="alert">
+      <p>
+        {missing
+          ? 'Records are unavailable. This record was not found.'
+          : error instanceof ApiRequestError && error.detail.code === 'unreachable'
+            ? `Records are unavailable. ${error.message}`
+            : 'Records are unavailable. Please try again.'}
+      </p>
+      {!missing && (
+        <Button
+          variant="secondary"
+          onClick={() =>
+            void queryClient.refetchQueries({ type: 'active' })
+          }
+        >
+          Try again
+        </Button>
+      )}
+    </div>
+  );
 }
 
 export function KpiTile({
