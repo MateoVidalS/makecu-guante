@@ -22,5 +22,12 @@ Integration branch: `MateoVidalS/rehab-hub` · Repo id: `de782449-371b-4870-89e2
 | U2 | [virtual-hand](ux/U2-virtual-hand.md) | UX-1 | high | `…/u2-virtual-hand` | `term_6168c807` | `MateoVidalS/u2-virtual-hand` | #51 | merged | |
 | U3 | [data-views](ux/U3-data-views.md) | UX-2 | high | `…/u3-data-views` | `term_ab2c65f1` | `MateoVidalS/u3-data-views` | #69 | merged | backend seed done by #58; 2 camera e2e load-flaky, pass alone |
 | U4 | [live-screen](ux/U4-live-screen.md) | UX-2 | xhigh | `…/u4-live-screen` | `term_62e15241` | `MateoVidalS/u4-live-screen` | #72 | merged | |
+| O1 | [firmware](open/O1-firmware.md) | OPEN-1 | xhigh | | | | | queued | safety-critical review |
+| O2 | [glove-sim](open/O2-glove-sim.md) | OPEN-1 | high | | | | | queued | sim conformance = safety review |
+| O3 | [engine](open/O3-engine.md) | OPEN-1 | xhigh | | | | | queued | safety-critical review |
+| O4 | [runtime-calibrate](open/O4-runtime-calibrate.md) | OPEN-1 | high | | | | | queued | merge after O5 |
+| O5 | [backend-voice](open/O5-backend-voice.md) | OPEN-1 | high | | | | | queued | owns Pydantic half of the contract + calibration fixture |
+| O6 | [ui](open/O6-ui.md) | OPEN-2 | high | | | | | queued | after O3 + O5 |
+| O7 | [integration](open/O7-integration.md) | OPEN-3 | high | | | | | queued | after O1–O6 |
 
 Statuses: `queued` → `handed-off` → `pr-open` → `changes-requested` → `merged`.

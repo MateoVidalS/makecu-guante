@@ -25,7 +25,7 @@ export interface ExerciseSettings {
   rest_s: number; // 3, 6, 2, 6, 3
   tolerance: number; // 0.10 closure
   reach_dwell_s: number; // 0.5
-  assist_speed: number; // 0.3 /s
+  assist_speed: number; // 0.3 /s of pull (opening)
   plateau_s: number; // 2.0 (no gain > 0.03 → end the attempt early, after at least 3 s)
   assist_enabled: boolean; // false = observation only (no glove)
 }
@@ -39,7 +39,7 @@ export type EngineEvent =
     } // index = attempt index in the session
   | { kind: 'reached'; t_rel: number; assisted: boolean }
   | { kind: 'progress'; finger: GloveFinger; active_max: number } // throttled to at most 2 Hz per finger
-  | { kind: 'assist_started'; fingers: GloveFinger[]; from: Quint; to: Quint }
+  | { kind: 'assist_started'; fingers: GloveFinger[]; from: Quint; to: Quint } // closure units (vision), not pull; the glove only opens
   | { kind: 'resistance'; finger: GloveFinger; ma: number } // current high + finger not following
   | {
       kind: 'safety';

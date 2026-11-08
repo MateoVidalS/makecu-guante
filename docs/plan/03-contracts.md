@@ -1,5 +1,7 @@
 # 03 — Contracts (source of truth)
 
+> **Nov 7 pivot:** the glove helps the hand **open**. Glove-side values are tendon pull. See `15-open-assist.md` §2.
+
 Every work package codes against this file. **Workers must not change it.** If something is wrong or missing, work
 around it locally and write a `## Contract change request` in the PR. The coordinator decides and updates this file
 on the integration branch.
@@ -18,8 +20,9 @@ Implemented in WP0 as:
 |---|---|
 | `GloveFinger` | All five fingers are actuated (**fixed at 5**, see `12-five-finger-update.md`). **Array order on the wire is always `[thumb, index, middle, ring, pinky]`** (index 0–4). |
 | `FingerId` | `"thumb" \| "index" \| "middle" \| "ring" \| "pinky"`. Vision measures all five; the session engine scores and assists all five. |
-| Closure | 0.0 = open, 1.0 = closed, per finger. Vision closure is normalized by the patient's camera calibration and may read up to 1.1. Servo position `a` is normalized by the servo calibration. |
-| Speed `v` | Fraction of the calibrated range per second (e.g. 0.5 = half the range per second). |
+| Closure | 0.0 = open, 1.0 = closed, per finger. Vision closure is normalized by the patient's camera calibration and may read up to 1.1. |
+| ➕ Pull | **Every glove-side value** (`target.f`, `follow.f`, `tel.a`, `tel.tg`) is tendon pull: 0 = slack (servo calib `min`, the safe state), 1 = full calibrated pull (`max`, fingers straight). The glove helps the hand **open** (`15-open-assist.md`): `pull = 1 − closure`, only through `pullFromClosure`/`closureFromPull` (`contracts/glove.ts`). Never swap `min`/`max` to change direction. |
+| Speed `v` | Fraction of the calibrated range per second (e.g. 0.5 = half the range per second). Applies to winding (pull increasing); unwinding always runs at `V_RELEASE`. |
 | Current | Milliamps (mA), the **total** for all servos (one INA219). |
 | Time | Browser `performance.now()` ms for live data; firmware `ms` = `millis()`; REST/DB use ISO-8601 UTC. |
 | IDs | Integers (SQLite). |
@@ -35,8 +38,8 @@ ignored; unknown `t` → `err`. This extends `README.md §4.4` (the additions ar
 
 | `t` | Example | Allowed in state | Effect |
 |---|---|---|---|
-| `target` | `{"t":"target","f":[0.8,0.6,0.0,0.5,0.5],"v":0.5}` | `idle`, `run` | Ramp each servo to `f[i]` (clamped 0–1) at `min(v, V_MAX)`. Mode → `target`. State → `run` |
-| `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | `idle`, `run` | Take up slack: each servo goes to `max(0, f[i] − FOLLOW_SLACK)` at `V_FOLLOW`. It never pulls beyond the vision position. Mode → `follow`. State → `run` |
+| `target` | `{"t":"target","f":[0.8,0.6,0.0,0.5,0.5],"v":0.5}` | `idle`, `run` | Ramp each servo's pull to `f[i]` (clamped 0–1): winding at `min(v, V_MAX)`, unwinding at `V_RELEASE`. Mode → `target`. State → `run` |
+| `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | `idle`, `run` | `f` = `pullFromClosure(vision)`. Take up slack: each servo goes to `max(0, f[i] − FOLLOW_SLACK)`, winding at `V_FOLLOW`, unwinding at `V_RELEASE` (never blocks a fast fist). It never pulls beyond the vision opening. Mode → `follow`. State → `run` |
 | `release` | `{"t":"release"}` | any | All servos → 0 at `V_RELEASE`, then PWM detaches after 500 ms. **Clears `fault`.** State → `idle` |
 | `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | `idle` | Servo angles (degrees) for 0% and 100% of finger `i` (0–4). Must satisfy `HARD_MIN ≤ min, max ≤ HARD_MAX` and `|max − min| ≥ 20`. `min > max` is allowed (mirrored mount) |
 | `limit` | `{"t":"limit","ma":900}` | any | Overcurrent threshold, clamped to `[100, LIMIT_MAX_MA]` |
@@ -75,7 +78,7 @@ In `fault`: servos have been released and detached; `target`, `follow` and `jog`
 | `V_FOLLOW` | 1.5 /s | Follow speed (it only takes up slack) |
 | `V_RELEASE` | 3.0 /s | Release speed (unwinding is safe) |
 | `V_JOG_DEG` | 60 °/s | |
-| `FOLLOW_SLACK` | 0.05 | Follow stays 5% behind the vision closure |
+| `FOLLOW_SLACK` | 0.08 | Follow stays 8% of the range less pulled than the vision opening (`15-open-assist.md`) |
 | `LIMIT_DEFAULT_MA` / `LIMIT_MAX_MA` | 1500 / 2200 | Below the 2.5 A supply limit (5 servos) |
 | `OVERCURRENT_MS` | 100 | Current above the limit for this long → fault |
 | `WATCHDOG_MS` | 1000 | Elapsed time **strictly greater** than this with no valid message → release + fault (no fault at exactly 1000 ms; it fires on the next tick) |

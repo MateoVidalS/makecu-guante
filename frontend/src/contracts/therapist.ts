@@ -33,7 +33,7 @@ export interface TherapyLimits {
   assist_step: number; // 0.05
   /** "More help" = help starts sooner: per-finger wait before assisting, seconds. */
   assist_delay_s: [number, number]; // [1, 9] (default = attempt_s)
-  /** Shaping: per-finger target as a fraction of the pose target. */
+  /** Shaping: per-finger target scale. Opening targets: closure' = 1 − (1 − c)·scale (less opening = easier); closing targets: c·scale. */
   target_scale: [number, number]; // [0.5, 1.0]
   target_step: number; // 0.1
   attempt_s: [number, number]; // [4, 9]
@@ -43,7 +43,7 @@ export interface TherapyLimits {
    * event on that finger in the last intensify_cooldown_s; reverted automatically if either appears.
    */
   intensify_speed_max: number; // 0.30 /s (normal practice speed)
-  intensify_target_max: number; // 1.0 = the calibrated comfortable "closed"
+  intensify_target_max: number; // 1.0 = the full calibrated pull (fingers straight); assisted targets are opening targets
   hold_add_max_s: number; // 2
   consent_window_s: number; // 20
   intensify_pain_block: number; // 2

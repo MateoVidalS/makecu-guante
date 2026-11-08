@@ -8,7 +8,7 @@ import type {
   AttemptResult,
 } from './engine';
 import type { EvaluationResult } from './evaluation';
-import type { Calibration } from './calibration';
+import type { AssistDirection, Calibration } from './calibration';
 export interface Profile {
   pseudonym: string;
   affected_hand: Handedness;
@@ -28,6 +28,8 @@ export interface Session {
   is_demo: boolean;
   summary: SessionSummary | null;
   n_attempts: number;
+  /** Derived from the calibration (docs/plan/15 §2.8); absent = legacy 'close'. */
+  assist_direction?: AssistDirection;
 }
 export interface Attempt extends Omit<AttemptResult, 'trace'> {
   id: number;
@@ -41,6 +43,8 @@ export interface Evaluation extends EvaluationResult {
   id: number;
   calibration_id: number;
   is_demo: boolean;
+  /** Derived from the calibration (docs/plan/15 §2.8); absent = legacy 'close'. */
+  assist_direction?: AssistDirection;
 }
 export interface TranscriptLine {
   t: string;
@@ -84,6 +88,8 @@ export interface RomPoint {
   pose: PoseId | null;
   active_max_mean: number;
   is_demo: boolean;
+  /** Derived from the calibration (docs/plan/15 §2.8); absent = legacy 'close'. */
+  assist_direction?: AssistDirection;
 }
 export interface AssistPoint {
   session_id: number;
@@ -92,6 +98,8 @@ export interface AssistPoint {
   assist_needed_mean: number;
   assisted_rate: number;
   is_demo: boolean;
+  /** Derived from the calibration (docs/plan/15 §2.8); absent = legacy 'close'. */
+  assist_direction?: AssistDirection;
 }
 export interface ResistancePoint {
   evaluation_id: number;
@@ -101,6 +109,8 @@ export interface ResistancePoint {
   fast: number | null;
   dependence: number | null;
   is_demo: boolean;
+  /** Derived from the calibration (docs/plan/15 §2.8); absent = legacy 'close'. */
+  assist_direction?: AssistDirection;
 }
 export interface Health {
   ok: boolean;
