@@ -68,6 +68,7 @@ export async function simRun(
       plan,
       {
         ...DEFAULT_EXERCISE_SETTINGS,
+        help_on_request: false,
         present_s: 0,
         attempt_s: 2,
         assist_max_s: 15,

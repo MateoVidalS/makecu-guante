@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { calibrateSimulator, silenceCoach } from './helpers';
+import {
+  calibrateSimulator,
+  silenceCoach,
+  askForHelpWhenOffered,
+} from './helpers';
 import type { SessionDetail } from '../src/contracts/api';
 
 test('the header simulator menu produces and saves a ring resistance stop', async ({
@@ -7,6 +11,7 @@ test('the header simulator menu produces and saves a ring resistance stop', asyn
 }) => {
   test.setTimeout(45_000);
   await silenceCoach(page);
+  await askForHelpWhenOffered(page);
   await calibrateSimulator(page);
   await page
     .getByRole('button', { name: 'Open only, 1 rep', exact: true })

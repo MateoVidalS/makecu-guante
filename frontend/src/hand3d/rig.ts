@@ -16,10 +16,12 @@ export const JOINTS = ['mcp', 'pip', 'dip'] as const;
 export const HAND_PROPORTIONS = {
   palm: [1.9, 1.95, 0.42] as const,
   thumb: {
-    base: [-0.9, 0.2, 0.2],
+    // The first segment is the metacarpal: it starts in the lower half of the palm's side
+    // (it was in the upper half). Lower still and thumb and index can no longer pinch.
+    base: [-0.8, 0.0, 0.2],
     lengths: [0.7, 0.7, 0.55],
     radius: 0.19,
-    spread: 0.65,
+    spread: 0.6,
   },
   index: {
     base: [-0.64, 0.92, 0],

@@ -25,7 +25,8 @@ export function BenchMirrorStatus() {
           (mirror.lastError
             ? `, last board error: ${mirror.lastError.why}`
             : '')
-        : 'Real motors: not connected. Simulated glove only (Demo tools → Mirror to real glove).'}
+        : // One line, so the practice screen still fits the patient viewport.
+          'Real motors not connected (Demo tools → Mirror).'}
     </p>
   );
 }

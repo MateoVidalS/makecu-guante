@@ -20,6 +20,12 @@ import {
 } from '../contracts/calibration';
 import type { EngineEvent } from '../contracts/engine';
 
+/** These runs test the help mechanics end to end; production waits for the patient to ask. */
+const AUTO_HELP_SETTINGS = {
+  ...DEFAULT_EXERCISE_SETTINGS,
+  help_on_request: false,
+} as typeof DEFAULT_EXERCISE_SETTINGS;
+
 const cleanups: (() => void)[] = [];
 afterEach(() => {
   cleanups.splice(0).forEach((f) => f());
@@ -145,7 +151,7 @@ describe('real runtime integration', () => {
     const { runtime, world, posts } = await harness();
     const events: EngineEvent[] = [];
     runtime.exercise.onEvent((event) => events.push(event));
-    await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
+    await runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS);
     until(world, () => runtime.exercise.view().phase === 'DONE');
     await runtime.persistence.flush();
     expect(runtime.exercise.view().summary).toMatchObject({
@@ -200,7 +206,7 @@ describe('real runtime integration', () => {
     runtime.exercise.onEvent((event) => events.push(event));
     await runtime.exercise.start(
       [{ pose: 'open', reps: 2 }],
-      DEFAULT_EXERCISE_SETTINGS,
+      AUTO_HELP_SETTINGS,
     );
     until(world, () => runtime.exercise.view().phase === 'ASSIST');
     // Exercise runtime fault handling through the real firmware's low-limit cutoff.
@@ -223,7 +229,7 @@ describe('real runtime integration', () => {
   });
   it('restores calibration and the current limit on reconnect and blocks source switches while paused', async () => {
     const { runtime, world, glove, calibration } = await harness();
-    await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
+    await runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS);
     runtime.exercise.pause();
     await expect(runtime.sources.setVision('camera')).rejects.toThrow(
       'End the current session',
@@ -248,7 +254,7 @@ describe('real runtime integration', () => {
   it('finishes locally while offline and replays session, attempts and end after recovery', async () => {
     const { runtime, world, posts } = await harness();
     posts.createSession.mockRejectedValue(new Error('offline'));
-    await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
+    await runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS);
     until(world, () => runtime.exercise.view().phase === 'DONE');
     await runtime.persistence.flush();
     expect(runtime.persistence.store.getState()).toMatchObject({
@@ -285,7 +291,7 @@ describe('real runtime integration', () => {
     const { runtime, world } = await harness();
     await runtime.exercise.start(
       [{ pose: 'open', reps: 1 }],
-      DEFAULT_EXERCISE_SETTINGS,
+      AUTO_HELP_SETTINGS,
     );
     until(world, () => runtime.exercise.view().phase === 'ASSIST');
     world.controls.handOutOfFrame(3000);
@@ -311,7 +317,7 @@ it('restores durable pending attempts without creating another session', async (
     value: {
       mode: 'exercise',
       plan: OPEN_ASSIST_PLAN,
-      settings: DEFAULT_EXERCISE_SETTINGS,
+      settings: AUTO_HELP_SETTINGS,
       calibration_id: 1,
     },
   });
@@ -351,7 +357,7 @@ it('ignores a late calibration reload while a session is running', async () => {
     }),
   );
   const reload = runtime.calibration.reload();
-  await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
+  await runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS);
   until(world, () => runtime.exercise.view().phase === 'ATTEMPT');
   const release = vi.spyOn(world.glove, 'release');
   resolve({ ...calibration, id: 2 });
@@ -362,7 +368,7 @@ it('ignores a late calibration reload while a session is running', async () => {
 
 it('ends an interrupted run before simulator fallback, reconnects, and flags the next run as demo', async () => {
   const { runtime, world, posts } = await harness();
-  await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
+  await runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS);
   until(world, () => runtime.exercise.view().phase === 'ASSIST');
   world.controls.unplug();
   expect(runtime.exercise.view().phase).toBe('PAUSED');
@@ -375,10 +381,7 @@ it('ends an interrupted run before simulator fallback, reconnects, and flags the
   expect(world.firmware.mode).toBe('none');
   await runtime.persistence.flush();
   expect(posts.endSession).toHaveBeenCalledTimes(1);
-  await runtime.exercise.start(
-    [{ pose: 'open', reps: 1 }],
-    DEFAULT_EXERCISE_SETTINGS,
-  );
+  await runtime.exercise.start([{ pose: 'open', reps: 1 }], AUTO_HELP_SETTINGS);
   until(world, () => runtime.exercise.view().phase === 'DONE');
   await runtime.persistence.flush();
   expect(posts.createSession.mock.lastCall?.[0].is_demo).toBe(true);
@@ -400,10 +403,7 @@ it('releases and replaces real-source transport doubles before starting a flagge
   const { runtime, world, glove, vision, posts } = await harness(true);
   expect(runtime.sources.glove).toBe('serial');
   expect(runtime.sources.vision).toBe('camera');
-  await runtime.exercise.start(
-    [{ pose: 'open', reps: 1 }],
-    DEFAULT_EXERCISE_SETTINGS,
-  );
+  await runtime.exercise.start([{ pose: 'open', reps: 1 }], AUTO_HELP_SETTINGS);
   until(world, () => runtime.exercise.view().phase === 'ATTEMPT');
   const release = vi.spyOn(glove.client, 'release');
   await runtime.sources.setGlove('sim');
@@ -414,10 +414,7 @@ it('releases and replaces real-source transport doubles before starting a flagge
   await runtime.persistence.flush();
   expect(posts.createSession.mock.calls[0][0].is_demo).toBe(false);
   expect(posts.endSession).toHaveBeenCalledTimes(1);
-  await runtime.exercise.start(
-    [{ pose: 'open', reps: 1 }],
-    DEFAULT_EXERCISE_SETTINGS,
-  );
+  await runtime.exercise.start([{ pose: 'open', reps: 1 }], AUTO_HELP_SETTINGS);
   until(world, () => runtime.exercise.view().phase === 'DONE');
   await runtime.persistence.flush();
   expect(posts.createSession.mock.lastCall?.[0].is_demo).toBe(true);
@@ -426,7 +423,7 @@ it('releases and replaces real-source transport doubles before starting a flagge
 
 it('waits for fresh telemetry after Resume instead of reusing a pre-release fault frame', async () => {
   const { runtime, world } = await harness();
-  await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
+  await runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS);
   until(world, () => runtime.exercise.view().phase === 'ATTEMPT');
   world.controls.pressStop();
   world.advance(100);
@@ -491,7 +488,7 @@ it('rejects mismatched simulator camera ranges before persisting or starting mot
   runtime.calibration.current = invalid;
   const target = vi.spyOn(world.glove, 'target');
   await expect(
-    runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS),
+    runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS),
   ).rejects.toThrow('over 100%');
   expect(target).not.toHaveBeenCalled();
 });
@@ -506,10 +503,7 @@ it('keeps camera-source frames driving five simulated motors after glove-only fa
   // runtime's simulated-patient phase commands, as a real camera would.
   world.setIntent('open', 'ATTEMPT');
   const targets = vi.spyOn(world.glove, 'target');
-  await runtime.exercise.start(
-    [{ pose: 'open', reps: 1 }],
-    DEFAULT_EXERCISE_SETTINGS,
-  );
+  await runtime.exercise.start([{ pose: 'open', reps: 1 }], AUTO_HELP_SETTINGS);
   until(world, () => runtime.exercise.view().phase === 'ASSIST');
   // O3 schedules assistance per finger; wait for the actual command, not a fixed delay.
   until(world, () => targets.mock.calls.length > 0);
@@ -531,10 +525,7 @@ it('exposes therapy, releases immediately on pain, and persists audit and feelin
     addFeelings: vi.fn().mockResolvedValue(undefined),
   });
   posts.createSession.mockRejectedValue(new Error('offline'));
-  await runtime.exercise.start(
-    [{ pose: 'open', reps: 2 }],
-    DEFAULT_EXERCISE_SETTINGS,
-  );
+  await runtime.exercise.start([{ pose: 'open', reps: 2 }], AUTO_HELP_SETTINGS);
   until(world, () => runtime.exercise.view().phase === 'ASSIST');
   runtime.therapy.adjust(
     'adjust_help',
@@ -629,10 +620,7 @@ it('resets therapy limits, feelings, undo and rate limits between sessions witho
     addCoachDecisions: vi.fn().mockResolvedValue(undefined),
     addFeelings: vi.fn().mockResolvedValue(undefined),
   });
-  await runtime.exercise.start(
-    [{ pose: 'open', reps: 1 }],
-    DEFAULT_EXERCISE_SETTINGS,
-  );
+  await runtime.exercise.start([{ pose: 'open', reps: 1 }], AUTO_HELP_SETTINGS);
   await runtime.persistence.flush();
   runtime.therapy.adjust('add_rest', { seconds: 20, reason: 'Rest.' }, 'coach');
   runtime.therapy.recordFeeling({
@@ -646,10 +634,7 @@ it('resets therapy limits, feelings, undo and rate limits between sessions witho
   audit.createSession.mockResolvedValue({ id: 88 } as Awaited<
     ReturnType<RuntimeApi['createSession']>
   >);
-  await runtime.exercise.start(
-    [{ pose: 'hook', reps: 1 }],
-    DEFAULT_EXERCISE_SETTINGS,
-  );
+  await runtime.exercise.start([{ pose: 'hook', reps: 1 }], AUTO_HELP_SETTINGS);
   await runtime.persistence.flush();
   expect(runtime.therapy.decisions()).toEqual([]);
   expect(runtime.therapy.feelings()).toEqual([]);
@@ -683,7 +668,7 @@ it.each([undefined, 'close'] as const)(
     await runtime.calibration.sendToGlove();
     expect(calib).not.toHaveBeenCalled();
     await expect(
-      runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS),
+      runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS),
     ).rejects.toThrow('The glove now helps the hand open. Calibrate it again.');
     await expect(
       runtime.evaluation.start(DEFAULT_EVAL_SETTINGS),

@@ -4,7 +4,7 @@ import type { SessionDetail } from '../src/contracts/api';
 import { pullFromClosure } from '../src/contracts/glove';
 import { DEFAULT_EXERCISE_SETTINGS, POSES } from '../src/contracts/poses';
 import type { TherapistSnapshot } from './ai-therapist-harness';
-import { silenceCoach } from './helpers';
+import { silenceCoach, askForHelpWhenOffered } from './helpers';
 
 test.describe('scripted Live AI therapist through the production app', () => {
   // Keep transient focus/voice UI checks in one browser at a time, even when
@@ -16,6 +16,7 @@ test.describe('scripted Live AI therapist through the production app', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     await silenceCoach(page);
+    await askForHelpWhenOffered(page);
     // No external requests or sockets: the fake replaces only the Live device;
     // all session, decision, feeling and replay requests use the real backend.
     await page.route('**/*', (route) => {
@@ -275,19 +276,26 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(
       attempt.state.fingers.find((f) => f.finger === 'middle')?.target,
     ).toBeCloseTo(1 - (1 - POSES.open.closure.middle!) * 0.9);
-    await tool(
-      page,
-      'assist_finger_now',
-      { finger: 'ring', reason: 'Help your ring finger now.' },
-      'Immediate help',
+    // The glove never moves on the coach's say-so: help starts only when the patient asks.
+    const unasked = await page.evaluate(() =>
+      window.aiTherapist.tool('assist_finger_now', {
+        finger: 'ring',
+        reason: 'Help your ring finger now.',
+      }),
     );
-    const early = await page.evaluate(() => window.aiTherapist.advance(200));
-    expect(early.view.phase).toBe('ATTEMPT');
+    expect(unasked.ok).toBe(false);
+    expect(
+      (await page.evaluate(() => window.aiTherapist.advance(200))).view.phase,
+    ).toBe('ATTEMPT');
+    const asked = await page.evaluate(() =>
+      window.aiTherapist.patient('Help me open, please', true),
+    );
+    expect(asked.view.phase).toBe('ASSIST');
+    const early = await page.evaluate(() => window.aiTherapist.advance(2000));
     expect(
       early.state.fingers.find((f) => f.finger === 'ring')?.glove_helping,
     ).toBe(true);
     const firstTarget = early.commands.find((c) => c.kind === 'target')!;
-    expect(firstTarget.f![3]).toBeGreaterThan(firstTarget.from![3]);
     expect(firstTarget.v).toBeLessThanOrEqual(0.2);
     const rested = await page.evaluate(() =>
       window.aiTherapist.untilPhase('REST', 0),
@@ -296,16 +304,8 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(rested.view.phaseDuration).toBe(
       DEFAULT_EXERCISE_SETTINGS.rest_s + 20,
     );
-    const attemptAt = rested.events.find(
-      (e) => e.event.kind === 'phase' && e.event.phase === 'ATTEMPT',
-    )!.at;
     const normalTargets = rested.commands.filter((c) => c.kind === 'target');
-    // assist_started describes the initial group. Observe later staggered
-    // starts at the motor boundary, including the thumb's earlier deadline.
-    const thumb = normalTargets.find((c) => c.f![0] > c.from![0] + 0.05)!;
-    expect(thumb).toBeDefined();
-    expect((thumb.at - attemptAt) / 1000).toBeGreaterThanOrEqual(5);
-    expect((thumb.at - attemptAt) / 1000).toBeLessThan(6);
+    // Gentle speed and the lowered middle target hold for help the patient asked for.
     expect(
       normalTargets.every((c) => c.v! <= 0.2 && c.f!.every((f) => f <= 0.95)),
     ).toBe(true);
@@ -313,12 +313,17 @@ test.describe('scripted Live AI therapist through the production app', () => {
       normalTargets.every(
         (c) =>
           c.f![2] <=
-          pullFromClosure(1 - (1 - POSES.open.closure.middle!) * 0.9),
+          pullFromClosure(1 - (1 - POSES.open.closure.middle!) * 0.9) + 1e-6,
       ),
     ).toBe(true);
     expect(
-      (await page.evaluate(() => window.aiTherapist.advance(22_900))).view
-        .phase,
+      (
+        await page.evaluate(
+          // Just short of the default rest plus the coach's 20 s.
+          (ms) => window.aiTherapist.advance(ms),
+          (DEFAULT_EXERCISE_SETTINGS.rest_s + 20) * 1000 - 600,
+        )
+      ).view.phase,
     ).toBe('REST');
     const next = await page.evaluate(() =>
       window.aiTherapist.untilPhase('ATTEMPT', 1),
@@ -327,36 +332,24 @@ test.describe('scripted Live AI therapist through the production app', () => {
     expect(
       next.state.fingers.find((f) => f.finger === 'middle')?.target,
     ).toBeCloseTo(1 - (1 - POSES.open.closure.middle!) * 0.9);
-    await tool(
-      page,
-      'assist_finger_now',
-      {
-        finger: 'index',
-        reason: 'Keep the index help gentle.',
-      },
-      'Immediate help',
+    // Asking in Spanish works too, once per attempt.
+    const again = await page.evaluate(() =>
+      window.aiTherapist.patient('ayuda', true),
     );
-    const gentle = await page.evaluate(() => window.aiTherapist.advance(200));
-    const gentleTargets = gentle.commands.filter((c) => c.kind === 'target');
-    expect(gentleTargets.at(-1)?.v).toBe(0.15);
-    expect(gentleTargets.every((c) => c.v! <= 0.2)).toBe(true);
-    await tool(
-      page,
-      'assist_finger_now',
-      {
-        finger: 'middle',
-        reason: 'Help only to the smaller shaped target.',
-      },
-      'Immediate help',
-    );
-    const shaped = await page.evaluate(() => window.aiTherapist.advance(200));
-    const shapedCommand = shaped.commands
-      .filter((c) => c.kind === 'target')
-      .at(-1)!;
-    expect(shapedCommand.f![2]).toBeCloseTo(
-      pullFromClosure(1 - (1 - POSES.open.closure.middle!) * 0.9),
-    );
-    expect(shapedCommand.f![2]).toBeGreaterThan(shapedCommand.from![2]);
+    expect(again.view.phase).toBe('ASSIST');
+    const shaped = await page.evaluate(() => window.aiTherapist.advance(2000));
+    const shapedTargets = shaped.commands
+      .slice(next.commands.length)
+      .filter((c) => c.kind === 'target');
+    expect(shapedTargets.length).toBeGreaterThan(0);
+    expect(shapedTargets.every((c) => c.v! <= 0.2)).toBe(true);
+    expect(
+      shapedTargets.every(
+        (c) =>
+          c.f![2] <=
+          pullFromClosure(1 - (1 - POSES.open.closure.middle!) * 0.9) + 1e-6,
+      ),
+    ).toBe(true);
     await tool(
       page,
       'brake',
@@ -429,12 +422,11 @@ test.describe('scripted Live AI therapist through the production app', () => {
     }) => {
       await start(page);
       await page.evaluate(() => window.aiTherapist.untilPhase('ATTEMPT'));
-      await tool(
-        page,
-        'assist_finger_now',
-        { finger: 'index', reason: 'Start gentle index help.' },
-        'Immediate help',
+      // The patient asks; the glove starts helping.
+      const asked = await page.evaluate(() =>
+        window.aiTherapist.patient('help me', true),
       );
+      expect(asked.view.phase).toBe('ASSIST');
       const pulling = await page.evaluate(() =>
         window.aiTherapist.advance(1000),
       );

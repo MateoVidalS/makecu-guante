@@ -49,6 +49,17 @@ Object.assign(browserVoiceDependencies, {
   }),
 });
 
+// The glove moves only when the patient asks: the simulated patient asks when offered.
+let asking: SimWorld | null = null;
+function askWhenBothExist() {
+  if (!world || !runtime || asking === world) return;
+  asking = world;
+  // Read `runtime` at each tick: the provider can remount a new one.
+  world.ticks.subscribe(() => {
+    if (runtime.exercise.view().helpOffered) runtime.exercise.requestHelp();
+  });
+}
+
 // Observe the App's existing providers instead of recreating a second UI tree.
 const mount = RehabRuntime.prototype.mount;
 const observed = new WeakSet<RehabRuntime>();
@@ -60,10 +71,12 @@ RehabRuntime.prototype.mount = function () {
     this.exercise.onEvent((event) => events.push({ at: world.now, event }));
   }
   mount.call(this);
+  askWhenBothExist();
 };
 SimWorld.prototype.start = function () {
   // eslint-disable-next-line @typescript-eslint/no-this-alias -- Keep the provider's simulator, with an explicitly stepped clock.
   world = this;
+  askWhenBothExist();
 };
 const target = SimGlove.prototype.target;
 SimGlove.prototype.target = function (f, v) {

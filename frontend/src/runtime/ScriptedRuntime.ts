@@ -269,6 +269,8 @@ export class ScriptedRuntime implements TherapyRuntime {
         this.phase('RELEASE');
       }
     },
+    // The scripted stub plays a fixed story; help requests do not change it.
+    requestHelp: () => {},
     stop: async () => {
       this.generation++;
       if (this.exercise.view().phase !== 'DONE') {
