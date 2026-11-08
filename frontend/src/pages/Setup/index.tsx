@@ -1,4 +1,7 @@
-import { TestModeCard } from '../../components/calibration';
+import {
+  CalibrationDeviceNotice,
+  TestModeCard,
+} from '../../components/calibration';
 import { Fragment, useEffect, useState } from 'react';
 import {
   Button,
@@ -30,12 +33,14 @@ import {
 } from '../../runtime';
 import { CameraVision } from '../../vision/cameraVision';
 import {
-  GLOVE_LABELS,
-  GLOVE_SETTINGS,
-  savedGloveSetting,
-  saveGloveSetting,
-  type GloveSetting,
-} from '../../vision/gloveColor';
+  DEVICE_SETTINGS,
+  deviceSettingHint,
+  deviceSettingLabel,
+  isDeviceSetting,
+  savedDeviceSetting,
+  saveDeviceSetting,
+  type DeviceSetting,
+} from '../../vision/deviceProfiles';
 import {
   BrowserSupportBanner,
   Readouts,
@@ -59,12 +64,12 @@ export default function Setup() {
   const handedness = useVisionFrame((f) => f?.handedness);
   const cameraSource =
     vision.source instanceof CameraVision ? vision.source : null;
-  const [gloveColor, setGloveColor] = useState<GloveSetting>(() =>
-    savedGloveSetting(),
+  const [onHand, setOnHand] = useState<DeviceSetting>(() =>
+    savedDeviceSetting(),
   );
-  // Only while the hand is seen: during a search the colour changes every frame.
-  const activeGlove = useVisionFrame((f) =>
-    f?.detected && cameraSource ? cameraSource.activeGloveColor() : null,
+  // Only while the hand is seen: during a search the profile changes every frame.
+  const tracking = useVisionFrame((f) =>
+    f?.detected && cameraSource ? cameraSource.activeDeviceProfile() : null,
   );
   const [info, setInfo] = useState<GloveInfo | null>(null),
     [error, setError] = useState(''),
@@ -340,30 +345,30 @@ export default function Setup() {
               ))}
           </Select>
           <Select
-            label="Glove color"
-            hint={
-              gloveColor === 'none'
-                ? 'Uses the camera image as it is.'
-                : gloveColor !== 'auto'
-                  ? 'Use a background that is not the glove color.'
-                  : activeGlove
-                    ? `Now tracking: ${GLOVE_LABELS[activeGlove].toLowerCase()}.`
-                    : 'Finds a bare hand or a violet, sky blue, magenta or black glove. Use a background that is not the glove color.'
-            }
-            value={gloveColor}
+            label="On the hand"
+            hint={deviceSettingHint(onHand, tracking)}
+            value={onHand}
             onChange={(e) => {
-              const setting = e.target.value as GloveSetting;
-              setGloveColor(setting);
-              if (cameraSource) cameraSource.setGloveSetting(setting);
-              else saveGloveSetting(setting);
+              const setting = e.target.value;
+              if (!isDeviceSetting(setting)) return;
+              setOnHand(setting);
+              if (cameraSource) cameraSource.setDeviceSetting(setting);
+              else saveDeviceSetting(setting);
             }}
           >
-            {GLOVE_SETTINGS.map((setting) => (
+            {DEVICE_SETTINGS.map((setting) => (
               <option key={setting} value={setting}>
-                {GLOVE_LABELS[setting]}
+                {deviceSettingLabel(setting)}
               </option>
             ))}
           </Select>
+          <CalibrationDeviceNotice
+            action={
+              <ButtonLink size="sm" to="/calibrate?step=camera">
+                Redo camera range
+              </ButtonLink>
+            }
+          />
           <SetupCameraPreview
             mirrored={mirror}
             onVideoReady={setRawPreviewReady}

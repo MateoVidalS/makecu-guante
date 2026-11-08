@@ -6,6 +6,11 @@ import type {
 } from '@mediapipe/tasks-vision';
 import open from './fixtures/front_upright_open.json';
 import { CameraVision } from './cameraVision';
+import {
+  deviceProfile,
+  handRegion,
+  type PreprocessStep,
+} from './deviceProfiles';
 const mp = vi.hoisted(() => ({
   create: vi.fn(),
   files: vi.fn(async () => ({})),
@@ -406,7 +411,7 @@ describe('CameraVision lifecycle', () => {
   });
 });
 
-describe('CameraVision glove colours', () => {
+describe('CameraVision device profiles', () => {
   const size = 8;
   let pixel: [number, number, number];
   const empty: HandLandmarkerResult = {
@@ -460,7 +465,10 @@ describe('CameraVision glove colours', () => {
   }
   it('finds a glove the raw video misses, then keeps its colour', async () => {
     await source.start({ affectedHand: 'right' });
-    expect(source.stats().glove).toEqual({ setting: 'auto', active: 'none' });
+    expect(source.stats().device).toEqual({
+      setting: 'auto',
+      active: 'bare-hand',
+    });
     await frames(34, 8);
     expect(source.latest()?.detected).toBe(false);
     expect(
@@ -468,37 +476,40 @@ describe('CameraVision glove colours', () => {
     ).toBe(true);
     await frames(34 * 9, 3); // Bare, then violet (no match), then sky blue.
     expect(source.latest()).toMatchObject({ detected: true, confidence: 0.95 });
-    expect(source.stats().glove.active).toBe('sky-blue');
+    expect(source.stats().device.active).toBe('sky-blue-glove');
     const repainted = detect.mock.lastCall![0] as FakeImageData;
     expect([...repainted.data.slice(0, 3)]).not.toEqual(pixel);
     await frames(34 * 12, 10);
-    expect(source.stats().glove.active).toBe('sky-blue');
+    expect(source.stats().device.active).toBe('sky-blue-glove');
     expect(source.latest()?.detected).toBe(true);
   });
   it('returns to the raw video when the tracked hand is bare', async () => {
     await source.start({ affectedHand: 'right' });
     await frames(34, 11);
-    expect(source.stats().glove.active).toBe('sky-blue');
+    expect(source.stats().device.active).toBe('sky-blue-glove');
     pixel = [224, 172, 140]; // The glove comes off.
     detect.mockImplementation(() => result);
     await frames(34 * 12, 5);
-    expect(source.stats().glove.active).toBe('none');
+    expect(source.stats().device.active).toBe('bare-hand');
     await frames(34 * 17, 3);
     expect(detect.mock.lastCall![0]).toBeInstanceOf(HTMLVideoElement);
     expect(source.latest()?.detected).toBe(true);
   });
   it('honours and persists a fixed colour, and never repaints a bare-hand setting', async () => {
-    source.setGloveSetting('black');
-    expect(new CameraVision().gloveSetting()).toBe('black');
-    source.setGloveSetting('none');
+    source.setDeviceSetting('black-glove');
+    expect(new CameraVision().deviceSetting()).toBe('black-glove');
+    source.setDeviceSetting('bare-hand');
     await source.start({ affectedHand: 'right' });
     await frames(34, 15);
-    expect(source.stats().glove).toEqual({ setting: 'none', active: 'none' });
+    expect(source.stats().device).toEqual({
+      setting: 'bare-hand',
+      active: 'bare-hand',
+    });
     // MediaPipe only ever receives the raw video (the lighting check may still read pixels).
     expect(
       detect.mock.calls.every(([input]) => input instanceof HTMLVideoElement),
     ).toBe(true);
-    source.setGloveSetting('sky-blue');
+    source.setDeviceSetting('sky-blue-glove');
     await frames(34 * 16, 1);
     expect(source.latest()?.detected).toBe(true);
   });
@@ -508,30 +519,84 @@ describe('CameraVision glove colours', () => {
     await source.start({ affectedHand: 'right' });
     await frames(34, 1);
     expect(detect.mock.lastCall![0]).toBeInstanceOf(HTMLVideoElement);
-    expect(source.stats().glove.active).toBe('violet');
+    expect(source.stats().device.active).toBe('violet-glove');
     await frames(68, 3);
     expect(detect.mock.lastCall![0]).toBeInstanceOf(FakeImageData);
-    expect(source.stats().glove.active).toBe('violet');
+    expect(source.stats().device.active).toBe('violet-glove');
   });
   it('keeps a tracked bare hand on the raw video, only sampling its pixels', async () => {
     pixel = [224, 172, 140];
     detect.mockImplementation(() => result);
     await source.start({ affectedHand: 'right' });
     await frames(34, 20);
-    expect(source.stats().glove.active).toBe('none');
+    expect(source.stats().device.active).toBe('bare-hand');
     expect(
       detect.mock.calls.every(([input]) => input instanceof HTMLVideoElement),
     ).toBe(true);
   });
+  it("reads a tracked bare hand's pixels only every 15th frame", async () => {
+    pixel = [224, 172, 140];
+    detect.mockImplementation(() => result);
+    const context = document.createElement('canvas').getContext('2d')!;
+    const read = vi.spyOn(context, 'getImageData');
+    await source.start({ affectedHand: 'right' });
+    await frames(34, 30);
+    // Frame-sized reads only (the lighting check reads its own 64×48 thumbnail).
+    const frameReads = read.mock.calls.filter(([, , w]) => w === size);
+    expect(frameReads).toHaveLength(2); // Frames 0 and 15.
+  });
+  it('keeps the old glove colour setting under the new name', () => {
+    localStorage.setItem('rehab-hub.camera.glove-color', 'violet');
+    expect(new CameraVision().deviceSetting()).toBe('violet-glove');
+    localStorage.setItem('rehab-hub.camera.glove-color', 'none');
+    expect(new CameraVision().deviceSetting()).toBe('bare-hand');
+  });
+  it('remembers the profile the hand was last tracked with', async () => {
+    await source.start({ affectedHand: 'right' });
+    expect(source.trackedDeviceProfile()).toBeNull();
+    await frames(34, 11);
+    expect(source.trackedDeviceProfile()).toBe('sky-blue-glove');
+    detect.mockImplementation(() => empty);
+    await frames(34 * 12, 10); // Lost: the search moves on.
+    expect(source.stats().device.active).not.toBe('sky-blue-glove');
+    expect(source.trackedDeviceProfile()).toBe('sky-blue-glove');
+  });
+  it("gives a device step the tracked hand's region, the whole frame while lost", async () => {
+    const step = vi.spyOn(
+      deviceProfile('strap-device') as { preprocess: PreprocessStep },
+      'preprocess',
+    );
+    detect.mockImplementation(() => result); // The device hand is found.
+    source.setDeviceSetting('strap-device');
+    await source.start({ affectedHand: 'right' });
+    await frames(34, 3);
+    expect(detect.mock.lastCall![0]).toBeInstanceOf(FakeImageData);
+    const regions = step.mock.calls.map((call) => call[5]);
+    expect(regions[0]).toBeNull(); // No hand yet.
+    const hand = result.landmarks[0].map((p): [number, number, number] => [
+      p.x,
+      p.y,
+      p.z,
+    ]);
+    expect(regions[1]).toEqual(handRegion(hand, size, size));
+    expect(regions[1]).not.toBeNull();
+    detect.mockImplementation(() => empty);
+    await frames(34 * 4, 2);
+    expect(step.mock.lastCall![5]).toBeNull();
+    expect(source.stats().device).toEqual({
+      setting: 'strap-device',
+      active: 'strap-device',
+    });
+  });
   it('uses the raw video when the browser cannot read pixels', async () => {
     vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null);
-    source.setGloveSetting('magenta');
+    source.setDeviceSetting('magenta-glove');
     await source.start({ affectedHand: 'right' });
     await frames(34, 2);
     expect(detect.mock.lastCall![0]).toBeInstanceOf(HTMLVideoElement);
-    expect(source.stats().glove).toEqual({
-      setting: 'magenta',
-      active: 'none',
+    expect(source.stats().device).toEqual({
+      setting: 'magenta-glove',
+      active: 'bare-hand',
     });
     expect(source.stats().error).toBeNull();
   });

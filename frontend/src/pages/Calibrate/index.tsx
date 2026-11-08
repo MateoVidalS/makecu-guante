@@ -51,10 +51,13 @@ import {
   type Draft,
 } from './draft';
 import {
+  CalibrationDeviceNotice,
   CalibrationIssueBanner,
   RelaxedHandSafetyStrip,
   TestModeCard,
 } from '../../components/calibration';
+import { CameraVision } from '../../vision/cameraVision';
+import { rememberCalibrationDevice } from '../../vision/calibrationDevice';
 import {
   useCalibrationStatus,
   useSavedCalibration,
@@ -413,13 +416,19 @@ export default function Calibrate() {
     )
       throw new Error('Complete each calibration step before saving.');
     const camera = draftCamera(draft)!;
-    await runtime.calibration.save({
+    // The device the hand was tracked with (the captures needed a tracked hand).
+    const device =
+      vision.source instanceof CameraVision
+        ? vision.source.trackedDeviceProfile()
+        : null;
+    const saved = await runtime.calibration.save({
       assist_direction: CURRENT_ASSIST_DIRECTION,
       servo: GLOVE_FINGERS.map((f) => draft.servo[f] as ServoCalibration),
       camera,
       friction: draft.friction,
       current_limit_ma: draft.limit,
     });
+    if (device) rememberCalibrationDevice(saved?.camera ?? camera, device);
     await runtime.calibration.sendToGlove();
     vision.setCalibration(camera);
     saveDraft(freshDraft());
@@ -595,6 +604,7 @@ export default function Calibrate() {
           />
         </div>
         <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
+        {draft.step === 1 && <CalibrationDeviceNotice />}
         {error && (
           <p role="alert" className="hp-alert">
             {error}

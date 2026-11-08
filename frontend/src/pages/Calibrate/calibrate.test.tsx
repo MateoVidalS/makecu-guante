@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   act,
   cleanup,
@@ -8,6 +8,11 @@ import {
 } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import Calibrate from './index';
+import { CameraVision } from '../../vision/cameraVision';
+import {
+  calibrationDevice,
+  rememberCalibrationDevice,
+} from '../../vision/calibrationDevice';
 import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
 import { CAMERA_VIEW_RECAPTURE_MESSAGE } from '../../runtime/calibrationValidation';
 import {
@@ -225,4 +230,52 @@ it('starts a legacy closing calibration from unset glove ranges', () => {
   openAdvanced();
   expect(screen.getByText('Slack not set')).toBeVisible();
   expect(screen.getByText('Open not set')).toBeVisible();
+});
+
+describe('the device on the hand', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_SIM', '0'); // The real camera.
+    vi.spyOn(CameraVision.prototype, 'start').mockResolvedValue(undefined);
+  });
+  afterEach(() => vi.restoreAllMocks());
+  it('remembers the device the hand was tracked with when saving', async () => {
+    vi.spyOn(CameraVision.prototype, 'trackedDeviceProfile').mockReturnValue(
+      'strap-device',
+    );
+    const runtime = helperRuntime();
+    const save = vi
+      .spyOn(runtime.calibration, 'save')
+      .mockImplementation(async (value) => ({
+        ...value,
+        id: 101,
+        created_at: new Date().toISOString(),
+      }));
+    mountHelper(<Calibrate />, runtime);
+    fireEvent.click(screen.getByRole('button', { name: 'Save calibration' }));
+    await screen.findByRole('heading', { name: 'Your range is saved' });
+    const camera = save.mock.calls[0][0].camera;
+    expect(calibrationDevice(camera)).toBe('strap-device');
+  });
+  it('asks to calibrate again on the camera step when the device changed', () => {
+    const runtime = helperRuntime();
+    rememberCalibrationDevice(
+      runtime.calibration.current!.camera,
+      'violet-glove',
+    );
+    vi.spyOn(CameraVision.prototype, 'deviceSetting').mockReturnValue(
+      'bare-hand',
+    );
+    vi.spyOn(CameraVision.prototype, 'activeDeviceProfile').mockReturnValue(
+      'bare-hand',
+    );
+    mountHelper(<Calibrate />, runtime, '/calibrate?step=camera');
+    expect(
+      screen.getByRole('heading', { name: 'Step 2 · Camera range' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Calibrated with violet glove. Calibrate again for bare hand.',
+      ),
+    ).toBeVisible();
+  });
 });

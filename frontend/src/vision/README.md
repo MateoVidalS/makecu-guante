@@ -59,27 +59,94 @@ tracks a closing pinch promptly, while the low resting cutoff and smoother
 derivative keep fingertip jitter from restarting the reach dwell. The 3D hand adds
 frame-rate-independent damping and a 1° dead-band (`hand3d/smoothing.ts`). `hand3d/jitter.test.ts` measures the result.
 
+## Device profiles
+
+MediaPipe's hand landmarker is trained on bare skin, so what the patient wears
+changes what it can find. `deviceProfiles.ts` has one entry per device (adding a
+device = adding one entry): an id, a label and one-line description for Setup,
+the preprocessing step applied to a copy of each frame before inference
+(`PreprocessStep`: `(src, dst, width, height, scratch, region?) => fraction
+changed`), a coverage helper (share of a detected hand's skeleton points that
+look like the device) and the Automatic rules below. The preview video and
+recordings of the image are unchanged.
+
+| Profile        | Step before MediaPipe            | Automatic                                     |
+| -------------- | -------------------------------- | --------------------------------------------- |
+| Bare hand      | none (the raw video)             | the starting point; searched                  |
+| Violet glove   | `recolorGlove` violet            | searched; switched to at coverage ≥ 0.6       |
+| Sky blue glove | `recolorGlove` sky blue          | searched; switched to at coverage ≥ 0.6       |
+| Magenta glove  | `recolorGlove` magenta           | searched; switched to at coverage ≥ 0.6       |
+| Black glove    | `recolorGlove` black             | searched only (a dim bare hand looks dark)    |
+| Strap device   | `inpaintDevice` straps, hand box | searched; switched to at strap coverage ≥ 0.2 |
+| Dot points     | `inpaintDevice` points, hand box | never (choose it): dots are too small to see  |
+
+The setting (`CameraVision.setDeviceSetting`, persisted in localStorage under
+`rehab-hub.camera.device-profile`, chosen in Setup as **On the hand**) is
+`auto` or a profile id. The old `rehab-hub.camera.glove-color` values (`auto`,
+`none`, `violet`, `sky-blue`, `magenta`, `black`) are read when no new setting
+exists, so nobody loses their choice; the old key is never written.
+
+- `auto` (default): uses the raw video while the hand is tracked. After the hand
+  has been missing for 250 ms it tries bare → violet → sky blue → magenta → black
+  → strap device, one per frame, and keeps the first that finds the hand. While
+  tracking, it moves to the most specific profile the hand actually wears (gloves:
+  ≥ 60% of skeleton points; violet before sky blue before magenta, then the strap
+  device; never black or dot points), reading the raw video's pixels every 15th
+  frame for this, so tracking a bare hand costs nothing extra. A lavender glove
+  found as sky blue, or tracked on the raw image, moves to violet. If the hand
+  found while preprocessing does not wear that device (gloves: under 30% of
+  skeleton points for 5 frames; strap device: under 10%), it returns to the raw
+  video.
+- A profile id: always that profile.
+
+Strap coverage only counts on a hand that is mostly skin (≥ 40% of skeleton
+points pass `isSkinPixel`): the strap colour rule includes every black-glove
+pixel, and a glove must never be taken for straps. Measured on IMAGE detections
+of the real recordings: device hand skin 0.62–1.0, strap coverage 0.26 median
+(≥ 0.2 in 71 of 108); 192 bare hands (bystanders, the free hand) strap coverage
+≤ 0.19 (≤ 0.12 on raw detections); 114 violet-glove hands skin ≤ 0.10; rendered
+black, grey, sky blue and magenta gloves skin 0. The device steps get `region`,
+the hand's box on the previous frame widened by 0.3 of its larger side
+(`handRegion`), and the whole frame while the hand is lost. Gloves always
+repaint the whole frame (their shading uses the glove's mean brightness).
+
+`stats().device` reports the setting and the active profile;
+`trackedDeviceProfile()` is the profile in use the last time the hand was seen.
+
+**Calibration and device.** A device shifts where MediaPipe puts the joints, so
+a camera calibration only fits the device it was captured with. The frozen
+`CameraCalibration` has no device field: when Calibrate saves, the tracked
+profile is stored in localStorage (`rehab-hub.camera.calibration-device`) keyed
+to the calibration's values (`calibrationDevice.ts`). Setup and the camera step
+of Calibrate then show "Calibrated with <device>. Calibrate again for <device>."
+when the device on the hand (the fixed setting, or what Automatic tracks while it
+sees the hand) differs. Calibrations saved before this, or with the simulator,
+have no device and show nothing.
+
+Measured through this code (VIDEO-mode app emulation: production selector,
+profile steps, `FrameProcessor` and MediaPipe at the app's 0.6 thresholds;
+device-hand frames on the three strap-device recordings described under Device
+inpainting; violet: rounds 3 and 4, each still held for 3 frames):
+
+| Setting           | r5 / 239 | r6 / 240 | r7 / 240 | violet r3 / 180 | violet r4 / 180 |
+| ----------------- | -------- | -------- | -------- | --------------- | --------------- |
+| Automatic, before | 39       | 0        | 23       | 170             | 155             |
+| Automatic         | 69       | 24       | 49       | 170             | 154             |
+| Strap device      | 119      | 39       | 147      |                 |                 |
+| Dot points        | 21       | 9        | 35       |                 |                 |
+| Violet glove      |          |          |          | 179             | 174             |
+
+The violet r4 difference is one frame of a search spent on the strap device.
+With the strap device, choose it in Setup: Automatic only finds it while
+searching, and lets go of it when another hand is tracked. With a 0.15 strap
+threshold Automatic found 69 frames on r7, but 2 of the 192 bare hands passed.
+
 ## Glove colours
 
 MediaPipe's palm detector is trained on bare skin, so solid violet, sky blue,
 magenta and black gloves are often not detected at all. `gloveColor.ts` repaints
 pixels of the glove colour in a skin tone (keeping their shading) on a copy of the
-frame before inference. The preview video and recordings of the image are unchanged.
-
-The setting (`CameraVision.setGloveSetting`, persisted in localStorage under
-`rehab-hub.camera.glove-color`, chosen in Setup as **Glove color**) is one of:
-
-- `auto` (default): uses the raw video while the hand is tracked, exactly as before.
-  After the hand has been missing for 250 ms it tries bare → violet → sky blue →
-  magenta → black, one per frame, and keeps the first that finds the hand. While
-  tracking, it moves to the most specific colour the hand actually wears (≥ 60% of
-  skeleton points; violet before sky blue before magenta; never black), reading the
-  raw video's pixels every 15th frame for this. So a lavender glove found as sky
-  blue, or tracked on the raw image, moves to violet. If the hand found while
-  repainting is not actually that colour (under 30% of skeleton points match for
-  5 frames), it returns to the raw video.
-- `none`: never repaints. `violet`, `sky-blue`, `magenta`, `black`: always repaint
-  that colour.
+frame before inference; the glove profiles call it.
 
 Colour rules and shading are tuned per colour (`TUNING` in `gloveColor.ts`):
 
@@ -107,8 +174,8 @@ Colour rules and shading are tuned per colour (`TUNING` in `gloveColor.ts`):
 - **Sky blue** and **magenta** use plain brightness shading.
 
 Repainting reads the video into a canvas (about 3 ms per 640×480 frame, 5–6 ms for
-black and violet, included in `stats().inference`); `stats().glove` reports the setting and
-active colour. If the browser cannot read pixels, the raw video is used. Known
+black and violet, included in `stats().inference`). If the browser cannot read pixels, the raw
+video is used. Known
 limits: a background of the glove's colour (a blue towel with a sky blue glove, a
 black table with a black glove) becomes skin-coloured too, so use a contrasting
 background; a uniformly coloured fist that fills most of the frame may still be
@@ -118,8 +185,8 @@ missed; and a black glove the camera clips to pure black has no folds to recover
 
 The device on a bare hand hides the fingers from MediaPipe. `deviceInpaint.ts`
 paints it over on a copy of the frame before inference, in the same calling style
-as `recolorGlove` (pure, no DOM, reusable scratch). It is not wired into
-`CameraVision`: the device profiles call it.
+as `recolorGlove` (pure, no DOM, reusable scratch). The Strap device and Dot
+points profiles call it (see Device profiles).
 
 ```ts
 const scratch = createDeviceScratch();

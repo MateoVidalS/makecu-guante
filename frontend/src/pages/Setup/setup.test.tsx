@@ -5,9 +5,11 @@ import {
   fireEvent,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { CameraVision } from '../../vision/cameraVision';
+import { rememberCalibrationDevice } from '../../vision/calibrationDevice';
 import {
   mountHelper,
   resetHelperStorage,
@@ -340,4 +342,76 @@ it('allows simulated practice without the hardware safety confirmations', async 
   expect(screen.getByRole('checkbox', { name: skinCheck })).not.toBeChecked();
   fireEvent.click(practiceButton());
   await waitFor(() => expect(start).toHaveBeenCalledOnce());
+});
+
+it('chooses what is on the hand, keeping the old glove color setting', () => {
+  localStorage.setItem('rehab-hub.camera.glove-color', 'magenta');
+  mountHelper(<Setup />);
+  const select = screen.getByRole('combobox', { name: 'On the hand' });
+  expect(select).toHaveValue('magenta-glove');
+  expect(
+    within(select)
+      .getAllByRole('option')
+      .map((option) => option.textContent),
+  ).toEqual([
+    'Automatic',
+    'Bare hand',
+    'Violet glove',
+    'Sky blue glove',
+    'Magenta glove',
+    'Black glove',
+    'Strap device',
+    'Dot points',
+  ]);
+  expect(select).toHaveAccessibleDescription(
+    'A pink or magenta glove. Use a background that is not the glove color.',
+  );
+  fireEvent.change(select, { target: { value: 'strap-device' } });
+  expect(select).toHaveAccessibleDescription(
+    'Black straps around the finger segments, with thread guides and cables.',
+  );
+  expect(localStorage.getItem('rehab-hub.camera.device-profile')).toBe(
+    'strap-device',
+  );
+  fireEvent.change(select, { target: { value: 'auto' } });
+  expect(select).toHaveAccessibleDescription(/^Finds a bare hand/);
+  expect(screen.queryByText(/^Calibrated with/)).not.toBeInTheDocument();
+});
+
+it('asks to redo the camera range when the device on the hand changed', async () => {
+  vi.spyOn(CameraVision.prototype, 'start').mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'mediaDevices', {
+    configurable: true,
+    value: { enumerateDevices: async () => [] },
+  });
+  const runtime = currentRuntime();
+  rememberCalibrationDevice(
+    runtime.calibration.current!.camera,
+    'violet-glove',
+  );
+  mountHelper(<Setup />, runtime);
+  fireEvent.click(await screen.findByRole('button', { name: 'Stop camera' }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Connect camera' }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Connect camera' }),
+    ).toBeEnabled(),
+  );
+  const select = screen.getByRole('combobox', { name: 'On the hand' });
+  fireEvent.change(select, { target: { value: 'bare-hand' } });
+  expect(
+    await screen.findByText(
+      'Calibrated with violet glove. Calibrate again for bare hand.',
+    ),
+  ).toBeVisible();
+  expect(
+    screen.getByRole('link', { name: 'Redo camera range' }),
+  ).toHaveAttribute('href', '/calibrate?step=camera');
+  fireEvent.change(select, { target: { value: 'violet-glove' } });
+  expect(screen.queryByText(/^Calibrated with/)).not.toBeInTheDocument();
+  // Automatic says nothing until it sees the hand.
+  fireEvent.change(select, { target: { value: 'auto' } });
+  expect(screen.queryByText(/^Calibrated with/)).not.toBeInTheDocument();
 });

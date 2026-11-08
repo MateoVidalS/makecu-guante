@@ -1,16 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  GLOVE_LOST_MS,
-  GLOVE_MISMATCH_FRAMES,
-  GloveColorSelector,
   gloveCoverage,
   isGlovePixel,
   isGloveShadowPixel,
   recolorGlove,
-  savedGloveSetting,
-  saveGloveSetting,
-  suggestGloveColor,
-  type GloveColor,
 } from './gloveColor';
 import type { Landmark } from './flex';
 
@@ -232,136 +225,5 @@ describe('gloveCoverage', () => {
     expect(
       gloveCoverage(pixels, width, height, hand(0.2).slice(1), 'sky-blue'),
     ).toBe(0);
-  });
-});
-
-describe('suggestGloveColor', () => {
-  const width = 10,
-    height = 10;
-  const hand: Landmark[] = Array.from({ length: 21 }, (_, i): Landmark => [
-    0.1 + (i % 5) * 0.2,
-    0.1 + Math.floor(i / 5) * 0.2,
-    0,
-  ]);
-  const filled = (rgb: RGB) =>
-    image(Array.from({ length: width * height }, () => rgb));
-  it('names the most specific colour the hand wears', () => {
-    // Lavender passes both the violet and the broader sky blue rule.
-    expect(isGlovePixel('sky-blue', 95, 100, 160)).toBe(true);
-    expect(suggestGloveColor(filled([95, 100, 160]), width, height, hand)).toBe(
-      'violet',
-    );
-    expect(
-      suggestGloveColor(filled([120, 190, 230]), width, height, hand),
-    ).toBe('sky-blue');
-    expect(suggestGloveColor(filled([205, 40, 165]), width, height, hand)).toBe(
-      'magenta',
-    );
-  });
-  it('suggests nothing for skin or black', () => {
-    expect(
-      suggestGloveColor(filled([224, 172, 140]), width, height, hand),
-    ).toBeNull();
-    expect(
-      suggestGloveColor(filled([15, 15, 18]), width, height, hand),
-    ).toBeNull();
-  });
-});
-
-describe('GloveColorSelector', () => {
-  const lose = (selector: GloveColorSelector, from: number, frames: number) => {
-    const seen: GloveColor[] = [];
-    for (let i = 0; i < frames; i++) {
-      selector.update(from + i * 33, false);
-      seen.push(selector.current);
-    }
-    return seen;
-  };
-  it('keeps a fixed setting regardless of detection', () => {
-    const selector = new GloveColorSelector('magenta');
-    lose(selector, 0, 30);
-    expect(selector.current).toBe('magenta');
-    selector.update(1000, true, 0);
-    expect(selector.current).toBe('magenta');
-  });
-  it('starts on the raw image and keeps it while the hand is tracked', () => {
-    const selector = new GloveColorSelector();
-    for (let t = 0; t < 2000; t += 33) selector.update(t, true);
-    expect(selector.current).toBe('none');
-  });
-  it('waits before searching, then tries one colour per frame', () => {
-    const selector = new GloveColorSelector();
-    const frames = Math.ceil(GLOVE_LOST_MS / 33);
-    expect(lose(selector, 0, frames)).toEqual(Array(frames).fill('none'));
-    expect(lose(selector, frames * 33, 6)).toEqual([
-      'violet',
-      'sky-blue',
-      'magenta',
-      'black',
-      'none',
-      'violet',
-    ]);
-  });
-  it('locks onto the colour that finds the hand', () => {
-    const selector = new GloveColorSelector();
-    lose(selector, 0, 11); // The 9th lost frame (264 ms) starts the search.
-    expect(selector.current).toBe('magenta');
-    for (let t = 400; t < 3000; t += 33) selector.update(t, true, 0.9);
-    expect(selector.current).toBe('magenta');
-  });
-  it('returns to the raw image when the tracked hand is not that colour', () => {
-    const selector = new GloveColorSelector();
-    lose(selector, 0, 10);
-    expect(selector.current).toBe('sky-blue');
-    for (let i = 0; i < GLOVE_MISMATCH_FRAMES - 1; i++)
-      selector.update(400 + i * 33, true, 0.05);
-    expect(selector.current).toBe('sky-blue');
-    selector.update(400, true, 0.9); // One good frame resets the count.
-    for (let i = 0; i < GLOVE_MISMATCH_FRAMES - 1; i++)
-      selector.update(500 + i * 33, true, 0.05);
-    expect(selector.current).toBe('sky-blue');
-    selector.update(700, true, 0.05);
-    expect(selector.current).toBe('none');
-  });
-  it('switches to the colour the tracked hand actually wears', () => {
-    const selector = new GloveColorSelector();
-    selector.update(0, true, null, 'violet'); // Tracked on the raw image.
-    expect(selector.current).toBe('violet');
-    selector.update(33, true, 0.9, 'violet');
-    expect(selector.current).toBe('violet');
-    lose(selector, 66, 9); // Search starts at 330 ms: violet → sky blue.
-    expect(selector.current).toBe('sky-blue');
-    selector.update(400, true, 0.9, 'violet'); // Found as sky blue: refine.
-    expect(selector.current).toBe('violet');
-  });
-  it('ignores suggestions while the hand is lost or the colour is fixed', () => {
-    const auto = new GloveColorSelector();
-    auto.update(0, false, null, 'violet');
-    expect(auto.current).toBe('none');
-    const fixed = new GloveColorSelector('magenta');
-    fixed.update(0, true, 0.9, 'violet');
-    expect(fixed.current).toBe('magenta');
-  });
-  it('restarts the loss timer after a reset or a new setting', () => {
-    const selector = new GloveColorSelector();
-    lose(selector, 0, 7);
-    selector.reset();
-    expect(lose(selector, 300, 1)).toEqual(['none']);
-    selector.configure('black');
-    expect(selector.current).toBe('black');
-    selector.configure('auto');
-    expect(selector.current).toBe('none');
-    expect(selector.mode).toBe('auto');
-  });
-});
-
-describe('saved glove setting', () => {
-  beforeEach(() => localStorage.clear());
-  it('defaults to automatic and persists valid settings only', () => {
-    expect(savedGloveSetting()).toBe('auto');
-    saveGloveSetting('black');
-    expect(savedGloveSetting()).toBe('black');
-    localStorage.setItem('rehab-hub.camera.glove-color', 'purple');
-    expect(savedGloveSetting()).toBe('auto');
   });
 });

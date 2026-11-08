@@ -13,22 +13,24 @@ import { FrameProcessor, missingFrame } from './frameProcessor';
 import type { LandmarkCapture } from './recorder';
 import { VideoLightingSampler, type VisionDiagnostics } from './lighting';
 import {
-  GloveColorSelector,
-  createRecolorScratch,
-  gloveCoverage,
-  recolorGlove,
-  savedGloveSetting,
-  saveGloveSetting,
-  suggestGloveColor,
-  type GloveColor,
-  type GloveSetting,
-} from './gloveColor';
+  DeviceProfileSelector,
+  RAW_PROFILE,
+  StepScratch,
+  deviceProfile,
+  handRegion,
+  savedDeviceSetting,
+  saveDeviceSetting,
+  suggestDeviceProfile,
+  type DeviceProfile,
+  type DeviceProfileId,
+  type DeviceSetting,
+} from './deviceProfiles';
 
 type Delegate = 'GPU' | 'CPU';
 /** While automatic mode tracks the raw video, read its pixels this often. */
-const GLOVE_SAMPLE_FRAMES = 15;
+const DEVICE_SAMPLE_FRAMES = 15;
 type PreparedFrame = {
-  /** Repainted copy for inference, or null to use the raw video. */
+  /** Preprocessed copy for inference, or null to use the raw video. */
   image: ImageData | null;
   pixels: Uint8ClampedArray;
   width: number;
@@ -46,8 +48,8 @@ export interface CameraStats {
   frames: number;
   skipped: number;
   error: string | null;
-  /** Glove-colour setting and the colour repainted on the latest frame. */
-  glove: { setting: GloveSetting; active: GloveColor };
+  /** Device setting and the profile applied to the latest frame. */
+  device: { setting: DeviceSetting; active: DeviceProfileId };
 }
 const percentiles = (values: number[]): LatencyStats => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -99,13 +101,17 @@ export class CameraVision implements VisionSource {
   private frames = 0;
   private skipped = 0;
   private error: string | null = null;
-  private glove = new GloveColorSelector(savedGloveSetting());
-  private recolorScratch = createRecolorScratch();
+  private device = new DeviceProfileSelector(savedDeviceSetting());
+  private stepScratch = new StepScratch();
+  /** The profile applied to the latest frame in which the hand was detected. */
+  private tracked: DeviceProfileId | null = null;
+  /** The hand on the previous frame, or null if it was not detected. */
+  private previousHand: VisionFrame['landmarks'] = null;
   private canvas: HTMLCanvasElement | null = null;
   private context: CanvasRenderingContext2D | null = null;
   private output: ImageData | null = null;
   /** Set when the browser cannot read video pixels; the raw video is used. */
-  private recolorUnavailable = false;
+  private pixelsUnavailable = false;
 
   static async devices(): Promise<MediaDeviceInfo[]> {
     if (!navigator.mediaDevices?.enumerateDevices) return [];
@@ -126,25 +132,29 @@ export class CameraVision implements VisionSource {
     this.processor.reset();
     this.publish(missingFrame(performance.now()));
   }
-  gloveSetting(): GloveSetting {
-    return this.glove.mode;
+  deviceSetting(): DeviceSetting {
+    return this.device.mode;
   }
-  /** The colour repainted before inference on the latest frame. */
-  activeGloveColor(): GloveColor {
-    return this.recolorUnavailable ? 'none' : this.glove.current;
+  /** The profile applied before inference on the latest frame. */
+  activeDeviceProfile(): DeviceProfileId {
+    return this.pixelsUnavailable ? RAW_PROFILE : this.device.current;
+  }
+  /** The profile in use the last time the hand was detected, or null if never. */
+  trackedDeviceProfile(): DeviceProfileId | null {
+    return this.tracked;
   }
   /** Persists the setting; takes effect on the next frame. */
-  setGloveSetting(setting: GloveSetting) {
-    saveGloveSetting(setting);
-    this.glove.configure(setting);
+  setDeviceSetting(setting: DeviceSetting) {
+    saveDeviceSetting(setting);
+    this.device.configure(setting);
   }
   /**
-   * Reads the frame's pixels and, unless `color` is none, repaints glove-coloured
-   * pixels in a copy. Null (no pixels) keeps the raw video.
+   * Reads the frame's pixels and, if the profile has a preprocessing step,
+   * applies it to a copy. Null (no pixels) keeps the raw video.
    */
   private prepare(
     video: HTMLVideoElement,
-    color: GloveColor,
+    profile: DeviceProfile,
   ): PreparedFrame | null {
     const width = video.videoWidth,
       height = video.videoHeight;
@@ -156,24 +166,25 @@ export class CameraVision implements VisionSource {
       willReadFrequently: true,
     });
     if (!this.context) {
-      this.recolorUnavailable = true;
-      console.info('[vision] canvas unavailable; glove colours disabled');
+      this.pixelsUnavailable = true;
+      console.info('[vision] canvas unavailable; device profiles disabled');
       return null;
     }
     try {
       this.context.drawImage(video, 0, 0, width, height);
       const source = this.context.getImageData(0, 0, width, height);
-      if (color === 'none')
+      if (!profile.preprocess)
         return { image: null, pixels: source.data, width, height };
       if (this.output?.width !== width || this.output.height !== height)
         this.output = new ImageData(width, height);
-      recolorGlove(
+      profile.preprocess(
         source.data,
         this.output.data,
         width,
         height,
-        color,
-        this.recolorScratch,
+        this.stepScratch,
+        // Where the hand was; the whole frame while it is lost.
+        handRegion(this.previousHand, width, height),
       );
       return { image: this.output, pixels: source.data, width, height };
     } catch {
@@ -213,7 +224,7 @@ export class CameraVision implements VisionSource {
     this.skipped = 0;
     this.error = null;
     // Setup may have changed the setting while another source was active.
-    this.glove.configure(savedGloveSetting());
+    this.device.configure(savedDeviceSetting());
     let stream: MediaStream | null = null;
     let model: HandLandmarker | null = null;
     try {
@@ -336,15 +347,15 @@ export class CameraVision implements VisionSource {
     this.lastInference = now;
     try {
       const started = performance.now();
-      const color = this.activeGloveColor();
-      // On the raw video, automatic mode still samples pixels to notice a glove.
+      const profile = deviceProfile(this.activeDeviceProfile());
+      // On the raw video, automatic mode still samples pixels to notice a device.
       const sample =
-        color === 'none' &&
-        this.glove.mode === 'auto' &&
-        !this.recolorUnavailable &&
-        this.frames % GLOVE_SAMPLE_FRAMES === 0;
+        !profile.preprocess &&
+        this.device.mode === 'auto' &&
+        !this.pixelsUnavailable &&
+        this.frames % DEVICE_SAMPLE_FRAMES === 0;
       const prepared =
-        color !== 'none' || sample ? this.prepare(this.video, color) : null;
+        profile.preprocess || sample ? this.prepare(this.video, profile) : null;
       const result = this.landmarker.detectForVideo(
         prepared?.image ?? this.video,
         started,
@@ -364,20 +375,21 @@ export class CameraVision implements VisionSource {
         handednessMismatch: this.processor.handednessMismatch,
       };
       const hand = frame.detected ? frame.landmarks : null;
-      this.glove.update(
+      this.previousHand = hand;
+      if (hand) this.tracked = profile.id;
+      this.device.update(
         started,
         frame.detected,
-        prepared && hand && color !== 'none'
-          ? gloveCoverage(
+        prepared && hand && profile.preprocess && profile.coverage
+          ? profile.coverage(
               prepared.pixels,
               prepared.width,
               prepared.height,
               hand,
-              color,
             )
           : null,
         prepared && hand
-          ? suggestGloveColor(
+          ? suggestDeviceProfile(
               prepared.pixels,
               prepared.width,
               prepared.height,
@@ -452,7 +464,8 @@ export class CameraVision implements VisionSource {
     this.previousMediaTime = -1;
     this.lastInference = -Infinity;
     this.processor.reset();
-    this.glove.reset();
+    this.device.reset();
+    this.previousHand = null;
     this.publish(missingFrame(performance.now()));
   }
   setCalibration(calibration: CameraCalibration | null): void {
@@ -504,7 +517,7 @@ export class CameraVision implements VisionSource {
       frames: this.frames,
       skipped: this.skipped,
       error: this.error,
-      glove: { setting: this.glove.mode, active: this.activeGloveColor() },
+      device: { setting: this.device.mode, active: this.activeDeviceProfile() },
     };
   }
 }
