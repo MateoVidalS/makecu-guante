@@ -1,3 +1,4 @@
+import type { TherapyMarker } from '../therapy/data';
 import type { AttemptResult, AttemptTrace } from '../../contracts/engine';
 import { phaseSegments, type PhaseKind } from './visuals';
 import { useWidth, VisualLegend, type LegendEntry } from './VisualCard';
@@ -26,11 +27,13 @@ const KIND_LEGEND: Record<PhaseKind, LegendEntry> = {
 export function PhaseStrip({
   trace,
   safety = [],
+  therapyMarkers = [],
   padLeft = 36,
   padRight = 12,
 }: {
   trace?: AttemptTrace;
   safety?: AttemptResult['safety_events'];
+  therapyMarkers?: TherapyMarker[];
   padLeft?: number;
   padRight?: number;
 }) {
@@ -42,6 +45,7 @@ export function PhaseStrip({
   const plotW = Math.max(40, width - padLeft - padRight);
   const x = (t: number) =>
     padLeft + ((t - t0) / Math.max(1e-6, t1 - t0)) * plotW;
+  const visibleMarkers = therapyMarkers.filter((m) => m.t >= t0 && m.t <= t1);
   const kinds = [...new Set(segments.map((s) => s.kind))];
   const describe = segments
     .map((s) => `${s.label} ${s.start.toFixed(1)}–${s.end.toFixed(1)} s`)
@@ -52,7 +56,7 @@ export function PhaseStrip({
         ref={ref}
         className="viz-measure"
         role="img"
-        aria-label={`Attempt phases: ${describe}.${safety.length ? ` ${safety.length} safety event${safety.length > 1 ? 's' : ''} marked.` : ''}`}
+        aria-label={`Attempt phases: ${describe}.${safety.length ? ` ${safety.length} safety event${safety.length > 1 ? 's' : ''} marked.` : ''}${visibleMarkers.length ? ` Coach timeline: ${visibleMarkers.map((m) => `${m.label} at ${m.t.toFixed(1)} s`).join('; ')}.` : ''}`}
       >
         <svg
           className="viz-svg"
@@ -85,6 +89,24 @@ export function PhaseStrip({
               </g>
             );
           })}
+          {visibleMarkers.map((marker, i) => (
+            <g key={`therapy-${i}`} transform={`translate(${x(marker.t)} 8)`}>
+              <title>{`${marker.label} at ${marker.t.toFixed(1)} s`}</title>
+              {marker.kind === 'decision' ? (
+                <circle r={4} fill="var(--accent)" />
+              ) : (
+                <path d="M0 -5L5 0L0 5L-5 0Z" fill="var(--muted)" />
+              )}
+              <line
+                y1={5}
+                y2={24}
+                stroke={
+                  marker.kind === 'decision' ? 'var(--accent)' : 'var(--muted)'
+                }
+                strokeDasharray="2 2"
+              />
+            </g>
+          ))}
           {safety.map((e, i) => (
             <g
               key={i}
@@ -106,6 +128,24 @@ export function PhaseStrip({
       <VisualLegend
         items={[
           ...kinds.map((k) => KIND_LEGEND[k]),
+          ...(visibleMarkers.some((m) => m.kind === 'decision')
+            ? [
+                {
+                  label: 'Coach decision',
+                  mark: 'dot' as const,
+                  color: 'var(--accent)',
+                },
+              ]
+            : []),
+          ...(visibleMarkers.some((m) => m.kind === 'feeling')
+            ? [
+                {
+                  label: 'Feeling check-in',
+                  mark: 'diamond' as const,
+                  color: 'var(--muted)',
+                },
+              ]
+            : []),
           ...(safety.length
             ? [
                 {

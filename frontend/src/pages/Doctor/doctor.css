@@ -250,3 +250,28 @@
   padding-block-start: var(--space-32);
   border-block-start: var(--control-border) solid var(--border);
 }
+
+.therapy-trend {
+  height: calc(var(--control-lg) * 4);
+  font-size: var(--caption);
+}
+.therapy-review-table {
+  font-size: var(--small);
+}
+.therapy-summary-title {
+  font-size: var(--h3);
+  margin-block: var(--space-16) var(--space-8);
+}
+.therapy-summary {
+  columns: 2;
+  padding-inline-start: var(--space-24);
+  font-size: var(--small);
+}
+@media print {
+  .therapy-trend {
+    break-inside: avoid;
+  }
+  .therapy-review-table {
+    display: none;
+  }
+}

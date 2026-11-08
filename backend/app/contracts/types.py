@@ -32,6 +32,8 @@ class ServoCalibration(ContractModel):
 
 class CameraCalibration(ContractModel):
     affected_hand: Handedness
+    # Absent in older calibrations (treated as front_diagonal by the app).
+    camera_view: Literal["front_upright", "front_diagonal"] | None = None
     open_flex: dict[FingerId, float]
     closed_flex: dict[FingerId, float]
     pinch_closed: float

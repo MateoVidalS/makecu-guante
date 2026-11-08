@@ -32,7 +32,10 @@ const clips = Object.fromEntries(
   ]),
 );
 const sums = (pose: string) => {
-  const joints = jointAngles(clips[pose].frames[0].worldLandmarks);
+  const joints = jointAngles(
+    clips[pose].frames[0].worldLandmarks,
+    'front_diagonal',
+  );
   return fingerMap((f) => joints[f].mcp + joints[f].pip + joints[f].dip);
 };
 const result = (
@@ -96,7 +99,13 @@ describe('synthetic palm-down, thumb-side diagonal view (not hardware validation
           pinch_open: 1,
           pinch_closed: 0.1,
         };
-        return processor.process(result(pose, hand), 0, hand);
+        return processor.process(
+          result(pose, hand),
+          0,
+          hand,
+          false,
+          'front_diagonal',
+        );
       };
       const frames = poses.map(closure);
       for (const finger of ['index', 'middle', 'ring', 'pinky'] as const) {
@@ -120,6 +129,8 @@ describe('synthetic palm-down, thumb-side diagonal view (not hardware validation
           result('full_fist', hand, i % 30),
           (i * 1000) / 30,
           hand,
+          false,
+          'front_diagonal',
         ),
       );
       const captured = captureStats(held, 2);
@@ -132,11 +143,19 @@ describe('synthetic palm-down, thumb-side diagonal view (not hardware validation
   );
   it('does not reset joint smoothing when a lone-hand MediaPipe label flips', () => {
     const processor = new FrameProcessor();
-    processor.process(result('open', 'right', 0, 'Right'), 0, 'right');
+    processor.process(
+      result('open', 'right', 0, 'Right'),
+      0,
+      'right',
+      false,
+      'front_diagonal',
+    );
     const frame = processor.process(
       result('full_fist', 'right', 0, 'Left'),
       1000 / 30,
       'right',
+      false,
+      'front_diagonal',
     );
     for (const finger of FINGERS) {
       expect(frame.rawFlexSum![finger]).toBeGreaterThan(0);
@@ -150,6 +169,8 @@ describe('synthetic palm-down, thumb-side diagonal view (not hardware validation
       result('full_fist', 'right'),
       300,
       'right',
+      false,
+      'front_diagonal',
     );
     for (const finger of FINGERS)
       expect(reacquired.rawFlexSum![finger]).toBeCloseTo(

@@ -8,13 +8,22 @@ import type { Session, TranscriptLine, VoiceToken } from '../contracts/api';
 import { ApiRequestError } from '../api/client';
 import { BrowserAudio, type VoiceAudio } from './audio';
 import { GeminiLiveTransport } from './GeminiLiveTransport';
-import type { LiveTransport, TransportEvent } from './transport';
+import type { LiveTransport, ToolCall, TransportEvent } from './transport';
 import { BrowserLocalVoice, SafetyNet, type LocalVoice } from './safetyNet';
 import { fallbackPhrase } from './fallbackCoach';
 import { CueScheduler, eventCue } from './cues';
-import { movementContext, summaryContext } from './context';
+import { liveContext, movementContext, summaryContext } from './context';
 import { dispatchTool } from './tools';
 import { TranscriptBatcher } from './transcript';
+import {
+  patientBrakeReason,
+  reportedPain,
+  normalizePatientText,
+} from './patientSafety';
+import {
+  type PatientTranscriber,
+  BrowserPatientTranscriber,
+} from './patientTranscriber';
 export type VoiceMode = 'live' | 'simple' | 'off';
 export type VoiceStatus =
   'off' | 'connecting' | 'listening' | 'speaking' | 'paused' | 'fallback';
@@ -34,6 +43,7 @@ export interface VoiceDependencies {
   transport(): LiveTransport;
   audio: VoiceAudio;
   local: LocalVoice;
+  patient?: PatientTranscriber;
 }
 async function withDeadline<T>(operation: Promise<T>, ms = 15000): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -69,6 +79,11 @@ export class VoiceController {
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private fallbackTimer?: ReturnType<typeof setTimeout>;
   private captionTimer?: ReturnType<typeof setTimeout>;
+  private liveTimer?: ReturnType<typeof setInterval>;
+  private checkedAttempts = new Set<number>();
+  private awaitingPainUntil = 0;
+  private patientBraked = false;
+  private brakeLatched = false;
   private failures = 0;
   private greeted = false;
   private reconnecting = false;
@@ -171,6 +186,16 @@ export class VoiceController {
     this.handled.clear();
     this.cancelled.clear();
     this.recent = '';
+    this.checkedAttempts.clear();
+    this.awaitingPainUntil = 0;
+    this.brakeLatched = false;
+    this.patientBraked = false;
+    this.liveTimer = setInterval(() => {
+      if (!this.active || !this.connected || this.state.mode !== 'live') return;
+      const state = this.runtime.therapy?.state();
+      if (state && ['ATTEMPT', 'ASSIST', 'HOLD'].includes(state.phase))
+        this.transport?.sendText(liveContext(state), false);
+    }, 1000);
     this.update({ unavailable: false, transcriptError: false });
     this.deps.local.unlock();
     if (id !== null) {
@@ -290,6 +315,7 @@ export class VoiceController {
   private simple(unavailable: boolean) {
     this.disconnect();
     this.update({ mode: 'simple', status: 'fallback', unavailable });
+    this.listenSimple();
     if (this.active && !this.safetySpeaking)
       this.speak(
         `Let's practice together. ${this.runtime.exercise.view().pose.instruction}`,
@@ -321,9 +347,12 @@ export class VoiceController {
         )
           break;
         if (event.role === 'coach') clearTimeout(this.captionTimer);
-        if (event.role === 'patient')
-          this.scheduler.setTalking(!event.finished);
         this.partial[event.role] += event.text;
+        if (event.role === 'patient') {
+          this.checkPatientSafety(this.partial.patient);
+          this.runtime.therapy?.notePatientSpeech?.(this.partial.patient);
+          this.scheduler.setTalking(!event.finished);
+        }
         this.update(
           event.role === 'coach'
             ? { lastCoachLine: this.partial.coach }
@@ -335,7 +364,11 @@ export class VoiceController {
         this.finishTranscripts();
         this.scheduler.setTalking(false);
         this.update({
-          status: this.runtime.exercise.view().paused ? 'paused' : 'listening',
+          status: this.safetySpeaking
+            ? 'speaking'
+            : this.runtime.exercise.view().paused
+              ? 'paused'
+              : 'listening',
         });
         break;
       case 'cancelTools':
@@ -347,14 +380,72 @@ export class VoiceController {
             continue;
           this.handled.add(call.id);
           const transport = this.transport;
-          void dispatchTool(this.runtime, call, this.previous).then(
-            (response) => {
-              if (transport === this.transport && !this.cancelled.has(call.id))
-                transport?.respond(call, response);
-            },
-          );
+          if (
+            this.brakeLatched &&
+            ![
+              'get_live_state',
+              'get_progress',
+              'record_feeling',
+              'brake',
+              'pause_session',
+              'stop_session',
+              'repeat_instruction',
+              'highlight_finger',
+              'note_for_therapist',
+            ].includes(call.name)
+          ) {
+            const response = {
+              ok: false,
+              reason:
+                'Patient brake is active. Wait for an explicit request to continue.',
+            };
+            this.auditTool(call, response, this.batch);
+            transport?.respond(call, response);
+            continue;
+          }
+          const batch = this.batch;
+          const response = dispatchTool(this.runtime, call, this.previous);
+          // Runtime braking is synchronous, even though tool responses are promises.
+          const braking =
+            this.runtime.therapy &&
+            (call.name === 'brake' ||
+              (call.name === 'record_feeling' &&
+                typeof call.args?.pain === 'number' &&
+                call.args.pain >= 4));
+          if (braking) this.brakeLatched = true;
+          void response.then((response) => {
+            this.auditTool(call, response, batch);
+            if (transport === this.transport && !this.cancelled.has(call.id)) {
+              if (braking && response.ok === true)
+                this.safety.announce(
+                  'Stopped. The glove has released. Tell me how you feel.',
+                );
+              transport?.respond(call, response);
+            }
+          });
         }
     }
+  }
+  private auditTool(
+    call: ToolCall,
+    response: Record<string, unknown>,
+    batch: TranscriptBatcher | undefined,
+  ) {
+    // Runtime mutation decisions carry applied/clamped args; transcript auditing
+    // also preserves read/legacy tools and voice-level rejections for replay.
+    batch?.add(
+      'system',
+      '[tool] ' +
+        JSON.stringify({
+          id: call.id,
+          tool: call.name,
+          requested: call.args ?? {},
+          response,
+        }),
+    );
+    // A stop tool may finish after the provider stopped or started a new session.
+    // Keep its result in the original session, including after its final flush.
+    if (batch && batch !== this.batch) void batch.flush();
   }
   private finishTranscript(role: 'coach' | 'patient') {
     const text = this.partial[role];
@@ -363,7 +454,52 @@ export class VoiceController {
     if (role === 'coach') {
       this.caption(text);
       this.scheduler.noteCoachSpeech();
-    } else this.batch?.add(role, text);
+    } else {
+      this.batch?.add(role, text);
+      if (
+        reportedPain(text, performance.now() < this.awaitingPainUntil) !== null
+      )
+        this.awaitingPainUntil = 0;
+      if (
+        /^(?:(?:yes|okay|ok|please|si|por favor) )?(?:continue|resume|continuar|continua)(?: (?:please|now|practice|por favor))?[. ]*$/.test(
+          normalizePatientText(text),
+        )
+      )
+        this.brakeLatched = false;
+      this.patientBraked = false;
+    }
+  }
+  private checkPatientSafety(text: string) {
+    const awaitingPain = performance.now() < this.awaitingPainUntil;
+    const reason = patientBrakeReason(text, awaitingPain);
+    if (!reason) return;
+    if (this.patientBraked) return;
+    this.patientBraked = true;
+    this.brakeLatched = true;
+    // No await: release/pause happens before local speech or any model reply.
+    if (this.runtime.therapy) this.runtime.therapy.brake(reason, 'local_rule');
+    else this.runtime.exercise.pause(); // Pre-A1 runtime pause also releases.
+    this.safety.announce(
+      'Stopped. The glove has released. Tell me how you feel.',
+    );
+    this.transport?.sendText(
+      `[safety] ${reason} Released and paused locally; already announced. Never resume without the patient's request.`,
+      false,
+    );
+  }
+  private listenSimple() {
+    this.deps.patient?.stop();
+    if (!this.active || this.state.mode !== 'simple' || this.state.muted)
+      return;
+    this.deps.patient?.start((text, finished) => {
+      if (!this.active || this.state.mode !== 'simple' || this.state.muted)
+        return;
+      this.partial.patient = text;
+      this.checkPatientSafety(text);
+      this.runtime.therapy?.notePatientSpeech?.(text);
+      this.update({ lastPatientLine: text });
+      if (finished) this.finishTranscript('patient');
+    });
   }
   private finishTranscripts() {
     this.finishTranscript('coach');
@@ -387,6 +523,8 @@ export class VoiceController {
       this.update({ status: this.safetySpeaking ? 'speaking' : 'paused' });
       return;
     }
+    if (event.kind === 'phase' && event.phase !== 'PAUSED')
+      this.brakeLatched = false;
     if ((view.paused || this.safetySpeaking) && event.kind !== 'session_done')
       return;
     if (event.kind === 'phase' && event.phase === 'ATTEMPT')
@@ -394,6 +532,18 @@ export class VoiceController {
     if (event.kind === 'reached') this.deps.local.tone('reached');
     if (event.kind === 'assist_started') this.deps.local.tone('assist');
     const cue = eventCue(event, view, this.lastAttempt);
+    const checkIn =
+      event.kind === 'attempt_done' &&
+      !event.result.interrupted &&
+      (event.result.index + 1) % 3 === 0 &&
+      !this.checkedAttempts.has(event.result.index);
+    if (checkIn) {
+      this.checkedAttempts.add(event.result.index);
+      this.awaitingPainUntil = performance.now() + 30000;
+      if (cue)
+        cue.text +=
+          ' [check-in] Ask for pain, then fatigue, each from 0 to 10. Record both reported ratings with record_feeling; ask for missing values.';
+    }
     if (event.kind === 'attempt_done') this.lastAttempt = event.result;
     if (cue) this.recent = cue.text;
     if (
@@ -403,7 +553,9 @@ export class VoiceController {
     )
       this.scheduler.push(cue, event);
     if (this.state.mode === 'simple' && !this.safetySpeaking) {
-      const phrase = fallbackPhrase(event);
+      const phrase = checkIn
+        ? 'Nice work. Rate pain, then fatigue, from zero to ten.'
+        : fallbackPhrase(event);
       if (phrase) {
         clearTimeout(this.fallbackTimer);
         const delay = Math.max(0, this.safetyUntil - performance.now());
@@ -413,6 +565,8 @@ export class VoiceController {
       }
     }
     if (event.kind === 'session_done') {
+      clearInterval(this.liveTimer);
+      this.deps.patient?.stop();
       this.finishTranscripts();
       void this.batch?.flush();
     }
@@ -420,6 +574,7 @@ export class VoiceController {
   setMuted(muted: boolean) {
     this.update({ muted });
     this.deps.audio.setMuted(muted);
+    if (this.state.mode === 'simple') this.listenSimple();
     if (muted) this.transport?.endAudio();
   }
   setMode(mode: VoiceMode) {
@@ -439,6 +594,7 @@ export class VoiceController {
     clearTimeout(this.fallbackTimer);
     this.reconnecting = false;
     this.connected = false;
+    this.deps.patient?.stop();
     this.transport?.close();
     this.transport = undefined;
     this.deps.audio.close();
@@ -449,6 +605,7 @@ export class VoiceController {
   stop() {
     this.generation++;
     this.active = false;
+    clearInterval(this.liveTimer);
     this.disconnect();
     this.finishTranscripts();
     const batch = this.batch;
@@ -470,4 +627,5 @@ export const browserVoiceDependencies = {
   transport: () => new GeminiLiveTransport(),
   audio: () => new BrowserAudio(),
   local: () => new BrowserLocalVoice(),
+  patient: () => new BrowserPatientTranscriber(),
 };

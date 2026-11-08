@@ -19,6 +19,7 @@ export function FingerGauge({
   tolerance = 0.1,
   state,
   assisting = state === 'assist',
+  highlighted = false,
 }: {
   finger: string;
   /** Live closure 0..1, null when the hand isn't seen. */
@@ -31,6 +32,7 @@ export function FingerGauge({
   state: GaugeState;
   /** Retain the helped segment after reaching, while other fingers finish. */
   assisting?: boolean;
+  highlighted?: boolean;
 }) {
   const free = target == null;
   const opening = target != null && target <= 0.05;
@@ -67,6 +69,7 @@ export function FingerGauge({
     free ? 'free finger' : `goal ${pct(target)}`,
     b != null && !free ? `best on your own ${pct(b)}` : null,
     status && !free ? status.toLowerCase() : null,
+    highlighted ? 'coach focus' : null,
   ]
     .filter(Boolean)
     .join(', ');
@@ -74,11 +77,13 @@ export function FingerGauge({
   return (
     <div
       className="mx-gauge"
+      data-highlighted={highlighted || undefined}
       data-state={
         free ? 'free' : inBand ? 'reached' : helping ? 'assist' : state
       }
     >
       <span className="mx-gauge__name">
+        {highlighted && <span aria-hidden="true">↓</span>}
         {status === 'Reached' && (
           <Icon name="check" className="mx-gauge__icon" />
         )}

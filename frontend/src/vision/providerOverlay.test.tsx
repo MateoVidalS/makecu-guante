@@ -134,7 +134,12 @@ describe('vision source controller', () => {
     await controller.start();
     expect(controller.robustness().samples).toBe(0);
     await controller.setKind('sim');
-    expect(controller.robustness().samples).toBe(0);
+    // The adapter discards queued frames; this test source emits a fresh missing observation on stop.
+    expect(controller.robustness()).toMatchObject({
+      samples: 1,
+      detectionRate: 0,
+      observedMs: 0,
+    });
     controller.stop();
     expect(controller.store.getState().robustness.observedMs).toBe(0);
   });
@@ -157,6 +162,7 @@ describe('vision source controller', () => {
     expect(camera.start).toHaveBeenCalledWith({
       affectedHand: 'left',
       deviceId: 'preferred',
+      view: 'front_upright',
     });
     expect(controller.latest).toBeNull();
     expect(listener).toHaveBeenLastCalledWith(
@@ -196,7 +202,10 @@ describe('vision source controller', () => {
     await controller.start();
     expect(controller.error).toBeNull();
     expect(camera.setCalibration).toHaveBeenLastCalledWith(calibration);
-    expect(camera.start).toHaveBeenLastCalledWith({ affectedHand: 'left' });
+    expect(camera.start).toHaveBeenLastCalledWith({
+      affectedHand: 'left',
+      view: 'front_upright',
+    });
     controller.stop();
     await controller.start();
     expect(camera.listeners.size).toBe(1);

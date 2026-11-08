@@ -14,7 +14,7 @@ let hand: VirtualHandProps;
 vi.mock('../../hand3d', () => ({
   VirtualHand: (props: VirtualHandProps) => {
     hand = props;
-    return <div data-testid="hand" />;
+    return <div data-testid="hand" data-view={props.view} />;
   },
 }));
 afterEach(() => {
@@ -24,6 +24,22 @@ afterEach(() => {
 });
 
 describe('hand gallery', () => {
+  it('defaults to upright and switches every state preview to the legacy view', () => {
+    render(<DevHand />);
+    expect(hand!.view).toBe('front_upright');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Compare states' }));
+    for (const view of ['front_diagonal', 'front_upright']) {
+      fireEvent.change(screen.getByRole('combobox', { name: 'Camera view' }), {
+        target: { value: view },
+      });
+      expect(screen.getAllByTestId('hand')).toHaveLength(5);
+      for (const preview of screen.getAllByTestId('hand'))
+        expect(preview.dataset.view).toBe(view);
+      expect(
+        screen.getByLabelText('Performance camera preview').dataset.mirrored,
+      ).toBe(String(view === 'front_upright'));
+    }
+  });
   it('offers four states side by side for every pose and a grayscale toggle', () => {
     render(<DevHand />);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Compare states' }));

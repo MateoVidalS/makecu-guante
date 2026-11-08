@@ -21,8 +21,13 @@ closure as better. Attempt comparisons require the same pose and target, and
 missing measurements are never filled with zero. Start/reconnect and session
 recaps use compact summaries rather than raw five-finger JSON.
 
-Mic mute affects patient audio only. Simple voice uses local fixed phrases and
-session buttons; speech commands require Live coach. Off disables coaching.
+Mic mute affects patient audio only. Simple voice uses fixed phrases and browser
+SpeechRecognition for local stop/pain transcription checks. Other voice commands
+require Live coach. Off disables coaching and transcription. Recognition needs
+microphone permission and browser support; the browser may use its own network
+service, so offline speech recognition is not guaranteed. Its language follows
+the browser (English or Spanish). The deterministic EN/ES word rule itself is
+local in both modes; physical STOP and firmware safety remain independent.
 Local safety earcons, speech and captions remain armed in every mode, even before
 `start`. User interaction unlocks WebAudio; platform speech synthesis and a local
 English voice must be available. Safety speech survives the following PAUSED
@@ -69,3 +74,103 @@ configured in the worker environment. With a key, verify a greeting, each PRESEN
 instruction, debriefs, “pause” and “how am I doing”, then inspect the stored
 session transcript. The exercise page is owned by WP7 and must call the exposed
 start/stop actions; its scaffold does not start voice itself.
+
+## AI therapy assistant (A2)
+
+All fourteen therapy tools dispatch exclusively through `Runtime.therapy` using the
+frozen `TherapyApi`. Runtime decisions return `ok`, `reason` and the full decision
+(including requested/applied values) so the coach can describe clamping or
+rejection accurately. No voice tool changes calibration, current limits or motors.
+The owner-approved Nov 7 contract defines more help as starting 1 second sooner
+and less help as 1 second later, within 1–9 seconds per finger. Gentler lowers
+speed by 0.05/s, within 0.10–0.20/s; ordinary assist stays within the default
+0.20/s cap.
+Resistance automatically lowers speed in the runtime. The model cannot undo
+that safety protection, raise current limits, change calibration or command motors.
+
+The added tools request one-finger help now during ATTEMPT (with the same
+stagger/power rules), shape targets by 0.1 within 0.5–1.0 of the pose target,
+highlight a finger for about four seconds, save a therapist note, or add one
+repetition (up to three extra per session). All mutations remain runtime-owned.
+Live snapshots include highlighted_finger, glove state/current/simulation and
+last_safety; technical current values are context, not patient-facing speech.
+
+Until A1 supplies therapy, new tools return unavailable; the local brake uses the
+existing runtime pause/release path. Tests provide a local TherapyApi stub; no
+runtime or contract files were changed.
+
+Connected Live sessions send `[live]` snapshots once per second in ATTEMPT,
+ASSIST and HOLD with per-finger percentages, target, best-alone, lagging/helping,
+adjustments and recent feelings. Null measurements stay unknown. These updates
+never complete a turn or request speech. Every third non-interrupted attempt
+index requests a pain/fatigue check-in in its debrief. Simple voice asks the same
+question. An unlabeled pain answer is recognized for 30 seconds after the prompt;
+explicit pain ratings are recognized throughout practice. Live coach records both
+ratings with `record_feeling`; Simple voice handles safety words and ratings but
+does not infer/store a complete feeling entry from an incomplete answer.
+
+Stop/enough/it hurts and para/basta/me duele, plus explicit pain ratings >= 4,
+call the runtime brake synchronously on interim patient text. Word boundaries
+avoid matches inside other words; a recognized stop word always wins, even in a
+negated phrase. Live deltas accumulate; browser interim hypotheses replace.
+Patient transcription is delivered before audio/tools from the same server
+message. Local braking clears pending cues/playback, announces safety, records a
+system transcript line, and blocks stale resume/adjustment tools. A completed,
+affirmative request to continue or a runtime phase change after UI resume clears
+that voice guard; the runtime still performs its safety checks.
+
+Google docs checked for this update:
+[Live tools](https://ai.google.dev/gemini-api/docs/live-api/tools),
+[capabilities](https://ai.google.dev/gemini-api/docs/live-api/capabilities), and
+[ephemeral tokens](https://ai.google.dev/gemini-api/docs/live-api/ephemeral-tokens).
+The existing v1beta constrained-token connection, matching tool response IDs,
+16 kHz PCM input and transcriptions remain compatible. Therapy schemas stay
+synchronous; this update adds no SDK dependency or connection configuration.
+
+Run voice unit tests with `cd frontend && pnpm test --run src/voice` and the
+owned backend prompt/schema tests with
+`cd backend && uv run pytest -q app/voice/test_prompt.py app/voice/test_tools.py`.
+A keyed live conversation and hardware validation remain team checks; no API key
+or physical glove was used by A2.
+
+The A2 headed Chrome check is saved in
+[evidence/a2-browser-check.json](evidence/a2-browser-check.json) and
+[evidence/a2-browser-check.png](evidence/a2-browser-check.png). On this run the
+safety earcon was scheduled in 1.2 ms, platform speech started in 25.6 ms, and an
+injected Spanish patient transcription (`me duele`) reached the fallback runtime
+brake in 1.8 ms with the browser offline. This validates the recognized-text path;
+it does not claim offline speech-to-text support. The Simple voice microphone
+switch remains available so the patient can mute recognition.
+
+Every executed Live tool request and result is also saved as a system transcript
+line, including read/legacy tools and voice-level rejections; mutation responses
+carry the runtime decision's requested/applied values and reason.
+
+The second owner-approved contract update adds `intensify` as the sole exception
+to gentle defaults. It forwards a finger, further/hold_longer/faster, explicit
+patient_asked/accepted_offer consent and the patient's exact quote to the runtime.
+Further stays inside 100% of the calibrated range; hold adds at most two seconds;
+faster stays at or below 0.30/s. The runtime requires speech reported within
+20 seconds, rejects pain >= 2 or resistance on that finger within 60 seconds,
+and automatically reverts intensity on pain or resistance. The prompt allows an
+offer after good progress, then requires an explicit yes; it forbids autonomous
+intensity increases and invented or recycled consent.
+
+Each incoming patient transcription update calls `therapy.notePatientSpeech`
+with the actual cumulative Live text or replacing Simple voice hypothesis,
+before any subsequent tool dispatch. Local stop/pain braking runs first.
+Coach speech, context pushes, tool-provided patient_quote and delayed transcript
+flushes never create or refresh patient consent. This also supports Live input
+transcription that omits a finished flag. Runtime consent timing and safety
+checks remain authoritative; A2 does not infer consent from movement or bypass a
+rejection. Intensity tools are blocked by the local brake guard, and unavailable
+if the runtime has no consent-tracking method. Live snapshots carry hold_extra_s
+and intensified fingers, including their runtime auto-revert.
+
+Coach output always remains English, even when patient input uses another
+language. The server prompt explicitly forbids switching languages, and the
+configuration-constrained Live token locks `speech_config.language_code` to
+`en-US` alongside the selected voice. The local EN/ES stop/pain rules remain
+bilingual. `cd backend && uv run pytest -q app/voice tests/voice` also checks the
+actual SDK token payload for both extended-thinking and plain Live models,
+including English speech configuration and the retained `intensify` declaration.
