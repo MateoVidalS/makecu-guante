@@ -879,3 +879,27 @@ it('gives one spoken turn per transition: the result rides with the next pose', 
   expect(t.texts.some((m) => m.text.includes('[check-in]'))).toBe(true);
   s.controller.dispose();
 });
+
+it('a forced fallback to the browser voice lasts one session; the next session tries Gemini Live again', async () => {
+  const s = setup();
+  vi.mocked(s.deps.token).mockRejectedValueOnce(
+    new ApiRequestError(503, { code: 'voice_unavailable', message: '' }),
+  );
+  await s.controller.start(8);
+  expect(s.controller.state.mode).toBe('simple');
+  expect(s.controller.state.unavailable).toBe(true);
+  await s.controller.start(9);
+  expect(s.controller.state.mode).toBe('live');
+  expect(s.deps.token).toHaveBeenCalledTimes(2);
+  s.controller.dispose();
+});
+
+it('a Simple voice the user chose stays chosen', async () => {
+  const s = setup();
+  s.controller.setMode('simple');
+  await s.controller.start(8);
+  await s.controller.start(9);
+  expect(s.controller.state.mode).toBe('simple');
+  expect(s.deps.token).not.toHaveBeenCalled();
+  s.controller.dispose();
+});

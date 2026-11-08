@@ -154,7 +154,17 @@ export function PhaseRing({
     done: boolean;
   } | null;
 }) {
-  const progress = duration ? Math.min(1, elapsed / duration) : 0;
+  // While trying there is no clock to beat: the ring stays empty. Once the pose is
+  // reached it becomes the only timer, a hold countdown with seconds.
+  const holding = phase === 'HOLD' || phase === 'ASSIST_HOLD';
+  const progress =
+    phase === 'ATTEMPT' || phase === 'ASSIST'
+      ? 0
+      : duration
+        ? Math.min(1, elapsed / duration)
+        : 0;
+  const secondsLeft =
+    holding && duration ? Math.max(1, Math.ceil(duration - elapsed)) : null;
   const label = waiting
     ? 'Show me your hand'
     : (status?.title ?? phaseLabels[phase]);
@@ -176,9 +186,17 @@ export function PhaseRing({
                   : 'active'
         }
       >
-        <Icon
-          name={status?.done ? 'check' : phase === 'PAUSED' ? 'pause' : 'hand'}
-        />
+        {secondsLeft !== null ? (
+          <span className="phase-ring__count" aria-hidden="true">
+            {secondsLeft}
+          </span>
+        ) : (
+          <Icon
+            name={
+              status?.done ? 'check' : phase === 'PAUSED' ? 'pause' : 'hand'
+            }
+          />
+        )}
       </ProgressRing>
       <strong>{label}</strong>
     </div>

@@ -461,3 +461,84 @@
 .exercise-live .instruction svg {
   vertical-align: -0.1em;
 }
+
+/* Success tick: a big check drawn over the stage when the pose is reached and held. */
+.exercise-live .live-hero {
+  position: relative;
+}
+.success-tick {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-12);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  animation: success-tick-fade var(--dur-slow) var(--ease);
+}
+.success-tick svg {
+  inline-size: 160px;
+  block-size: 160px;
+  animation: success-tick-pop 500ms var(--ease) both;
+}
+.success-tick__circle {
+  fill: var(--reached);
+  stroke: var(--reached);
+  stroke-width: 6;
+  stroke-dasharray: 315;
+  stroke-dashoffset: 315;
+  animation: success-tick-draw 450ms var(--ease) forwards;
+}
+.success-tick__check {
+  fill: none;
+  stroke: var(--on-accent);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 70;
+  stroke-dashoffset: 70;
+  animation: success-tick-draw 350ms var(--ease) 350ms forwards;
+}
+.success-tick--helped .success-tick__circle {
+  fill: var(--assist);
+  stroke: var(--assist);
+}
+.success-tick__label {
+  font-size: var(--h1);
+  color: var(--reached-text);
+}
+.success-tick--helped .success-tick__label {
+  color: var(--assist-text);
+}
+@keyframes success-tick-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes success-tick-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes success-tick-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .success-tick,
+  .success-tick svg,
+  .success-tick__circle,
+  .success-tick__check {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
