@@ -55,12 +55,18 @@ export function CoachDecisions({
   function recordPain(pain: number) {
     if (!therapy || fatigue == null) return;
     // The runtime records and immediately brakes at its pain threshold.
-    const decision = therapy.recordFeeling({
-      pain,
-      fatigue,
-      note: '',
-      source: 'ui',
-    });
+    let decision;
+    try {
+      decision = therapy.recordFeeling({
+        pain,
+        fatigue,
+        note: '',
+        source: 'ui',
+      });
+    } catch {
+      brake();
+      return;
+    }
     setFeelingError(decision.result === 'rejected' ? decision.reason : '');
     setMessage(
       decision.result === 'rejected'

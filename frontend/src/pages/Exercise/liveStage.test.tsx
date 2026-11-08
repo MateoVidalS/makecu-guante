@@ -15,13 +15,14 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RuntimeProvider } from '../../runtime';
 import { ScriptedRuntime } from '../../runtime/ScriptedRuntime';
-import { GloveProvider } from '../../glove';
+import { GloveProvider, SimGlove } from '../../glove';
 import { VisionProvider } from '../../vision';
 import { VoiceProvider } from '../../voice';
 import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
@@ -136,6 +137,69 @@ describe('live stage', () => {
     expect(document.querySelector('.live-hero .live-stage')).not.toBeNull();
     // The old picture-in-picture camera is gone from the side column.
     expect(document.querySelector('.live-details .camera-overlay')).toBeNull();
+  });
+  it.each(['throws', 'rejects'] as const)(
+    'releases and pauses when the Brake audit %s',
+    async (failure) => {
+      const runtime = new ScriptedRuntime({ persist: false });
+      const therapy = new FakeTherapy();
+      const audit = vi.spyOn(therapy, 'brake').mockImplementation(() => {
+        if (failure === 'throws') throw new Error('Audit unavailable');
+        return therapy.emit('brake', {}, 'rejected', 'patient_ui');
+      });
+      Object.assign(runtime, { therapy });
+      await runtime.exercise.start(
+        [{ pose: 'full_fist', reps: 1 }],
+        DEFAULT_EXERCISE_SETTINGS,
+      );
+      runtime.dispose();
+      mount(<Exercise />, runtime);
+      const release = vi.spyOn(SimGlove.prototype, 'release');
+      const pause = vi.spyOn(runtime.exercise, 'pause');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Brake' }));
+
+      expect(release).toHaveBeenCalledOnce();
+      expect(pause).toHaveBeenCalledOnce();
+      expect(audit).toHaveBeenCalledWith('You pressed Brake.', 'patient_ui');
+      expect(screen.getByRole('button', { name: 'Resume' })).toBeVisible();
+    },
+  );
+  it('releases and pauses if recording a check-in throws, even if its brake audit also throws', async () => {
+    const runtime = new ScriptedRuntime({ persist: false });
+    const therapy = new FakeTherapy();
+    vi.spyOn(therapy, 'recordFeeling').mockImplementation(() => {
+      throw new Error('Feeling log unavailable');
+    });
+    vi.spyOn(therapy, 'brake').mockImplementation(() => {
+      throw new Error('Audit unavailable');
+    });
+    Object.assign(runtime, { therapy });
+    await runtime.exercise.start(
+      [{ pose: 'full_fist', reps: 1 }],
+      DEFAULT_EXERCISE_SETTINGS,
+    );
+    runtime.dispose();
+    mount(<Exercise />, runtime);
+    const release = vi.spyOn(SimGlove.prototype, 'release');
+    const pause = vi.spyOn(runtime.exercise, 'pause');
+    fireEvent.click(screen.getByRole('button', { name: 'How I feel' }));
+    fireEvent.click(
+      within(
+        screen.getByRole('group', { name: 'Fatigue from 0 to 10' }),
+      ).getByRole('button', { name: '6' }),
+    );
+    fireEvent.click(
+      within(
+        screen.getByRole('group', { name: 'Pain from 0 to 10' }),
+      ).getByRole('button', { name: '5' }),
+    );
+
+    expect(release).toHaveBeenCalledOnce();
+    expect(pause).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByText('Glove released. Practice paused.')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Resume' })).toBeVisible();
   });
   it('marks the named finger without changing its movement state', async () => {
     const runtime = new ScriptedRuntime({ persist: false });

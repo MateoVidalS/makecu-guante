@@ -318,10 +318,12 @@ export default function Exercise() {
     { store, client: glove } = useGlove();
   const therapy = (runtime as Runtime).therapy;
   const brake = () => {
-    if (therapy) therapy.brake('You pressed Brake.', 'patient_ui');
-    else {
-      glove.release();
-      runtime.exercise.pause();
+    glove.release();
+    runtime.exercise.pause();
+    try {
+      therapy?.brake('You pressed Brake.', 'patient_ui');
+    } catch {
+      // Audit failures must not prevent the patient from braking.
     }
   };
   const { start: startVoice, stop: stopVoice, setMode: setVoiceMode } = voice;
