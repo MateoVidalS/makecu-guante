@@ -94,5 +94,23 @@
     "model": "gemini-3.8-flash-lite-tts",
     "status": 200,
     "cache": "scene-build-8b297ae7b896d466.json"
+  },
+  {
+    "label": "replacement-reveal",
+    "model": "gemini-3.8-flash-lite-tts",
+    "status": 200,
+    "cache": "replacement-reveal-9e7e31f060545864.json"
+  },
+  {
+    "label": "replacement-session",
+    "model": "gemini-3.8-flash-lite-tts",
+    "status": 200,
+    "cache": "replacement-session-74821bbcd4805933.json"
+  },
+  {
+    "label": "replacement-gemini",
+    "model": "gemini-3.8-flash-lite-tts",
+    "status": 200,
+    "cache": "replacement-gemini-45522fc82b32cb65.json"
   }
 ]

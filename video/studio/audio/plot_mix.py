@@ -63,7 +63,7 @@ def main():
         axis.set_xlim(0, cut['frames'] / cut['fps'])
         axis.grid(axis='x', alpha=.12)
     fig.text(.07, .035, f'100 BPM · {cut["frames"] / cut["fps"]} s · {len(manifest["lines"])} VO lines · −10 dB ducking · 200 ms ramps\n'
-             'Resistance: 70.8 s drop / 79.2 s return. Master the final render to −14 LUFS, ≤ −1 dBTP.', fontsize=14)
+             f'Founders: silent bed until piano at {starts["hook"]:.1f} s. Resistance: {starts["session"] + 30:.1f} s / release: {starts["session"] + 38.4:.1f} s. Target: −14 LUFS, ≤ −1 dBTP.', fontsize=14)
     fig.subplots_adjust(left=.09, right=.97, top=.88, bottom=.15, hspace=.28)
     destination = ROOT / 'evidence/V2/mix-map.png'
     destination.parent.mkdir(parents=True, exist_ok=True)

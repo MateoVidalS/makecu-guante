@@ -1,0 +1,37 @@
+{
+  "updatedIds": [
+    "ai-1",
+    "ai-2",
+    "ai-3",
+    "ai-4",
+    "reveal-2",
+    "session-3",
+    "session-4",
+    "session-6"
+  ],
+  "removedIds": [
+    "coach-2"
+  ],
+  "unchangedWavSha256": {
+    "problem-1": "8cb9fb46f25ce3bc88301603c4055666ee4d880943d11812eb225102618a0690",
+    "problem-2": "0f0f5a801612c52cc5cdd4adbfb3bb15d07e06a5eaabcbb914626f9151a74994",
+    "problem-3": "fce0f37dc5e433fc17b4ce0fe75ca96d30a6be9ba48b555504983b703a523e3c",
+    "reveal-1": "579af2008bb7085ae074f2ad5300761f114eb5eecca62f2d242ddcbb6189e483",
+    "reveal-3": "fc15fff10ba29764847c6eef0efba89fd46bb9c6f4e1b595f9fd7d869bcf830a",
+    "session-1": "a5b9996050ce9addf413911d7a2dc19a6dc9519a54fbcbcb072f181e53acf07b",
+    "session-2": "72007eededa163dcefc2d4a423da1f854a8b3cb21c74cf83395ab0ed251c0409",
+    "session-5": "94d61ca933a0b91c760667ea682f0846f793b7e938e225254e79f0fbb1ce5f55",
+    "session-coach": "dbaafa49edeee00a720568345d5a795aed7a4e11dc66ad2371402f94941ce00a",
+    "coach-1": "f8cbac84c5930aa97f6acd734fd59c3d0b84bd8b7c51a9a89b3f843a738772e6",
+    "doctor-1": "66c220f4485a9be1f0625f2d65023e2d24e43c57677276b72413930b2da5bb9a",
+    "doctor-2": "5a93fb5ba2539b4eaf58bbd6eda485a3c6e5bd45feb2f8bd0fda5b293feefe72",
+    "doctor-3": "deacb1111a74192aeeef1853c24c33485d62dbed5ab2f3b90331257d5a2bb1a2",
+    "doctor-4": "4d167bff290894e82e964c5f4076bdab31fc8dc9489e77147fe92ae5aafc05a9",
+    "doctor-5": "c6029d05a1759aab8eba4360c5214a734c0fa1addd1996220abb2a033c0de003",
+    "build-1": "6f09519fe0486717e70186357e881ba757503a752ba587b1e384d9c3e1a13ffc",
+    "hood-1": "1d2a8db4f3c351aa94ec5ae6deae506206a0e8df2fdf13ea6850bed501dd97e8",
+    "hood-2": "0f353bac78bb46d03ae36a4fb0c152a60a1444fc2606561c997b2982c411a8f6"
+  },
+  "narrator": "Sulafat",
+  "requests": 3
+}

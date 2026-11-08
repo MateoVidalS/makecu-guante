@@ -6,5 +6,10 @@
   "musicModel": "lyria-3.5",
   "splitOverrides": {"doctor-3": 7.647083},
   "sceneModels": {"build": "gemini-3.8-flash-lite-tts"},
+  "replacementGroups": {
+    "reveal": ["reveal-2"],
+    "session": ["session-3", "session-4", "session-6"],
+    "gemini": ["ai-1", "ai-2", "ai-3", "ai-4"]
+  },
   "keyFile": "/Users/mateovidal/orca/workspaces/makecu-guante/rehab-hub/backend/.env"
 }

@@ -21,6 +21,7 @@ from generate import CONFIG, ROOT, lines
 
 def normalized(text):
     text = text.lower().replace('cut-off', 'cutoff').replace('watchdog', 'watch dog')
+    text = re.sub(r'\b20\b', 'twenty', text)
     return re.findall(r"[a-z0-9]+", text.lower())
 
 
@@ -54,6 +55,9 @@ def silence(path):
 
 
 def main():
+    edits = ROOT / 'audio/vo-edit.json'
+    if edits.exists() and any('replacement-' in entry['source'] for entry in json.loads(edits.read_text())):
+        raise SystemExit('Owner revisions are installed. Use replace_vo.py; the initial scene takes predate current copy.')
     script = lines()
     model = WhisperModel('base.en', device='cpu', compute_type='int8')
     output, qa = [], []

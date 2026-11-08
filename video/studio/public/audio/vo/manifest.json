@@ -3,7 +3,7 @@
   "voice": {
     "narrator": "Sulafat",
     "coach": "Puck",
-    "model": "gemini-3.8-flash-tts; coach-1, session-1, reveal-1, build-1: gemini-3.8-flash-lite-tts"
+    "model": "gemini-3.8-flash-tts; coach-1, session-1, reveal-1, build-1: gemini-3.8-flash-lite-tts; owner replacements: gemini-3.8-flash-lite-tts"
   },
   "lines": [
     {
@@ -49,12 +49,12 @@
     {
       "id": "session-3",
       "file": "audio/vo/session-3.wav",
-      "durationFrames": 110
+      "durationFrames": 125
     },
     {
       "id": "session-4",
       "file": "audio/vo/session-4.wav",
-      "durationFrames": 117
+      "durationFrames": 123
     },
     {
       "id": "session-5",
@@ -62,14 +62,14 @@
       "durationFrames": 48
     },
     {
-      "id": "session-6",
-      "file": "audio/vo/session-6.wav",
-      "durationFrames": 126
-    },
-    {
       "id": "session-coach",
       "file": "audio/vo/session-coach.wav",
       "durationFrames": 86
+    },
+    {
+      "id": "session-6",
+      "file": "audio/vo/session-6.wav",
+      "durationFrames": 128
     },
     {
       "id": "coach-1",
@@ -77,9 +77,24 @@
       "durationFrames": 122
     },
     {
-      "id": "coach-2",
-      "file": "audio/vo/coach-2.wav",
-      "durationFrames": 54
+      "id": "ai-1",
+      "file": "audio/vo/ai-1.wav",
+      "durationFrames": 118
+    },
+    {
+      "id": "ai-2",
+      "file": "audio/vo/ai-2.wav",
+      "durationFrames": 110
+    },
+    {
+      "id": "ai-3",
+      "file": "audio/vo/ai-3.wav",
+      "durationFrames": 46
+    },
+    {
+      "id": "ai-4",
+      "file": "audio/vo/ai-4.wav",
+      "durationFrames": 107
     },
     {
       "id": "doctor-1",

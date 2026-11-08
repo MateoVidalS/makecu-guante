@@ -104,7 +104,20 @@ def tts(selected, voice, label, output, model=None):
              'Read each paragraph verbatim. Leave exactly 0.8 seconds of silence '
              'between paragraphs so the editor can split them. Never speak labels. '
              'Pronounce memo as mem-oh. ')
-    if label == 'retry-coach-1':
+    if label == 'replacement-gemini':
+        style += ('Warm, confident technical explanation, with the same Sulafat character. '
+                  'Use a brisk 210 words per minute, no dramatic pauses inside each paragraph. '
+                  'The third paragraph, "None of them moves a motor.", must finish in 1.7 seconds; '
+                  'flow through those six words quickly and clearly. '
+                  'Keep the 0.8-second gaps between paragraphs for editing. ')
+    elif label == 'replacement-reveal':
+        style += ('Finish this single line naturally in 3.4 seconds, at about 195 words per minute. '
+                  'Keep the warm Sulafat delivery and clear articulation. ')
+    elif label == 'replacement-session':
+        style += ('Aim for 170 words per minute. Pronounce memo like the everyday English word '
+                  'memo, MEH-moh, first vowel like memory, never MEE-moh. '
+                  'Recite exactly, without adding words before memo. ')
+    elif label == 'retry-coach-1':
         style += ('Read this entire line in under 3.9 seconds at a brisk 230 words per minute. '
                   'Keep flowing through the full stop with only a tiny pause. '
                   'Precise, fast launch-film narration, clear and natural. ')
@@ -152,7 +165,7 @@ def music(candidate):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('kind', choices=['audition', 'scene', 'music', 'retry'])
+    parser.add_argument('kind', choices=['audition', 'scene', 'music', 'retry', 'replace'])
     parser.add_argument('id')
     args = parser.parse_args()
     if args.kind == 'music':
@@ -160,6 +173,11 @@ if __name__ == '__main__':
     elif args.kind == 'audition':
         tts([line for line in lines() if line['scene'] == 'problem'], args.id,
             f'audition-{args.id}', f'public/audio/auditions/vo-{args.id.lower()}.wav')
+    elif args.kind == 'replace':
+        ids = CONFIG['replacementGroups'][args.id]
+        selected = [line for line in lines() if line['id'] in ids]
+        tts(selected, CONFIG['narrator'], f'replacement-{args.id}',
+            f'audio/cache/replacement-{args.id}.wav', CONFIG['retryModel'])
     elif args.kind == 'retry':
         selected = [line for line in lines() if line['id'] == args.id]
         tts(selected, CONFIG['narrator'], f'retry-{args.id}', f'audio/cache/retry-{args.id}.wav', CONFIG['retryModel'])

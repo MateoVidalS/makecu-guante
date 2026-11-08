@@ -7,78 +7,70 @@
   "cues": [
     {
       "frame": 0,
-      "gain": 0.52
+      "gain": 0
     },
     {
-      "frame": 210,
-      "gain": 0.52
+      "frame": 215,
+      "gain": 0
     },
     {
       "frame": 216,
-      "gain": 0.3
-    },
-    {
-      "frame": 498,
-      "gain": 0.3
-    },
-    {
-      "frame": 504,
       "gain": 0.52
     },
     {
-      "frame": 846,
+      "frame": 774,
       "gain": 0.52
     },
     {
-      "frame": 864,
+      "frame": 792,
       "gain": 0.78
     },
     {
-      "frame": 1224,
+      "frame": 1152,
       "gain": 0.68
     },
     {
-      "frame": 2106,
+      "frame": 2034,
       "gain": 0.68
     },
     {
-      "frame": 2124,
+      "frame": 2052,
       "gain": 0.035
     },
     {
-      "frame": 2199,
+      "frame": 2127,
       "gain": 0.035
     },
     {
-      "frame": 2364,
+      "frame": 2292,
       "gain": 0.12
     },
     {
-      "frame": 2376,
+      "frame": 2304,
       "gain": 0.68
     },
     {
-      "frame": 4026,
+      "frame": 4170,
       "gain": 0.68
     },
     {
-      "frame": 4032,
+      "frame": 4176,
       "gain": 0.72
     },
     {
-      "frame": 4314,
+      "frame": 4458,
       "gain": 0.72
     },
     {
-      "frame": 4320,
+      "frame": 4464,
       "gain": 0.82
     },
     {
-      "frame": 4740,
+      "frame": 4812,
       "gain": 0.82
     },
     {
-      "frame": 4752,
+      "frame": 4824,
       "gain": 0.34
     },
     {

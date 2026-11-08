@@ -39,6 +39,7 @@ close(musicGain(15, cues, [[12, 18]]), .5 * DUCK_GAIN);
 assert.equal(vo.lines.length, VO.length, 'Every VO id is present');
 assert.equal(new Set(vo.lines.map((line) => line.id)).size, VO.length, 'No duplicate ids');
 assert.equal(vo.voice.coach, 'Puck');
+assert.equal(vo.voice.narrator, 'Sulafat');
 for (const line of VO) {
   const entry = vo.lines.find((item) => item.id === line.id);
   assert.ok(entry, line.id);
@@ -56,8 +57,24 @@ assert.equal(Number(bed.streams[0].duration_ts), Math.round(TOTAL_FRAMES / FPS *
 assert.ok(music.source.includes('CC BY 4.0'));
 assert.ok(music.credit);
 assert.ok(music.cues.every((cue, i, all) => cue.gain >= 0 && cue.gain <= 1 && (!i || cue.frame > all[i - 1].frame)));
-assert.ok(cueGain(2124, music.cues) < .05, 'Resistance drop');
-assert.ok(cueGain(2376, music.cues) > .6, 'Release return');
+assert.equal(cueGain(SCENE_START.hook - 1, music.cues), 0, 'Silent founders opening');
+assert.ok(cueGain(SCENE_START.hook, music.cues) > .5, 'Piano enters on the hook cut');
+const wav = readFileSync(`public/${music.file}`);
+let pcm;
+for (let offset = 12; offset + 8 <= wav.length;) {
+  const size = wav.readUInt32LE(offset + 4);
+  if (wav.toString('ascii', offset, offset + 4) === 'data') {
+    pcm = wav.subarray(offset + 8, offset + 8 + size);
+    break;
+  }
+  offset += 8 + size + (size % 2);
+}
+assert.ok(pcm, 'WAV has PCM data');
+const hookByte = Math.round(SCENE_START.hook / FPS * 48000) * 4; // stereo PCM16
+assert.ok(pcm.subarray(0, hookByte).every((byte) => byte === 0), 'Bed is exactly silent before 7.2 s');
+assert.ok(pcm.subarray(hookByte, hookByte + 1600 * 4).some((byte) => byte !== 0), 'Piano sounds in the first hook frame');
+assert.ok(cueGain(SCENE_START.session + 900, music.cues) < .05, 'Resistance drop');
+assert.ok(cueGain(SCENE_START.session + 1152, music.cues) > .6, 'Release return');
 assert.ok(cueGain(SCENE_START.build, music.cues) > cueGain(SCENE_START.build - 12, music.cues), 'Build lift');
 assert.ok(cueGain(SCENE_START.underHood, music.cues) > cueGain(SCENE_START.underHood - 12, music.cues), 'Board lift');
 assert.equal(cueGain(TOTAL_FRAMES - 1, music.cues), 0, 'Fade to silence');

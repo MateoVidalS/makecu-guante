@@ -8,36 +8,38 @@
   "samples": 8524800,
   "edits": [
     {
-      "fromSeconds": 0,
-      "toSeconds": 28.8,
-      "sourceSeconds": 6.0
+      "fromSeconds": 7.2,
+      "toSeconds": 26.4,
+      "sourceSeconds": 6.164943
     },
     {
-      "fromSeconds": 28.8,
-      "toSeconds": 134.4,
+      "fromSeconds": 26.4,
+      "toSeconds": 139.2,
       "sourceSeconds": 82.8
     },
     {
-      "fromSeconds": 134.4,
-      "toSeconds": 144,
+      "fromSeconds": 139.2,
+      "toSeconds": 148.8,
       "sourceSeconds": 236.4
     },
     {
-      "fromSeconds": 144,
-      "toSeconds": 158.4,
+      "fromSeconds": 148.8,
+      "toSeconds": 160.8,
       "sourceSeconds": 250.8
     },
     {
-      "fromSeconds": 158.4,
-      "toSeconds": 168,
+      "fromSeconds": 160.8,
+      "toSeconds": 168.0,
       "sourceSeconds": 25.2
     },
     {
-      "fromSeconds": 168,
+      "fromSeconds": 168.0,
       "toSeconds": 177.6,
       "sourceSeconds": 328.2
     }
   ],
   "crossfadeSeconds": 0.12,
-  "percussionSeed": 100
+  "percussionSeed": 100,
+  "silentOpeningSeconds": 7.2,
+  "pianoEntersAtFrame": 216
 }
