@@ -447,3 +447,17 @@
     text-align: center;
   }
 }
+
+/* Attempt feedback in the big heading: reached and holding, or how the attempt ended. */
+.exercise-live .instruction--reached {
+  color: var(--reached-text);
+}
+.exercise-live .instruction--assist {
+  color: var(--assist-text);
+}
+.exercise-live .instruction--neutral {
+  color: var(--muted);
+}
+.exercise-live .instruction svg {
+  vertical-align: -0.1em;
+}
