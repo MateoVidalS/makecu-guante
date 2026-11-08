@@ -61,7 +61,7 @@ export const VO: VoLine[] = [
   { id: 'build-1', scene: 'build', at: 18, maxFrames: 252, voice: 'narrator', text: 'Five micro servos wind thin threads over the back of each finger. A current sensor feels every pull.' },
 
   // bench (144 f): real footage keeps its own servo sound under this line
-  { id: 'bench-1', scene: 'bench', at: 6, maxFrames: 120, voice: 'narrator', text: 'And this is the real thing, on the bench.' },
+  { id: 'bench-1', scene: 'bench', at: 6, maxFrames: 120, voice: 'narrator', text: 'And this is the real thing.' },
 
   // underHood (360 f)
   { id: 'hood-1', scene: 'underHood', at: 12, maxFrames: 84, voice: 'narrator', text: 'The board decides, not the browser.' },

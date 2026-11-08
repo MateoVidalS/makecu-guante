@@ -17,3 +17,11 @@ Integration branch: `MateoVidalS/video` · Repo id: `de782449-371b-4870-89e2-d60
 
 Final cut: `video/previews/memo-final-4k.mp4` (not in git), 3840x2160, 30 fps, 177.6 s, -14.0 LUFS, -1.2 dBTP.
 Team footage in: team-intro, coach-talk, bench-real. Still a placeholder: session-hand (PiP in the session).
+
+## App follow-up found while recording the coach take (not fixed here)
+- **Help-request race:** when the patient says "help", `VoiceController.checkHelpRequest` waits `HELP_SENTENCE_MS` (700 ms)
+  before `exercise.requestHelp`. Gemini Live often calls `assist_finger_now` first; the engine's `assistNow` then rejects it
+  (`onRequest && !helpRequested`), so the coach says it cannot help. For the take, `HELP_SENTENCE_MS = 0` fixed it locally
+  (reverted). A proper fix: in `therapy.ts`'s ATTEMPT branch, when `patientAskedForHelp()` is true, register the patient's
+  request before calling `assistNow`.
+- The coach prompt names the device "the glove"; the owner prefers "memo" in anything shown publicly.
