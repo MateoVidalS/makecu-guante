@@ -1,128 +1,118 @@
 import { describe, expect, it } from 'vitest';
-import { GLOVE_FINGERS, type GloveEvent } from '../contracts/glove';
-import { DEFAULT_EXERCISE_SETTINGS } from '../contracts/poses';
-import { SimWorld } from '../glove/sim/simWorld';
-import { createExerciseEngine } from './exercise';
-import { calibration } from './test/fakeWorld';
-import type { Output } from './types';
+import { closureFromPull, type Quint } from '../contracts/glove';
+import { Run } from './test/exerciseRun';
 
-describe('five-finger assist with the glove simulator', () => {
-  it.each(['mild', 'moderate', 'severe'] as const)(
-    'keeps %s patient assists below 2.2 A with no more than three moving servos',
-    async (preset) => {
-      const world = new SimWorld({ autoStart: false, preset, seed: 42 });
-      const engine = createExerciseEngine();
-      const pending: GloveEvent[] = [];
-      const assisted = new Set<string>();
-      const starts: number[] = [];
-      let peakMoving = 0;
-      let peakMa = 0;
-      let attempts = 0;
-      let priorTarget: number[] | null = null;
-      const accept = (out: Output) => {
-        for (const cmd of out.commands) {
-          if (cmd.t === 'target') {
-            cmd.f.forEach((value, i) => {
-              if (
-                Math.abs(value - world.firmware.position[i]) > 0.05 &&
-                (!priorTarget || value !== priorTarget[i])
-              ) {
-                assisted.add(GLOVE_FINGERS[i]);
-                starts.push(world.now);
-              }
-            });
-            priorTarget = [...cmd.f];
-            world.glove.target(cmd.f, cmd.v);
-          } else if (cmd.t === 'follow') world.glove.follow(cmd.f);
-          else if (cmd.t === 'release') world.glove.release();
-          else world.glove.limit(cmd.ma);
-        }
-        for (const event of out.events) {
-          expect(event.kind).not.toBe('safety');
-          expect(event.kind).not.toBe('resistance');
-          if (event.kind === 'phase') world.setIntent(event.pose, event.phase);
-          if (event.kind === 'attempt_done') {
-            attempts++;
-            expect(event.result.fingers.every((finger) => finger.scored)).toBe(
-              true,
-            );
-          }
-        }
+// O2's opening patient model was not merged when O3 started. Use the existing
+// deterministic fake firmware with an explicit sustained flexor-load script.
+describe('sustained opening-load governor', () => {
+  it('sheds load under flexor tone without pausing or reaching the firmware limit', () => {
+    const r = new Run(
+      'open',
+      { assist_max_s: 15, hold_s: 5 },
+      { currentLimitMa: 2200 },
+    );
+    let peak = 0;
+    let recovered = false;
+    for (let i = 0; i < 900 && r.engine.state().phase !== 'DONE'; i++) {
+      r.world.hand = r.world.tel.a.map((a) =>
+        Math.min(0.65, closureFromPull(a)),
+      ) as Quint;
+      r.world.ma = 100 + r.world.tel.a.reduce((sum, a) => sum + a * 580, 0);
+      peak = Math.max(peak, r.world.ma);
+      r.step();
+      if (
+        r
+          .results()
+          .some((a) => a.safety_events.some((e) => e.source === 'load_shed')) &&
+        r.world.ma <= 1760
+      )
+        recovered = true;
+    }
+    expect(r.engine.state().phase).toBe('DONE');
+    const sheds = r
+      .results()[0]
+      .safety_events.filter((e) => e.source === 'load_shed');
+    expect(sheds.length).toBeGreaterThan(0);
+    expect(peak).toBeLessThan(2200);
+    expect(recovered).toBe(true);
+    expect(
+      r.events.some((e) => e.kind === 'safety' || e.kind === 'resistance'),
+    ).toBe(false);
+  });
+
+  it.each(['ASSIST', 'ASSIST_HOLD'] as const)(
+    'sheds the newest finger every 200 ms in %s without starting a queued finger',
+    (phase) => {
+      const r = new Run(
+        'open',
+        { assist_max_s: phase === 'ASSIST' ? 15 : 0.4, hold_s: 10 },
+        { currentLimitMa: 1000 },
+      );
+      r.until(phase);
+      // Model fingers which follow the motors (no command/vision stall gap).
+      const step = () => {
+        r.world.hand = r.world.tel.a.map(closureFromPull) as Quint;
+        return r.step(50);
       };
-      // Observe every 200 Hz control step, including peaks between engine ticks.
-      const unsubscribe = world.ticks.subscribe(() => {
-        if (engine.state().phase !== 'ASSIST') return;
-        // F2 exposes pre-filter supply demand; F0 exposes filtered telemetry only.
-        const power =
-          'power' in world ? (world.power as { demandMa: number }) : null;
-        peakMa = Math.max(peakMa, power?.demandMa ?? world.firmware.currentMa);
-        const moving = world.firmware.position.filter(
-          (v, i) => Math.abs(v - world.firmware.goal[i]) > 1e-6,
-        ).length;
-        peakMoving = Math.max(peakMoving, moving);
-        expect(moving).toBeLessThanOrEqual(3);
-      });
-      try {
-        await world.glove.connect();
-        for (const [i, servo] of calibration.servo.entries())
-          world.glove.calib(
-            i as 0 | 1 | 2 | 3 | 4,
-            servo.min_deg,
-            servo.max_deg,
-          );
-        world.glove.limit(2200);
-        world.vision.setCalibration({
-          ...calibration.camera,
-          closed_flex: {
-            thumb: 100,
-            index: 270,
-            middle: 270,
-            ring: 270,
-            pinky: 270,
-          },
-        });
-        await world.vision.start({ affectedHand: 'right' });
-        world.glove.onEvent((event) => pending.push(event));
-        accept(
-          engine.start(
-            [{ pose: 'full_fist', reps: 1 }],
-            {
-              ...DEFAULT_EXERCISE_SETTINGS,
-              present_s: 0,
-              attempt_s: 1,
-              assist_max_s: 15,
-              hold_s: 0.2,
-              rest_s: 0,
-            },
-            calibration,
-            world.timestamp(),
-          ),
-        );
-        for (let i = 0; i < 1500 && engine.state().phase !== 'DONE'; i++) {
-          world.advance(20);
-          accept(
-            engine.tick({
-              now: world.timestamp(),
-              vision: world.vision.latest(),
-              tel: world.glove.latest(),
-              gloveConnected: true,
-              gloveEvents: pending.splice(0),
-            }),
-          );
-        }
-        expect(engine.state().phase).toBe('DONE');
-        expect(attempts).toBe(1);
-        expect(assisted.size).toBeGreaterThanOrEqual(4);
-        if (preset === 'severe') expect(assisted.size).toBe(5);
-        expect(peakMoving).toBe(3);
-        expect(peakMa).toBeGreaterThan(100);
-        expect(peakMa).toBeLessThan(2200);
-        for (let i = 1; i < starts.length; i++)
-          expect(starts[i] - starts[i - 1]).toBeGreaterThanOrEqual(150);
-      } finally {
-        unsubscribe();
-        world.stop();
-      }
+      r.world.ma = 810;
+      const at = r.world.now;
+      const count = r.targets().length;
+      for (let i = 0; i < 4; i++) step();
+      // The first sample establishes the start of the 200 ms window.
+      expect(r.events.some((e) => e.kind === 'safety')).toBe(false);
+      step();
+      expect(r.targets().length).toBeGreaterThan(count);
+      const before = r.targets().at(-1)!.f;
+      for (let i = 0; i < 4; i++) step();
+      const after = r.targets().at(-1)!.f;
+      expect(after.every((v, i) => v <= before[i])).toBe(true);
+      r.accept(r.engine.stop(r.world.now));
+      const sheds = r
+        .results()[0]
+        .safety_events.filter((e) => e.source === 'load_shed');
+      expect(sheds.length).toBeGreaterThanOrEqual(2);
+      expect(
+        Date.parse(r.results()[0].started_at) + sheds[0].t_rel * 1000,
+      ).toBeGreaterThanOrEqual(at + 200);
+      expect(sheds[0].finger).toBe(phase === 'ASSIST' ? 'thumb' : 'middle');
+      for (let i = 1; i < sheds.length; i++)
+        expect(sheds[i].t_rel - sheds[i - 1].t_rel).toBeCloseTo(0.2);
+      expect(r.engine.state().phase).toBe('DONE');
     },
+  );
+
+  it('ignores brief load spikes and uses the calibration limit when no firmware limit is supplied', () => {
+    const r = new Run('open', { assist_max_s: 10 });
+    r.until('ASSIST');
+    r.world.ma = 721;
+    for (let i = 0; i < 4; i++) r.step();
+    r.world.ma = 100;
+    r.step();
+    r.accept(r.engine.stop(r.world.now));
+    expect(
+      r.results()[0].safety_events.filter((e) => e.source === 'load_shed'),
+    ).toEqual([]);
+  });
+});
+
+it('uses the calibration ceiling and resumes queued starts only after load recovers', () => {
+  const r = new Run('open', { assist_max_s: 10 });
+  r.until('ASSIST');
+  r.world.ma = 721;
+  for (let i = 0; i < 5; i++) r.step();
+  expect(
+    r
+      .targets()
+      .at(-1)!
+      .f.filter((v, i) => v > r.world.tel.a[i]),
+  ).toHaveLength(1);
+  const before = r.targets().at(-1)!.f;
+  r.world.ma = 720;
+  r.step();
+  const after = r.targets().at(-1)!.f;
+  expect(after.some((v, i) => v > before[i])).toBe(true);
+  r.accept(r.engine.stop(r.world.now));
+  expect(r.results()[0].safety_events).toContainEqual(
+    expect.objectContaining({ source: 'load_shed', ma: 721 }),
   );
 });

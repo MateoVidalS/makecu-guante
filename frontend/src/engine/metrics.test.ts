@@ -93,13 +93,13 @@ it('includes independent ring/pinky values in ratios, traces, and session summar
     finger: 'ring',
     scored: true,
     active_max: 0.35,
-    assist_needed: 0.35,
+    assist_needed: 0,
   });
-  expect(result.fingers[4].assist_needed).toBeCloseTo(0.56);
+  expect(result.fingers[4].assist_needed).toBe(0);
   expect(result.trace.closure.ring).toEqual([0.35]);
   expect(result.trace.closure.pinky).toEqual([0.14]);
   expect(summarizeSession([result]).per_finger.slice(3)).toEqual([
-    { finger: 'ring', active_max_mean: 0.35, assist_needed_mean: 0.35 },
+    { finger: 'ring', active_max_mean: 0.35, assist_needed_mean: 0 },
     {
       finger: 'pinky',
       active_max_mean: 0.14,

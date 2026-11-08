@@ -151,7 +151,7 @@ export class AssistScheduler {
 
   complete(position: Quint, vision: Quint, unreached: boolean[]): boolean {
     return (
-      this.moving.size === 0 &&
+      position.every((a, i) => Math.abs(a - this.target[i]) <= 0.02) &&
       this.candidates(position, vision, unreached).length === 0
     );
   }

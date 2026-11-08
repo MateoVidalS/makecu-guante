@@ -1,109 +1,123 @@
 # Deterministic engine integration
 
-The factories in `index.ts` replace the WP0 stubs. Drive them with monotonic
-milliseconds in `start`, `tick`, and lifecycle methods; execute returned commands
-in array order and deliver events to subscribers. `phaseElapsed`, `t_rel`, trace
+The factories in `index.ts` are pure TypeScript. Drive `start`, `tick` and
+lifecycle methods with monotonic milliseconds, execute returned commands in
+array order, and deliver events to subscribers. `phaseElapsed`, `t_rel`, trace
 times and `time_to_position_s` are seconds. Attempt indexes start at zero; reps
-start at one. The plan runs each item's repetitions before the next item.
+start at one. Each plan item's repetitions run before the next item.
 
-Motion and safety timing use the injected clock. Audit IDs and timestamps use wall time.
-Supply a fixed monotonic-to-UTC mapping for
-persisted timestamps, captured by the runtime outside the engine, for example:
+Motion and safety timing use the injected clock. Audit IDs and timestamps use
+wall time. The runtime should capture a monotonic-to-UTC offset and pass
+`{ timestamp: (now) => new Date(epochOffsetMs + now).toISOString() }` to both
+factories. The default interprets `now` as Unix epoch milliseconds for tests.
+These options are local to the engine; shared contracts are unchanged.
 
-```ts
-const options = {
-  timestamp: (now: number) => new Date(epochOffsetMs + now).toISOString(),
-};
-const exercise = createExerciseEngine(options);
-const evaluation = createEvaluationEngine(options);
-```
+Exercise publishes `attempt_done` and `session_done`. Evaluation publishes its
+result in `state().result`. Both retain the existing safety events. A fault
+telemetry frame pauses exercise even if its matching event has not arrived;
+the actual cause is reported when that event arrives.
 
-The default timestamp conversion interprets the injected `now` as Unix epoch
-milliseconds, which is useful in deterministic tests. Live `performance.now()`
-requires the offset above. This option is local to `src/engine`; contracts are
-unchanged.
+## Opening assistance
 
-Exercise publishes all results through `attempt_done` and `session_done`.
-Evaluation publishes its final result in `state().result`; no evaluation event
-was added to the frozen `EngineEvent` union. Both paths report safety through
-existing safety events. A fault telemetry frame without its matching event
-still pauses exercise; the actual cause is reported if the event arrives later.
+Vision, poses, metrics and `assist_started.from/to` use **closure** (0 open,
+1 closed). All motor commands, telemetry and scheduler goals use **tendon
+pull** (0 slack, 1 fully wound). Conversion only uses `pullFromClosure` and
+`closureFromPull` from `contracts/glove.ts`; a recursive source test guards
+against independent inversion formulas. Pull 0 remains the safe state.
 
-For calibration step 3, call `frictionRun(options)` to create a driver with the
-same `start(settings, calibration, now)`, `tick`, `stop`, and `state` interface.
-After `state().stage === 'done'`, `curves()` returns raw-current friction curves
-at each configured speed, binned to 0.05 position. Aborted sweeps are omitted;
-a stopped run returns no curves. It never subtracts an existing calibration.
-The UI remains responsible for confirming the glove is off the hand for this
-run, or that the hand is relaxed for an evaluation. `friction_used` is true only
-when every recorded evaluation sweep had a curve at its requested speed.
+ATTEMPT and HOLD send mapped follow commands; firmware subtracts 0.08 slack.
+An opening deficit is `vision closure > target + tolerance` on a scored finger.
+Closing deficits receive no assistance. If no opening deficit remains at
+ATTEMPT timeout or plateau, the engine goes directly to RELEASE, with
+`assisted=false` and no final reach claim. Observation mode also skips ASSIST.
+Opening plateaus track the absence of a decrease greater than 0.03; open-pose
+active metrics use the best active minimum. `assist_needed` records only an
+opening deficit outside tolerance, never an unassistable closing deficit.
 
-Safety decisions that need coordinator review:
+`PowerAwareExerciseSettings` adds `assist_stagger_ms` (default/minimum 150 ms)
+and `assist_max_parallel` (default/maximum 3). Invalid values are rejected
+before commands. The scheduler starts one finger per tick, largest opening
+deficit first. Its queue and start clock persist across early assistance in
+ATTEMPT and the transition to ASSIST. A winding slot stays occupied until
+telemetry confirms arrival. Queued, reached, free or otherwise held fingers
+use `min(tel.a, max(0, pullFromClosure(vision) - 0.08))` on every target refresh,
+including ASSIST_HOLD. Held fingers may only pay out. Safe payout remains
+immediate even while other fingers wind.
 
-- The brief forbids `target` at confidence below 0.6, while the phase table asks
-  for a freeze `target` after 300 ms unseen. Exercise releases at 300 ms instead
-  and pauses at 1 s. If visibility returns after that release, explicit resume
-  is still required. The deadline spans ASSIST and ASSIST_HOLD.
-- Detected frames must have finite closures and be no older than 300 ms.
-  Evaluation also requires good vision before starting a sweep and aborts a
-  moving sweep on lost vision, because its API has no pause/resume operation.
-- A PRESENT re-prompt uses the existing `phase: PRESENT` event every 8 seconds;
-  the contracts have no separate instruction-repeat event.
+Ordinary pull goals are capped at `MAX_ASSIST_PULL` (0.95). Only consented
+`intensify('further')` permits pull 1.0 for that finger. Assisted opening reaches
+at `closure <= max(target, closureFromPull(cap)) + tolerance`; settling requires
+all queued/moving fingers to finish and every commanded pull to be within 0.02
+for one second. The assist time budget starts with the first actual help,
+including early assistance, and is not extended by a phase transition.
 
-The engine adds browser-side precautions to firmware safety. Firmware remains
-responsible for its own STOP latch, watchdog, current limit, and calibrated
-position/speed clamps.
+## Sustained-load governor and resistance
 
-Five-finger assist uses `PowerAwareExerciseSettings` (an engine-local extension
-of the frozen settings contract). `assist_stagger_ms` defaults to 150 ms and
-may be increased; `assist_max_parallel` defaults to 3 and may be reduced to 1
-or 2. Invalid values are rejected before commands are emitted. The scheduler
-starts one unreached finger at a time, largest vision-to-target gap first,
-including opening movements. It holds free, reached, and queued fingers at the
-measured servo position. Vision drift can queue a newly unreached finger; it
-cannot bypass the stagger or restart the other motors. A slot remains occupied
-until telemetry confirms arrival at its command. Settling requires the queue
-and moving set to be empty for one second. Assisted destinations and assisted
-reach checks normally use the 0.95 calibrated-range cap. Only the patient-consented
-`intensify(further)` override can use 1.0 on the approved finger.
+`EngineOptions.currentLimitMa` accepts the runtime's active firmware `info.limit`.
+If omitted, the engine uses the calibration's `current_limit_ma`; invalid limits
+are rejected. The governor's ceiling is 80% of that limit. In ASSIST,
+ASSIST_HOLD and early assisted ATTEMPT it blocks new starts as soon as current
+exceeds the ceiling. After 200 ms continuously above it, the newest started
+finger's pull goal decreases by 0.05, then again every 200 ms while high. It
+works backwards through started fingers as each returns to its safe held pull.
+Shed goals cannot restart at a higher pull during the attempt. Current below
+the ceiling clears the blocking window; ordinary queued fingers may then start.
 
-Resistance uses per-finger provisional stall-current profiles matching F1/F2
-(thumb/index/middle/ring/pinky: 650/800/750/650/650 mA). The extra-current
-threshold is `min(250, stall_ma * 250 / 800)`. Bench values can be injected via
-`EngineOptions.servoProfiles`. Attribution uses the largest ramped servo
-setpoint (`tel.a`) minus vision gap in the last 300 ms, across all five fingers.
-Resistance requires a current gap above 0.05 in addition to sustained excess
-current and stalled vision: ordinary camera noise around a settled finger must
-not stop a different finger's staggered movement. A resistance stop reverts intensity, freezes or safely lowers achieved
-servo commands, and cancels further queued starts. It also lowers that finger's
-gentle assist speed for the remainder of the session. These checks supplement the
-independent firmware limits.
+Each reduction records `{ source: 'load_shed', finger, ma, t_rel }` in the
+attempt's `safety_events`. It is not an `EngineEvent` and does not pause or
+claim a hardware fault. This is a reactive governor with a 200 ms observation
+window, not a hard current clamp; firmware current protection remains necessary.
+The deterministic flexor-load test verifies recovery below the ceiling while
+staying below the firmware limit. The O2 opening simulator was not merged at
+O3 start, so these tests use the existing fake firmware and scripted load.
 
-Evaluation still reports per-sweep closure in `progress`; its local state also
-returns `completedSweeps`, `totalSweeps`, and `overallProgress` for a session
-progress display. The default selection runs ten slow/fast sweeps over all five
-fingers. A subset retains selection order and removes duplicates. Friction is
-looked up independently for each finger and speed. The runtime can expose the
-additional settings and progress fields when the shared contracts are updated.
+Resistance profiles remain provisional (thumb/index/middle/ring/pinky:
+650/800/750/650/650 mA); inject bench values with `EngineOptions.servoProfiles`.
+The extra-current threshold is `min(250, stall_ma * 250 / 800)`. Attribution uses
+the largest `tel.a - pullFromClosure(vision)` gap in the last 300 ms. Detection
+requires sustained excess current, a present gap above 0.05 and no opening
+improvement greater than 0.02 for 200 ms. Ordinary camera noise at a settled
+finger must not stop its neighbors. Resistance cancels intensity, freezes each
+finger at `min(tel.a, pull goal)`, cancels queued starts and lowers that finger's
+speed for the session. Subsequent held refreshes can only lower these pulls.
 
-The AI therapist policy lives in `therapy.ts`. Ordinary assist stays at or below
-0.20/s; only `intensify` with recent patient consent can use 0.30/s, full calibrated
-closure, or two extra hold seconds. Phase entry consumes staged overrides before
-actions run. Each full-vector command uses the minimum speed cap of its moving
-fingers, so a gentle neighbor can conservatively slow a consented faster finger.
-No tool changes calibration or current limits.
+## Vision and firmware safety
 
-Per-finger delay or `assist_finger_now` can start assistance during ATTEMPT. The
-same scheduler persists across ATTEMPT → ASSIST, preserving the 150 ms stagger and
-three moving motors. Assisted fingers stop contributing to best-alone metrics;
-unassisted fingers continue to be measured. Vision loss and resistance protections
-also apply to this early assistance. The assist-duration cap counts from the first
-actual help, including any early assistance, rather than being extended by a phase
-transition. Waiting for a later delay does not consume the movement-time budget.
+Detected frames require finite closures, confidence at least 0.6 and age at
+most 300 ms. No motion command is emitted without safe telemetry and visibility.
+During assistance, 300 ms unseen releases; 1 s unseen pauses. Visibility
+returning after a release still requires explicit resume. The deadline spans
+ATTEMPT, ASSIST and ASSIST_HOLD transitions. STOP, watchdog, overcurrent,
+disconnect and fault telemetry release and latch PAUSED; resume releases first.
+PRESENT repeats its existing phase event every 8 s while waiting for a hand.
 
-`EngineOptions.onTherapyOutput` executes immediate release/reduction commands in the
-runtime. Pose copies supplied to the UI are separate from motor goals and cached
-until targets change. Test fixtures capture immediate output through the same fake
-world as normal ticks. Generated sequences cover both unconsented calls and valid
-patient-requested intensity, checking speed, positions, hold/repetition limits,
-calibrated angle bounds, and that calibration/current policy stays unchanged.
+Firmware remains independently responsible for STOP, watchdog, current limits,
+calibrated clamps and asymmetric ramps. No browser policy replaces those rules.
+
+## Therapy and evaluation
+
+`therapy.ts` keeps ordinary speed at or below 0.20/s. Recent patient consent
+permits at most 0.30/s, full opening or two extra hold seconds. Easier opening
+scales opening range down and therefore raises target closure; closing poses
+retain their closure scale. `further` sets an opening target to closure 0 and
+is refused for closing poses. Patient requests recognize opening/stretching
+words; closing words cannot authorize further opening. Pain, resistance and
+safety still revoke intensity. No tool changes calibration or current limits.
+Staged overrides apply before phase entry actions. Full-vector winding speed
+uses the minimum speed cap among winding fingers. Pose copies sent to the UI
+cannot mutate motor goals. `onTherapyOutput` dispatches immediate reductions
+and releases through the same command path as ticks.
+
+Evaluation measures **resistance to opening (flexor tone)** from a relaxed,
+flexed hand. Each sweep winds only its selected finger to pull 0.95 and ends at
+pull >= 0.93; other fingers stay at pull 0. Its prepare, cooldown, fault-clear,
+low current limit and limit restoration rules are unchanged. Per-sweep `progress`
+is pull. Local state also exposes `completedSweeps`, `totalSweeps` and
+`overallProgress`; the default selection runs ten slow/fast sweeps.
+
+`frictionRun(options)` uses the same driver with the glove **off the hand**.
+Its full-range pull sweeps remain unchanged. After `stage === 'done'`, `curves()`
+returns raw-current curves binned to 0.05, omitting aborted sweeps. A stopped run
+returns none. Evaluation interpolates curves independently by finger and speed;
+`friction_used` requires a curve for every recorded sweep. Evaluation aborts on
+lost vision because its API has no pause/resume operation.

@@ -1,5 +1,6 @@
 import type { Calibration } from '../../contracts/calibration';
 import type { GloveEvent, GloveTelemetry, Quint } from '../../contracts/glove';
+import { FOLLOW_SLACK } from '../assist';
 import type { VisionFrame } from '../../contracts/vision';
 import type { EngineInput, GloveCommand } from '../types';
 import calibrationFixture from '../../../../contracts/fixtures/calibration.json';
@@ -42,15 +43,15 @@ export class FakeWorld {
       if (cmd.t === 'limit') continue;
       if (cmd.t === 'release') {
         this.goal = [0, 0, 0, 0, 0];
-        this.speed = 2;
+        this.speed = 3;
         this.tel.st = 'idle';
         this.tel.md = 'none';
       } else if (this.tel.st !== 'fault') {
         this.goal =
           cmd.t === 'follow'
-            ? (cmd.f.map((v) => Math.max(0, v - 0.03)) as Quint)
+            ? (cmd.f.map((v) => Math.max(0, v - FOLLOW_SLACK)) as Quint)
             : [...cmd.f];
-        this.speed = cmd.t === 'follow' ? 2 : cmd.v;
+        this.speed = cmd.t === 'follow' ? 1.5 : cmd.v;
         this.tel.st = 'run';
         this.tel.md = cmd.t;
       }
@@ -67,7 +68,10 @@ export class FakeWorld {
       (v, i) =>
         v +
         Math.sign(this.goal[i] - v) *
-          Math.min(Math.abs(this.goal[i] - v), (this.speed * ms) / 1000),
+          Math.min(
+            Math.abs(this.goal[i] - v),
+            ((this.goal[i] < v ? 3 : this.speed) * ms) / 1000,
+          ),
     ) as Quint;
     const gloveEvents: GloveEvent[] = this.scripts
       .filter((s) => s.at > before && s.at <= this.now)

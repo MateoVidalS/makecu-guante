@@ -1,125 +1,67 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { EngineEvent } from '../contracts/engine';
-import { GLOVE_FINGERS, type GloveEvent } from '../contracts/glove';
-import { DEFAULT_EXERCISE_SETTINGS } from '../contracts/poses';
-import { SimWorld } from '../glove/sim/simWorld';
-import { createExerciseEngine } from './exercise';
-import { calibration as fixture } from './test/fakeWorld';
-import type { Output } from './types';
+import { describe, expect, it } from 'vitest';
+import { GLOVE_FINGERS, closureFromPull, type Quint } from '../contracts/glove';
+import { SERVO_PROFILES } from './assist';
+import { Run } from './test/exerciseRun';
 
-// Match “Calibrate simulator”, with the five-servo firmware current limits.
-const calibration = structuredClone(fixture);
-calibration.servo = GLOVE_FINGERS.map((finger) => ({
-  finger,
-  min_deg: 20,
-  max_deg: 150,
-}));
-calibration.camera.closed_flex = {
-  thumb: 100,
-  index: 270,
-  middle: 270,
-  ring: 270,
-  pinky: 270,
-};
+describe('resistance to opening (flexor tone)', () => {
+  it.each(GLOVE_FINGERS)(
+    'freezes a rigid %s within 200 ms plus one tick and lowers future speed',
+    (finger) => {
+      const r = new Run('open', { assist_max_s: 10, hold_s: 0.5 });
+      const index = GLOVE_FINGERS.indexOf(finger);
+      r.world.hand = [0, 0, 0, 0, 0];
+      r.world.hand[index] = 1;
+      r.until('ASSIST');
+      for (let i = 0; i < 7; i++) r.step();
+      r.world.ma =
+        100 + Math.min(250, (SERVO_PROFILES[finger].stall_ma * 250) / 800) + 1;
+      const at = r.world.now;
+      for (let i = 0; i < 4; i++) r.step();
+      expect(r.engine.state().phase).toBe('ASSIST');
+      const out = r.step();
+      expect(r.world.now - at).toBe(250);
+      expect(out.events).toContainEqual({
+        kind: 'resistance',
+        finger,
+        ma: r.world.ma,
+      });
+      expect(r.engine.state().phase).toBe('ASSIST_HOLD');
+      expect(
+        r
+          .targets()
+          .at(-1)!
+          .f.every((v, i) => v <= r.world.tel.a[i]),
+      ).toBe(true);
+      expect(r.engine.therapy.speed(finger)).toBe(0.15);
+      r.until('DONE');
+      expect(r.events.filter((e) => e.kind === 'resistance')).toHaveLength(1);
+    },
+  );
 
-async function run(
-  finger: (typeof GLOVE_FINGERS)[number],
-  limit: number,
-  seed: number,
-  preset: 'mild' | 'moderate' | 'severe',
-) {
-  const world = new SimWorld({ autoStart: false, seed, preset });
-  const engine = createExerciseEngine();
-  const pending: GloveEvent[] = [];
-  const events: EngineEvent[] = [];
-  const accept = (out: Output) => {
-    for (const cmd of out.commands) {
-      if (cmd.t === 'target') world.glove.target(cmd.f, cmd.v);
-      else if (cmd.t === 'follow') world.glove.follow(cmd.f);
-      else if (cmd.t === 'release') world.glove.release();
-      else world.glove.limit(cmd.ma);
-    }
-    events.push(...out.events);
-    for (const event of out.events)
-      if (event.kind === 'phase') world.setIntent(event.pose, event.phase);
-  };
-  try {
-    await world.glove.connect();
-    calibration.servo.forEach((s, i) =>
-      world.glove.calib(i as 0 | 1 | 2 | 3 | 4, s.min_deg, s.max_deg),
+  it('uses injected servo thresholds, ignores brief spikes and sustained load with opening progress', () => {
+    const r = new Run(
+      'open',
+      { assist_max_s: 10 },
+      { servoProfiles: { index: { stall_ma: 400 } } },
     );
-    world.glove.limit(limit);
-    world.vision.setCalibration(calibration.camera);
-    await world.vision.start({ affectedHand: 'right' });
-    world.glove.onEvent((event) => pending.push(event));
-    // Enable rigidity when the patient has already tried, as in the live demo.
-    let rigid = false;
-    accept(
-      engine.start(
-        [{ pose: 'full_fist', reps: 3 }],
-        DEFAULT_EXERCISE_SETTINGS,
-        calibration,
-        world.timestamp(),
-      ),
-    );
-    for (
-      let ms = 0;
-      ms < 100_000 && !['DONE', 'PAUSED'].includes(engine.state().phase);
-      ms += 20
-    ) {
-      if (!rigid && engine.state().phase === 'ASSIST') {
-        world.controls.setRigid(finger, true);
-        rigid = true;
-      }
-      world.advance(20);
-      accept(
-        engine.tick({
-          now: world.timestamp(),
-          vision: world.vision.latest(),
-          tel: world.glove.latest(),
-          gloveConnected: true,
-          gloveEvents: pending.splice(0),
-        }),
-      );
+    r.world.hand = [0, 1, 0, 0, 0];
+    r.until('ASSIST');
+    for (let i = 0; i < 7; i++) r.step();
+    r.world.ma = 230;
+    for (let i = 0; i < 5; i++) r.step();
+    expect(r.events).toContainEqual({
+      kind: 'resistance',
+      finger: 'index',
+      ma: 230,
+    });
+    const moving = new Run('open', { assist_max_s: 10 });
+    moving.until('ASSIST');
+    for (let i = 0; i < 7; i++) moving.step();
+    moving.world.ma = 500;
+    for (let i = 0; i < 20; i++) {
+      moving.world.hand = moving.world.tel.a.map(closureFromPull) as Quint;
+      moving.step();
     }
-    return { events, phase: engine.state().phase };
-  } finally {
-    world.stop();
-  }
-}
-
-describe('rigid finger safety with clean five-finger simulator calibration', () => {
-  beforeEach(() => {
-    // Keep the manually advanced simulator independent of wall-clock startup time.
-    vi.spyOn(performance, 'now').mockReturnValue(0);
+    expect(moving.events.some((e) => e.kind === 'resistance')).toBe(false);
   });
-  for (const limit of [900, 1500, 2200]) {
-    it.each(GLOVE_FINGERS)(
-      `stops %s during full-fist assist at ${limit} mA`,
-      async (finger) => {
-        for (const preset of ['mild', 'moderate', 'severe'] as const) {
-          const seed = 42;
-          const { events } = await run(finger, limit, seed, preset);
-          expect(events).toContainEqual(
-            expect.objectContaining({ kind: 'assist_started' }),
-          );
-          expect(
-            events.some(
-              (e) =>
-                (e.kind === 'resistance' ||
-                  (e.kind === 'safety' && e.source === 'overcurrent')) &&
-                (e.kind === 'safety' || e.finger === finger),
-            ),
-            JSON.stringify(events.filter((e) => e.kind !== 'progress')),
-          ).toBe(true);
-          expect(
-            events
-              .filter((e) => e.kind === 'attempt_done')
-              .every((e) => e.result.safety_events.length > 0),
-            `seed ${seed}, ${preset}`,
-          ).toBe(true);
-        }
-      },
-    );
-  }
 });
