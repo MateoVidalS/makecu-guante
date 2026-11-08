@@ -63,8 +63,7 @@ export const VO: VoLine[] = [
 // On-screen copy that is not voiced. Scenes import their strings from here so copy review happens in one file.
 export const COPY = {
   hook: {
-    line1: 'Her grandson wants a high-five.',
-    punch: 'Technically a fist bump.',
+    line1: "This is Rosa's hand.",
     note: 'Rosa is a composite character based on published survivor accounts.',
   },
   problem: {

@@ -46,7 +46,7 @@ Ghost-and-solid is the visual metaphor: a faint target shape, a solid shape reac
 ## What we take from the team's earlier cut (`video/memo-launch-v2.mp4`, `video/brag.mp4`), redesigned
 | Keep (idea) | Redesign (how) |
 |---|---|
-| Rosa: "Her grandson wants a high-five." → fist → "Technically a fist bump." as the cold open, and the high-five as the ending | Flat illustration in the app's style (round 6 px ink strokes, `c.hand` skin, paper/kitchen-table set), not the beige cartoon; the closing high-five uses ghost → solid |
+| Rosa as a composite character, her hand that stays closed | Flat illustration in the app's style; **no grandson, no high-five joke (owner decision)**: Rosa reaches for her mug and can't open her hand; at the end she opens it (ghost → solid) and holds the mug |
 | "77% have arm weakness after a first stroke" (Lawrence et al., Stroke, 2001) | Big tabular number, citation visible, on paper, not on a dark gradient |
 | "It watches. It coaches. It helps open." | Same triad; the waveform is memo blue, not green; only "helps open" may use the assist orange (it IS the glove helping) |
 | Callouts on the live hand: Ghost = the goal, Solid = your hand, Blue = on your own, Orange = the glove helped, Green = you reached it | Pills with a state-colored dot and a leader line driven by recording coordinates; the app is zoomed so the hand fills the frame |
