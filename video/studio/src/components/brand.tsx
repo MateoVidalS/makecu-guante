@@ -38,7 +38,7 @@ export const Mark: React.FC<{ size: number; ghost?: number; reach?: number; tile
 export type BadgeKind = 'simulated' | 'demoData' | 'illustrative';
 
 const BADGE_TEXT: Record<BadgeKind, string> = {
-  simulated: 'Simulated glove and camera',
+  simulated: 'Simulated device and camera',
   demoData: 'Demo data',
   illustrative: 'Illustrative scene',
 };

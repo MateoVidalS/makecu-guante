@@ -1,6 +1,6 @@
-// Fill in real names and roles. Shown in lower thirds and on the end card.
+// Shown in lower thirds and on the end card. Roles are optional ('' hides them).
 export const TEAM = [
-  { name: '[Name 1]', role: '[Role]' },
-  { name: '[Name 2]', role: '[Role]' },
-  { name: '[Name 3]', role: '[Role]' },
+  { name: 'Matías', role: '' },
+  { name: 'Martín', role: '' },
+  { name: 'Mateo', role: '' },
 ] as const;
