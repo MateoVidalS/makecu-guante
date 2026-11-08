@@ -107,6 +107,7 @@ export class RehabRuntime implements TherapyRuntime {
   private mounted = false;
   private switching = false;
   private evaluationLimit = 600;
+  private activeCurrentLimit = 1500;
   private retryAt = 0;
   private pendingEvents: GloveEvent[] = [];
   private beforeRelease: GloveTelemetry | null = null;
@@ -120,7 +121,11 @@ export class RehabRuntime implements TherapyRuntime {
           ? options.glove.world.timestamp()
           : performance.now());
     const epoch = Date.now() - this.clock();
+    const currentLimit = () => this.activeCurrentLimit;
     const engineOptions = {
+      get currentLimitMa() {
+        return currentLimit();
+      },
       therapy: {
         now: options.now ?? (() => performance.now()),
         simulated: () => this.options.glove.client.kind === 'sim',
@@ -255,11 +260,11 @@ export class RehabRuntime implements TherapyRuntime {
       if (!servo) throw new Error(`Missing ${finger} servo calibration`);
       client.calib(i as 0 | 1 | 2 | 3 | 4, servo.min_deg, servo.max_deg);
     }
-    client.limit(
+    this.activeCurrentLimit =
       this.mode === 'evaluation' || this.mode === 'friction'
         ? this.evaluationLimit
-        : c.current_limit_ma,
-    );
+        : c.current_limit_ma;
+    client.limit(this.activeCurrentLimit);
   }
   private async switchSource(
     kind: 'serial' | 'camera' | 'sim',
@@ -527,7 +532,10 @@ export class RehabRuntime implements TherapyRuntime {
         this.echo = null;
         this.beforeRelease = client.latest();
         client.release();
-      } else client.limit(command.ma);
+      } else {
+        this.activeCurrentLimit = command.ma;
+        client.limit(command.ma);
+      }
     }
     for (const event of out.events) {
       if (event.kind === 'phase' && this.sources.vision === 'sim')

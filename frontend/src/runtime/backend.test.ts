@@ -155,7 +155,11 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     const detail = await api.getSession(sessions[0].id);
     // The engine owns the outcome policy; runtime must store its exact results.
     expect(detail.summary).toEqual(runtime.exercise.view().summary);
-    expect(detail.summary?.attempts).toBe(10);
+    expect(detail.summary).toMatchObject({
+      attempts: 10,
+      assisted: 5,
+      reached_active: 5,
+    });
     expect(detail.attempts).toMatchObject(
       observed.map(({ trace: _trace, ...result }) => result),
     );

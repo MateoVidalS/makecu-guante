@@ -4,6 +4,7 @@ import { SimWorld } from '../glove/sim';
 import { createGloveController } from '../glove/GloveProvider';
 import { createVisionController } from '../vision/VisionProvider';
 import { RehabRuntime } from './runtime';
+import * as engines from '../engine';
 import { PersistenceQueue, type RuntimeApi } from './persistence';
 import * as api from '../api/client';
 import { calibration as fixture } from '../contracts/fixtures.check';
@@ -149,6 +150,8 @@ describe('real runtime integration', () => {
     await runtime.persistence.flush();
     expect(runtime.exercise.view().summary).toMatchObject({
       attempts: 10,
+      reached_active: 5,
+      assisted: 5,
       interrupted: 0,
     });
     expect(posts.addAttempt).toHaveBeenCalledTimes(10);
@@ -168,6 +171,12 @@ describe('real runtime integration', () => {
     expect(posts.endSession.mock.calls[0][0].summary).toEqual(
       events.find((e) => e.kind === 'session_done')?.summary,
     );
+    expect(
+      attempts.filter((a) => a.pose === 'full_fist').every((a) => !a.assisted),
+    ).toBe(true);
+    expect(
+      attempts.filter((a) => a.pose === 'open').every((a) => a.assisted),
+    ).toBe(true);
     expect(attempts.every((a) => a.trace.t.length > 30)).toBe(true);
     expect(
       attempts.every((a) =>
@@ -496,13 +505,16 @@ it('keeps camera-source frames driving five simulated motors after glove-only fa
   // Camera transport double supplies measured hand motion independently of
   // runtime's simulated-patient phase commands, as a real camera would.
   world.setIntent('open', 'ATTEMPT');
+  const targets = vi.spyOn(world.glove, 'target');
   await runtime.exercise.start(
     [{ pose: 'open', reps: 1 }],
     DEFAULT_EXERCISE_SETTINGS,
   );
   until(world, () => runtime.exercise.view().phase === 'ASSIST');
-  world.advance(1000);
-  expect(world.firmware.mode).toBe('target');
+  // O3 schedules assistance per finger; wait for the actual command, not a fixed delay.
+  until(world, () => targets.mock.calls.length > 0);
+  expect(targets).toHaveBeenCalled();
+  expect(targets.mock.calls.every(([pull]) => pull.length === 5)).toBe(true);
   until(world, () => runtime.exercise.view().phase === 'DONE');
   await runtime.persistence.flush();
   expect(runtime.sources.vision).toBe('camera');
@@ -692,4 +704,24 @@ it('always saves the current opening direction even if the caller supplies a leg
     expect.objectContaining({ assist_direction: 'open' }),
   );
   expect(runtime.calibration.current?.assist_direction).toBe('open');
+});
+
+it('passes the changing active current limit to the engine, including evaluation and recalibration', async () => {
+  const create = vi.spyOn(engines, 'createExerciseEngine');
+  const { runtime, world, calibration } = await harness();
+  const options = create.mock.calls[0][0]!;
+  expect(options.currentLimitMa).toBe(world.firmware.info().limit);
+  await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
+  expect(options.currentLimitMa).toBe(600);
+  expect(options.currentLimitMa).toBe(world.firmware.info().limit);
+  await runtime.evaluation.stop();
+  expect(options.currentLimitMa).toBe(1500);
+  vi.spyOn(api, 'createCalibration').mockImplementation(async (value) => ({
+    ...value,
+    id: 2,
+    created_at: calibration.created_at,
+  }));
+  await runtime.calibration.save({ ...calibration, current_limit_ma: 1200 });
+  expect(options.currentLimitMa).toBe(1200);
+  expect(options.currentLimitMa).toBe(world.firmware.info().limit);
 });
