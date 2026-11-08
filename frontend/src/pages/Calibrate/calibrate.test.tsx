@@ -151,7 +151,8 @@ it('opens legacy calibration at the camera step with glove ranges retained', () 
   ).toBeVisible();
   expect(screen.getByText(CAMERA_VIEW_RECAPTURE_MESSAGE)).toBeVisible();
   expect(screen.getByText(/Raise your hand, palm to the screen/)).toBeVisible();
-  expect(screen.getAllByText('Not captured')).toHaveLength(2);
+  expect(screen.getByText('Not captured')).toBeVisible();
+  expect(screen.getByText('Capture your fist first')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: /Glove range/ }));
   for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
     expect(
@@ -194,7 +195,8 @@ it.each([undefined, 1])(
       screen.getByRole('heading', { name: 'Step 2 · Camera range' }),
     ).toBeVisible();
     expect(screen.getByText(CAMERA_VIEW_RECAPTURE_MESSAGE)).toBeVisible();
-    expect(screen.getAllByText('Not captured')).toHaveLength(2);
+    expect(screen.getByText('Not captured')).toBeVisible();
+    expect(screen.getByText('Capture your fist first')).toBeVisible();
   },
 );
 

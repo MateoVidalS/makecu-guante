@@ -30,8 +30,9 @@ telemetry and labels simulated motors.
 | Command | Behavior |
 | --- | --- |
 | `make dev` | FastAPI :8000 + Vite :5173, physical glove/camera selected |
-| `make dev-sim` | Same API, simulated glove and patient/camera |
-| `make dev-camera` | Simulated glove + real webcam, for glove-detection checks |
+| `make dev-sim` | Same API, simulated glove + the real webcam (default for local work) |
+| `make dev-sim-all` | Simulated glove and simulated patient/camera (no webcam; used by e2e) |
+| `make dev-camera` | Alias of `dev-sim` (simulated glove + real webcam) |
 | `make dev-mock` | Frontend only, browser MSW fixtures; writes last until reload |
 | `make demo-seed` | Explicit, idempotent demo history in the configured SQLite DB |
 | `make build` | Typecheck + production frontend into `backend/static/` |

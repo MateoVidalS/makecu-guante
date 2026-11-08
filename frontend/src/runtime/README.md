@@ -69,7 +69,7 @@ physical-source locks, simulator recovery and first-use friction. `backend.test.
 on a free port with temporary SQLite storage and verifies traces, history,
 evaluation and export. It requires the normal `make setup` uv environment.
 
-Playwright runs `make dev-sim` on isolated ports (5178/8008 by default), a temporary
+Playwright runs `make dev-sim-all` on isolated ports (5178/8008 by default), a temporary
 database, a 3× simulator, no Gemini key, and fake browser media. Its main flow
 calibrates the simulator, performs the full plan, provokes rigid-index overcurrent,
 checks the local spoken safety phrase, resumes, checks the saved summary and

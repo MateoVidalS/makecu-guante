@@ -535,7 +535,7 @@ describe('Calibration wizard', () => {
     const first = mount(<Calibrate />, freshRuntime());
     expect(
       screen.getByText(
-        'Support your elbow. Keep your raised hand relaxed. Stop if it hurts.',
+        /For each finger, set two motor positions: slack with a relaxed fist/,
       ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
