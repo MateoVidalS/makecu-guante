@@ -109,9 +109,41 @@ describe('MSW REST client', () => {
     expect(await api.getProfile()).toEqual(profile);
     const { id: _id, created_at: _date, ...input } = fixtures.calibration;
     const saved = await api.createCalibration(input);
-    expect(saved.id).toBe(2);
+    expect(saved.id).toBe(3);
     expect(await api.getLatestCalibration()).toEqual(saved);
-    expect(await api.getCalibrations()).toHaveLength(2);
+    expect(await api.getCalibrations()).toHaveLength(3);
+  });
+  it('keeps mock directions and overview comparisons aligned with calibration', async () => {
+    const body = {
+      mode: 'exercise' as const,
+      plan: DEFAULT_PLAN,
+      settings: DEFAULT_EXERCISE_SETTINGS,
+    };
+    const open = await api.createSession({ ...body, calibration_id: 1 });
+    const close = await api.createSession({ ...body, calibration_id: 2 });
+    expect(open.assist_direction).toBe('open');
+    expect(close.assist_direction).toBe('close');
+    const rom = await api.getHistoryRom({});
+    const assistance = await api.getHistoryAssist();
+    const overview = await api.getHistoryOverview();
+    for (const point of overview.per_finger) {
+      const cohort = rom.filter(
+        (p) => p.finger === point.finger && p.assist_direction === 'open',
+      );
+      expect(point.active_max_first).toBe(cohort[0].active_max_mean);
+      expect(point.active_max_last).toBe(cohort.at(-1)!.active_max_mean);
+    }
+    expect(new Set(rom.map((p) => p.assist_direction))).toEqual(
+      new Set(['open', 'close']),
+    );
+    expect(new Set(assistance.map((p) => p.assist_direction))).toEqual(
+      new Set(['open', 'close']),
+    );
+    expect(
+      (await api.getHistoryResistance()).every(
+        (p) => p.assist_direction === 'open',
+      ),
+    ).toBe(true);
   });
   it('persists sessions, attempts, traces, transcript and summaries, then cascades deletion', async () => {
     const session = await api.createSession({

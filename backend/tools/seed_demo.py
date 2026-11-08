@@ -22,7 +22,7 @@ from app.db.session import make_engine, upgrade_schema
 
 
 def generate(end: datetime) -> dict:
-    script = Path(__file__).with_name("generate_open_demo.mjs")
+    script = Path(__file__).with_name("generate_demo.mjs")
     result = subprocess.run(
         ["node", str(script), end.isoformat()],
         check=True,
