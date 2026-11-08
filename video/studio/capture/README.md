@@ -8,7 +8,7 @@ node capture/check.mjs
 pnpm check
 ```
 
-One command records all seven required clips, writes `public/recordings/manifest.json`, and makes a six-frame PNG contact sheet per clip in `evidence/V1/`. Optional calibration footage is omitted. Requires the frontend's installed Playwright Chromium, Python/uv, and `ffmpeg`/`ffprobe` on PATH. Install the browser with `cd ../../frontend && pnpm exec playwright install chromium` if needed. No new dependencies are added.
+One command records all eight required clips, writes `public/recordings/manifest.json`, and makes a six-frame PNG contact sheet per clip in `evidence/V1/` (Doctor chat uses `evidence/V1c/`). Optional calibration footage is omitted. Requires the frontend's installed Playwright Chromium, Python/uv, and `ffmpeg`/`ffprobe` on PATH. Install the browser with `cd ../../frontend && pnpm exec playwright install chromium` if needed. No new dependencies are added.
 
 For a single replacement:
 
@@ -40,6 +40,7 @@ Multiple clips can be selected with a comma-separated `--only=session-resist,coa
 | `doctor-replay` | 12 | Stored opening attempt: camera, commanded pull, current, phase bands |
 | `doctor-summary` | 15 | Navigate to Doctor view and reveal a stored real Gemini therapist summary |
 | `doctor-export` | 6 | JSON/CSV/print controls; actual CSV download and success message |
+| `doctor-chat` | 12 | Eased typing, real Gemini compare/chart tool statuses, numeric answer and opening chart |
 
 The app has no separate “Therapist summary” reveal button: the stored summary is always visible on Doctor view. This capture uses that real navigation rather than simulating regeneration. The resistance UI currently says “Stopped — resistance in your index” and “The glove stopped pulling. Relax your hand.” The coach also supplies its production resistance caption. These exact UI words take precedence over the brief's illustrative sentence.
 
@@ -63,37 +64,43 @@ The doctor takes restore this exact cohort so the charts and stored summary desc
 
 Frame timing, simulator seed, UI actions and scrolling are scripted. Browser time is fixed to the demo date; database IDs and font/GPU rasterization can differ between machines. Reproduction means the same shots and events, not identical MP4 bytes.
 
-## V1c Doctor chat — blocked on provider availability
-
-The requested `doctor-chat` clip has **not** been recorded. No manifest entry or contact
-sheet was added for absent media. `doctor-chat.failure.json` records the redacted results:
-`gemini-4-argon` returned 429, `gemini-3.8-flash` failed without a status code, and
-`gemini-3.5-flash-lite` returned 503. Three underlying model requests were used; the
-remaining one cannot cover the normal tool-call round plus the final answer. Do not reset
-the counter or retry this capture under the current authorization.
-
-`chat.py` calls the production `app.chat.text.run_chat` against the restored demo cohort.
-It reads the API key only inside its Python process from the authorized `.env` path and
-never prints provider exception text. Each underlying streaming model request, including
-fallbacks and tool rounds, consumes the persistent four-request cap in
-`/tmp/memo-video-doctor-chat-budget.json`. The committed failure record also preserves the
-spent budget if that temporary file disappears. No paid-tier configuration is changed.
-
-The attempted therapist question was: “Compare index opening on Oct 24 and Nov 7, and show
-me the chart.” Both dates contain opening-assist sessions in the packaged demo snapshot.
-A successful stream must finish with `done` and contain actual `compare` and `show_chart`
-events before it can be cached as `public/recordings/doctor-chat.response.json`. A cached
-response is checked against the question and demo snapshot SHA-256 before reuse, and is
-read before any credentials or model client are loaded. No response was fabricated.
-
-The helper invocation (currently exits without spending quota) is:
+## V1c Doctor chat
 
 ```sh
-REHAB_DB_PATH=/tmp/memo-video.db ../../backend/.venv/bin/python capture/chat.py
+node capture/capture.mjs --only=doctor-chat
+node capture/check.mjs
 ```
 
-Once the team supplies a successful response or separately authorizes a new generation
-budget when service is available, the remaining work is to connect its cached SSE events
-to `capture.mjs`, record the eased typing/tool/answer/chart sequence at 4K/30 fps, add its
-manifest events, and produce `evidence/V1c/doctor-chat.png`. The existing seven recordings
-remain the only complete takes.
+The 12-second take shows the real Doctor chat panel, eased question typing, the actual
+“Comparing recorded measurements” and “Showing the chart” status chips, and the cached
+Gemini answer: index opening rose from 63% on Oct 24 to 72% on Nov 7, a 9-point change.
+The opening-pose filter is selected before the take, so the real range chart matches the
+comparison. The panel and report retain the Demo data labels.
+
+`chat.py` runs the production `app.chat.text.run_chat` tool loop against the isolated demo
+cohort. It reads the API key only inside its Python process from the authorized `.env`
+path. Model selection and empty fallback lists are capture-process environment overrides;
+no app configuration changes or paid-tier settings are used. The owner expanded the total
+cap to ten underlying requests. Nine were used (six in the renewed authorization), with
+30-second pauses between retry attempts. `doctor-chat.requests.json` preserves the full
+redacted attempt history. Provider exception strings and credentials are never logged.
+The earlier lite response was rejected because it skipped compare; the successful final
+turn includes both real compare and show_chart events.
+
+`public/recordings/doctor-chat.response.json` contains the successful production SSE events,
+question, model, request history and demo snapshot SHA-256. Normal reruns read this cache
+before loading credentials and make **zero** model requests. Only cached SSE delivery is
+retimed through a capture-local fetch stream; React chat components, chat parsing, tool
+labels, chart navigation, database/chart requests and answer text are unchanged. Tool chips
+are held for 0.9 seconds each, and the final answer stays visible for the last three seconds.
+No model response or tool event is fabricated.
+
+`/tmp/memo-video-doctor-chat-budget.json` persists the cap across failed reruns; a file lock
+serializes generation. The committed request audit preserves spent requests if the temp
+counter disappears. Never remove these counters to retry. A fresh generation now requires
+new authorization because the remaining one call cannot cover a tool-and-answer round.
+
+The clip has input click/focus, send, each tool status, chart-action chip, answer and chart
+boxes, plus `focus:chat-panel` for the whole panel at the start and after the answer. All
+coordinates use the existing 2× device-pixel convention. The contact sheet is
+`evidence/V1c/doctor-chat.png`; other contact sheets remain under `evidence/V1/`.

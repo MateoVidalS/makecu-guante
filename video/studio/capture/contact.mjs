@@ -14,6 +14,7 @@ export function sampleFrames(clip) {
     at('phase:ASSIST_HOLD') + 30, at('phase:REST') + 30];
   if (clip.id === 'session-resist') return [0, at('phase:ATTEMPT') + 30, at('phase:ASSIST') + 15,
     at('mark:resistance:index') + 5, at('mark:glove-released') + 15, clip.durationFrames - 1];
+  if (clip.id === 'doctor-chat') return [90, 156, 168, 195, 244, 330];
   if (clip.id === 'coach-panel') return [0, 121, 211, 301, 451, 599];
   return Array.from({ length: 6 }, (_, i) => Math.floor((i + 0.5) * clip.durationFrames / 6));
 }
@@ -33,8 +34,9 @@ export async function createContact(clip, framesDir) {
     }
     const list = path.join(temp, 'contact.txt');
     await writeFile(list, sources.map(file => `file '${file.replaceAll("'", "'\\''")}'`).join('\n') + '\n');
-    await mkdir(evidence, { recursive: true });
-    ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-vf', 'scale=960:540,tile=3x2', '-frames:v', '1', path.join(evidence, `${clip.id}.png`)]);
+    const targetEvidence = clip.id === 'doctor-chat' ? path.join(studio, 'evidence/V1c') : evidence;
+    await mkdir(targetEvidence, { recursive: true });
+    ffmpeg(['-f', 'concat', '-safe', '0', '-i', list, '-vf', 'scale=960:540,tile=3x2', '-frames:v', '1', path.join(targetEvidence, `${clip.id}.png`)]);
     console.log(`${clip.id}: contact frames ${sampleFrames(clip).join(', ')}`);
   } finally { await rm(temp, { recursive: true }); }
 }

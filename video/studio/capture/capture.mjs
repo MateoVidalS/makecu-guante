@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { createContact } from './contact.mjs';
+import { prepareChat, chatFrame } from './chat.mjs';
 import { once } from 'node:events';
 import { createWriteStream } from 'node:fs';
 import { readFile, writeFile, mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
@@ -15,10 +16,10 @@ const out = path.join(studio, 'public/recordings');
 const evidence = path.join(studio, 'evidence/V1');
 const only = process.argv.find(a => a.startsWith('--only='))?.slice(7);
 const probe = process.argv.includes('--probe');
-const ids = ['session-main', 'session-resist', 'coach-panel', 'doctor-history', 'doctor-replay', 'doctor-summary', 'doctor-export'];
+const ids = ['session-main', 'session-resist', 'coach-panel', 'doctor-history', 'doctor-replay', 'doctor-summary', 'doctor-export', 'doctor-chat'];
 const selected = only ? only.split(',') : ids;
 for (const id of selected) if (!ids.includes(id)) throw new Error(`Unknown clip: ${id}`);
-const durations = { 'session-main': 45, 'session-resist': 20, 'coach-panel': 20, 'doctor-history': 15, 'doctor-replay': 12, 'doctor-summary': 15, 'doctor-export': 6 };
+const durations = { 'session-main': 45, 'session-resist': 20, 'coach-panel': 20, 'doctor-history': 15, 'doctor-replay': 12, 'doctor-summary': 15, 'doctor-export': 6, 'doctor-chat': 12 };
 const origin = 'http://127.0.0.1:5273';
 const api = 'http://127.0.0.1:8100';
 const env = { ...process.env, REHAB_DB_PATH: '/tmp/memo-video.db', REHAB_PORT: '8100', REHAB_FRONTEND_PORT: '5273', VITE_SIM: '1', VITE_VISION: 'sim', GEMINI_API_KEY: '' };
@@ -123,6 +124,7 @@ async function record(id) {
   console.log(`Preparing ${id}`);
   const { page, context } = await prepare();
   const clip = { id, file: `recordings/${id}.mp4`, width: 3840, height: 2160, fps: 30, durationFrames: durations[id] * 30, simulated: true, demoData: true, events: [] };
+  const chat = id === 'doctor-chat' ? JSON.parse(await readFile(path.join(out, 'doctor-chat.response.json'), 'utf8')) : null;
   let scrollFrom = 0;
   let scrollTo = 0;
   let previousPhase;
@@ -140,7 +142,7 @@ async function record(id) {
       await settle(page);
     } else {
       const route = id === 'doctor-history' ? '/history' : id === 'doctor-replay' ? `/history/sessions/${await replaySession()}` : '/doctor';
-      // Reload preserves real REST-backed UI; recordings do not use fixture responses.
+      // Reload preserves real REST-backed charts; chat alone replays captured Gemini SSE.
       await page.goto(origin + route);
       await page.addStyleTag({ content: '* { cursor: none !important; } .runtime-fallback, [data-testid="bench-mirror-status"], [data-capture-dev] { display: none !important; }' });
       await page.getByRole('button', { name: 'Demo tools', exact: true }).evaluateAll(nodes => nodes.forEach(n => n.setAttribute('data-capture-dev', '')));
@@ -163,10 +165,12 @@ async function record(id) {
       await settle(page);
     }
   }
+  if (chat) await prepareChat(page, chat);
   const framesDir = path.join(temp, id);
   await mkdir(framesDir);
   const frameCount = probe ? Math.min(clip.durationFrames, 12) : clip.durationFrames;
   for (let f = 0; f < frameCount; f++) {
+    if (chat) await chatFrame(page, clip, f, chat, event, click);
     if (id.startsWith('session-')) {
       // Main is slowed 2.5x for the editor; resistance stays at real simulator speed.
       const snapshot = await page.evaluate(ms => window.aiTherapist.advance(ms), id === 'session-main' ? 1000 / 75 : 1000 / 45);
@@ -278,6 +282,7 @@ try {
       await command(path.join(root, 'backend/.venv/bin/python'), [path.join(studio, 'capture/restore-demo.py')]);
       doctorSeeded = true;
     }
+    if (id === 'doctor-chat') await command(path.join(root, 'backend/.venv/bin/python'), [path.join(studio, 'capture/chat.py')]);
     if (id === 'doctor-summary') await command(path.join(root, 'backend/.venv/bin/python'), [path.join(studio, 'capture/summary.py')]);
     await record(id);
   }

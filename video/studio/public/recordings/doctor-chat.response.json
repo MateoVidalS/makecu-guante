@@ -1,0 +1,67 @@
+{
+  "question": "How many points did index opening change from Oct 24 to Nov 7? Use the comparison tool and show the chart.",
+  "fixtureSha256": "399637e001406827298046a377f1f7819b876f01a4884e52c719f8a8256b532d",
+  "capturedAt": "2026-11-08T16:50:18.643232+00:00",
+  "requests": [
+    {
+      "model": "gemini-4-argon",
+      "status": 429
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "status": "failed"
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": 503
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "status": 429
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": "complete"
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": "complete"
+    },
+    {
+      "model": "gemini-3.8-flash-lite",
+      "status": 404
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": "complete"
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": "complete"
+    }
+  ],
+  "events": [
+    {
+      "type": "tool",
+      "name": "compare",
+      "label": "Comparing recorded measurements"
+    },
+    {
+      "type": "tool",
+      "name": "show_chart",
+      "label": "range"
+    },
+    {
+      "type": "delta",
+      "text": "This is demo data. Index finger opening increased by 9 percentage points from Oct 24 to Nov 7, going from 63% to 72% opening on your own."
+    },
+    {
+      "type": "delta",
+      "text": " This is an estimate inspired by clinical practice and is demo data."
+    },
+    {
+      "type": "done",
+      "model": "gemini-3.5-flash-lite"
+    }
+  ]
+}

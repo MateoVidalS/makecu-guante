@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const studio = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const file = path.join(studio, 'public/recordings/manifest.json');
 const manifest = JSON.parse(await readFile(file, 'utf8'));
-const required = ['session-main', 'session-resist', 'coach-panel', 'doctor-history', 'doctor-replay', 'doctor-summary', 'doctor-export'];
+const required = ['session-main', 'session-resist', 'coach-panel', 'doctor-history', 'doctor-replay', 'doctor-summary', 'doctor-export', 'doctor-chat'];
 assert.equal(manifest.version, 1);
 assert.deepEqual(manifest.clips.map(c => c.id).sort(), required.sort());
 const temp = await mkdtemp(path.join(tmpdir(), 'memo-manifest-'));
@@ -46,7 +46,7 @@ try {
       }
       if (event.point) assert(event.point.x >= 0 && event.point.x <= clip.width && event.point.y >= 0 && event.point.y <= clip.height);
     }
-    assert((await stat(path.join(studio, 'evidence/V1', `${clip.id}.png`))).size > 1000);
+    assert((await stat(path.join(studio, clip.id === 'doctor-chat' ? 'evidence/V1c' : 'evidence/V1', `${clip.id}.png`))).size > 1000);
     console.log(`${clip.id}: ${clip.durationFrames} frames, 3840×2160 H.264, events valid`);
   }
   const main = manifest.clips.find(c => c.id === 'session-main');
@@ -55,5 +55,21 @@ try {
   for (const label of ['mark:rigid-index-enabled', 'mark:resistance:index', 'mark:glove-released']) assert(resist.events.some(e => e.label === label), `Missing ${label}`);
   const coach = manifest.clips.find(c => c.id === 'coach-panel');
   assert(coach.events.some(e => e.label === 'click:Undo'));
-  console.log('Recording manifest satisfies RecordingManifest and all seven media files match.');
+  const chat = manifest.clips.find(c => c.id === 'doctor-chat');
+  assert.equal(chat.durationFrames, 360);
+  for (const label of ['focus:chat-panel', 'click:chat-input', 'focus:chat-input', 'click:Send chat question', 'focus:tool:compare', 'focus:tool:show_chart', 'focus:chat-answer', 'focus:chat-chart', 'focus:chart-chip']) {
+    assert(chat.events.some(e => e.label === label && e.box), `Chat missing boxed event: ${label}`);
+  }
+  const panel = chat.events.find(e => e.label === 'focus:chat-panel').box;
+  assert.equal(panel.x + panel.w, chat.width);
+  assert.equal(panel.y, 0);
+  assert.equal(panel.h, chat.height);
+  const response = JSON.parse(await readFile(path.join(studio, 'public/recordings/doctor-chat.response.json'), 'utf8'));
+  assert.equal(response.events.at(-1).type, 'done');
+  assert(response.events.some(e => e.type === 'tool' && e.name === 'compare'));
+  assert(response.events.some(e => e.type === 'tool' && e.name === 'show_chart' && e.label === 'range'));
+  assert(response.requests.length <= 10);
+  const answer = response.events.filter(e => e.type === 'delta').map(e => e.text).join('');
+  for (const phrase of ['demo data', '9 percentage points', '63%', '72%']) assert(answer.includes(phrase));
+  console.log('Recording manifest satisfies RecordingManifest and all eight media files match.');
 } finally { await rm(temp, { recursive: true }); }
