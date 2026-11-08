@@ -54,7 +54,7 @@ export const UnderHood: React.FC = () => {
   return (
     <Fill>
       {frame < 288 ? <>
-        <T size="h1" style={{ position: 'absolute', top: 356 - enter(frame, 90, 18) * 204, left: safe.x, right: safe.x, opacity: enter(frame, 0) }}>{COPY.underHood.title}</T>
+        <T size="h1" style={{ position: 'absolute', top: 152, left: safe.x, right: safe.x, opacity: enter(frame, 0) }}>{COPY.underHood.title}</T>
         {frame >= 108 && <SafetyLayers frame={frame} />}
       </> : <Numbers frame={frame} />}
     </Fill>
