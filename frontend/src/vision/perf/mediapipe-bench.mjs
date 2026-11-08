@@ -91,7 +91,8 @@ page.on('pageerror', (e) => console.error('pageerror', e.message));
 await page.goto(`${base}src/vision/perf/mediapipe-bench.html`);
 await page.waitForFunction(() => window.bench);
 await page.evaluate(() => window.bench.init('CPU'));
-const shoot = (shot) => page.evaluate((s) => window.bench.shoot(s), shot);
+// Real (anatomically correct) hands by default; the legacy rig is geometrically mirrored.
+const shoot = (shot) => page.evaluate((s) => window.bench.shoot(s), { anatomical: true, ...shot });
 
 const views = ['front_upright', 'front_diagonal'];
 const hands = quick ? ['right'] : ['right', 'left'];
