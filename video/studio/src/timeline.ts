@@ -40,7 +40,7 @@ export const SCENES: SceneDef[] = [
   { id: 'coach', bars: 7, title: 'The coach', owner: 'V5', what: 'Gemini Live coach: names the finger, adjusts help with Undo; the model never moves the motors.' },
   { id: 'gemini', bars: 6, title: 'How memo uses Gemini', owner: 'V6', what: 'Gemini Live + function calling: patient speech → Gemini Live → one of 20 tools → runtime clamps to safe limits → engine, logged with Undo; local stop/pain words bypass the model; ephemeral tokens; Gemini text summaries; doctor chat with read-only tools; Gemini TTS voiced this video.' },
   { id: 'doctor', bars: 10, title: 'The therapist', owner: 'V5', what: 'History then vs. now, replay, therapist summary in one click, export.' },
-  { id: 'bench', bars: 3, title: 'It works', owner: 'team', what: 'Real footage: the app on the laptop driving the real board; the five servos wind and release the threads on a hand-shaped fixture (never on a person). Natural servo sound.' },
+  { id: 'bench', bars: 3, title: 'It works', owner: 'team', what: 'Real footage: the app on the laptop driving the real board; the five servos wind and release the threads over the back of a real hand. Natural servo sound.' },
   { id: 'underHood', bars: 5, title: 'Under the hood', owner: 'V4', what: 'The board decides, not the browser: 4 safety layers, architecture, three numbers.' },
   { id: 'close', bars: 4, title: 'Your hand remembers', owner: 'V3', what: 'Rosa opens her hand (blue on her own, orange memo helped, green reached) and holds her mug (illustrative). End card: lockup, tagline, credits, disclaimer.' },
 ];
