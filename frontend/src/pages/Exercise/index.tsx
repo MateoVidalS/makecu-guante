@@ -48,14 +48,28 @@ import {
 import './exercise.css';
 import { CoachDecisions } from './CoachDecisions';
 import type { Runtime } from '../../contracts/runtime';
+import type { LiveTherapyState } from '../../contracts/therapist';
 import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
 const Hand = memo(function Hand() {
   const runtime = useRuntime(),
     vision = useVision();
-  const highlighted = useHighlightedFinger((runtime as Runtime).therapy);
+  const therapy = (runtime as Runtime).therapy;
+  const highlighted = useHighlightedFinger(therapy);
+  const phase = useExerciseView((v) => v.phase);
   const pose = useExerciseView((v) => v.pose);
+  const therapyState = useRef<LiveTherapyState | null>(
+    therapy?.state() ?? null,
+  );
+  useEffect(() => {
+    // Shaping and patient-requested reach must share the meters' reached threshold.
+    const update = () => {
+      therapyState.current = therapy?.state() ?? null;
+    };
+    update();
+    return therapy?.onDecision(update);
+  }, [therapy, phase, pose]);
   const container = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(42.5);
   useEffect(() => {
@@ -92,9 +106,15 @@ const Hand = memo(function Hand() {
   const state = useCallback(
     (finger: string) => {
       const v = runtime.exercise.view();
+      const liveFinger =
+        therapyState.current?.pose === v.pose.id
+          ? therapyState.current.fingers.find((f) => f.finger === finger)
+          : undefined;
       return liveFingerState({
         phase: v.phase,
-        target: v.pose.closure[finger as FingerId],
+        target: liveFinger
+          ? liveFinger.target
+          : v.pose.closure[finger as FingerId],
         value:
           vision.latest?.detected && vision.latest.confidence >= 0.6
             ? (vision.latest.closure?.[finger as FingerId] ?? null)
