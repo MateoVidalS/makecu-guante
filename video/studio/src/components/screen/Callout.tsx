@@ -36,7 +36,7 @@ export const Callout: React.FC<{
         <path d={`M${edge},${y + 40} H${(edge + target.x) / 2} L${target.x},${target.y}`} pathLength={1} stroke={c.text} strokeWidth={1.5} fill="none" strokeDasharray={1} strokeDashoffset={1 - draw} />
         <circle cx={target.x} cy={target.y} r={5} fill={c.surface} stroke={c.text} strokeWidth={1.5} opacity={draw} />
       </svg> : null}
-      <div style={{ position: 'absolute', left: x, top: y, width, minHeight: 80, padding: `16px ${space.s24}px`, boxSizing: 'border-box', border: `1px solid ${c.border}`, borderRadius: radius.pill, background: c.surface, boxShadow: shadow, display: 'flex', gap: space.s16, alignItems: 'center', opacity: enter, transform: `translateY(${(1 - enter) * 8}px) scale(${1 + pulse * 0.025})`, transformOrigin: side === 'left' ? 'right center' : 'left center', fontFamily: font, fontSize: type.h3, fontWeight: weight.semibold, color: c.text, whiteSpace: 'nowrap' }}>
+      <div style={{ position: 'absolute', left: x, top: y, width: 'max-content', minWidth: width, minHeight: 80, padding: `16px ${space.s24}px`, boxSizing: 'border-box', border: `1px solid ${c.border}`, borderRadius: radius.pill, background: c.surface, boxShadow: shadow, display: 'flex', gap: space.s16, alignItems: 'center', opacity: enter, transform: `translateY(${(1 - enter) * 8}px) scale(${1 + pulse * 0.025})`, transformOrigin: side === 'left' ? 'right center' : 'left center', fontFamily: font, fontSize: type.h3, fontWeight: weight.semibold, color: c.text, whiteSpace: 'nowrap' }}>
         <span style={{ width: 16 + pulse * 4, height: 16 + pulse * 4, flexShrink: 0, borderRadius: radius.pill, background: dotColor }} />
         {label}
       </div>
