@@ -25,6 +25,8 @@ export default defineConfig({
     },
   ],
   webServer: {
+    // Seeding and the first Vite build share CPU with other integration workers.
+    timeout: 180_000,
     command:
       process.env.REHAB_E2E_MOCK === '1'
         ? 'make -C .. dev-mock'
