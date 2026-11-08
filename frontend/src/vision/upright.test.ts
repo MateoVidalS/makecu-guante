@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -95,6 +96,7 @@ describe('synthetic front-upright, palm-to-lens view (not hardware validation)',
         processor.calibration = {
           affected_hand: hand,
           camera_view: 'front_upright',
+          flex_model: CURRENT_FLEX_MODEL,
           open_flex: sums('open'),
           closed_flex: sums('full_fist'),
           pinch_open: 1,
@@ -248,6 +250,7 @@ describe('upright flexion and label cross-check', () => {
     const processor = new FrameProcessor();
     processor.calibration = {
       affected_hand: 'right',
+      flex_model: CURRENT_FLEX_MODEL,
       open_flex: sums('open'),
       closed_flex: sums('full_fist'),
       pinch_open: 1,
@@ -266,4 +269,32 @@ describe('upright flexion and label cross-check', () => {
       1,
     );
   });
+});
+
+describe('camera flex model compatibility', () => {
+  it.each([undefined, 1, 0, 3])(
+    'withholds closure for stale model %s but retains raw capture data',
+    (flex_model) => {
+      const processor = new FrameProcessor();
+      processor.calibration = {
+        affected_hand: 'right',
+        camera_view: 'front_upright',
+        flex_model,
+        open_flex: sums('open'),
+        closed_flex: sums('full_fist'),
+        pinch_open: 1,
+        pinch_closed: 0.1,
+      };
+      const input = result('full_fist', 'right');
+      const stale = processor.process(input, 0, 'right');
+      expect(stale.detected).toBe(true);
+      expect(stale.rawFlexSum).not.toBeNull();
+      expect(stale.joints).not.toBeNull();
+      expect(stale.closure).toBeNull();
+      processor.calibration.flex_model = CURRENT_FLEX_MODEL;
+      const current = processor.process(input, 34, 'right');
+      for (const finger of FINGERS)
+        expect(current.closure![finger]).toBeCloseTo(1, 5);
+    },
+  );
 });

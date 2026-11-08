@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import { describe, expect, it } from 'vitest';
 import { FINGERS, fingerMap, jointAngles, type Landmark } from './flex';
 import { handLandmarks, observe, NOISE, rng } from './perf/handModel';
@@ -141,6 +142,7 @@ describe('signed flexion in the hand flexion planes', () => {
       processor.calibration = {
         affected_hand: hand,
         camera_view: 'front_upright',
+        flex_model: CURRENT_FLEX_MODEL,
         open_flex: fingerMap(() => 0),
         closed_flex: fingerMap(() => 100),
         pinch_open: 1,

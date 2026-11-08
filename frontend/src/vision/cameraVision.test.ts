@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   HandLandmarker,
@@ -206,6 +207,7 @@ describe('CameraVision lifecycle', () => {
     source.setCalibration({
       affected_hand: 'left',
       camera_view: 'front_upright',
+      flex_model: CURRENT_FLEX_MODEL,
       open_flex: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
       closed_flex: {
         thumb: 100,

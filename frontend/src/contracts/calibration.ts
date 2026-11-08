@@ -14,10 +14,13 @@ export interface ServoCalibration {
  */
 export type CameraView = 'front_upright' | 'front_diagonal';
 export const CURRENT_CAMERA_VIEW: CameraView = 'front_upright';
+export const CURRENT_FLEX_MODEL = 2;
 export interface CameraCalibration {
   affected_hand: Handedness;
   /** Absent in calibrations saved before Nov 7 = 'front_diagonal' (invalid for the current view). */
   camera_view?: CameraView;
+  /** absent = 1, the unsigned math before P1 */
+  flex_model?: number;
   open_flex: Record<FingerId, number>; // raw flex sum, open hand
   closed_flex: Record<FingerId, number>; // raw flex sum, glove-closed relaxed hand (the glove closes all five fingers)
   pinch_closed: number; // pinch ratio when thumb and index touch

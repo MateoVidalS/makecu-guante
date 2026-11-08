@@ -4,9 +4,10 @@
  * production rules: closure, calibration and "reached" all come from the real code.
  */
 import calibrationFixture from '../../../../contracts/fixtures/calibration.json';
-import type {
-  Calibration,
-  CameraCalibration,
+import {
+  CURRENT_FLEX_MODEL,
+  type Calibration,
+  type CameraCalibration,
 } from '../../contracts/calibration';
 import type { EngineEvent } from '../../contracts/engine';
 import type { GloveTelemetry } from '../../contracts/glove';
@@ -156,6 +157,7 @@ export function calibrate(
       camera: {
         affected_hand: scene.hand,
         camera_view: scene.view,
+        flex_model: CURRENT_FLEX_MODEL,
         open_flex: open.rawFlexSum,
         closed_flex: closed.rawFlexSum,
         pinch_open: open.pinch,

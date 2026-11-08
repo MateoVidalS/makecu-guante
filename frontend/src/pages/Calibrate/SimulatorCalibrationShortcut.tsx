@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
   type Calibration,
 } from '../../contracts/calibration';
 import { GLOVE_FINGERS } from '../../contracts/glove';
@@ -30,6 +31,7 @@ export function SimulatorCalibrationShortcut({
         camera: {
           affected_hand: 'right',
           camera_view: CURRENT_CAMERA_VIEW,
+          flex_model: CURRENT_FLEX_MODEL,
           open_flex: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
           closed_flex: {
             thumb: 100,

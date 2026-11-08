@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -68,6 +69,7 @@ const flex = (pose: string) => {
 const calibration = {
   affected_hand: 'right' as const,
   camera_view: 'front_upright' as const,
+  flex_model: CURRENT_FLEX_MODEL,
   open_flex: flex('open'),
   closed_flex: flex('full_fist'),
   pinch_open: 1.5,

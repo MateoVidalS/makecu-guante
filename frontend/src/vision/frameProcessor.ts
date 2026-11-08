@@ -14,6 +14,7 @@ import {
   validLandmarks,
   type Landmark,
 } from './flex';
+import { isCurrentCameraCalibration } from './calibrationCompatibility';
 import { JointFilter } from './jointFilter';
 import { OneEuroFilter } from './oneEuro';
 
@@ -117,7 +118,7 @@ export class FrameProcessor {
         closure:
           c &&
           c.affected_hand === affected &&
-          (c.camera_view ?? 'front_diagonal') === view
+          isCurrentCameraCalibration(c, view)
             ? fingerMap((finger) =>
                 normalizeClosure(
                   rawFlexSum[finger],
