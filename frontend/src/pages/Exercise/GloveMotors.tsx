@@ -23,7 +23,8 @@ const WORDS: Record<MotorState, string> = {
   off: 'Off',
   stopped: 'Stopped',
   idle: 'Resting',
-  following: 'Following',
+  // In follow mode the motor pays out thread behind the finger: it never closes the hand.
+  following: 'Letting go',
   pulling: 'Helping',
   holding: 'Holding',
   releasing: 'Letting go',
