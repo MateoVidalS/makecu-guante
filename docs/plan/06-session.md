@@ -29,7 +29,7 @@ Run at the vision rate (~30 Hz) plus one tick per telemetry message (the runtime
 | `tabletop` | null | 0.35 | 0.35 | 0.35 | 0.35 | 90/0/0; thumb 20/10 | "Make a tabletop: bend only at the knuckles" |
 | `straight_fist` | 0.5 | 0.7 | 0.7 | 0.7 | 0.7 | 90/100/0; thumb 40/30 | "Make a straight fist" |
 | `full_fist` | 0.7 | 1.0 | 1.0 | 1.0 | 1.0 | 90/100/80; thumb 50/50 | "Make a full fist" |
-| `pinch` | 0.5 | 0.55 | null | null | null | index 50/50/20, others 0; thumb 30/30 | "Pinch your thumb and index finger together" (`pinch.max_ratio` = calibrated `pinch_closed` × 1.3) |
+| `pinch` | 0.5 | 0.55 | null | null | null | index 60/60/30, others 0; thumb 30/60 | "Pinch your thumb and index finger together" (`pinch.max_ratio` = calibrated `pinch_closed` × 1.3) |
 
 \* Ring and pinky are rendered in the target hand but never scored or assisted (`scored=false`). A `null` target = free.
 **Known limitation:** closure % is the *sum* of joint flexion, so hook, tabletop and straight fist differ in their targets but not in which joint

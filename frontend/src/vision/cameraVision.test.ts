@@ -205,6 +205,7 @@ describe('CameraVision lifecycle', () => {
     expect(source.latest()?.handedness).toBe('right');
     source.setCalibration({
       affected_hand: 'left',
+      camera_view: 'front_upright',
       open_flex: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
       closed_flex: {
         thumb: 100,
@@ -227,6 +228,47 @@ describe('CameraVision lifecycle', () => {
       'ring',
       'pinky',
     ]);
+  });
+  it('honors upright and legacy views without rotating inference input, and reports label and exposure diagnostics', async () => {
+    const tilted = structuredClone(result);
+    tilted.worldLandmarks[0][0].z += 0.08;
+    tilted.handedness[0][0].categoryName = 'Left';
+    detect.mockReturnValue(tilted);
+    const data = new Uint8ClampedArray(64 * 48 * 4).fill(20);
+    const context = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue({
+        drawImage: vi.fn(),
+        getImageData: () => ({ data }),
+      } as unknown as CanvasRenderingContext2D);
+    await source.start({ affectedHand: 'right' });
+    const video = source.videoElement()!;
+    Object.defineProperties(video, {
+      videoWidth: { value: 640 },
+      videoHeight: { value: 480 },
+    });
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(34);
+    expect(detect).toHaveBeenLastCalledWith(video, expect.any(Number));
+    expect(source.latest()?.joints?.index.mcp).toBeCloseTo(0, 3);
+    expect(source.latest()?.handedness).toBe('right');
+    expect(source.diagnostics()).toMatchObject({
+      handednessMismatch: true,
+      lighting: { status: 'low_light' },
+    });
+    await vi.advanceTimersByTimeAsync(150);
+    expect(source.diagnostics()).toEqual({
+      lighting: null,
+      handednessMismatch: null,
+    });
+    await source.start({ affectedHand: 'right', view: 'front_diagonal' });
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(218);
+    expect(source.latest()?.joints?.index.mcp).toBeGreaterThan(30);
+    expect(source.diagnostics().handednessMismatch).toBeNull();
+    source.stop();
+    expect(source.diagnostics().lighting).toBeNull();
+    context.mockRestore();
   });
   it('falls back to CPU if GPU initialization fails', async () => {
     mp.create.mockRejectedValueOnce(new Error('No WebGL'));

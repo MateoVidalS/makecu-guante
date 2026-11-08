@@ -73,7 +73,7 @@ export class AttemptMetrics {
   private lastVision: number | null = null;
   private lastTel: number | null = null;
   constructor(
-    readonly pose: PoseDef,
+    public pose: PoseDef,
     readonly rep: number,
     readonly index: number,
     readonly start: number,
@@ -82,7 +82,11 @@ export class AttemptMetrics {
     this.trace = new TraceBuilder(start);
   }
 
-  observe(input: EngineInput, phase: ExercisePhase): void {
+  observe(
+    input: EngineInput,
+    phase: ExercisePhase,
+    helped: ReadonlySet<GloveFinger> = new Set(),
+  ): void {
     this.trace.sample(input, phase);
     if (visible(input) && input.vision!.t !== this.lastVision) {
       this.lastVision = input.vision!.t;
@@ -90,7 +94,7 @@ export class AttemptMetrics {
         this.final = { ...input.vision!.closure! };
       if (phase === 'ATTEMPT') {
         for (const f of GLOVE_FINGERS) {
-          if (this.pose.closure[f] === null) continue;
+          if (this.pose.closure[f] === null || helped.has(f)) continue;
           const value = input.vision!.closure![f];
           this.best[f] =
             this.best[f] === undefined
@@ -108,7 +112,9 @@ export class AttemptMetrics {
       }
     }
     if (
-      (phase === 'ASSIST' || phase === 'ASSIST_HOLD') &&
+      (phase === 'ASSIST' ||
+        phase === 'ASSIST_HOLD' ||
+        (phase === 'ATTEMPT' && helped.size > 0)) &&
       input.tel &&
       input.tel.t !== this.lastTel
     ) {

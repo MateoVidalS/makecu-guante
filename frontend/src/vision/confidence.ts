@@ -1,17 +1,25 @@
+import { CURRENT_CAMERA_VIEW, type CameraView } from '../contracts/calibration';
 import { VISION_LOW_CONFIDENCE, type Handedness } from '../contracts/vision';
 
 export interface HandCategory {
   categoryName: string;
   score: number;
 }
-/** A lone hand is the configured affected hand in the non-selfie, thumb-side view.
- * Mirror only disambiguates labels when multiple hands are visible.
+/** Configured hand stays authoritative for a lone hand. The upright selfie label
+ * is a cross-check, never an instruction to flip the configured hand or geometry.
+ * MediaPipe Tasks receives unmirrored video; CSS preview mirroring is independent.
  */
 export function selectHand(
   hands: HandCategory[][],
   affected: Handedness,
   mirror = false,
-): { index: number; handedness: Handedness; score: number } | null {
+  view: CameraView = CURRENT_CAMERA_VIEW,
+): {
+  index: number;
+  handedness: Handedness;
+  score: number;
+  mismatch: boolean | null;
+} | null {
   const candidates = hands
     .map((categories, index) => {
       const category = [...categories].sort((a, b) => b.score - a.score)[0];
@@ -22,19 +30,30 @@ export function selectHand(
         category.score < VISION_LOW_CONFIDENCE
       )
         return null;
+      const reported = label === 'left' || label === 'right' ? label : null;
+      const handedness: Handedness | null =
+        reported && mirror
+          ? reported === 'left'
+            ? 'right'
+            : 'left'
+          : reported;
       if (hands.length === 1)
         return {
           index,
           handedness: affected,
           score: Math.min(1, category.score),
+          mismatch:
+            view === 'front_upright' && handedness !== null
+              ? handedness !== affected
+              : null,
         };
-      if (label !== 'left' && label !== 'right') return null;
-      const handedness: Handedness = mirror
-        ? label === 'left'
-          ? 'right'
-          : 'left'
-        : label;
-      return { index, handedness, score: Math.min(1, category.score) };
+      if (!handedness) return null;
+      return {
+        index,
+        handedness,
+        score: Math.min(1, category.score),
+        mismatch: view === 'front_upright' ? handedness !== affected : null,
+      };
     })
     .filter((candidate) => candidate !== null);
   return (
