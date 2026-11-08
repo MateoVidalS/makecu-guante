@@ -21,6 +21,6 @@ Integration branch: `MateoVidalS/rehab-hub` · Repo id: `de782449-371b-4870-89e2
 | U1 | [helper-flows](ux/U1-helper-flows.md) | UX-1 | high | `…/u1-helper-flows` | `term_134d0050` | `MateoVidalS/u1-helper-flows` | #55 | merged | follow-up: Home repeats the redo hint above the banner |
 | U2 | [virtual-hand](ux/U2-virtual-hand.md) | UX-1 | high | `…/u2-virtual-hand` | `term_6168c807` | `MateoVidalS/u2-virtual-hand` | #51 | merged | |
 | U3 | [data-views](ux/U3-data-views.md) | UX-2 | high | `…/u3-data-views` | `term_ab2c65f1` | `MateoVidalS/u3-data-views` | #69 | merged | backend seed done by #58; 2 camera e2e load-flaky, pass alone |
-| U4 | [live-screen](ux/U4-live-screen.md) | UX-2 | xhigh | `…/u4-live-screen` | `term_62e15241` | `MateoVidalS/u4-live-screen` | | handed-off | |
+| U4 | [live-screen](ux/U4-live-screen.md) | UX-2 | xhigh | `…/u4-live-screen` | `term_62e15241` | `MateoVidalS/u4-live-screen` | #72 | merged | |
 
 Statuses: `queued` → `handed-off` → `pr-open` → `changes-requested` → `merged`.
