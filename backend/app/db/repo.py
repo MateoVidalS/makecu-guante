@@ -136,6 +136,15 @@ def _direction_column():
     return func.coalesce(m.Calibration.assist_direction, "close")
 
 
+def _assistable_attempt():
+    """The opening glove assists only the open pose; its fists are practiced alone.
+
+    Averaging those fists' zero assistance into the opening cohort would halve "opening the glove
+    completed" and the assisted rate. Legacy closing records keep every attempt.
+    """
+    return or_(_direction_column() != "open", m.Attempt.pose == "open")
+
+
 def _session(db, row, n_attempts=0) -> c.Session:
     return c.Session(
         **_values(row, exclude={"plan_json", "settings_json", "summary_json"}),
@@ -509,6 +518,7 @@ def history_assist(db: DbSession) -> list[c.AssistPoint]:
             m.AttemptFinger.scored,
             m.AttemptFinger.finger.in_(FINGERS),
             m.AttemptFinger.assist_needed.is_not(None),
+            _assistable_attempt(),
         )
         .group_by(m.Session.id, m.AttemptFinger.finger)
         .order_by(m.Session.started_at, m.Session.id, m.AttemptFinger.finger)
@@ -582,7 +592,7 @@ def history_overview(db: DbSession) -> c.HistoryOverview:
         select(
             m.AttemptFinger.finger,
             func.avg(m.AttemptFinger.active_max),
-            func.avg(m.AttemptFinger.assist_needed),
+            func.avg(case((_assistable_attempt(), m.AttemptFinger.assist_needed), else_=None)),
         )
         .select_from(m.Session)
         .join(m.Calibration, m.Calibration.id == m.Session.calibration_id)
@@ -688,7 +698,41 @@ def therapist_digest(db: DbSession, days: int) -> dict:
     }
 
 
+def _opening_sessions(db: DbSession, is_demo: bool):
+    """Same-cohort opening-glove sessions that contain open-pose attempts, oldest first."""
+    return (
+        select(m.Session)
+        .join(m.Calibration, m.Calibration.id == m.Session.calibration_id)
+        .where(
+            m.Calibration.assist_direction == "open",
+            m.Session.is_demo == is_demo,
+            m.Session.summary_json.is_not(None),
+            select(m.Attempt.id)
+            .where(m.Attempt.session_id == m.Session.id, m.Attempt.pose == "open")
+            .exists(),
+        )
+        .order_by(m.Session.started_at, m.Session.id)
+    )
+
+
+def _previous_detail(db: DbSession, session: therapy.SessionDetail):
+    """The prior session to compare opening with: same glove direction, same demo flag."""
+    if session.assist_direction != "open":
+        return None
+    query = _opening_sessions(db, session.is_demo).where(
+        m.Session.id != session.id, m.Session.started_at < session.started_at
+    )
+    row = db.exec(query.order_by(None).order_by(m.Session.started_at.desc()).limit(1)).first()
+    return get_session(db, row.id) if row else None
+
+
+def _first_opening_detail(db: DbSession, is_demo: bool):
+    row = db.exec(_opening_sessions(db, is_demo).limit(1)).first()
+    return get_session(db, row.id) if row else None
+
+
 def create_summary(db: DbSession, body: c.SessionSummaryIn | c.TherapistSummaryIn) -> c.Summary:
+    from app.llm import context as readable
     from app.llm.summaries import generate_summary
 
     if isinstance(body, c.SessionSummaryIn):
@@ -719,8 +763,21 @@ def create_summary(db: DbSession, body: c.SessionSummaryIn | c.TherapistSummaryI
         }
         if session.summary is None:
             _invalid("End the session before generating a summary")
+        context["readable"] = readable.session(
+            db,
+            session,
+            _previous_detail(db, session),
+            get_profile(db),
+            _first_opening_detail(db, session.is_demo)
+            if session.assist_direction == "open"
+            else None,
+        )
     else:
         context = therapist_digest(db, body.days)
+        details = [get_session(db, s["id"]) for s in context["sessions"]]
+        context["readable"] = readable.digest(
+            db, context, details, _first_opening_detail(db, context["only_demo"])
+        )
     generated = generate_summary(body.kind, context)
     row = m.Summary(
         kind=body.kind,

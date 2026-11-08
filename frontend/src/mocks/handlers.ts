@@ -76,14 +76,19 @@ export function historyRom(
 export function historyAssist() {
   return orderedSessions().flatMap((s) =>
     GLOVE_FINGERS.flatMap((f) => {
-      const values = (mockState.details[s.id]?.attempts ?? []).flatMap((a) =>
-        a.fingers
-          .filter((m) => m.finger === f && m.scored && m.assist_needed !== null)
-          .map((m) => ({
-            need: m.assist_needed!,
-            helped: a.assisted && m.assist_needed! > 0 ? 1 : 0,
-          })),
-      );
+      // Like SQLite: the opening glove assists only the open pose; its fists are practiced alone.
+      const values = (mockState.details[s.id]?.attempts ?? [])
+        .filter((a) => s.assist_direction !== 'open' || a.pose === 'open')
+        .flatMap((a) =>
+          a.fingers
+            .filter(
+              (m) => m.finger === f && m.scored && m.assist_needed !== null,
+            )
+            .map((m) => ({
+              need: m.assist_needed!,
+              helped: a.assisted && m.assist_needed! > 0 ? 1 : 0,
+            })),
+        );
       return values.length
         ? [
             {
