@@ -12,7 +12,9 @@ import { GeminiLiveTransport } from './GeminiLiveTransport';
 import type { LiveTransport, ToolCall, TransportEvent } from './transport';
 import { BrowserLocalVoice, SafetyNet, type LocalVoice } from './safetyNet';
 import { fallbackPhrase } from './fallbackCoach';
-import { CueScheduler, eventCue, type Cue } from './cues';
+import { CueScheduler, cueValidity, eventCue, type Cue } from './cues';
+import type { GloveFinger } from '../contracts/glove';
+import { fingerName } from './fingerNames';
 import { liveContext, movementContext, summaryContext } from './context';
 import { claimsGloveHelp, HONESTY_CORRECTION } from './honesty';
 
@@ -20,6 +22,22 @@ import { claimsGloveHelp, HONESTY_CORRECTION } from './honesty';
 const HELP_CLAIM_GRACE_MS = 1500;
 /** Pause after which an unfinished help request is taken as complete. */
 const HELP_SENTENCE_MS = 700;
+/** How often the controller tells the session whether the voice is busy. */
+const PACE_MS = 100;
+/** Never keep the coach muted for a local help announcement longer than this. */
+const LOCAL_HELP_MAX_MS = 4000;
+
+/**
+ * Said by the app the moment the glove starts helping, without waiting for the coach.
+ * No consent or stop words ("help", "yes", "ok", "stop"): if the microphone picks up this
+ * phrase, it can never count as the patient asking for help or braking.
+ */
+export function helpPhrase(fingers: readonly GloveFinger[]): string {
+  const names = fingers.map(fingerName);
+  if (!names.length || names.length >= 5) return 'Opening your hand now.';
+  if (names.length >= 3) return 'Opening your fingers now.';
+  return `Opening your ${names.join(' and ')} now.`;
+}
 import { dispatchTool } from './tools';
 import { TranscriptBatcher } from './transcript';
 import {
@@ -128,6 +146,22 @@ export class VoiceController {
   private safetySpeaking = false;
   private batches = new Set<TranscriptBatcher>();
   private batch?: TranscriptBatcher;
+  /** The app's own short help announcement is playing; the coach waits. */
+  private localSpeaking = false;
+  private localTimer?: ReturnType<typeof setTimeout>;
+  /** Last busy state sent to the session (runtime.exercise.voiceBusy). */
+  private busySent = false;
+  private paceTimer?: ReturnType<typeof setInterval>;
+  /** The spoken cue the coach is answering now, for the [timing] log. */
+  private inFlight: {
+    label: string;
+    index: number | null;
+    at: number;
+    sentAt: number;
+    firstAudioAt: number | null;
+    phaseStart: string | null;
+    turnDone: boolean;
+  } | null = null;
   private partial = { coach: '', patient: '' };
   private previous: SessionSummary | null = null;
   private lastAttempt: AttemptResult | null = null;
@@ -339,6 +373,8 @@ export class VoiceController {
       }
       this.connected = true;
       this.reconnecting = false;
+      clearInterval(this.paceTimer);
+      this.paceTimer = setInterval(() => this.pace(), PACE_MS);
       this.update({ micBlocked: mic === false });
       this.deps.audio.setMuted(this.state.muted);
       this.update({ status: 'listening' });
@@ -401,8 +437,13 @@ export class VoiceController {
         if (
           !this.quietUntilPatient &&
           !this.safetySpeaking &&
+          !this.localSpeaking &&
           performance.now() >= this.safetyUntil
         ) {
+          if (this.inFlight && this.inFlight.firstAudioAt === null) {
+            this.inFlight.firstAudioAt = performance.now();
+            this.inFlight.phaseStart = this.runtime.exercise.view().phase;
+          }
           this.deps.audio.play(event.data);
           this.markCoachTalking();
           if (this.ending) this.coachSpokeSinceEnd = true;
@@ -425,6 +466,7 @@ export class VoiceController {
           event.role === 'coach' &&
           (this.quietUntilPatient ||
             this.safetySpeaking ||
+            this.localSpeaking ||
             performance.now() < this.safetyUntil)
         )
           break;
@@ -446,6 +488,7 @@ export class VoiceController {
         if (event.finished) this.finishTranscript(event.role);
         break;
       case 'turnComplete':
+        if (this.inFlight) this.inFlight.turnDone = true;
         this.finishTranscripts();
         this.scheduler.setTalking(false);
         this.patientTalking = false;
@@ -620,6 +663,7 @@ export class VoiceController {
   /** Non-safety messages to the coach: merged, and sent only when nobody is speaking. */
   private outbox(cue: Cue) {
     if (!this.connected) return;
+    if (cue.speak && this.stale(cue)) cue = this.unspoken(cue);
     if (cue.speak) {
       // A newer spoken cue replaces an older one, unless the older one presents a pose.
       if (this.spoken?.present && !cue.present) this.context.push(cue.text);
@@ -633,8 +677,17 @@ export class VoiceController {
   private flushOutbox() {
     clearTimeout(this.outboxTimer);
     if (!this.connected || !this.transport) return;
+    if (this.spoken && this.stale(this.spoken)) {
+      this.context.push(this.unspoken(this.spoken).text);
+      this.spoken = null;
+    }
     if (!this.context.length && !this.spoken) return;
-    if (this.coachTalking || this.patientTalking || this.safetySpeaking) {
+    if (
+      this.coachTalking ||
+      this.patientTalking ||
+      this.safetySpeaking ||
+      this.localSpeaking
+    ) {
       // Retry later; never hold messages forever if an end-of-turn signal is lost.
       this.outboxTimer = setTimeout(() => this.flushOutbox(), 1000);
       return;
@@ -651,11 +704,118 @@ export class VoiceController {
       ...(this.spoken ? [this.spoken.text] : []),
     ];
     const speak = !!this.spoken;
+    if (this.spoken) this.startTiming(this.spoken);
     this.context = [];
     this.spoken = null;
     // Only the latest of repeated context lines matters; keep the message short.
     this.transport.sendText(parts.slice(-6).join('\n'), speak);
     if (speak) this.markCoachTalking(); // until its reply ends (or 6 s of silence)
+  }
+  /** The cue is no longer true: saying it now would mislead the patient. */
+  private stale(cue: Cue): boolean {
+    return !!cue.valid && !cue.valid(this.runtime.exercise.view());
+  }
+  private unspoken(cue: Cue): Cue {
+    this.batch?.add(
+      'system',
+      '[timing] ' +
+        JSON.stringify({
+          cue: cue.label ?? 'cue',
+          attempt: cue.index ?? null,
+          dropped: 'out of date before the coach could say it',
+          after_ms: cue.at === undefined ? null : Math.round(performance.now() - cue.at),
+        }),
+    );
+    return {
+      text: `${cue.text} (Already over: do not mention it.)`,
+      speak: false,
+    };
+  }
+  private startTiming(cue: Cue) {
+    this.finishTiming();
+    const now = performance.now();
+    this.inFlight = {
+      label: cue.label ?? 'cue',
+      index: cue.index ?? null,
+      at: cue.at ?? now,
+      sentAt: now,
+      firstAudioAt: null,
+      phaseStart: null,
+      turnDone: false,
+    };
+  }
+  /** Log how long the patient waited for this cue: queued, first sound, last sound. */
+  private finishTiming() {
+    const t = this.inFlight;
+    if (!t) return;
+    this.inFlight = null;
+    const now = performance.now();
+    const view = this.runtime.exercise.view();
+    this.batch?.add(
+      'system',
+      '[timing] ' +
+        JSON.stringify({
+          cue: t.label,
+          attempt: t.index,
+          queued_ms: Math.round(t.sentAt - t.at),
+          first_audio_ms:
+            t.firstAudioAt === null ? null : Math.round(t.firstAudioAt - t.at),
+          end_ms: Math.round(now - t.at),
+          phase_start: t.phaseStart,
+          phase_end: view.phase,
+          late: t.index !== null && view.index !== t.index,
+        }),
+    );
+  }
+  private audioPlaying(): boolean {
+    return this.deps.audio.playing === true;
+  }
+  /** Talking, about to talk, or listening: the session should wait for the voice. */
+  private busy(): boolean {
+    return (
+      this.active &&
+      this.state.mode === 'live' &&
+      this.connected &&
+      (this.coachTalking ||
+        this.patientTalking ||
+        this.safetySpeaking ||
+        this.localSpeaking ||
+        !!this.spoken ||
+        this.scheduler.hasPending() ||
+        this.audioPlaying())
+    );
+  }
+  /** Keep the session paced by the voice, and close timing records once audio ends. */
+  private pace() {
+    const busy = this.busy();
+    if (busy !== this.busySent) {
+      this.busySent = busy;
+      this.runtime.exercise.voiceBusy?.(busy);
+    }
+    if (this.inFlight?.turnDone && !this.audioPlaying()) this.finishTiming();
+  }
+  /** The glove just started helping: say so at once, locally, over the coach. */
+  private announceHelp(fingers: readonly GloveFinger[]) {
+    if (this.safetySpeaking) return;
+    const phrase = helpPhrase(fingers);
+    this.deps.audio.flush();
+    if (this.partial.coach)
+      this.batch?.add('coach', cleanCoachText(this.partial.coach));
+    this.partial.coach = '';
+    this.localSpeaking = true;
+    const generation = this.generation;
+    const done = () => {
+      if (generation !== this.generation || !this.localSpeaking) return;
+      clearTimeout(this.localTimer);
+      this.localSpeaking = false;
+      this.pace();
+      this.flushOutbox();
+    };
+    clearTimeout(this.localTimer);
+    this.localTimer = setTimeout(done, LOCAL_HELP_MAX_MS);
+    this.deps.local.cancel();
+    this.caption(phrase, 'system');
+    this.deps.local.speak(phrase, done);
   }
   private markCoachTalking() {
     this.coachTalking = true;
@@ -808,6 +968,33 @@ export class VoiceController {
       }
     }
     if (event.kind === 'attempt_done') this.lastAttempt = event.result;
+    if (cue) {
+      cue = {
+        ...cue,
+        label:
+          event.kind === 'phase'
+            ? `${event.phase.toLowerCase()}${repeatPresent ? '_repeat' : ''}`
+            : checkIn
+              ? 'check_in'
+              : event.kind,
+        at: performance.now(),
+        index: view.index,
+        valid: checkIn ? undefined : cueValidity(event, view.index),
+      };
+      if (
+        event.kind === 'assist_started' &&
+        this.state.mode === 'live' &&
+        this.active
+      ) {
+        // F2: the app says it now; the coach only learns it, so it never says it late.
+        this.announceHelp(event.fingers);
+        cue = {
+          ...cue,
+          text: `${cue.text} The app already said so out loud; do not announce it again.`,
+          speak: false,
+        };
+      }
+    }
     if (cue) this.recent = cue.text;
     if (
       this.state.mode === 'live' &&
@@ -815,6 +1002,7 @@ export class VoiceController {
       performance.now() >= this.safetyUntil
     )
       this.scheduler.push(cue, event);
+    this.pace();
     if (this.state.mode === 'simple' && !this.safetySpeaking) {
       const phrase = checkIn
         ? 'Nice work. Rate pain, then fatigue, from zero to ten.'
@@ -887,6 +1075,14 @@ export class VoiceController {
     this.stop();
   }
   stop() {
+    clearInterval(this.paceTimer);
+    clearTimeout(this.localTimer);
+    this.localSpeaking = false;
+    this.finishTiming();
+    if (this.busySent) {
+      this.busySent = false;
+      this.runtime.exercise.voiceBusy?.(false);
+    }
     clearTimeout(this.endTimer);
     clearTimeout(this.outboxTimer);
     clearTimeout(this.coachQuietTimer);

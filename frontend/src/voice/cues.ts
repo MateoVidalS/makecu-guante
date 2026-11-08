@@ -10,6 +10,41 @@ export interface Cue {
   speak: boolean;
   present?: boolean;
   opening?: boolean;
+  /** What the cue is about, for timing logs (set by VoiceController). */
+  label?: string;
+  /** performance.now() of the engine event behind the cue. */
+  at?: number;
+  /** Attempt index when the cue was made. */
+  index?: number;
+  /**
+   * Still worth saying aloud? A spoken cue that is no longer true (its attempt ended,
+   * help already released) is passed as context instead, never spoken late.
+   */
+  valid?: (view: ExerciseView) => boolean;
+}
+
+/** Spoken-cue validity by event: what must still hold when the coach would say it. */
+export function cueValidity(
+  event: EngineEvent,
+  index: number,
+): ((view: ExerciseView) => boolean) | undefined {
+  switch (event.kind) {
+    case 'phase':
+      return event.phase === 'PRESENT'
+        ? (v) =>
+            v.index === index && (v.phase === 'PRESENT' || v.phase === 'ATTEMPT')
+        : (v) => v.index === index;
+    case 'progress':
+      return (v) => v.index === index && v.phase === 'ATTEMPT';
+    case 'reached':
+      return (v) => v.index === index;
+    case 'assist_started':
+      return (v) => v.index === index && v.assisting;
+    case 'help_offered':
+      return (v) => v.index === index && !!v.helpOffered;
+    default:
+      return undefined; // check-ins, results and the goodbye stay valid
+  }
 }
 export function eventCue(
   event: EngineEvent,
@@ -155,5 +190,9 @@ export class CueScheduler {
   clear() {
     clearTimeout(this.timer);
     this.pending = null;
+  }
+  /** A spoken cue is waiting for its turn. */
+  hasPending() {
+    return this.pending !== null;
   }
 }

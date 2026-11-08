@@ -8,6 +8,8 @@ export interface VoiceAudio {
   flush(): void;
   setMuted(muted: boolean): void;
   close(): void;
+  /** True while queued reply audio is still playing (when the player can tell). */
+  readonly playing?: boolean;
 }
 export function encodePCM(buffer: ArrayBuffer) {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)));
