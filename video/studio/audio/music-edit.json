@@ -14,13 +14,23 @@
     },
     {
       "fromSeconds": 24.0,
-      "toSeconds": 134.4,
+      "toSeconds": 33.6,
       "sourceSeconds": 82.8
     },
     {
-      "fromSeconds": 134.4,
-      "toSeconds": 148.8,
+      "fromSeconds": 33.6,
+      "toSeconds": 43.2,
       "sourceSeconds": 236.4
+    },
+    {
+      "fromSeconds": 43.2,
+      "toSeconds": 141.6,
+      "sourceSeconds": 92.4
+    },
+    {
+      "fromSeconds": 141.6,
+      "toSeconds": 148.8,
+      "sourceSeconds": 190.8
     },
     {
       "fromSeconds": 148.8,
@@ -42,5 +52,13 @@
   "percussionSeed": 100,
   "silentOpeningSeconds": 7.2,
   "pianoEntersAtFrame": 216,
-  "benchGain": 0.35
+  "benchGain": 0.35,
+  "mechanicalGrooveFrames": [
+    1008,
+    1296
+  ],
+  "resistanceDipFrames": [
+    2196,
+    2448
+  ]
 }

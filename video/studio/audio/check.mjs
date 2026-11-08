@@ -74,12 +74,23 @@ const hookByte = Math.round(SCENE_START.hook / FPS * 48000) * 4; // stereo PCM16
 assert.ok(pcm.subarray(0, hookByte).every((byte) => byte === 0), 'Bed is exactly silent before 7.2 s');
 assert.ok(pcm.subarray(hookByte, hookByte + 1600 * 4).some((byte) => byte !== 0), 'Piano sounds in the first hook frame');
 assert.ok(cueGain(SCENE_START.session + 900, music.cues) < .05, 'Resistance drop');
+for (let frame = SCENE_START.session + 900; frame < SCENE_START.session + 1152; frame++) {
+  close(cueGain(frame, music.cues), .035);
+}
 assert.ok(cueGain(SCENE_START.session + 1152, music.cues) > .6, 'Release return');
 assert.ok(cueGain(SCENE_START.build, music.cues) > cueGain(SCENE_START.build - 12, music.cues), 'Build lift');
+assert.ok(cueGain(SCENE_START.session, music.cues) < cueGain(SCENE_START.build, music.cues), 'Demo returns to a lighter groove');
+const edit = json('audio/music-edit.json');
+assert.deepEqual(edit.mechanicalGrooveFrames, [SCENE_START.build, SCENE_START.session]);
+assert.ok(edit.edits.some((entry) => entry.fromSeconds === SCENE_START.build / FPS && entry.toSeconds === SCENE_START.session / FPS));
 assert.ok(cueGain(SCENE_START.underHood, music.cues) > cueGain(SCENE_START.underHood - 12, music.cues), 'Board lift');
 for (let frame = SCENE_START.bench; frame < SCENE_START.underHood; frame++) {
   close(cueGain(frame, music.cues), .35);
 }
+for (let frame = SCENE_START.next; frame < SCENE_START.close; frame++) {
+  close(cueGain(frame, music.cues), .34);
+}
+close(cueGain(SCENE_START.close, music.cues), .72);
 assert.equal(cueGain(TOTAL_FRAMES - 1, music.cues), 0, 'Fade to silence');
 assert.ok(sfx.sounds.length <= 6);
 for (const sound of sfx.sounds) {
