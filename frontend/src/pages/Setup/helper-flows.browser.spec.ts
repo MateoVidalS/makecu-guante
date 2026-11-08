@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
 import { test, expect } from '@playwright/test';
 import { calibration } from '../../contracts/fixtures.check';
 const usable = {
@@ -5,6 +6,7 @@ const usable = {
   camera: {
     ...calibration.camera,
     camera_view: 'front_upright' as const,
+    flex_model: CURRENT_FLEX_MODEL,
     closed_flex: { thumb: 100, index: 270, middle: 270, ring: 270, pinky: 270 },
   },
 };
@@ -115,7 +117,7 @@ test('legacy camera capture routes to upright recapture while keeping glove rang
   await page.goto('/');
   await expect(
     page.getByText(
-      'Your camera range was captured in the old position. Recapture it with your hand raised.',
+      'Your camera range needs to be updated. Redo the camera step with your hand raised, palm to the screen.',
       { exact: true },
     ),
   ).toBeVisible();

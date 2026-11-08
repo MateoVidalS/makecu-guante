@@ -8,6 +8,8 @@ import {
 } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import Calibrate from './index';
+import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
+import { CAMERA_VIEW_RECAPTURE_MESSAGE } from '../../runtime/calibrationValidation';
 import {
   helperRuntime as legacyHelperRuntime,
   mountHelper,
@@ -16,6 +18,7 @@ import {
 function helperRuntime() {
   const runtime = legacyHelperRuntime();
   runtime.calibration.current!.camera.camera_view = 'front_upright';
+  runtime.calibration.current!.camera.flex_model = CURRENT_FLEX_MODEL;
   return runtime;
 }
 vi.mock('../../vision/CameraOverlay', () => ({
@@ -118,6 +121,7 @@ it('the single simulator shortcut saves both sources and refreshes Review', asyn
     expect.objectContaining({
       camera: expect.objectContaining({
         camera_view: 'front_upright',
+        flex_model: CURRENT_FLEX_MODEL,
         closed_flex: {
           thumb: 100,
           index: 270,
@@ -142,11 +146,7 @@ it('opens legacy calibration at the camera step with glove ranges retained', () 
   expect(
     screen.getByRole('heading', { name: 'Step 2 · Camera range' }),
   ).toBeVisible();
-  expect(
-    screen.getByText(
-      'Your camera range was captured in the old position. Recapture it with your hand raised.',
-    ),
-  ).toBeVisible();
+  expect(screen.getByText(CAMERA_VIEW_RECAPTURE_MESSAGE)).toBeVisible();
   expect(screen.getByText(/Raise your hand, palm to the screen/)).toBeVisible();
   expect(screen.getAllByText('Not captured')).toHaveLength(2);
   fireEvent.click(screen.getByRole('button', { name: /Glove range/ }));
@@ -171,8 +171,25 @@ it('saves the current camera view while preserving the existing friction curves'
   await screen.findByRole('heading', { name: 'Your range is saved' });
   expect(save).toHaveBeenCalledWith(
     expect.objectContaining({
-      camera: expect.objectContaining({ camera_view: 'front_upright' }),
+      camera: expect.objectContaining({
+        camera_view: 'front_upright',
+        flex_model: CURRENT_FLEX_MODEL,
+      }),
       friction,
     }),
   );
 });
+
+it.each([undefined, 1])(
+  'opens a current-view calibration with old model %s at the camera step',
+  (flex_model) => {
+    const runtime = helperRuntime();
+    runtime.calibration.current!.camera.flex_model = flex_model;
+    mountHelper(<Calibrate />, runtime);
+    expect(
+      screen.getByRole('heading', { name: 'Step 2 · Camera range' }),
+    ).toBeVisible();
+    expect(screen.getByText(CAMERA_VIEW_RECAPTURE_MESSAGE)).toBeVisible();
+    expect(screen.getAllByText('Not captured')).toHaveLength(2);
+  },
+);

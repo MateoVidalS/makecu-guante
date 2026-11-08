@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSimWorld } from '../glove/sim';
 import { SimVision } from './SimVision';
@@ -16,6 +17,7 @@ describe('view-aware shared simulated vision', () => {
       source.setCalibration({
         affected_hand: 'left',
         camera_view: view,
+        flex_model: CURRENT_FLEX_MODEL,
         open_flex: fingerMap(() => 0),
         closed_flex: fingerMap(() => 270),
         pinch_open: 1,

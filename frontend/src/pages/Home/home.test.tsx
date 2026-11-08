@@ -1,3 +1,4 @@
+import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
@@ -12,6 +13,7 @@ import {
 function helperRuntime() {
   const runtime = legacyHelperRuntime();
   runtime.calibration.current!.camera.camera_view = 'front_upright';
+  runtime.calibration.current!.camera.flex_model = CURRENT_FLEX_MODEL;
   return runtime;
 }
 vi.mock('../../api/client', async (original) => ({

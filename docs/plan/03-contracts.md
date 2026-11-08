@@ -152,8 +152,13 @@ const VISION_LOW_CONFIDENCE = 0.6;              // below this, frames count as "
 
 // ---------- calibration (src/contracts/calibration.ts) ----------
 interface ServoCalibration { finger: GloveFinger; min_deg: number; max_deg: number }
+type CameraView = 'front_upright' | 'front_diagonal';
+const CURRENT_CAMERA_VIEW: CameraView = 'front_upright';
+const CURRENT_FLEX_MODEL = 2;                    // signed flexion math introduced in P1
 interface CameraCalibration {
   affected_hand: Handedness;
+  camera_view?: CameraView;                    // absent = legacy front_diagonal
+  flex_model?: number;                         // absent = 1, the unsigned math before P1
   open_flex: Record<FingerId, number>;         // raw flex sum, open hand
   closed_flex: Record<FingerId, number>;       // raw flex sum, glove-closed relaxed hand (the glove closes all five fingers)
   pinch_closed: number;                        // pinch ratio when thumb and index touch
@@ -167,6 +172,10 @@ interface Calibration {
   friction: Partial<Record<GloveFinger, FrictionCurve[]>>;   // slow and fast; may be empty if skipped
   current_limit_ma: number;                    // default 900
 }
+
+// Camera captures are current only when camera_view === CURRENT_CAMERA_VIEW and
+// (flex_model ?? 1) === CURRENT_FLEX_MODEL. Otherwise redo the camera step; retain glove ranges.
+// Backend CameraCalibration accepts flex_model: int | None = None and preserves it in camera_json.
 
 // ---------- poses (src/contracts/poses.ts) ----------
 type PoseId = "open" | "hook" | "full_fist" | "tabletop" | "straight_fist" | "pinch";

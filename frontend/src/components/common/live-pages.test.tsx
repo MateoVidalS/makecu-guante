@@ -31,7 +31,10 @@ import Exercise from '../../pages/Exercise';
 import Evaluate from '../../pages/Evaluate';
 import Calibrate from '../../pages/Calibrate';
 import { helperRuntime as legacyHelperRuntime } from '../calibration/testSupport';
-import { CURRENT_CAMERA_VIEW } from '../../contracts/calibration';
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+} from '../../contracts/calibration';
 import { freshDraft, loadDraft, saveDraft } from '../../pages/Calibrate/draft';
 import { RuntimeFallbackControls } from '../../runtime/FallbackControls';
 import {
@@ -55,6 +58,7 @@ const handRender = vi.hoisted(() => vi.fn());
 function helperRuntime() {
   const runtime = legacyHelperRuntime();
   runtime.calibration.current!.camera.camera_view = CURRENT_CAMERA_VIEW;
+  runtime.calibration.current!.camera.flex_model = CURRENT_FLEX_MODEL;
   return runtime;
 }
 vi.mock('../../hand3d/VirtualHand', () => ({
