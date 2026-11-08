@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 import urllib.request
 import wave
-from generate import timeline
+from generate import lines, timeline
 
 import numpy as np
 
@@ -18,8 +18,11 @@ TIMELINE = timeline()
 SECONDS = TIMELINE['frames'] / TIMELINE['fps']
 N = round(RATE * SECONDS)
 STARTS = {name: frame / TIMELINE['fps'] for name, frame in TIMELINE['starts'].items()}
-RESIST = STARTS['session'] + 900 / TIMELINE['fps']
-RELEASE = STARTS['session'] + 1152 / TIMELINE['fps']
+# Follow the final cut's spoken resistance/release events, including its
+# shortened session. Do not carry offsets from the previous 18-bar session.
+VO = {line['id']: line for line in lines()}
+RESIST = STARTS['session'] + VO['session-5']['at'] / TIMELINE['fps']
+RELEASE = STARTS['session'] + VO['session-6']['at'] / TIMELINE['fps']
 CACHE = ROOT / 'audio/cache'
 URL = 'https://www.scottbuckley.com.au/library/wp-content/uploads/2022/10/AKindOfHope.mp3'
 
@@ -37,7 +40,7 @@ def write(path, samples):
 def pulse():
     bus = np.zeros((N, 2), dtype=np.float32)
     rng = np.random.default_rng(100)
-    for beat in range(round(STARTS['reveal'] / .6), round(STARTS['next'] / .6)):
+    for beat in range(round(STARTS['reveal'] / .6), round(STARTS['close'] / .6)):
         at = beat * 18 / TIMELINE['fps']  # Integer beat frames avoid float boundary drift.
         if RESIST <= at < RELEASE:
             continue
@@ -83,8 +86,8 @@ def main():
              (STARTS['build'], STARTS['session'], 236.4),
              (STARTS['session'], STARTS['bench'], 92.4),
              (STARTS['bench'], STARTS['underHood'], 190.8),
-             (STARTS['underHood'], STARTS['next'], 250.8),
-             (STARTS['next'], STARTS['close'], 25.2), (STARTS['close'], SECONDS, 328.2)]
+             (STARTS['underHood'], STARTS['close'], 250.8),
+             (STARTS['close'], SECONDS, 328.2)]
     bed = np.zeros((N, 2), dtype=np.float32)
     half = round(0.06 * RATE)
     for index, (start, end, offset) in enumerate(edits):
@@ -122,15 +125,15 @@ def main():
             (f['build'] - 6, .78), (f['build'], .82),
             (f['session'] - 6, .82), (f['session'], .68),
             (resist - 18, .68), (resist, .035), (release - 1, .035), (release, .68),
-            (f['bench'] - 1, .68), (f['bench'], .35),
-            (f['underHood'] - 1, .35), (f['underHood'], .82),
-            (f['next'] - 12, .82), (f['next'], .34),
-            (f['close'] - 1, .34), (f['close'], .72),
+            (f['bench'] - 6, .68), (f['bench'], .32),
+            (f['underHood'] - 1, .38), (f['underHood'], .82),
+            (f['close'] - 6, .82), (f['close'], .72),
             (TIMELINE['frames'] - 72, .6), (TIMELINE['frames'] - 1, 0)]
     manifest = {'version': 1, 'file': 'audio/music/bed.wav', 'bpm': 100,
         'source': 'A Kind Of Hope by Scott Buckley (2022), CC BY 4.0. '
                   'https://www.scottbuckley.com.au/library/a-kind-of-hope/ '
-                  'Edited, crossfaded, with original synthesized 100 BPM percussion.',
+                  'Rebuilt from the source for the 177.6-second final cut; '
+                  'edited, crossfaded, with original synthesized 100 BPM percussion.',
         'credit': 'A Kind Of Hope · Scott Buckley · CC BY 4.0 · scottbuckley.com.au · Edited',
         'cues': [{'frame': frame, 'gain': gain} for frame, gain in cues]}
     (ROOT / 'public/audio/music/manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
@@ -143,7 +146,9 @@ def main():
         'crossfadeSeconds': .12, 'percussionSeed': 100,
         'silentOpeningSeconds': STARTS['hook'],
         'pianoEntersAtFrame': f['hook'],
-        'benchGain': .35,
+        'benchGain': {'from': .32, 'to': .38, 'mean': .35},
+        'benchPercussionPausedFrames': [f['bench'], f['underHood']],
+        'sceneStartsSeconds': STARTS,
         'mechanicalGrooveFrames': [f['build'], f['session']],
         'resistanceDipFrames': [resist, release],
     }, indent=2) + '\n')

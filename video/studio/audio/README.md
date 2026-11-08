@@ -15,17 +15,18 @@ All shipping audio lives in `public/audio/`. Scene copy and timeline are unchang
 
 ```sh
 pnpm studio
-npx remotion render Main out/v2b-mix-raw.mp4
-audio/loudness.sh --normalize out/v2b-mix-raw.mp4 out/v2b-mix.mp4 0.2
-audio/loudness.sh out/v2b-mix.mp4
+npx remotion render Main out/v2c-mix-raw.mp4 --concurrency=2
+audio/loudness.sh --normalize out/v2c-mix-raw.mp4 out/v2c-mix.mp4 0.1
+audio/loudness.sh out/v2c-mix.mp4
 ```
 
 The raw render is the dialogue/music mix with headroom. The mastering pass targets
 −14 LUFS integrated and ≤ −1 dBTP, copies the video stream, and leaves 0.2 dB
 of limiter headroom before AAC encoding. Re-measure the encoded file. Re-master
 after adding the team's real footage; its dialogue changes the integrated level.
-The optional final gain (0.2 dB for this cut) calibrates the measured AAC result
-before the limiter, retaining true-peak headroom.
+The optional final gain calibrates the measured AAC result before the limiter,
+retaining true-peak headroom. See `audio/loudness-report.txt` for this cut's
+measured settings and results.
 
 Scenes opt into SFX explicitly, using their recording's actual event frame:
 
@@ -40,15 +41,27 @@ import { Sfx } from '../audio';
 
 The SFX bus is −6 dB. The mixer ducks music by exactly −10 dB under narration,
 using 200 ms attack/release ramps. Overlapping speech intervals use one duck,
-so overlapping ramps do not multiply. Real `team-intro`, `team-next`, and
-`coach-talk` footage automatically reserve dialogue headroom when present.
+so overlapping ramps do not multiply. Real `team-intro` and `coach-talk` footage
+automatically reserve dialogue headroom when present. The final cut ducks the real Gemini Live conversation
+from 81.6–92.4 s, with the same 200 ms ramps.
 
 `public/audio/music/manifest.json` controls the scene arc independently of VO
 ducking: exact silence during the founders from 0–7.2 s; piano enters on the
 hook cut at 7.2 s; reveal lift at 24 s; tight mechanical build groove from 33.6–43.2 s, then the lighter demo bed;
-resistance near-silence from 73.2 s until release at 81.6 s; bench gain fixed at
-35% from 141.6–148.8 s (percussion pauses for servo sound); board lift at 148.8 s; founders pullback at 160.8 s; resolution at 168 s; fade to zero at
-the 177.6-second end. All boundaries are derived from the current timeline.
+resistance near-silence from 65.6 s until the release line at 72.133 s
+(frame 2164, approximately 72.1 s); bench gain gently rises from 32% to 38%
+(mean 35%) throughout 132–156 s, with synthesized percussion paused to leave
+space for the real servos; board lift at 156 s; resolution at 168 s; fade to zero
+at the 177.6-second end. All boundaries follow the current timeline and VO events.
+
+The V2c conform rebuilds the bed from the original source MP3 and source offsets
+in `audio/build_music.py`, rather than shortening the already edited WAV.
+`audio/music-edit.json` records the seven contiguous source edits, scene starts,
+exact sample count, crossfades, and percussion pauses. The cached source hash
+matches the original V2 edit. The artist's download currently returns HTTP 406;
+use the existing `audio/cache/a-kind-of-hope.mp3` to reproduce without fetching.
+All approved voice files, the VO manifest, and voice auditions are unchanged;
+SHA-256 hashes are in `audio/final-cut-report.json`. No Gemini requests were made.
 
 The V2b remix preserves every approved voice WAV and the coordinator-updated
 manifest (26 active lines; `reveal-2` is retired). No Gemini requests were made.
@@ -99,7 +112,8 @@ cache; `prepare_vo.py` refuses to overwrite installed owner revisions.
 `audio/check.mjs` checks every expected VO id, actual WAV duration against its
 manifest and slot, 48 kHz sample rates, exact bed sample count, exact silence before the
 7.2-second cut and piano in the first hook frame, cue ordering,
-resistance/release levels, SFX licenses/count, and ducking ramp/overlap behavior.
+resistance/release levels, the full ten-bar bench build, contiguous source edits,
+voice preservation hashes, SFX licenses/count, and ducking ramp/overlap behavior.
 The local Whisper transcript pass (`verify_vo.py`) verifies the split files independently of
 the TTS response. Brand-name spelling may differ in automatic transcription. One isolated doctor
 clip caused an ASR leading-word hallucination; whole-take recognition and source

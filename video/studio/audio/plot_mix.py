@@ -32,13 +32,23 @@ def main():
         duck = np.minimum(duck, np.interp(frames, [start - 6, start, end, end + 6],
                                          [1, 10 ** (-10 / 20), 10 ** (-10 / 20), 1]))
         intervals.append((start / 30, duration / 30, line['voice']))
+    for filename, start, end in [
+        ('team-intro', starts['team'], starts['hook']),
+        ('coach-talk', starts['coach'] + 144 / cut['fps'], starts['coach'] + 468 / cut['fps']),
+    ]:
+        if not (ROOT / f'public/footage/{filename}.mp4').exists():
+            continue
+        duck = np.minimum(duck, np.interp(frames,
+            [start * cut['fps'] - 6, start * cut['fps'], end * cut['fps'], end * cut['fps'] + 6],
+            [1, 10 ** (-10 / 20), 10 ** (-10 / 20), 1]))
+        intervals.append((start, end - start, 'live'))
     with wave.open(str(ROOT / 'public/audio/music/bed.wav')) as source:
         samples = np.frombuffer(source.readframes(source.getnframes()), dtype='<i2').reshape(-1, 2) / 32768
     peaks = np.max(np.abs(samples.reshape(cut['frames'], 48000 // cut['fps'], 2)), axis=(1, 2))
     fig, axes = plt.subplots(3, 1, figsize=(19.2, 10.8), sharex=True,
                              gridspec_kw={'height_ratios': [2, 2, 1]})
     fig.patch.set_facecolor('#F7F8FA')
-    fig.suptitle('memo · V2b music remix', x=.07, y=.92, ha='left', fontsize=28, weight='semibold')
+    fig.suptitle('memo · V2c final cut music', x=.07, y=.92, ha='left', fontsize=28, weight='semibold')
     axes[0].fill_between(seconds, -peaks, peaks, color='#2155CD', linewidth=0)
     axes[0].set_ylabel('Bed waveform\n48 kHz stereo')
     axes[0].set_ylim(-1, 1)
@@ -48,10 +58,10 @@ def main():
     axes[1].set_ylim(0, 1)
     axes[1].legend(loc='upper left', frameon=False)
     for start, duration, voice in intervals:
-        axes[2].broken_barh([(start, duration)], (1 if voice == 'narrator' else 0, .65),
+        axes[2].broken_barh([(start, duration)], ({'narrator': 2, 'coach': 1, 'live': 0}[voice], .65),
                             facecolors='#2155CD' if voice == 'narrator' else '#667085')
-    axes[2].set_yticks([.325, 1.325], ['Puck', 'Sulafat'])
-    axes[2].set_ylim(-.2, 2)
+    axes[2].set_yticks([.325, 1.325, 2.325], ['Real dialogue', 'Puck', 'Sulafat'])
+    axes[2].set_ylim(-.2, 3)
     axes[2].set_xlabel('Timeline (seconds)')
     for name, start in starts.items():
         for axis in axes:
@@ -62,10 +72,12 @@ def main():
         axis.spines[['top', 'right']].set_visible(False)
         axis.set_xlim(0, cut['frames'] / cut['fps'])
         axis.grid(axis='x', alpha=.12)
+    edit = json.loads((ROOT / 'audio/music-edit.json').read_text())
+    resist, release = (frame / cut['fps'] for frame in edit['resistanceDipFrames'])
     fig.text(.07, .035, f'100 BPM · {cut["frames"] / cut["fps"]} s · {len(manifest["lines"])} VO lines · −10 dB ducking · 200 ms ramps\n'
-             f'Founders: silent bed until piano at {starts["hook"]:.1f} s. Resistance: {starts["session"] + 30:.1f} s / release: {starts["session"] + 38.4:.1f} s. Target: −14 LUFS, ≤ −1 dBTP.', fontsize=14)
+             f'Founders: silent bed until piano at {starts["hook"]:.1f} s. Resistance: {resist:.1f} s / release: {release:.1f} s. Target: −14 LUFS, ≤ −1 dBTP.', fontsize=14)
     fig.subplots_adjust(left=.09, right=.97, top=.84, bottom=.15, hspace=.28)
-    destination = ROOT / 'evidence/V2/mix-map.png'
+    destination = ROOT / 'evidence/V2c/mix-map.png'
     destination.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(destination, dpi=100, facecolor=fig.get_facecolor())
     print(destination)

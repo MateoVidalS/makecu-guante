@@ -1,42 +1,55 @@
-V2b audio verification — 2026-11-08, early build montage
+V2c final-cut audio verification — 2026-11-08
 
-Cut: 5328 frames / 30 fps = 177.6 s.
-Music: 8,524,800 samples at 48 kHz stereo, 100 BPM.
-All approved voice WAVs and the coordinator-updated 26-line VO manifest
-are byte-for-byte unchanged (29 hashes in audio/remix-report.json).
-Gemini requests for this remix: 0. Same approved track and license.
+Cut: 5,328 frames / 30 fps = exactly 177.6 s.
+Bed: 8,524,800 samples at 48 kHz stereo, 100 BPM.
+Track: A Kind Of Hope — Scott Buckley — CC BY 4.0.
+Original source SHA-256:
+d0dc554c0db9ea208b4f59e4f0c1b4446aa7ef622c7bfeffca278130a46c51f1
+Rebuilt from the verified original cached MP3, using seven source edits;
+no splice of the coordinator's shortened WAV. Source download returned HTTP 406.
+Source offsets, crossfades, percussion seed and current scene starts:
+audio/music-edit.json and audio/build_music.py.
 
-Starts (s): team 0, hook 7.2, problem 14.4, reveal 24, build 33.6,
-session 43.2, coach 86.4, gemini 103.2, doctor 117.6, bench 141.6,
-underHood 148.8, next 160.8, close 168, end 177.6.
-Piano enters at the hard cut at 7.2 s; reveal lift at 24.0 s.
-Tight mechanical groove only from 33.6 to 43.2 s; lighter demo bed follows.
-Near-silence holds from resistance at 73.2 s until release at 81.6 s.
-Bench's full 7.2 s holds cue gain 0.35, with percussion paused.
-Founders hold cue gain 0.34 from 160.8 to 168 s; resolve begins at 168 s.
+Scene starts (s): team 0, hook 7.2, problem 14.4, reveal 24, build 33.6,
+session 43.2, coach 76.8, gemini 93.6, doctor 108, bench 132,
+underHood 156, close 168, end 177.6.
 
-Render:
-npx remotion render Main out/v2b-mix-raw.mp4 --concurrency=2
+Opening: exactly silent until the first hook frame at 7.2 s.
+Reveal lift: 24 s. Tight mechanical groove: 33.6–43.2 s.
+Resistance near-silence: 65.6–72.133333 s (frames 1968–2164).
+The release is on the exact spoken-line frame, approximately 72.1 s.
+Real Gemini Live dialogue duck: 81.6–92.4 s, -10 dB, 200 ms ramps.
+Bench: all ten bars / 24 seconds, 132–156 s; no synthesized percussion.
+Bench cue gain rises gently from 0.32 to 0.38, mean 0.35, under the servo sound.
+Board drive: 156 s. Resolve: 168 s. Chord rings/fades to silence by 177.6 s.
 
-Raw mix measurement:
-audio/loudness.sh out/v2b-mix-raw.mp4
-Summary:
+Preservation: all 32 voice assets (28 WAVs, manifest, 3 auditions) unchanged.
+Hashes, base commit and output hash: audio/final-cut-report.json.
+SFX unchanged. No Gemini requests, no key access, no dependencies added.
 
-  Integrated loudness:
-    I:         -17.6 LUFS
-    Threshold: -28.7 LUFS
+Validation:
+- pnpm install; pnpm check; node audio/check.mjs: passed.
+- make setup; make test: passed, including lint and typecheck.
+  Backend: 209 tests. Frontend: 1,181 tests. Native firmware: 49 tests.
+- git diff --check; Python syntax compilation: passed.
+- Three Main stills plus actual bed waveform/automation: evidence/V2c/.
 
-  Loudness range:
-    LRA:        12.7 LU
-    Threshold: -38.7 LUFS
-    LRA low:   -28.5 LUFS
-    LRA high:  -15.8 LUFS
+Full Main render:
+npx remotion render Main out/v2c-mix-raw.mp4 --concurrency=2
 
-  True peak:
-    Peak:       -3.2 dBFS
+Raw render measurement:
+audio/loudness.sh out/v2c-mix-raw.mp4
+Integrated: -17.5 LUFS. True peak: -0.2 dBTP. LRA: 7.2 LU.
 
-Master and encoded-file measurement:
-audio/loudness.sh --normalize out/v2b-mix-raw.mp4 out/v2b-mix.mp4 0.2
+Master:
+audio/loudness.sh --normalize out/v2c-mix-raw.mp4 out/v2c-mix.mp4 0.1
+The first pass with 0 dB calibration measured -14.1 LUFS, -1.2 dBTP.
+The final 0.1 dB calibration reaches -14.0 LUFS, preserving limiter headroom.
+Every master is encoded from the raw render, never a previous AAC master.
+Video stream copied. Final AAC: 320 kb/s, 48 kHz.
+
+Independent final encoded-file measurement:
+audio/loudness.sh out/v2c-mix.mp4
 Summary:
 
   Integrated loudness:
@@ -44,20 +57,19 @@ Summary:
     Threshold: -24.8 LUFS
 
   Loudness range:
-    LRA:         9.1 LU
+    LRA:         7.2 LU
     Threshold: -34.8 LUFS
-    LRA low:   -21.1 LUFS
-    LRA high:  -12.0 LUFS
+    LRA low:   -19.3 LUFS
+    LRA high:  -12.1 LUFS
 
   True peak:
     Peak:       -1.2 dBFS
 
-The optional 0.2 dB measured gain calibrates the AAC result before the limiter.
-Video copied; final audio encoded from the raw render, never a previous AAC master.
-Final: out/v2b-mix.mp4; identical compatibility copy: out/v2b-mix-master.mp4.
-ffprobe: both final streams are 177.600000 s; video has 5328 frames.
-True peak is the oversampled ebur128 peak (dBTP), printed as dBFS by ffmpeg.
-Target and measured final: -14.0 LUFS integrated, -1.2 dBTP, 9.1 LU LRA.
+ffmpeg ebur128 peak=true is the oversampled true peak, printed as dBFS.
+Final measured target: -14.0 LUFS integrated, -1.2 dBTP, 7.2 LU LRA.
+ffprobe confirms video and audio are both exactly 177.600000 s;
+the copied video has 5,328 frames. Final: out/v2c-mix.mp4 (git-ignored).
 
-Evidence: 5 refreshed Main stills + 1 actual waveform/automation map.
-No changes to scene files, script, timeline, voice audio, SFX or contracts.
+Supplied real conversation and 24-second bench footage are included.
+team-intro.mp4 is absent in this checkout. Re-render and re-master if founder
+dialogue, any other audio, or timing changes after this conform.
