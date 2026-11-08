@@ -1,54 +1,70 @@
-Main audio verification — 2026-11-08
+Main audio verification — 2026-11-08, latest judging cut
 
 Cut: 5328 frames / 30 fps = 177.6 s.
 Music: 8,524,800 samples at 48 kHz stereo.
-VO: 23 lines; all WAV durations fit their slots.
+VO: 27 active lines; all WAV durations fit their current slots.
+Narrator: Sulafat; coach: Puck. coach-2 is retired from the manifest.
+
+Latest owner requests: 10 changed/new lines in 4 batched TTS requests.
+17 unaffected WAVs remain byte-for-byte unchanged (audio/revision-report.json).
+No active owned text assets retain the removed device wording.
+
+Starts (s): team 0, hook 7.2, problem 14.4, reveal 24, session 36,
+coach 79.2, gemini 96, doctor 110.4, build 134.4, bench 144,
+underHood 148.8, next 160.8, close 168, end 177.6.
+Bed is exactly silent before 7.2 s; piano starts in the first hook frame.
+Bench cue stays at 0.35 on every frame from 144 to 148.8 s;
+percussion pauses there to leave space for real servo sound.
 
 Render:
-npx remotion render Main out/v2-mix.mp4 --concurrency=2
+npx remotion render Main out/v2-mix-raw.mp4 --concurrency=2 --log=error
 
 Raw mix measurement:
-audio/loudness.sh out/v2-mix.mp4
+audio/loudness.sh out/v2-mix-raw.mp4
 Summary:
 
   Integrated loudness:
-    I:         -18.0 LUFS
-    Threshold: -28.8 LUFS
+    I:         -17.5 LUFS
+    Threshold: -28.4 LUFS
 
   Loudness range:
-    LRA:        11.4 LU
-    Threshold: -38.8 LUFS
-    LRA low:   -27.2 LUFS
-    LRA high:  -15.9 LUFS
+    LRA:        11.2 LU
+    Threshold: -38.4 LUFS
+    LRA low:   -26.9 LUFS
+    LRA high:  -15.8 LUFS
 
   True peak:
     Peak:       -3.4 dBFS
 
 Master and encoded-file measurement:
-audio/loudness.sh --normalize out/v2-mix.mp4 out/v2-mix-master.mp4
+audio/loudness.sh --normalize out/v2-mix-raw.mp4 out/v2-mix.mp4
 Summary:
 
   Integrated loudness:
     I:         -14.0 LUFS
-    Threshold: -24.6 LUFS
+    Threshold: -24.7 LUFS
 
   Loudness range:
-    LRA:         7.9 LU
-    Threshold: -34.5 LUFS
-    LRA low:   -19.9 LUFS
-    LRA high:  -12.0 LUFS
+    LRA:         9.2 LU
+    Threshold: -34.7 LUFS
+    LRA low:   -21.3 LUFS
+    LRA high:  -12.1 LUFS
 
   True peak:
     Peak:       -1.2 dBFS
 
-ffprobe: both master streams are 177.600000 s; video has 5328 frames.
-True peak is the oversampled ebur128 peak (dBTP), printed as dBFS by ffmpeg.
+Final deliverable: out/v2-mix.mp4.
+Compatibility copy: out/v2-mix-master.mp4 (identical final file).
 Video stream copied; audio mastered from the raw render, not a prior AAC master.
+ffprobe: both final streams are 177.600000 s; video has 5328 frames.
+True peak is the oversampled ebur128 peak (dBTP), printed as dBFS by ffmpeg.
+Target: -14 LUFS integrated, true peak <= -1 dBTP.
+Measured encoded final: -14.0 LUFS, -1.2 dBTP, 9.2 LU LRA.
 
-Target: -14 LUFS integrated; true peak <= -1 dBTP.
-Measured encoded master: -14.0 LUFS integrated; -1.2 dBTP; 7.9 LU LRA.
+Transcript QC: 26 exact isolated-file matches plus 1 context-verified match.
+For doctor-2, isolated ASR inserted a leading word. Whole-take recognition
+and source word timestamps confirm the exact phrase and exclude adjacent words.
+See audio/vo-transcripts.json for recognition and context evidence.
 
-Transcript QC: 22 exact isolated-file matches plus 1 context-verified match.
-For doctor-2, isolated ASR inserted a leading word; full-take ASR and
-source word timestamps confirm the exact phrase and exclude adjacent words.
-See audio/vo-transcripts.json for the original recognition and context evidence.
+Evidence: 5 Main stills (including judging labels) + 1 diagnostic mix map.
+V2 captions remain below the reserved top 64 px.

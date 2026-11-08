@@ -15,15 +15,14 @@ All shipping audio lives in `public/audio/`. Scene copy and timeline are unchang
 
 ```sh
 pnpm studio
-npx remotion render Main out/v2-mix.mp4
+npx remotion render Main out/v2-mix-raw.mp4
+audio/loudness.sh --normalize out/v2-mix-raw.mp4 out/v2-mix.mp4
 audio/loudness.sh out/v2-mix.mp4
-audio/loudness.sh --normalize out/v2-mix.mp4 out/v2-mix-master.mp4
-audio/loudness.sh out/v2-mix-master.mp4
 ```
 
 The raw render is the dialogue/music mix with headroom. The mastering pass targets
 −14 LUFS integrated and ≤ −1 dBTP, copies the video stream, and leaves 0.2 dB
-of limiter headroom plus a 0.1 dB final trim before AAC encoding. Re-measure the encoded file. Re-master
+of limiter headroom before AAC encoding. Re-measure the encoded file. Re-master
 after adding the team's real footage; its dialogue changes the integrated level.
 
 Scenes opt into SFX explicitly, using their recording's actual event frame:
@@ -43,18 +42,21 @@ so overlapping ramps do not multiply. Real `team-intro`, `team-next`, and
 `coach-talk` footage automatically reserve dialogue headroom when present.
 
 `public/audio/music/manifest.json` controls the scene arc independently of VO
-ducking: reveal lift at 28.8 s; near silence at 70.8 s for 2.5 s; restrained rebuild
-until the release at 79.2 s; build groove at 134.4 s; board lift at 144 s; founders pullback at 158.4 s;
-resolution at 168 s and fade to zero at the end.
+ducking: exact silence during the founders from 0–7.2 s; piano enters on the
+hook cut at 7.2 s; reveal lift at 24 s; resistance drop at 66 s for 2.5 s;
+restrained rebuild until release at 74.4 s; build groove at 134.4 s; bench gain fixed at 35%
+from 144–148.8 s (percussion pauses for servo sound); board lift at 148.8 s; founders pullback at 160.8 s; resolution at 168 s; fade to zero at
+the 177.6-second end. All boundaries are derived from the current timeline.
 
 ## Reproduce and check
 
 From `video/studio/`:
 
 ```sh
-python3 audio/generate.py audition Sulafat
-python3 audio/generate.py scene reveal
-python3 audio/generate.py retry coach-1
+python3 audio/generate.py replace reveal
+python3 audio/generate.py replace session
+python3 audio/generate.py replace gemini
+python3 audio/generate.py replace judging
 pnpm check
 node audio/check.mjs
 ```
@@ -62,7 +64,7 @@ node audio/check.mjs
 From `backend/` (temporary Python packages; no dependency changes):
 
 ```sh
-uv run --with faster-whisper python ../video/studio/audio/prepare_vo.py
+uv run --with faster-whisper python ../video/studio/audio/replace_vo.py
 uv run --with numpy python ../video/studio/audio/build_music.py
 uv run --with faster-whisper python ../video/studio/audio/verify_vo.py
 ```
@@ -81,8 +83,16 @@ retry were shortened to 150 ms, yielding 122 frames; no words or spoken samples
 were removed and no time stretching was used. `audio/vo-edit.json` gives exact
 source cuts and the pause edits.
 
+The latest owner revisions change five existing lines and add four Gemini
+lines plus the bench line, all with Sulafat. These ten lines use four batched
+requests. `coach-2` is retired from the manifest. The other 17 retained WAVs
+remain byte-for-byte unchanged; hashes are recorded in
+`audio/revision-report.json`. Initial full-scene takes are archived in the local
+cache; `prepare_vo.py` refuses to overwrite installed owner revisions.
+
 `audio/check.mjs` checks every expected VO id, actual WAV duration against its
-manifest and slot, 48 kHz sample rates, exact bed sample count, cue ordering,
+manifest and slot, 48 kHz sample rates, exact bed sample count, exact silence before the
+7.2-second cut and piano in the first hook frame, cue ordering,
 resistance/release levels, SFX licenses/count, and ducking ramp/overlap behavior.
 The local Whisper transcript pass (`verify_vo.py`) verifies the split files independently of
 the TTS response. Brand-name spelling may differ in automatic transcription. One isolated doctor
@@ -117,10 +127,13 @@ API request shapes were checked against Google's current
 
 ## Verified render
 
+The final delivery file is `out/v2-mix.mp4`; mastering is included in the
+workflow above. `out/v2-mix-master.mp4` is refreshed with an identical copy.
+
 The encoded 177.6-second master measured **−14.0 LUFS integrated**, **−1.2 dBTP**
-and 7.9 LU loudness range. The raw mix measured −18.0 LUFS / −3.4 dBTP.
+and 9.2 LU loudness range. The raw mix measured −17.5 LUFS / −3.4 dBTP.
 Full measurement commands and ffmpeg summaries are in `audio/loudness-report.txt`.
-Five review PNGs (four scene-caption stills and the mix map) are in `evidence/V2/`.
+Six review PNGs (reveal, safety coach, Gemini, build, bench and the mix map) are in `evidence/V2/`.
 
 ## Integration notes
 

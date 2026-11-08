@@ -19,7 +19,7 @@ PY
 )"
   # Leave 0.2 dB of headroom for AAC intersample peaks.
   ffmpeg -hide_banner -loglevel error -y -i "$input" -map 0:v:0 -map 0:a:0 \
-    -c:v copy -af "$filter,alimiter=limit=0.870964:level=false:latency=true,volume=-0.1dB" \
+    -c:v copy -af "$filter,alimiter=limit=0.870964:level=false:latency=true" \
     -c:a aac -b:a 320k -ar 48000 "$output"
   input="$output"
 else
