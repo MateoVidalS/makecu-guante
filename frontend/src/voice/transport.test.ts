@@ -74,10 +74,10 @@ describe('Google SDK transport adapter', () => {
     } as LiveServerMessage);
     expect(receive.mock.calls.map(([e]) => e.type)).toEqual([
       'interrupt',
-      'audio',
-      'audio',
       'transcript',
       'transcript',
+      'audio',
+      'audio',
       'activity',
       'activity',
       'turnComplete',

@@ -31,13 +31,6 @@ export class GeminiLiveTransport implements LiveTransport {
         onmessage: (message: LiveServerMessage) => {
           const content = message.serverContent;
           if (content?.interrupted) receive({ type: 'interrupt' });
-          for (const part of content?.modelTurn?.parts ?? []) {
-            if (
-              part.inlineData?.data &&
-              part.inlineData.mimeType?.startsWith('audio/pcm')
-            )
-              receive({ type: 'audio', data: part.inlineData.data });
-          }
           for (const [role, transcription] of [
             ['patient', content?.inputTranscription],
             ['coach', content?.outputTranscription],
@@ -49,6 +42,14 @@ export class GeminiLiveTransport implements LiveTransport {
                 text: transcription.text,
                 finished: transcription.finished,
               });
+          }
+          // Patient safety rules must run before audio/tools in this message.
+          for (const part of content?.modelTurn?.parts ?? []) {
+            if (
+              part.inlineData?.data &&
+              part.inlineData.mimeType?.startsWith('audio/pcm')
+            )
+              receive({ type: 'audio', data: part.inlineData.data });
           }
           const activity = message.voiceActivity?.voiceActivityType;
           if (activity)

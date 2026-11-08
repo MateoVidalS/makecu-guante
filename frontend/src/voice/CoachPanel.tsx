@@ -34,8 +34,8 @@ export function CoachPanel() {
           />
           <Switch
             label="Microphone"
-            checked={voice.mode === 'live' && !voice.muted}
-            disabled={voice.mode !== 'live'}
+            checked={voice.mode !== 'off' && !voice.muted}
+            disabled={voice.mode === 'off'}
             onCheckedChange={(on) => voice.setMuted(!on)}
           />
           <Select
@@ -77,7 +77,8 @@ export function CoachPanel() {
             “Pause”, “continue”, “skip”, “repeat”, “stop”, “how am I doing?”
           </Text>
           <Text tone="muted">
-            Voice commands need Live coach. Session buttons always work.
+            Stop and pain words work in Simple voice with microphone access.
+            Other commands need Live coach. Session buttons always work.
           </Text>
         </details>
       </Stack>
