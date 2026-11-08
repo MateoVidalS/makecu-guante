@@ -29,6 +29,14 @@ export function findEvent(clip: RecordingClip, label: string, frame: number): Re
 
 export function targetBox(clip: RecordingClip, target: string | Box, frame: number): Box {
   if (typeof target !== 'string') return target;
+  if (target === 'focus:then-now') {
+    const boxes = ['focus:then', 'focus:now'].map((label) => findEvent(clip, label, frame)?.box).filter((box): box is Box => !!box);
+    if (boxes.length === 2) {
+      const x = Math.min(...boxes.map((box) => box.x));
+      const y = Math.min(...boxes.map((box) => box.y));
+      return { x, y, w: Math.max(...boxes.map((box) => box.x + box.w)) - x, h: Math.max(...boxes.map((box) => box.y + box.h)) - y };
+    }
+  }
   const event = findEvent(clip, target, frame);
   if (event?.box) return event.box;
   if (event?.point) return { ...event.point, w: 0, h: 0 };

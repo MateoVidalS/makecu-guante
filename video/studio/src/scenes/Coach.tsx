@@ -14,10 +14,9 @@ export const Coach: React.FC = () => {
       { at: 0, target: 'focus:index', zoom: 1.8 },
       { at: 18, target: 'focus:index', zoom: 2.2 },
     ]} /> : null}
-    {frame < 474 ? <ScreenFrame clip="coach-panel" area={frame >= 144 ? { x: 940, y: 96, w: 884, h: 750 } : { x: 744, y: 96, w: 1080, h: 750 }} camera={[
-      { at: 0, target: 'focus:coach-panel', zoom: 1.9 },
-      { at: 18, target: 'focus:coach-decision', zoom: 2.2 },
-      { at: 144, target: 'focus:coach-panel', zoom: 2.2 },
+    {frame < 474 ? <ScreenFrame clip="coach-panel" fit="cover" area={frame >= 144 ? { x: 940, y: 96, w: 884, h: 750 } : { x: 744, y: 96, w: 1080, h: 750 }} camera={[
+      { at: 0, target: 'focus:coach-decision', zoom: 1.6 },
+      { at: 18, target: 'focus:coach-decision', zoom: 1.8 },
     ]}>
       {frame < 144 ? <Callout point="click:Undo" label="Undo" dotColor={c.target} side="right" at={36} until={138} position={{ x: 1500, y: 680 }} /> : null}
     </ScreenFrame> : null}

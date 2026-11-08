@@ -17,5 +17,18 @@ for column, frame in enumerate(frames):
     draw.text((x + 24, 64), f"Session frame {frame}", font=font, fill=ink)
     sheet.paste(image.resize((640, 360), Image.Resampling.LANCZOS), (x, 104))
     draw.text((x + 24, 488), "Endpoint detail (original pixels)", font=font, fill=ink)
-    sheet.paste(image.crop((480, 150, 1120, 510)), (x, 528))
+    sheet.paste(image.crop((960, 360, 1600, 720)), (x, 528))
 sheet.save("evidence/V5/session-zoom-proof.png")
+
+doctor = Image.new("RGB", (3840, 2240), paper)
+draw = ImageDraw.Draw(doctor)
+for index, (name, label) in enumerate((
+    ("doctor-history", "History: both hands centered"),
+    ("doctor-replay", "Replay: all three lines held before the current spike"),
+    ("doctor-current", "Replay: current spike after the chart hold"),
+    ("doctor-summary", "Therapist summary: source copy unchanged"),
+)):
+    x, y = (index % 2) * 1920, (index // 2) * 1120
+    draw.text((x + 24, y + 6), label, font=font, fill=ink)
+    doctor.paste(Image.open(source / f"{name}.png").convert("RGB"), (x, y + 40))
+doctor.save("evidence/V5/doctor-review.png")

@@ -34,7 +34,7 @@ export const Session: React.FC = () => {
       </ScreenFrame>
     </Sequence>
     <Sequence from={120} durationInFrames={480} layout="none"><FootageSlot id="session-hand" area={{ x: 96, y: 600, w: 480, h: 270 }} /></Sequence>
-    <Sequence from={840} durationInFrames={600} layout="none">
+    <Sequence from={840} durationInFrames={384} layout="none">
       <ScreenFrame clip="session-resist" camera={[
         { at: 0, target: 'focus:virtual-hand', zoom: 1.3 },
         { at: 36, target: 'focus:index', zoom: 2 },
@@ -44,7 +44,7 @@ export const Session: React.FC = () => {
       </ScreenFrame>
       <Sequence from={60} durationInFrames={234} layout="none"><CurrentTrace at={0} releaseAt={108} /></Sequence>
     </Sequence>
-    <Sequence from={1440} durationInFrames={72} layout="none">
+    <Sequence from={1224} durationInFrames={144} layout="none">
       <Fill><Words text={COPY.session.resist} size="display" stagger={2} style={{ position: 'absolute', left: safe.x, top: 350, maxWidth: 1640 }} /></Fill>
     </Sequence>
   </Fill>;

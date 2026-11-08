@@ -9,17 +9,14 @@ import { COPY } from '../script';
 export const Doctor: React.FC = () => <Fill>
   <Sequence durationInFrames={324} layout="none">
     <ScreenFrame clip="doctor-history" camera={[
-      { at: 0, target: 'focus:then', zoom: 1.15 },
-      { at: 36, target: 'focus:then', zoom: 1.8 },
-      { at: 144, target: 'focus:now', zoom: 1.8 },
-      { at: 234, target: 'focus:per-finger', zoom: 1.5 },
+      { at: 0, target: 'focus:then-now', zoom: 1.15 },
+      { at: 36, target: 'focus:then-now', zoom: 2 },
     ]} />
   </Sequence>
   <Sequence from={324} durationInFrames={144} layout="none">
     <ScreenFrame clip="doctor-replay" camera={[
-      { at: 0, target: 'focus:phase-bands', zoom: 1.35 },
-      { at: 18, target: 'focus:vision-servo', zoom: 1.6 },
-      { at: 90, target: 'focus:current', zoom: 1.5 },
+      { at: 0, target: 'focus:vision-servo', zoom: 1.1 },
+      { at: 96, target: 'focus:current', zoom: 1.8 },
     ]} />
   </Sequence>
   <Sequence from={468} durationInFrames={180} layout="none">

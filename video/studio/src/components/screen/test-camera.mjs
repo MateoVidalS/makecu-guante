@@ -17,7 +17,7 @@ async function loadTs(file) {
   }
   return `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`;
 }
-const { cameraAt, findEvent, fitViewport, mapPoint } = await import(await loadTs(fileURLToPath(new URL('./camera.ts', import.meta.url))));
+const { cameraAt, findEvent, fitViewport, mapPoint, targetBox } = await import(await loadTs(fileURLToPath(new URL('./camera.ts', import.meta.url))));
 const clip = { width: 1440, height: 900, events: [
   { frame: 0, kind: 'focus', label: 'focus:hand', point: { x: 400, y: 300 }, box: { x: 300, y: 200, w: 200, h: 200 } },
   { frame: 60, kind: 'focus', label: 'focus:hand', point: { x: 520, y: 360 }, box: { x: 420, y: 260, w: 200, h: 200 } },
@@ -47,4 +47,15 @@ assert.equal(cameraAt(clip, [{ at: 0, target: 'missing', zoom: 0 }], 0, 0, viewp
 const hd = { ...clip, width: 3840, height: 2160, events: [] };
 assert.equal(fitViewport(hd, { x: 64, y: 64, w: 1792, h: 800 }).h, 800);
 assert.equal(cameraAt(hd, [], 0, 0, fitViewport(hd, { x: 64, y: 64, w: 1792, h: 800 })).zoom, 1);
+const history = { ...clip, events: [
+  { frame: 0, kind: 'focus', label: 'focus:then', box: { x: 175, y: 330, w: 200, h: 250 } },
+  { frame: 0, kind: 'focus', label: 'focus:now', box: { x: 455, y: 330, w: 200, h: 250 } },
+] };
+assert.deepEqual(targetBox(history, 'focus:then-now', 0), { x: 175, y: 330, w: 480, h: 250 });
+const paired = cameraAt(history, [{ at: 0, target: 'focus:then-now', zoom: 2 }], 200, 200, viewport);
+assert.equal(mapPoint({ x: 415, y: 455 }, paired).x, viewport.x + viewport.w / 2);
+const coachArea = { x: 940, y: 96, w: 884, h: 750 };
+const filled = cameraAt(clip, [{ at: 0, target: 'focus:hand', zoom: 1.8 }], 0, 0, coachArea);
+assert.ok(filled.x + clip.width * filled.scale >= coachArea.x + coachArea.w);
+assert.ok(filled.y + clip.height * filled.scale >= coachArea.y + coachArea.h);
 console.log('camera checks passed: eased zoom, moving anchors, edge clamps, 4K viewport, zoom limits');
