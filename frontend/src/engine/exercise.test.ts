@@ -138,7 +138,7 @@ describe('exercise phase table (06-session §3 and §6)', () => {
     expect(target).toMatchObject({
       t: 'target',
       f: [0.17, 0.6, 0.57, 0.57, 0.57],
-      v: 0.3,
+      v: 0.2,
     });
     const count = r.outputs
       .flatMap((o) => o.commands)
@@ -324,7 +324,7 @@ describe('exercise safety (06-session §3)', () => {
     expect(out.commands).toContainEqual({
       t: 'target',
       f: [...r.world.tel.a],
-      v: 0.3,
+      v: 0.15,
     });
     r.until('DONE');
     expect(r.events.filter((e) => e.kind === 'resistance')).toHaveLength(1);
@@ -543,7 +543,7 @@ describe('safety boundary regressions', () => {
       {
         t: 'target',
         f: [initial[0], 0.6, initial[2], initial[3], initial[4]],
-        v: 0.3,
+        v: 0.2,
       },
     ]);
   });
@@ -571,7 +571,8 @@ describe('five-finger assist semantics', () => {
     }
     expect(peak).toBe(3);
     expect(r.engine.state().phase).toBe('ASSIST_HOLD');
-    expect(r.world.now - start).toBeLessThan(10000);
+    // At 0.20/s the two staggered waves plus settlement take about 10.5 s.
+    expect(r.world.now - start).toBeLessThan(11000);
     expect(r.world.tel.a).toEqual([0.7, 0.95, 0.95, 0.95, 0.95]);
     r.until('DONE');
     expect(r.results()[0].fingers.map((f) => f.scored)).toEqual([

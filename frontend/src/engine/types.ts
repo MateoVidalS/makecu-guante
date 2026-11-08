@@ -1,3 +1,4 @@
+import type { TherapyController, TherapyContext } from './therapy';
 import type { VisionFrame } from '../contracts/vision';
 import type {
   GloveTelemetry,
@@ -35,6 +36,11 @@ export interface PowerAwareExerciseSettings extends ExerciseSettings {
   assist_max_parallel?: number;
 }
 export interface ExerciseEngine {
+  readonly therapy: TherapyController;
+  phaseDuration(): number | null;
+  hasAssistance(): boolean;
+  poseDef(): import('../contracts/poses').PoseDef;
+  brake(now: number): Output;
   start(
     plan: ExercisePlanItem[],
     settings: PowerAwareExerciseSettings,
@@ -68,6 +74,11 @@ export interface EvaluationEngine {
 
 /** Inject a monotonic-to-UTC mapping in live runtime; default interprets now as epoch ms. */
 export interface EngineOptions {
+  therapy?: Pick<TherapyContext, 'sessionId' | 'onDecision' | 'onFeeling'> & {
+    simulated?: () => boolean;
+    now?: () => number;
+  };
+  onTherapyOutput?: (out: Output) => void;
   timestamp?: (now: number) => string;
   /** Bench-measured stall currents can replace the provisional engine profiles. */
   servoProfiles?: Partial<
