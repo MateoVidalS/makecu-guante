@@ -33,6 +33,14 @@ REHAB_BENCH_QUICK=1 pnpm --dir frontend bench:vision   # ~1 min smoke run
 
 ## Noise model and where it comes from
 
+> **Update after P1/P4:** the `bench` level was calibrated against flex-sum
+> jitter measured with the old _unsigned_ angles, which fold noise into a bias
+> and under-report it. With signed angles, real MediaPipe on the bench hand
+> shows ~12–13° raw jitter at the open hand (`mediapipe-bench.result.json`),
+> so treat **`glove (2x)` as the realistic level** until real glove recordings
+> replace the model. The bench now renders anatomically correct hands
+> (`anatomical: true`); the legacy hand3d rig is geometrically mirrored.
+
 The bench measured real MediaPipe on a still rendered hand with webcam-like
 sensor noise: landmark jitter ≈ 1.2 mm (x/y) and 2.2 mm (depth), giving a raw
 per-finger flex-sum jitter of 2.5–12°. MediaPipe's error is correlated across
