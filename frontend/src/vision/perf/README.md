@@ -72,10 +72,8 @@ the legacy hand3d rig is geometrically mirrored). Ground truth in `harness.ts` u
 independent unsigned `acos` angles on exact geometry (`oracle.test.ts` proves it never
 calls production joint math).
 
-Production math (`vision/flex.ts`): long fingers use signed flexion; upright, their
-palmar direction is the lens axis (MediaPipe's world palm tilt is not reliable at a
-frontal palm), in the legacy view the MCP-arch normal oriented by the configured
-affected hand; the thumb uses its full 3D bend on
+Production math (`vision/flex.ts`): long fingers use signed flexion with the palm
+normal oriented by the configured affected hand; the thumb uses its full 3D bend on
 smoothed landmarks, signed against palmar normal + the direction to the pinky MCP.
 Calibrations carry `flex_model: 2` (P4); older ones ask to redo the camera step.
 

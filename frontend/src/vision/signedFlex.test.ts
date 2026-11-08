@@ -14,25 +14,20 @@ const angles = (degrees: number) =>
   }));
 
 describe('signed flexion in the hand flexion planes', () => {
-  it('preserves flexion and hyperextension for both hands, views and rigid rotations (upright: in-plane roll)', () => {
-    // Upright long fingers measure against the lens axis, so only rotations in
-    // the image plane leave them unchanged; pitch/yaw are covered below.
-    const rolls = [{}, { roll: 30 }, { roll: -30 }];
-    const tilts = {
-      front_upright: rolls,
-      front_diagonal: [
-        ...rolls,
-        { yaw: 30 },
-        { yaw: -30 },
-        { pitch: 30 },
-        { pitch: -30 },
-      ],
-    };
+  it('preserves flexion and hyperextension for both hands, views and rigid rotations', () => {
     for (const view of ['front_upright', 'front_diagonal'] as const)
       for (const hand of ['right', 'left'] as const)
         for (const degrees of [-5, 0, 15, 50, 95])
           for (const size of [0.75, 1, 1.25])
-            for (const tilt of tilts[view]) {
+            for (const tilt of [
+              {},
+              { yaw: 30 },
+              { yaw: -30 },
+              { pitch: 30 },
+              { pitch: -30 },
+              { roll: 30 },
+              { roll: -30 },
+            ]) {
               const result = observe(
                 handLandmarks(angles(degrees), { size }),
                 {
@@ -81,13 +76,10 @@ describe('signed flexion in the hand flexion planes', () => {
             pip: POSES.full_fist.render[finger].pip * level,
             dip: POSES.full_fist.render[finger].dip * level,
           }));
-          // Upright world landmarks are camera-aligned like MediaPipe's: fingers
-          // up (-y) and the palm to the lens (-z). The legacy view is frame-free.
-          const upright = view === 'front_upright' ? -1 : 1;
           const points = handLandmarks(pose).map(([x, y, z]): Landmark => [
             hand === 'left' ? -x : x,
-            upright * y,
-            upright * z,
+            y,
+            z,
           ]);
           const measured = jointAngles(points, view, hand);
           return fingerMap(
@@ -105,98 +97,26 @@ describe('signed flexion in the hand flexion planes', () => {
       }
   });
 
-  it('exposes a wrong configured hand through reversed long-finger flexion (legacy view)', () => {
-    const view = 'front_diagonal';
-    const left = handLandmarks(angles(40)).map(([x, y, z]): Landmark => [
-      -x,
-      y,
-      z,
-    ]);
-    const correct = jointAngles(left, view, 'left');
-    const wrong = jointAngles(left, view, 'right');
-    for (const finger of ['index', 'middle', 'ring', 'pinky'] as const) {
-      expect(
-        correct[finger].mcp + correct[finger].pip + correct[finger].dip,
-      ).toBeGreaterThan(100);
-      expect(
-        wrong[finger].mcp + wrong[finger].pip + wrong[finger].dip,
-      ).toBeLessThan(-100);
-    }
-    // Thumb direction comes from landmarks and must not depend on the label.
-    expect(wrong.thumb).toEqual(correct.thumb);
-  });
-
-  it('upright long fingers do not depend on the configured hand or the skeleton chirality', () => {
-    // The palmar direction is the lens axis, so a wrong affected-hand setting
-    // or a mirrored MediaPipe skeleton still reads flexion as flexion.
-    for (const hand of ['right', 'left'] as const) {
-      const world = observe(
-        handLandmarks(angles(40)),
-        { view: 'front_upright', hand, noise: NOISE.ideal },
-        rng(1),
-      ).worldLandmarks[0].map(({ x, y, z }): Landmark => [x, y, z]);
-      const correct = jointAngles(world, 'front_upright', hand);
-      const wrong = jointAngles(
-        world,
-        'front_upright',
-        hand === 'right' ? 'left' : 'right',
-      );
+  it('exposes a wrong configured hand through reversed long-finger flexion', () => {
+    for (const view of ['front_upright', 'front_diagonal'] as const) {
+      const left = handLandmarks(angles(40)).map(([x, y, z]): Landmark => [
+        -x,
+        y,
+        z,
+      ]);
+      const correct = jointAngles(left, view, 'left');
+      const wrong = jointAngles(left, view, 'right');
       for (const finger of ['index', 'middle', 'ring', 'pinky'] as const) {
-        expect(wrong[finger]).toEqual(correct[finger]);
         expect(
           correct[finger].mcp + correct[finger].pip + correct[finger].dip,
-        ).toBeCloseTo(120, 6);
+        ).toBeGreaterThan(100);
+        expect(
+          wrong[finger].mcp + wrong[finger].pip + wrong[finger].dip,
+        ).toBeLessThan(-100);
       }
+      // Thumb direction comes from landmarks and must not depend on the label.
+      expect(wrong.thumb).toEqual(correct.thumb);
     }
-  });
-
-  it('measures upright MCP as the proximal bone elevation toward the lens', () => {
-    // A hand leaning toward or away from the lens after calibration shifts MCP
-    // by the lean of its proximal bones; PIP/DIP stay (nearly) unchanged.
-    const unit = (v: number[]) => v.map((x) => x / Math.hypot(...v));
-    for (const hand of ['right', 'left'] as const)
-      // Elevations stay below 90°, where asin is an independent oracle.
-      for (const degrees of [0, 30])
-        for (const pitch of [-35, -15, 15, 35]) {
-          const world = observe(
-            handLandmarks(angles(degrees)),
-            {
-              view: 'front_upright',
-              hand,
-              noise: NOISE.ideal,
-              tilt: { pitch },
-            },
-            rng(1),
-          ).worldLandmarks[0].map(({ x, y, z }): Landmark => [x, y, z]);
-          const measured = jointAngles(world, 'front_upright', hand);
-          for (const [finger, base] of [
-            ['index', 5],
-            ['middle', 9],
-            ['ring', 13],
-            ['pinky', 17],
-          ] as const) {
-            const proximal = unit(
-              [0, 1, 2].map((k) => world[base + 1][k] - world[base][k]),
-            );
-            const towardLens = (Math.asin(-proximal[2]) * 180) / Math.PI;
-            const label = `${hand} ${finger} ${degrees} pitch ${pitch}`;
-            expect(measured[finger].mcp, label).toBeCloseTo(towardLens, 6);
-            expect(
-              Math.abs(measured[finger].mcp - degrees),
-              label,
-            ).toBeGreaterThan(5);
-            // Splayed fingers lean slightly across the lens-based flexion axis
-            // (about 2° for the pinky at a 35° lean).
-            expect(
-              Math.abs(measured[finger].pip - degrees),
-              label,
-            ).toBeLessThan(3);
-            expect(
-              Math.abs(measured[finger].dip - degrees),
-              label,
-            ).toBeLessThan(3);
-          }
-        }
   });
 
   it('keeps correlated landmark errors cancelling across filtered joints', () => {

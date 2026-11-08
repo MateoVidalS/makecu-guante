@@ -204,21 +204,19 @@ describe('synthetic front-upright, palm-to-lens view (not hardware validation)',
 });
 
 describe('upright flexion and label cross-check', () => {
-  it('measures MCP against the palm plane through wrist depth, splay, in-plane rigid transforms and mirroring', () => {
+  it('measures MCP against the palm plane through wrist tilt, splay, rigid transforms and mirroring', () => {
     for (const pose of poses) {
       const original = clips[pose].frames[0].worldLandmarks;
       const expected = jointAngles(original);
-      // Upright long fingers use the lens axis as palmar direction: rotate only
-      // within the image plane (about z), then scale and translate.
-      const turned: Landmark[] = original.map(([x, y, z]) => [
-        -2 * y + 0.4,
-        2 * x - 0.7,
-        2 * z + 0.2,
+      const tilted: Landmark[] = original.map(([x, y, z]) => [
+        2 * z + 0.4,
+        2 * y - 0.7,
+        -2 * x + 0.2,
       ]);
       // Move just the wrist out of the palm plane: MCP must not follow it.
-      turned[0][2] += 0.1;
+      tilted[0][0] += 0.1;
       for (const [points, hand] of [
-        [turned, 'right'],
+        [tilted, 'right'],
         [original.map(([x, y, z]): Landmark => [-x, y, z]), 'left'],
       ] as const) {
         const measured = jointAngles(points, 'front_upright', hand);
@@ -226,17 +224,6 @@ describe('upright flexion and label cross-check', () => {
           for (const joint of ['mcp', 'pip', 'dip'] as const)
             expect(measured[f][joint]).toBeCloseTo(expected[f][joint], 4);
       }
-      // The legacy view still measures every finger in the hand's own frame.
-      const tilted: Landmark[] = original.map(([x, y, z]) => [
-        2 * z + 0.4,
-        2 * y - 0.7,
-        -2 * x + 0.2,
-      ]);
-      const legacy = jointAngles(original, 'front_diagonal');
-      const legacyTilted = jointAngles(tilted, 'front_diagonal');
-      for (const f of FINGERS)
-        for (const joint of ['mcp', 'pip', 'dip'] as const)
-          expect(legacyTilted[f][joint]).toBeCloseTo(legacy[f][joint], 4);
     }
     const open = jointAngles(clips.open.frames[0].worldLandmarks);
     for (const f of FINGERS) expect(open[f].mcp).toBeCloseTo(0, 4);

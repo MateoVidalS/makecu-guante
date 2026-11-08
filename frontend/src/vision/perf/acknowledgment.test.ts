@@ -44,12 +44,8 @@ const TENDON: PoseId[] = [
 ];
 const ALL: PoseId[] = [...TENDON, 'pinch'];
 const DWELL_MS = DEFAULT_EXERCISE_SETTINGS.reach_dwell_s * 1000;
-/**
- * Near-line false acknowledgments with the production filters, Nov 2026 (see the near-line test).
- * 93 with the MCP-arch normal; 1 since upright long fingers measure toward the lens, which
- * removed the closure bias that held near-line poses above the line.
- */
-const NEAR_LINE_FALSE_ACKS = 1;
+/** Near-line false acknowledgments with the production filters, Nov 2026 (see the near-line test). */
+const NEAR_LINE_FALSE_ACKS = 93;
 /** Near-line acceptances are rare events: 32 seeds per cell give about 90 of them. */
 const NEAR_LINE_SEEDS = Array.from({ length: 32 }, (_, i) => i + 1);
 const TOL = DEFAULT_EXERCISE_SETTINGS.tolerance;
@@ -397,9 +393,8 @@ describe(
       ]);
       for (const r of rows)
         expect(r['-0.2'], `${r.noise} ${r.patient} ${r.pose}`).toBe(0);
-      // 1 of 1536 with the production filters (93 before the lens-axis long fingers).
-      // The second-order speed estimate (beta 0.025, dCutoff 1) gave 103 against 93
-      // before; with the lens axis it gives 0 (accuracy round 1 integration).
+      // 93 of 1536 with the production filters. The second-order speed estimate
+      // (beta 0.025, dCutoff 1) gives 103: less flicker, more near-line acceptances.
       expect(falseAcks).toBeLessThanOrEqual(NEAR_LINE_FALSE_ACKS);
     });
 

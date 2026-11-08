@@ -367,25 +367,26 @@ switches. The exported vision-side `SimVision` wraps the existing shared
 view to its delegate, and clears queued frames before restarting. Synthetic
 joints/closure have no camera projection, so their math and calibration are
 identical in either view. The glove simulator implementation stays untouched.
-Upright long-finger MCP is the elevation of the proximal bone toward the lens:
-in `front_upright` the palmar direction of the long fingers is the camera axis
-(world `-z`; MediaPipe world landmarks are camera-aligned), because the view is
-defined by the palm facing the lens and a near-frontal palm's own tilt is not
-observable to first order in one image. On the real-MediaPipe bench the world
-palm normal ignored rendered ±25° pitch/yaw yet swung 35–50° as the fingers
-flexed, and the previous MCP-arch normal (knuckles 5, 9, 13, 17: nearly collinear)
-tilted 25–65° with knuckle depth noise, which read an open hand as ~45° MCP and
-dragged neighbours negative when one finger bent. Wrist position, in-plane splay,
-in-plane rotation and the configured hand do not change upright long-finger
-flexion; pitch or yaw of the hand after calibration does (about 0.05 closure at
-15° and 0.09 at 25° on exact geometry; `accuracy.test.ts` reports the table).
+Upright long-finger MCP is the angle of the proximal bone out of the
+plane formed by knuckles 5, 9, 13 and 17, using that arch's area normal. Wrist
+position and in-plane splay do not count as MCP flexion. The arch normal is
+oriented toward the palmar side using the configured affected hand: reflecting world landmarks for the left hand reverses the raw
+cross product. The area normal is palmar for an anatomical right hand and must
+be reversed for a left hand (distal × palmar points toward the right thumb).
+Measuring upright long-finger flexion toward the lens instead (the camera axis
+as palmar direction) was tried in accuracy round 1 and not adopted. It improved the
+rendered-hand bench, but on the real strap-device recordings it read flexed poses
+lower (r7 mean per-pose closure error .21 → .23), lost r7's tabletop, which is done
+with the hand turned sideways (.45 → .00 against .33), and accepted fewer real
+calibration holds (37 → 31 of 74, r7 fist 3 → 0): the lens axis reads any hand
+rotation as MCP flexion. A wrist-anchored palm normal (wrist, knuckles 5 and 17)
+separates those turned hands (62–121° from the lens) from frontal ones (22–42°).
 MCP keeps its sign rather than taking an absolute value. Its in-plane
-component also keeps a distal/proximal sign against the finger's metacarpal
-projected into the image plane: a bone slightly past perpendicular can read
-above 90°, so noise at the closed calibration endpoint is not rectified downward.
+component also keeps a forward/backward sign: a bone slightly past perpendicular
+can read above 90°, so noise at the closed calibration endpoint is not rectified
+downward. In-plane splay still does not count as flexion.
 PIP/DIP use a signed `atan2` rotation about each finger's flexion axis, derived
-from its wrist-to-knuckle direction and that palmar direction (upright: the lens
-axis; legacy view and thumb: the MCP-arch normal oriented by the configured hand). The thumb's sign
+from its wrist-to-knuckle direction and that palmar normal. The thumb's sign
 reference is `cross(1→2, 2→17)`: rotation across the palm toward the pinky is
 positive, independently of the configured hand. Opposition is not restricted to
 the palm-normal plane. Its full 3D bend magnitude is measured with `atan2` and
@@ -404,13 +405,10 @@ wrist-to-MCP bone reference, using signed flexion in the same finger plane.
 `jointAngles(points, view, affectedHand)` defaults to the right hand for existing
 callers; `FrameProcessor` always passes the configured hand, independently of
 MediaPipe's label. With a wrong configured hand, a confidently labelled lone hand
-is dropped (see Hand identity) and Setup reports a label mismatch. For any frame
-that still gets through, upright long fingers do not depend on the configured
-hand (a mirrored MediaPipe skeleton still reads flexion as flexion); in the
-legacy view a wrong configured hand reverses long-finger flexion rather than
-silently taking an absolute value, so closure can then stay at zero. Correct the
-affected-hand setting. Thumb direction stays label-independent. A view change
-resets smoothing.
+is dropped (see above) and Setup reports a label mismatch. Any frame that still
+gets through has its long-finger flexion reversed rather than silently made
+absolute, so closure can stay at zero. Correct the affected-hand setting. Thumb
+direction stays label-independent. A view change resets smoothing.
 
 A calibration only normalizes closure when its affected hand and camera view
 match the current observation. Missing `camera_view` means `front_diagonal`;

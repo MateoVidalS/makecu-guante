@@ -25,14 +25,13 @@ const CAPTURE = 2125; // the page judges the hold 2.1-2.15 s after it starts
 const SEEDS = Array.from({ length: 10 }, (_, i) => i + 1);
 type Endpoint = 'open' | 'closed';
 
-/** The capture's raw flex sums, or null when the hold-still rule refuses it. */
-function capture(
+function accepted(
   patient: Patient,
   noise: NoiseModel,
   keys: Keyframe[],
   seed: number,
   dropRate = 0,
-): Record<FingerId, number> | null {
+): boolean {
   const scene: Scene = { view: 'front_upright', hand: 'right', noise };
   const samples = stream(patient, scene, keys, HOLD + CAPTURE, {
     seed: seed * 1000 + 7,
@@ -40,13 +39,12 @@ function capture(
   });
   const frames = runVision(samples, scene, null).filter((f) => f.t >= HOLD);
   try {
-    return captureStats(frames, 2).rawFlexSum;
+    captureStats(frames, 2);
+    return true;
   } catch {
-    return null;
+    return false;
   }
 }
-const accepted = (...args: Parameters<typeof capture>) =>
-  capture(...args) !== null;
 const pose = (
   patient: Patient,
   endpoint: Endpoint,
@@ -90,76 +88,31 @@ function moving(
 }
 const rate = (ok: boolean[]) => ok.filter(Boolean).length / ok.length;
 const LONG = FINGERS.filter((f) => f !== 'thumb');
-/** Landmark noise beyond the severe level: a still hand must be refused. */
-const EXTREME: NoiseModel = {
-  label: 'extreme (5x)',
-  worldXyMm: 3,
-  worldZMm: 6,
-  depthScale: 1,
-  imagePx: 4.3,
-};
 
 describe('calibration capture: a still hand is accepted', SLOW, () => {
-  // Upright long fingers measure flexion toward the lens (accuracy round 1), so their flex
-  // sums are much quieter than with the MCP-arch normal: at 3.5x landmark noise most still
-  // captures now pass the unchanged 8 deg std rule (docs/plan/05 B3), where the arch
-  // normal's amplified noise refused them. What matters is that an accepted capture is
-  // accurate, so 3.5x checks the captured sums against a noise-free capture; noise too
-  // large to measure (5x) must still be refused.
-  it('at 1x and 2x noise with 0-10% detection dropouts; accurate when accepted at 3.5x, refused at 5x', () => {
-    const rows = Object.values(PATIENTS).flatMap((patient) => {
-      const ideal = {
-        open: capture(patient, NOISE.ideal, still(patient, 'open'), 1)!,
-        closed: capture(patient, NOISE.ideal, still(patient, 'closed'), 1)!,
-      };
-      const range = fingerMap((f) => ideal.closed[f] - ideal.open[f]);
-      return [NOISE.bench, NOISE.poorLight, NOISE.severe, EXTREME].flatMap(
-        (noise) =>
-          (['open', 'closed'] as const).flatMap((endpoint) =>
-            [0, 0.1].map((drop) => {
-              const sums = SEEDS.map((seed) =>
-                capture(patient, noise, still(patient, endpoint), seed, drop),
-              ).filter((x) => x !== null);
-              const error = (fingers: readonly FingerId[]) =>
-                round(
-                  Math.max(
-                    0,
-                    ...sums.flatMap((x) =>
-                      fingers.map(
-                        (f) =>
-                          Math.abs(x[f] - ideal[endpoint][f]) /
-                          Math.abs(range[f]),
-                      ),
-                    ),
-                  ),
-                  3,
-                );
-              return {
-                patient: patient.name,
-                noise: noise.label,
-                endpoint,
-                dropouts: drop,
-                accepted: sums.length / SEEDS.length,
-                maxLongError: error(LONG),
-                maxThumbError: error(['thumb']),
-              };
-            }),
-          ),
-      );
-    });
-    report(
-      'Still-hand calibration captures accepted (10 seeds), and the largest error of an accepted capture (fraction of the range)',
-      rows,
+  it('at 1x and 2x noise with 0-10% detection dropouts, and refused at 3.5x', () => {
+    const rows = Object.values(PATIENTS).flatMap((patient) =>
+      [NOISE.bench, NOISE.poorLight, NOISE.severe].flatMap((noise) =>
+        (['open', 'closed'] as const).flatMap((endpoint) =>
+          [0, 0.1].map((drop) => ({
+            patient: patient.name,
+            noise: noise.label,
+            endpoint,
+            dropouts: drop,
+            accepted: rate(
+              SEEDS.map((seed) =>
+                accepted(patient, noise, still(patient, endpoint), seed, drop),
+              ),
+            ),
+          })),
+        ),
+      ),
     );
+    report('Still-hand calibration captures accepted (10 seeds)', rows);
     for (const row of rows) {
       const name = `${row.patient} ${row.noise} ${row.endpoint} drop ${row.dropouts}`;
-      if (row.noise === EXTREME.label)
+      if (row.noise === NOISE.severe.label)
         expect(row.accepted, name).toBeLessThanOrEqual(0.2);
-      else if (row.noise === NOISE.severe.label) {
-        // Measured at most 0.06 (long) and 0.16 (thumb, flexor tone: 45 deg range).
-        expect(row.maxLongError, name).toBeLessThanOrEqual(0.1);
-        expect(row.maxThumbError, name).toBeLessThanOrEqual(0.2);
-      }
       // Weakest cell: the flexor-tone fist at 2x, whose noise is close to the 8 deg limit.
       else expect(row.accepted, name).toBeGreaterThanOrEqual(0.7);
     }
