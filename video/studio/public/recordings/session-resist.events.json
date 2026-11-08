@@ -1,0 +1,535 @@
+{
+  "id": "session-resist",
+  "file": "recordings/session-resist.mp4",
+  "width": 3840,
+  "height": 2160,
+  "fps": 30,
+  "durationFrames": 600,
+  "simulated": true,
+  "demoData": true,
+  "events": [
+    {
+      "frame": 0,
+      "kind": "phase",
+      "label": "phase:PRESENT",
+      "box": {
+        "x": 48,
+        "y": 154,
+        "w": 3744,
+        "h": 1974
+      }
+    },
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:virtual-hand",
+      "box": {
+        "x": 50,
+        "y": 352.875,
+        "w": 2910,
+        "h": 1621.125
+      }
+    },
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:finger-meters",
+      "box": {
+        "x": 3010,
+        "y": 506.25,
+        "w": 782,
+        "h": 489.53125
+      }
+    },
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:thumb-fingertip-approximate",
+      "point": {
+        "x": 1330.4,
+        "y": 1406.60625
+      }
+    },
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:index-fingertip-approximate",
+      "point": {
+        "x": 1475.8999999999999,
+        "y": 985.11375
+      }
+    },
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:middle-fingertip-approximate",
+      "point": {
+        "x": 1650.5000000000002,
+        "y": 904.0575
+      }
+    },
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:ring-fingertip-approximate",
+      "point": {
+        "x": 1825.1,
+        "y": 1001.325
+      }
+    },
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:pinky-fingertip-approximate",
+      "point": {
+        "x": 1970.6000000000001,
+        "y": 1131.0149999999999
+      }
+    },
+    {
+      "frame": 224,
+      "kind": "phase",
+      "label": "phase:ATTEMPT",
+      "box": {
+        "x": 48,
+        "y": 154,
+        "w": 3744,
+        "h": 1974
+      }
+    },
+    {
+      "frame": 224,
+      "kind": "focus",
+      "label": "focus:virtual-hand",
+      "box": {
+        "x": 50,
+        "y": 352.875,
+        "w": 2910,
+        "h": 1621.125
+      }
+    },
+    {
+      "frame": 224,
+      "kind": "focus",
+      "label": "focus:finger-meters",
+      "box": {
+        "x": 3010,
+        "y": 506.25,
+        "w": 782,
+        "h": 489.53125
+      }
+    },
+    {
+      "frame": 224,
+      "kind": "focus",
+      "label": "focus:thumb-fingertip-approximate",
+      "point": {
+        "x": 1330.4,
+        "y": 1406.60625
+      }
+    },
+    {
+      "frame": 224,
+      "kind": "focus",
+      "label": "focus:index-fingertip-approximate",
+      "point": {
+        "x": 1475.8999999999999,
+        "y": 985.11375
+      }
+    },
+    {
+      "frame": 224,
+      "kind": "focus",
+      "label": "focus:middle-fingertip-approximate",
+      "point": {
+        "x": 1650.5000000000002,
+        "y": 904.0575
+      }
+    },
+    {
+      "frame": 224,
+      "kind": "focus",
+      "label": "focus:ring-fingertip-approximate",
+      "point": {
+        "x": 1825.1,
+        "y": 1001.325
+      }
+    },
+    {
+      "frame": 224,
+      "kind": "focus",
+      "label": "focus:pinky-fingertip-approximate",
+      "point": {
+        "x": 1970.6000000000001,
+        "y": 1131.0149999999999
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "mark",
+      "label": "mark:rigid-index-enabled",
+      "box": {
+        "x": 50,
+        "y": 352.875,
+        "w": 2910,
+        "h": 1621.125
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "phase",
+      "label": "phase:ASSIST",
+      "box": {
+        "x": 48,
+        "y": 154,
+        "w": 3744,
+        "h": 1974
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "focus",
+      "label": "focus:virtual-hand",
+      "box": {
+        "x": 50,
+        "y": 352.875,
+        "w": 2910,
+        "h": 1621.125
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "focus",
+      "label": "focus:finger-meters",
+      "box": {
+        "x": 3010,
+        "y": 522.5625,
+        "w": 782,
+        "h": 489.53125
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "focus",
+      "label": "focus:thumb-fingertip-approximate",
+      "point": {
+        "x": 1330.4,
+        "y": 1406.60625
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "focus",
+      "label": "focus:index-fingertip-approximate",
+      "point": {
+        "x": 1475.8999999999999,
+        "y": 985.11375
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "focus",
+      "label": "focus:middle-fingertip-approximate",
+      "point": {
+        "x": 1650.5000000000002,
+        "y": 904.0575
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "focus",
+      "label": "focus:ring-fingertip-approximate",
+      "point": {
+        "x": 1825.1,
+        "y": 1001.325
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "focus",
+      "label": "focus:pinky-fingertip-approximate",
+      "point": {
+        "x": 1970.6000000000001,
+        "y": 1131.0149999999999
+      }
+    },
+    {
+      "frame": 360,
+      "kind": "mark",
+      "label": "mark:assist_started",
+      "box": {
+        "x": 1024.6875,
+        "y": 154,
+        "w": 960.625,
+        "h": 112.1875
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "phase",
+      "label": "phase:ASSIST_HOLD",
+      "box": {
+        "x": 48,
+        "y": 154,
+        "w": 3744,
+        "h": 1974
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "focus",
+      "label": "focus:virtual-hand",
+      "box": {
+        "x": 50,
+        "y": 375.0625,
+        "w": 2910,
+        "h": 1598.9375
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "focus",
+      "label": "focus:finger-meters",
+      "box": {
+        "x": 3010,
+        "y": 474.6875,
+        "w": 782,
+        "h": 489.53125
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "focus",
+      "label": "focus:thumb-fingertip-approximate",
+      "point": {
+        "x": 1330.4,
+        "y": 1414.371875
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "focus",
+      "label": "focus:index-fingertip-approximate",
+      "point": {
+        "x": 1475.8999999999999,
+        "y": 998.648125
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "focus",
+      "label": "focus:middle-fingertip-approximate",
+      "point": {
+        "x": 1650.5000000000002,
+        "y": 918.7012500000001
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "focus",
+      "label": "focus:ring-fingertip-approximate",
+      "point": {
+        "x": 1825.1,
+        "y": 1014.6375
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "focus",
+      "label": "focus:pinky-fingertip-approximate",
+      "point": {
+        "x": 1970.6000000000001,
+        "y": 1142.5525
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "mark",
+      "label": "mark:resistance:index",
+      "box": {
+        "x": 630.71875,
+        "y": 154,
+        "w": 1748.53125,
+        "h": 134.375
+      }
+    },
+    {
+      "frame": 413,
+      "kind": "focus",
+      "label": "focus:resistance-coach-caption",
+      "box": {
+        "x": 3010,
+        "y": 1426.90625,
+        "w": 782,
+        "h": 270.1875
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "phase",
+      "label": "phase:RELEASE",
+      "box": {
+        "x": 48,
+        "y": 154,
+        "w": 3744,
+        "h": 1974
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "focus",
+      "label": "focus:virtual-hand",
+      "box": {
+        "x": 50,
+        "y": 435.75,
+        "w": 2910,
+        "h": 1538.25
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "focus",
+      "label": "focus:finger-meters",
+      "box": {
+        "x": 3010,
+        "y": 474.6875,
+        "w": 782,
+        "h": 489.53125
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "focus",
+      "label": "focus:thumb-fingertip-approximate",
+      "point": {
+        "x": 1330.4,
+        "y": 1435.6125000000002
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "focus",
+      "label": "focus:index-fingertip-approximate",
+      "point": {
+        "x": 1475.8999999999999,
+        "y": 1035.6675
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "focus",
+      "label": "focus:middle-fingertip-approximate",
+      "point": {
+        "x": 1650.5000000000002,
+        "y": 958.755
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "focus",
+      "label": "focus:ring-fingertip-approximate",
+      "point": {
+        "x": 1825.1,
+        "y": 1051.0500000000002
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "focus",
+      "label": "focus:pinky-fingertip-approximate",
+      "point": {
+        "x": 1970.6000000000001,
+        "y": 1174.1100000000001
+      }
+    },
+    {
+      "frame": 503,
+      "kind": "mark",
+      "label": "mark:glove-released",
+      "box": {
+        "x": 3010,
+        "y": 996.21875,
+        "w": 782,
+        "h": 294.59375
+      }
+    },
+    {
+      "frame": 526,
+      "kind": "phase",
+      "label": "phase:REST",
+      "box": {
+        "x": 48,
+        "y": 154,
+        "w": 3744,
+        "h": 1974
+      }
+    },
+    {
+      "frame": 526,
+      "kind": "focus",
+      "label": "focus:virtual-hand",
+      "box": {
+        "x": 50,
+        "y": 375.0625,
+        "w": 2910,
+        "h": 1598.9375
+      }
+    },
+    {
+      "frame": 526,
+      "kind": "focus",
+      "label": "focus:finger-meters",
+      "box": {
+        "x": 3010,
+        "y": 474.6875,
+        "w": 782,
+        "h": 489.53125
+      }
+    },
+    {
+      "frame": 526,
+      "kind": "focus",
+      "label": "focus:thumb-fingertip-approximate",
+      "point": {
+        "x": 1330.4,
+        "y": 1414.371875
+      }
+    },
+    {
+      "frame": 526,
+      "kind": "focus",
+      "label": "focus:index-fingertip-approximate",
+      "point": {
+        "x": 1475.8999999999999,
+        "y": 998.648125
+      }
+    },
+    {
+      "frame": 526,
+      "kind": "focus",
+      "label": "focus:middle-fingertip-approximate",
+      "point": {
+        "x": 1650.5000000000002,
+        "y": 918.7012500000001
+      }
+    },
+    {
+      "frame": 526,
+      "kind": "focus",
+      "label": "focus:ring-fingertip-approximate",
+      "point": {
+        "x": 1825.1,
+        "y": 1014.6375
+      }
+    },
+    {
+      "frame": 526,
+      "kind": "focus",
+      "label": "focus:pinky-fingertip-approximate",
+      "point": {
+        "x": 1970.6000000000001,
+        "y": 1142.5525
+      }
+    }
+  ]
+}

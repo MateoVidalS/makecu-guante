@@ -1,0 +1,78 @@
+{
+  "id": "coach-panel",
+  "file": "recordings/coach-panel.mp4",
+  "width": 3840,
+  "height": 2160,
+  "fps": 30,
+  "durationFrames": 600,
+  "simulated": true,
+  "demoData": true,
+  "events": [
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:coach-adjustment",
+      "box": {
+        "x": 3010,
+        "y": 1681.5625,
+        "w": 782,
+        "h": 254.1875
+      }
+    },
+    {
+      "frame": 0,
+      "kind": "mark",
+      "label": "mark:scripted-live-device-real-runtime-tools",
+      "box": {
+        "x": 50,
+        "y": 352.875,
+        "w": 2910,
+        "h": 1621.125
+      }
+    },
+    {
+      "frame": 120,
+      "kind": "click",
+      "label": "click:Undo",
+      "box": {
+        "x": 3010,
+        "y": 1807.75,
+        "w": 250,
+        "h": 128
+      }
+    },
+    {
+      "frame": 210,
+      "kind": "focus",
+      "label": "focus:highlighted-index",
+      "box": {
+        "x": 50,
+        "y": 352.875,
+        "w": 2910,
+        "h": 1621.125
+      }
+    },
+    {
+      "frame": 300,
+      "kind": "click",
+      "label": "click:Timeline",
+      "box": {
+        "x": 3542,
+        "y": 1807.75,
+        "w": 250,
+        "h": 128
+      }
+    },
+    {
+      "frame": 450,
+      "kind": "click",
+      "label": "click:Close timeline",
+      "box": {
+        "x": 2790,
+        "y": 537.5,
+        "w": 64,
+        "h": 64
+      }
+    }
+  ]
+}
