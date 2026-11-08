@@ -11,7 +11,7 @@ const { openBrowser, selectComposition, renderStill } = cliRequire('@remotion/re
 const selected = process.argv.slice(2);
 const frames = [
   ['servos-orbit-060', 60], ['servos-orbit-078', 78], ['servos-orbit-096', 96],
-  ['spools-150', 150], ['esp32-195', 195], ['sensor-213', 213],
+  ['spools-150', 150], ['electronics-title-180', 180], ['esp32-195', 195], ['sensor-213', 213],
   ['stop-231', 231], ['guides-275', 275], ['final-hand-287', 287],
 ];
 await mkdir('evidence/V7', { recursive: true });

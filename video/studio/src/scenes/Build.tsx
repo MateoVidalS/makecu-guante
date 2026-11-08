@@ -1,7 +1,7 @@
 import React from 'react';
 import { useCurrentFrame } from 'remotion';
 import { c, safe } from '../brand/tokens';
-import { Badge, Fill, T } from '../components/brand';
+import { Fill, T } from '../components/brand';
 import { BuildAssembly } from '../components/hardware/BuildAssembly';
 import { buildTiming } from '../components/hardware/buildMotion';
 
@@ -21,7 +21,6 @@ export const Build: React.FC = () => {
   return <Fill>
     <div style={{ position: 'absolute', top: 64, left: 0 }}><BuildAssembly frame={frame} width={1920} height={760} /></div>
     <T size="h2" style={{ position: 'absolute', left: safe.x, top: safe.y, color: c.text }}>{step.label}</T>
-    <Badge kind="illustrative" style={{ position: 'absolute', right: safe.x, top: safe.y }} />
     <T size="caption" w={400} color={c.muted} style={{ position: 'absolute', left: safe.x, bottom: 216 }}>Model of the printed parts and wiring</T>
   </Fill>;
 };

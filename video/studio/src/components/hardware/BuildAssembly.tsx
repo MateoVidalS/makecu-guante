@@ -6,6 +6,7 @@ import { c } from '../../brand/tokens';
 import { HardwareLighting, hardwarePlastic, servoShafts, useHardwareGeometry } from './Hardware';
 import { wirePalette } from './wirePalette';
 import { BuildCallouts } from './BuildCallouts';
+import { BuildHand, handFingertips as fingertips, handGuides as guides } from './BuildHand';
 import { aimCamera, buildTiming, buildView, ramp, type Point, type View } from './buildMotion';
 
 const Plastic: React.FC<{ color?: string; opacity?: number; metal?: boolean }> = ({ color = c.chrome, opacity = 1, metal = false }) => (
@@ -81,18 +82,6 @@ const StopButton: React.FC = () => <>
   {[-1, 1].flatMap((x) => [-1, 1].map((y) => <Block key={`${x}-${y}`} at={[x * 7, y * 4, 1]} size={[3, 1, 1]} color={c.borderControl} metal />))}
 </>;
 
-const ghostOutline: Point[] = [
-  [-35, -30, 50], [10, -31, 50], [40, -42, 50], [80, -45, 50], [111, -43, 50], [120, -37, 50], [119, -31, 50],
-  [84, -28, 50], [123, -25, 50], [141, -22, 50], [145, -16, 50], [141, -10, 50], [92, -8, 50],
-  [142, -4, 50], [154, 2, 50], [155, 9, 50], [149, 16, 50], [92, 18, 50], [127, 22, 50], [136, 28, 50],
-  [135, 36, 50], [128, 42, 50], [76, 38, 50], [59, 38, 50], [67, 52, 50], [88, 66, 50], [88, 73, 50],
-  [82, 78, 50], [72, 76, 50], [40, 60, 50], [20, 39, 50], [-35, 31, 50],
-];
-const fingertips: Point[] = [[81, 70, 50], [128, 31, 50], [147, 7, 50], [136, -17, 50], [112, -37, 50]];
-const guides: [Point, Point][] = fingertips.map(([x, y, z], i) => i === 0
-  ? [[42, 44, z], [63, 60, z]]
-  : [[58 + (x - 58) * 0.25, y, z], [58 + (x - 58) * 0.65, y, z]]);
-
 const servoLeads = servoShafts.flatMap(([x, y], i) => [wirePalette.ground, wirePalette.power, wirePalette.signal].map((color, wire) => {
   const spread = (wire - 1) * 1.2;
   // Orange signals terminate at DevKit headers. Red/brown terminate on the
@@ -155,7 +144,7 @@ export const BuildAssembly: React.FC<{ frame: number; width?: number; height?: n
         </>}
         {frame >= buildTiming.lid && <Stl geometry={geometry.lid} color={hardwarePlastic.lid} at={[0, 0, 41 + (1 - ramp(frame, buildTiming.lid, 15)) * 70]} />}
         {frame >= buildTiming.hand && <>
-          <Tube points={ghostOutline} closed color={c.target} radius={1.5 / view.zoom} unlit />
+          <BuildHand frame={frame} width={width} height={height} />
           {guides.map((pair, i) => <React.Fragment key={`finger-${i}`}>
             {pair.map((point, j) => <Stl key={j} geometry={geometry.guides} color={hardwarePlastic.guides} at={point} opacity={ghost} angle={i === 0 ? 0.65 : 0} />)}
             <Stl geometry={geometry.anchors} color={hardwarePlastic.anchors} at={fingertips[i]} opacity={ghost} angle={i === 0 ? 0.65 : 0} />

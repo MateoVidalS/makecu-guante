@@ -13,14 +13,30 @@ try {
   execFileSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--target', 'ES2022',
     '--module', 'commonjs', '--moduleResolution', 'node', '--outDir', temporary, '--rootDir', resolve('../..'),
     '--noEmit', 'false', '--jsx', 'react', '--esModuleInterop', 'true', '--skipLibCheck',
-    'src/components/hardware/BuildCallouts.tsx'], { stdio: 'inherit' });
+    'src/components/hardware/BuildCallouts.tsx', 'src/components/hardware/BuildHand.tsx'], { stdio: 'inherit' });
   symlinkSync(resolve('node_modules'), join(temporary, 'node_modules'), 'dir');
   const compiled = join(temporary, 'video/studio/src/components/hardware');
   const { buildCallouts } = require(join(compiled, 'BuildCallouts.js'));
-  const { projectBuildPoint, buildView, aimCamera } = require(join(compiled, 'buildMotion.js'));
+  const { projectBuildPoint, buildView, aimCamera, ramp } = require(join(compiled, 'buildMotion.js'));
+  const { handSilhouette, handFingertips, handGuides } = require(join(compiled, 'BuildHand.js'));
   const { Matrix4, OrthographicCamera, Raycaster, Vector2, Vector3 } = require('three');
   const width = 1920, height = 760, canvasTop = 64;
   const rotate = new Matrix4().makeRotationX(-Math.PI / 2);
+  const insideHand = ([x, y]) => {
+    let inside = false;
+    for (let i = 0, j = handSilhouette.length - 1; i < handSilhouette.length; j = i++) {
+      const [xi, yi] = handSilhouette[i], [xj, yj] = handSilhouette[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  for (const point of [...handFingertips, ...handGuides.flat()]) {
+    assert.ok(insideHand(point), `Guide/anchor ${point} sits inside its finger silhouette`);
+  }
+  for (const point of [[115, -27], [115, -5], [115, 19], [115, 50]]) {
+    assert.ok(!insideHand(point), `Finger web ${point} stays open`);
+  }
+  assert.ok(handSilhouette.length > 500, 'The outline retains fingertip and web detail');
   for (const callout of buildCallouts) {
     assert.equal(callout.at % 18, 0, `${callout.id} enters on a beat`);
     assert.ok(callout.top + canvasTop >= 64);
@@ -37,6 +53,18 @@ try {
     }
     const camera = new OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 1, 1200);
     aimCamera(camera, buildView(frame, width, height));
+    if (frame >= 180 && frame < 234) {
+      const boxes = [
+        [[-80.5, -40, 0], [0, 40, 41]],
+        [[-105, -106, 0], [22, -55, 42]],
+        [[-80.5, -40, 31.2], [0, 40, 36 + (1 - ramp(frame, 180)) * 40]],
+      ];
+      for (const [min, max] of boxes) for (const x of [min[0], max[0]])
+        for (const y of [min[1], max[1]]) for (const z of [min[2], max[2]]) {
+          const p = projectBuildPoint(frame, width, height, [x, y, z]);
+          assert.ok(p.y + canvasTop >= 160, `Frame ${frame}: assembly clears title band (${p.y + canvasTop})`);
+        }
+    }
     for (const callout of active) {
       const point = projectBuildPoint(frame, width, height, callout.point(frame));
       assert.ok(Number.isFinite(point.x) && Number.isFinite(point.y));
@@ -55,6 +83,7 @@ try {
   const orbit = [60, 78, 96].map((frame) => projectBuildPoint(frame, width, height, servo.point(frame)));
   assert.ok(Math.hypot(orbit[2].x - orbit[0].x, orbit[2].y - orbit[0].y) > 5, 'Orbit evidence shows a changing projection');
   console.log('V7: all 288 frames pass beat, reserve, overlap, visibility and CAD ray-projection checks.');
+  console.log('Electronics title reserve and five-finger silhouette/guide placement checks pass.');
   console.log('Servo endpoint at orbit evidence frames 60 / 78 / 96:', orbit);
 } finally {
   rmSync(temporary, { recursive: true, force: true });

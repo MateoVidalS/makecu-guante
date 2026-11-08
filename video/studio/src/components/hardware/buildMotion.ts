@@ -19,7 +19,7 @@ const handBox: SubjectBox = [[-35, 50, -80], [158, 56, 45]];
 // Fit the current subject in screen space, then blend those views on the beats.
 // Background parts may pass out of view during a close-up; the subject stays
 // inside the canvas, which itself ends above the caption reserve.
-const subjectView = (boxes: SubjectBox[], offset: Point, fraction: number, width: number, height: number): View => {
+const subjectView = (boxes: SubjectBox[], offset: Point, fraction: number, width: number, height: number, top = 0): View => {
   const camera = new OrthographicCamera();
   camera.position.set(...offset);
   camera.lookAt(0, 0, 0);
@@ -34,7 +34,9 @@ const subjectView = (boxes: SubjectBox[], offset: Point, fraction: number, width
   const center = projected.getCenter(new Vector3());
   center.z = 0;
   center.applyQuaternion(camera.quaternion);
-  return { center, offset: new Vector3(...offset), zoom: Math.min(width * fraction / size.x, height * 0.93 / size.y) };
+  const zoom = Math.min(width * fraction / size.x, (height - top) * 0.93 / size.y);
+  center.add(new Vector3(0, top / (2 * zoom), 0).applyQuaternion(camera.quaternion));
+  return { center, offset: new Vector3(...offset), zoom };
 };
 const blendView = (a: View, b: View, progress: number): View => ({
   center: a.center.clone().lerp(b.center, progress), offset: a.offset.clone().lerp(b.offset, progress),
@@ -43,7 +45,10 @@ const blendView = (a: View, b: View, progress: number): View => ({
 export const buildView = (frame: number, width: number, height: number): View => {
   const orbit: Point = [190 - frame * 0.45, 220, 330];
   let view = subjectView([moduleBox], orbit, 0.52, width, height);
-  view = blendView(view, subjectView([electronicsBox], [25 + (frame - 180) * 0.4, 300, 330], 0.78, width, height), ramp(frame, 174, 12));
+  // Frame the background module as well as the new boards below the title band.
+  const electronicsArrivalBox: SubjectBox = [[-105, 0, 55], [22, 42, 106]];
+  const moduleArrivalBox: SubjectBox = [moduleBox[0], [0, Math.max(41, 36 + (1 - ramp(frame, 180)) * 40), 40]];
+  view = blendView(view, subjectView([moduleArrivalBox, electronicsArrivalBox], [25 + (frame - 180) * 0.4, 300, 330], 0.78, width, height, 96), ramp(frame, 168, 12));
   view = blendView(view, subjectView([moduleBox, electronicsBox, harnessBox], [260, 240, 330], 0.82, width, height), ramp(frame, buildTiming.wiring, 9));
   view = blendView(view, subjectView([lidBox], orbit, 0.52, width, height), ramp(frame, buildTiming.lid, 9));
   return blendView(view, subjectView([lidBox, electronicsBox, harnessBox, handBox], [30, 160, 380], 0.80, width, height), ramp(frame, 248, 18));
