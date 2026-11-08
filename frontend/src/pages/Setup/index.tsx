@@ -158,6 +158,10 @@ export default function Setup() {
         title="Connect glove and camera"
         lead="Both need to be ready before calibration and practice."
       />
+      <p>
+        The glove helps you open your hand. When the thread is slack, your hand
+        may rest curled. That is normal.
+      </p>
       <RuntimeBrownoutNotice />
       <CurrentSensorNotice missing={missingCurrentSensor} />
       <BrowserSupportBanner />

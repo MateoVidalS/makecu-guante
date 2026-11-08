@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   CURRENT_CAMERA_VIEW,
+  CURRENT_ASSIST_DIRECTION,
   type Calibration,
 } from '../../contracts/calibration';
 import { GLOVE_FINGERS } from '../../contracts/glove';
@@ -22,6 +23,7 @@ export function SimulatorCalibrationShortcut({
     setError('');
     try {
       const calibration = await runtime.calibration.save({
+        assist_direction: CURRENT_ASSIST_DIRECTION,
         servo: GLOVE_FINGERS.map((finger) => ({
           finger,
           min_deg: 20,

@@ -64,6 +64,7 @@ describe('view-aware calibration drafts', () => {
     (camera_view) => {
       const saved = {
         ...calibration,
+        assist_direction: 'open' as const,
         camera: { ...calibration.camera, camera_view },
       };
       const draft = draftFromCalibration(saved);
@@ -82,6 +83,7 @@ describe('view-aware calibration drafts', () => {
   it('retains current-view captures for review', () => {
     const draft = draftFromCalibration({
       ...calibration,
+      assist_direction: 'open' as const,
       camera: { ...calibration.camera, camera_view: 'front_upright' },
     });
     expect(draft.step).toBe(2);
@@ -91,6 +93,7 @@ describe('view-aware calibration drafts', () => {
   it('migrates a resumed legacy draft without relabeling its old captures', () => {
     const draft = draftFromCalibration({
       ...calibration,
+      assist_direction: 'open' as const,
       camera: { ...calibration.camera, camera_view: 'front_upright' },
     });
     sessionStorage.setItem(
@@ -109,4 +112,37 @@ describe('view-aware calibration drafts', () => {
     expect(resumed.servo).toEqual(draft.servo);
     sessionStorage.clear();
   });
+});
+
+it.each([undefined, 'close'] as const)(
+  'clears servo, camera and friction values from %s assistance',
+  (assist_direction) => {
+    const draft = draftFromCalibration({ ...calibration, assist_direction });
+    expect(draft).toMatchObject({
+      step: 0,
+      servo: {},
+      open: null,
+      closed: null,
+      friction: {},
+      assistDirection: 'open',
+    });
+  },
+);
+it('clears a resumed draft without an opening direction marker', () => {
+  const draft = draftFromCalibration({
+    ...calibration,
+    assist_direction: 'open',
+  });
+  sessionStorage.setItem(
+    'rehab-calibration',
+    JSON.stringify({ ...draft, assistDirection: undefined }),
+  );
+  expect(loadDraft()).toMatchObject({
+    step: 0,
+    servo: {},
+    open: null,
+    closed: null,
+    friction: {},
+  });
+  sessionStorage.clear();
 });
