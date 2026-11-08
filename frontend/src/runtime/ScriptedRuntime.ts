@@ -86,7 +86,7 @@ export class ScriptedRuntime implements TherapyRuntime {
     finger: GloveFinger | null;
     at: number;
   } | null = null;
-  readonly therapy = new TherapyController({
+  private readonly therapyController = new TherapyController({
     sessionId: () => this.exercise.view().sessionId,
     now: () => this.therapyClock,
     snapshot: () => {
@@ -152,7 +152,7 @@ export class ScriptedRuntime implements TherapyRuntime {
     },
     revertIntensity: () => {
       this.exerciseStore.setState({
-        pose: this.therapy.pose(POSES[this.exercise.view().pose.id]),
+        pose: this.therapyController.pose(POSES[this.exercise.view().pose.id]),
       });
     },
     sessionControl: (tool) => {
@@ -168,6 +168,7 @@ export class ScriptedRuntime implements TherapyRuntime {
       /* This UI script has no motors. */
     },
   });
+  readonly therapy: TherapyRuntime['therapy'] = this.therapyController;
   constructor(options: { persist?: boolean } = {}) {
     this.persist = options.persist ?? true;
   }
@@ -213,7 +214,7 @@ export class ScriptedRuntime implements TherapyRuntime {
         })),
       );
       this.settings = { ...settings };
-      this.therapy.reset(plan, settings);
+      this.therapyController.reset(plan, settings);
       this.therapyClock = 0;
       this.lastSafety = null;
       this.results = [];
@@ -354,18 +355,18 @@ export class ScriptedRuntime implements TherapyRuntime {
     const s = this.settings;
     return {
       PRESENT: s.present_s,
-      ATTEMPT: this.therapy.attemptSeconds(),
-      HOLD: this.therapy.holdSeconds(s.hold_s),
+      ATTEMPT: this.therapyController.attemptSeconds(),
+      HOLD: this.therapyController.holdSeconds(s.hold_s),
       ASSIST: Math.min(2, s.assist_max_s),
-      ASSIST_HOLD: this.therapy.holdSeconds(s.hold_s),
+      ASSIST_HOLD: this.therapyController.holdSeconds(s.hold_s),
       RELEASE: 0.5,
-      REST: s.rest_s + this.therapy.current().extra_rest_s,
+      REST: s.rest_s + this.therapyController.current().extra_rest_s,
       PAUSED: null,
       DONE: null,
     }[phase];
   }
   private phase(phase: ExercisePhase) {
-    const overrides = this.therapy.boundary(phase);
+    const overrides = this.therapyController.boundary(phase);
     if (phase === 'PRESENT' && overrides.next_pose) {
       const index = this.exercise.view().index;
       this.items[index] = { ...this.items[index], pose: overrides.next_pose };
@@ -373,7 +374,7 @@ export class ScriptedRuntime implements TherapyRuntime {
     }
     if (phase === 'ATTEMPT')
       this.exerciseStore.setState({
-        pose: this.therapy.pose(POSES[this.exercise.view().pose.id]),
+        pose: this.therapyController.pose(POSES[this.exercise.view().pose.id]),
       });
     this.elapsed = 0;
     this.exerciseStore.setState({
@@ -462,7 +463,7 @@ export class ScriptedRuntime implements TherapyRuntime {
         finger: 'index',
         at: this.therapyClock,
       };
-      this.therapy.resistance('index');
+      this.therapyController.resistance('index');
       this.resistanceSent = true;
       this.resistedThisAttempt = true;
       this.emit({ kind: 'resistance', finger: 'index', ma: 570 });
@@ -494,7 +495,7 @@ export class ScriptedRuntime implements TherapyRuntime {
         this.phase('REST');
         break;
       case 'REST': {
-        const count = this.therapy.takeRepeats();
+        const count = this.therapyController.takeRepeats();
         const rep = Math.max(
           ...this.items.filter((i) => i.pose === v.pose.id).map((i) => i.rep),
         );
