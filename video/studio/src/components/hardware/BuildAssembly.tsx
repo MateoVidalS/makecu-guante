@@ -111,7 +111,10 @@ const boardWires: { color: string; points: Point[] }[] = [
   { color: wirePalette.ground, points: [[13, -90, 3], [2, -72, 3], [-49, -62, 4], [-85, -73, 5.4]] },
   { color: c.text, points: [[-34, -86, 3], [-43, -94, 3], [-65, -99, 5.4]] },
   { color: c.text, points: [[-34, -82, 3], [-44, -88, 4], [-70, -99, 5.4]] },
+  { color: wirePalette.power, points: [[-34, -90, 3], [-42, -102, 3], [-60, -99, 5.4]] },
+  { color: wirePalette.ground, points: [[-34, -94, 3], [-46, -86, 3], [-49, -62, 4]] },
   { color: c.text, points: [[2, -82, 2], [-7, -74, 3], [-80, -73, 5.4]] },
+  { color: c.text, points: [[-10, -90, 1], [-15, -97, 3], [-44, -78, 4], [-49, -62, 4]] },
 ];
 
 const BuildCamera: React.FC<{ frame: number; width: number; height: number }> = ({ frame, width, height }) => {
