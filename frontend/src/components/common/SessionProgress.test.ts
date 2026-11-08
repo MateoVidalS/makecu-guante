@@ -27,9 +27,9 @@ it('counts evaluation sweeps from the selected fingers', () => {
   );
 });
 
-it('counts all ten alternating opening-practice entries', () => {
-  for (let index = 0; index < 10; index++)
+it('counts every default-plan entry (fist, open, four finger poses, fist, open)', () => {
+  for (let index = 0; index < 8; index++)
     expect(exerciseProgress(DEFAULT_PLAN, index, 1)).toBe(
-      `Pose ${index + 1} of 10 · Rep 1 of 1`,
+      `Pose ${index + 1} of 8 · Rep 1 of 1`,
     );
 });

@@ -9,7 +9,7 @@ import {
 } from '../contracts/calibration';
 import { GLOVE_FINGERS, pullFromClosure } from '../contracts/glove';
 import {
-  DEFAULT_PLAN,
+  OPEN_ASSIST_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
   MAX_ASSIST_PULL,
 } from '../contracts/poses';
@@ -29,7 +29,7 @@ afterEach(() => {
 
 async function run(
   preset: PatientPreset,
-  plan: ExercisePlanItem[] = DEFAULT_PLAN,
+  plan: ExercisePlanItem[] = OPEN_ASSIST_PLAN,
   tolerance = 0.1,
 ) {
   const calibration: Calibration = structuredClone(fixture);
@@ -114,12 +114,14 @@ it.each(['moderate', 'spastic'] as const)(
   'soaks the real runtime for ten %s attempts with all fingers and safe persisted results',
   async (preset) => {
     // Default practice timing includes the sustained hold, not just motor starts.
-    const r = await run(preset, DEFAULT_PLAN, 0.1);
+    const r = await run(preset, OPEN_ASSIST_PLAN, 0.1);
     r.until(() => ['DONE', 'PAUSED'].includes(r.runtime.exercise.view().phase));
     expect(r.runtime.exercise.view().phase).toBe('DONE');
     await r.runtime.persistence.flush();
     expect(r.saved).toHaveLength(10);
-    expect(r.saved.map((a) => a.pose)).toEqual(DEFAULT_PLAN.map((p) => p.pose));
+    expect(r.saved.map((a) => a.pose)).toEqual(
+      OPEN_ASSIST_PLAN.map((p) => p.pose),
+    );
     expect(
       r.saved.filter((a) => a.pose === 'full_fist').every((a) => !a.assisted),
     ).toBe(true);

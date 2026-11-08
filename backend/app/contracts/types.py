@@ -7,7 +7,18 @@ GloveFinger = FingerId
 Handedness = Literal["left", "right"]
 AssistDirection = Literal["close", "open"]
 CURRENT_ASSIST_DIRECTION: AssistDirection = "open"
-PoseId = Literal["open", "hook", "full_fist", "tabletop", "straight_fist", "pinch"]
+PoseId = Literal[
+    "open",
+    "hook",
+    "full_fist",
+    "tabletop",
+    "straight_fist",
+    "pinch",
+    "thumbs_up",
+    "point",
+    "peace",
+    "pinky_up",
+]
 ExercisePhase = Literal[
     "PRESENT", "ATTEMPT", "HOLD", "ASSIST", "ASSIST_HOLD", "RELEASE", "PAUSED", "REST", "DONE"
 ]

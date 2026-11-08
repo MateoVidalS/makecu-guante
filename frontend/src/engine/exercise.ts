@@ -11,7 +11,7 @@ import {
   closureFromPull,
 } from '../contracts/glove';
 import type { GloveFinger, Quint } from '../contracts/glove';
-import { calibratedPinch, POSES } from '../contracts/poses';
+import { calibratedPinch, opensFinger, POSES } from '../contracts/poses';
 import type { PoseDef, PoseId } from '../contracts/poses';
 import type {
   EngineInput,
@@ -208,7 +208,7 @@ class Exercise implements ExerciseEngine {
     const gap = (f: (typeof fingers)[number]) =>
       f.now === null || f.target === null
         ? 0
-        : this.pose.id === 'open'
+        : opensFinger(this.pose, f.finger)
           ? Math.max(0, f.now - f.target)
           : Math.max(0, f.target - f.now);
     const maxGap = Math.max(...fingers.map(gap));
@@ -814,7 +814,7 @@ class Exercise implements ExerciseEngine {
     return (
       target === null ||
       (value !== undefined &&
-        (this.pose.id === 'open'
+        (opensFinger(this.pose, f)
           ? value <= target + this.settings.tolerance
           : value >= target - this.settings.tolerance))
     );
@@ -882,15 +882,17 @@ class Exercise implements ExerciseEngine {
       const best = this.metrics!.best[f],
         prior = this.plateau[0].best[f];
       if (best === undefined || prior === undefined) return true;
-      return (this.pose.id === 'open' ? prior - best : best - prior) <= 0.03;
+      return (opensFinger(this.pose, f) ? prior - best : best - prior) <= 0.03;
     });
   }
   private assistable(): boolean[] {
     return GLOVE_FINGERS.map((f) => {
       const target = this.pose.closure[f];
       const value = this.input?.vision?.closure?.[f];
+      // The glove only opens: it never pulls on a finger meant to stay closed.
       return (
         target !== null &&
+        opensFinger(this.pose, f) &&
         value !== undefined &&
         value > target + this.settings.tolerance
       );

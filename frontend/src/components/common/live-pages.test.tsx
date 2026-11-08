@@ -177,7 +177,7 @@ describe('Home and Setup', () => {
     fireEvent.click(
       screen.getByRole('button', { name: "Start today's practice" }),
     );
-    await waitFor(() => expect(runtime.exercise.view().total).toBe(10));
+    await waitFor(() => expect(runtime.exercise.view().total).toBe(8));
   });
   it('opens Customize plan after an earlier session has finished', () => {
     const runtime = new ScriptedRuntime({ persist: false });
