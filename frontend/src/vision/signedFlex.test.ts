@@ -52,7 +52,13 @@ describe('signed flexion in the hand flexion planes', () => {
                   expect(
                     measured[finger][joint],
                     `${view} ${hand} ${finger} ${joint}`,
-                  ).toBeCloseTo(angles(degrees)[finger][joint], 6);
+                  ).toBeCloseTo(
+                    // The thumb IP is a bend magnitude (its direction is ambiguous upright).
+                    finger === 'thumb' && joint === 'pip'
+                      ? Math.abs(angles(degrees)[finger][joint])
+                      : angles(degrees)[finger][joint],
+                    6,
+                  );
             }
   });
 
@@ -244,10 +250,76 @@ describe('signed flexion in the hand flexion planes', () => {
       const frame = processor.process(result, 0, hand);
       for (const finger of FINGERS) {
         expect(frame.joints![finger].mcp).toBeCloseTo(-5);
+        // The thumb IP is a bend magnitude: -5 MCP + 5 IP.
+        if (finger === 'thumb') expect(frame.joints!.thumb.pip).toBeCloseTo(5);
         expect(frame.rawFlexSum![finger]).toBeCloseTo(
-          finger === 'thumb' ? -10 : -15,
+          finger === 'thumb' ? 0 : -15,
         );
-        expect(frame.closure![finger]).toBe(0);
+        // The thumb's raw sum is 0 up to rounding, so its closure is too.
+        if (finger === 'thumb')
+          expect(frame.closure!.thumb).toBeCloseTo(0, 10);
+        else expect(frame.closure![finger]).toBe(0);
+      }
+    }
+  });
+
+  it('keeps a bent thumb bent when MediaPipe mirrors its IP direction', () => {
+    // Upright, the IP bends mostly along the camera axis; real MediaPipe output
+    // reverses that direction in runs of frames, or for good when the thumb is
+    // in shadow. Reflect the distal phalanx about the proximal phalanx: same
+    // bend magnitude, opposite direction. True thumb flex sum: 30 + 40 = 70.
+    const bent = handLandmarks(
+      fingerMap((finger) =>
+        finger === 'thumb'
+          ? { mcp: 30, pip: 40, dip: 0 }
+          : { mcp: 0, pip: 0, dip: 0 },
+      ),
+    );
+    const sub = (a: Landmark, b: Landmark): Landmark => [
+      a[0] - b[0],
+      a[1] - b[1],
+      a[2] - b[2],
+    ];
+    const axis = sub(bent[3], bent[2]);
+    const u = axis.map((v) => v / Math.hypot(...axis)) as Landmark;
+    const distal = sub(bent[4], bent[3]);
+    const along = distal.reduce((s, v, k) => s + v * u[k], 0);
+    const mirrored = bent.slice();
+    mirrored[4] = bent[3].map(
+      (v, k) => v + 2 * along * u[k] - distal[k],
+    ) as Landmark;
+    for (const hand of ['right', 'left'] as const) {
+      const scene = {
+        view: 'front_upright' as const,
+        hand,
+        noise: NOISE.ideal,
+      };
+      const world = (points: Landmark[]) =>
+        observe(points, scene, rng(1)).worldLandmarks[0].map(
+          ({ x, y, z }): Landmark => [x, y, z],
+        );
+      expect(
+        jointAngles(world(mirrored), scene.view, hand).thumb.pip,
+      ).toBeCloseTo(40, 6);
+      // Before this fix: about -10 for a sustained reversal, 17-30 for runs.
+      for (const [name, isMirrored, atLeast] of [
+        ['sustained', (i: number) => i >= 30, 60],
+        ['runs of 5 frames', (i: number) => Math.floor(i / 5) % 2 === 1, 45],
+      ] as const) {
+        const processor = new FrameProcessor();
+        const published: number[] = [];
+        for (let i = 0; i < 60; i++)
+          published.push(
+            processor.process(
+              observe(isMirrored(i) ? mirrored : bent, scene, rng(1)),
+              (i * 1000) / 30,
+              hand,
+            ).rawFlexSum!.thumb,
+          );
+        expect(
+          Math.min(...published.slice(45)),
+          `${hand} ${name}`,
+        ).toBeGreaterThan(atLeast);
       }
     }
   });

@@ -382,11 +382,18 @@ from its wrist-to-knuckle direction and that palmar direction (upright: the lens
 axis; legacy view and thumb: the MCP-arch normal oriented by the configured hand). The thumb's sign
 reference is `cross(1→2, 2→17)`: rotation across the palm toward the pinky is
 positive, independently of the configured hand. Opposition is not restricted to
-the palm-normal plane. Its full 3D bend magnitude is measured with `atan2` and
-oriented against that across-palm reference; a pure palmar bend is on the sign
-boundary and is positive by convention. Thumb landmarks 1–4 are first smoothed
-in metres (`minCutoff 3 Hz`, `beta 10` per m/s, `dCutoff 1 Hz`) to reduce
-non-planar near-straight magnitude bias and jitter. This prefilter shares the
+the palm-normal plane. Its full 3D bend magnitude is measured with `atan2`. The
+thumb MCP is oriented against that across-palm reference (a pure palmar bend is
+on the sign boundary and is positive by convention); an abducted thumb really
+hyperextends there. The thumb IP is the bend magnitude only: upright, its bend
+runs mostly along the camera axis and MediaPipe mirrors that direction. Real
+MediaPipe output flips its sign in runs of video frames (smoothing then averaged
+a fist below the open hand), keeps it reversed for a thumb in shadow, and read 4
+of 8 real gloved fists as IP hyperextension. Active IP hyperextension is small,
+so a mirrored flexion is much likelier. Thumb landmarks 1–4 are first smoothed
+in metres (`minCutoff 2.5 Hz`, `beta 10` per m/s, `dCutoff 1 Hz`) to reduce
+non-planar near-straight magnitude bias and jitter (an IP magnitude cannot cancel
+noise around a straight thumb). This prefilter shares the
 existing hand/view/gap reset rules; the joint filters still run afterward. Small negative joint angles represent hyperextension and pass through
 the joint filters; only normalized closure is clamped to [0, 1.1]. Every flexion
 calculation uses world landmarks; image landmarks serve the overlay, pinch ratio and exposure region. Degenerate palms produce a

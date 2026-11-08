@@ -103,27 +103,33 @@ export function jointAngles(
   const palmar = upright ? LENS_PALMAR : normal;
   return fingerMap((finger) => {
     if (finger === 'thumb') {
-      // Full 3D bend, signed by where it points: real thumbs flex partly palmar and
-      // partly across the palm, so the reference is palmar normal + the ulnar
-      // direction toward the pinky MCP. A bend along it is flexion; away from it is
-      // extension. (Signing by the across-palm component alone flips on real
-      // MediaPipe output because that component is small for a mostly palmar bend.)
+      // Full 3D bend: real thumbs flex partly palmar and partly across the palm.
+      // MCP is signed by where it points: the reference is palmar normal + the
+      // ulnar direction toward the pinky MCP. A bend along it is flexion; away
+      // from it is extension (an abducted thumb really hyperextends here).
+      // (Signing by the across-palm component alone flips on real MediaPipe
+      // output because that component is small for a mostly palmar bend.)
       const ulnar = unit(bone(2, 17));
       const reference: Landmark = [
         normal[0] + ulnar[0],
         normal[1] + ulnar[1],
         normal[2] + ulnar[2],
       ];
-      const thumbAngle = (a: Landmark, b: Landmark) => {
+      const thumbAngle = (a: Landmark, b: Landmark, signed: boolean) => {
         unit(a);
         unit(b);
         const turn = cross(a, b);
-        const sign = dot(turn, cross(a, reference)) < 0 ? -1 : 1;
+        const sign = signed && dot(turn, cross(a, reference)) < 0 ? -1 : 1;
         return (Math.atan2(sign * length(turn), dot(a, b)) * 180) / Math.PI;
       };
       return {
-        mcp: thumbAngle(bone(1, 2), bone(2, 3)),
-        pip: thumbAngle(bone(2, 3), bone(3, 4)),
+        mcp: thumbAngle(bone(1, 2), bone(2, 3), true),
+        // IP is the bend magnitude. Its direction is mostly along the camera
+        // axis in the upright view, so MediaPipe mirrors it: the sign flips
+        // between video frames (filtering then averages a fist toward zero) or
+        // stays reversed for a thumb in shadow. Active IP hyperextension is
+        // small, so a mirrored flexion is far likelier than a real one.
+        pip: thumbAngle(bone(2, 3), bone(3, 4), false),
         dip: 0,
       };
     }

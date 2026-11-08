@@ -46,9 +46,10 @@ export class FrameProcessor {
   readonly confidence = new ConfidenceTracker();
   private jointFilter = new JointFilter();
   // Denoise thumb geometry before measuring its non-planar opposition magnitude.
-  // Coordinates are metres: retain fast motion while reducing near-straight bias.
+  // Coordinates are metres: retain fast motion while reducing near-straight bias
+  // (the unsigned IP magnitude cannot cancel noise around a straight thumb).
   private thumbFilters = Array.from({ length: 4 }, () =>
-    Array.from({ length: 3 }, () => new OneEuroFilter(3, 10, 1)),
+    Array.from({ length: 3 }, () => new OneEuroFilter(2.5, 10, 1)),
   );
   // Pinch is a dimensionless ratio: adapt per ratio/s rather than per degree/s.
   private pinchFilter = new OneEuroFilter(0.1, 5, 0.5);

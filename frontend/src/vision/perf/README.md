@@ -95,6 +95,11 @@ Real MediaPipe on anatomically correct hands (upright view, last run in
 for every finger of the right hand and every long finger of the left. MediaPipe
 misreads the rendered proxy's left thumb (its IP joint reported bending away from
 the palm), so the left thumb must be confirmed with real bare-hand-with-points recordings.
+This is mostly lighting, not handedness: the bench's key light and camera offset are
+not mirrored for the left hand, so its thumb is in shadow. With the scene mirrored,
+the left thumb calibrates normally and the (now shadowed) right thumb fails the same
+way. Since the thumb IP is measured as a bend magnitude, a reversed IP no longer turns
+a bent thumb negative, but a thumb in shadow is still the least reliable reading.
 
 The sections below are the original #62 measurements that motivated the fixes.
 
