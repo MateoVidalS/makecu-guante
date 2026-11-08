@@ -196,7 +196,7 @@ type EngineEvent =
   | { kind: "progress"; finger: GloveFinger; active_max: number }                        // throttled to at most 2 Hz per finger
   | { kind: "assist_started"; fingers: GloveFinger[]; from: Quint; to: Quint }
   | { kind: "resistance"; finger: GloveFinger; ma: number }                              // current high + finger not following
-  | { kind: "safety"; source: "overcurrent" | "stop_button" | "watchdog" | "camera_lost" | "glove_disconnected"; finger: GloveFinger | null; ma: number | null }
+  | { kind: "safety"; source: "overcurrent" | "stop_button" | "watchdog" | "camera_lost" | "glove_disconnected" | "coach_brake"; finger: GloveFinger | null; ma: number | null }
   | { kind: "attempt_done"; result: AttemptResult }
   | { kind: "session_done"; summary: SessionSummary };
 
@@ -316,7 +316,8 @@ interface Profile { pseudonym: string; affected_hand: Handedness; condition: str
 interface Session { id: number; mode: "exercise"; started_at: string; ended_at: string | null; calibration_id: number;
   plan: ExercisePlanItem[]; settings: ExerciseSettings; is_demo: boolean; summary: SessionSummary | null; n_attempts: number }
 interface Attempt extends Omit<AttemptResult, "trace"> { id: number; session_id: number }
-interface SessionDetail extends Session { attempts: Attempt[]; transcript: TranscriptLine[] }
+interface SessionDetail extends Session { attempts: Attempt[]; transcript: TranscriptLine[];
+  coach_decisions?: CoachDecision[]; feelings?: FeelingEntry[] }   // docs/plan/13 §4; absent = empty
 interface Evaluation extends EvaluationResult { id: number; calibration_id: number; is_demo: boolean }
 interface TranscriptLine { t: string; role: "coach" | "patient" | "system"; text: string }
 interface Summary { id: number; kind: "session" | "therapist"; created_at: string; session_id: number | null; days: number | null; model: string; text: string }

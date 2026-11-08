@@ -7,7 +7,8 @@ import { createHandScene } from './scene';
 import { handPresentation } from './view';
 import { CURRENT_CAMERA_VIEW, type CameraView } from '../contracts/calibration';
 
-export const HAND_VIEW_FILL = 0.8;
+// The envelope already covers the full motion path and ghost rim, so 92% never clips.
+export const HAND_VIEW_FILL = 0.92;
 type Family = PoseDef['family'];
 const cache = new Map<string, Box3>();
 
