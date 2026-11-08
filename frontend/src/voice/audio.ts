@@ -2,7 +2,8 @@ import captureUrl from './capture.worklet.js?url';
 import playerUrl from './player.worklet.js?url';
 
 export interface VoiceAudio {
-  open(send: (data: string) => void): Promise<void>;
+  /** Resolves false when the microphone is unavailable: playback still works. */
+  open(send: (data: string) => void): Promise<boolean | void>;
   play(data: string): void;
   flush(): void;
   setMuted(muted: boolean): void;
@@ -31,24 +32,30 @@ export class BrowserAudio implements VoiceAudio {
     const context = new AudioContext();
     this.context = context;
     await context.resume();
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        channelCount: 1,
-      },
-    });
-    if (generation !== this.generation) {
-      stream.getTracks().forEach((t) => t.stop());
-      return;
+    // A blocked or busy microphone must not cost the patient the coach's voice:
+    // keep playback and report that listening is off.
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof DOMException)) throw error;
     }
-    this.stream = stream;
+    if (generation !== this.generation) {
+      stream?.getTracks().forEach((t) => t.stop());
+      return false;
+    }
+    this.stream = stream ?? undefined;
     await Promise.all([
       context.audioWorklet.addModule(captureUrl),
       context.audioWorklet.addModule(playerUrl),
     ]);
-    if (generation !== this.generation) return;
-    this.capture = new AudioWorkletNode(context, 'voice-capture');
+    if (generation !== this.generation) return false;
     this.player = new AudioWorkletNode(context, 'voice-player');
     this.player.port.onmessage = ({ data }: MessageEvent<unknown>) => {
       if (data === 'idle') {
@@ -56,14 +63,18 @@ export class BrowserAudio implements VoiceAudio {
         this.onIdle?.();
       }
     };
-    this.capture.port.onmessage = ({ data }: MessageEvent<ArrayBuffer>) => {
-      if (!this.muted) send(encodePCM(data));
-    };
-    context.createMediaStreamSource(stream).connect(this.capture);
-    // Processor emits silence; connecting keeps capture alive without mic monitoring.
-    this.capture.connect(context.destination);
     this.player.connect(context.destination);
+    if (stream) {
+      this.capture = new AudioWorkletNode(context, 'voice-capture');
+      this.capture.port.onmessage = ({ data }: MessageEvent<ArrayBuffer>) => {
+        if (!this.muted) send(encodePCM(data));
+      };
+      context.createMediaStreamSource(stream).connect(this.capture);
+      // Processor emits silence; connecting keeps capture alive without mic monitoring.
+      this.capture.connect(context.destination);
+    }
     this.setMuted(this.muted);
+    return stream !== null;
   }
   play(data: string) {
     if (this.player) this.playing = true;

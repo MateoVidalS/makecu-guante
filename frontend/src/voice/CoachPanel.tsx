@@ -110,6 +110,15 @@ export function CoachPanel({ compact = false }: { compact?: boolean }) {
             You said: {voice.lastPatientLine}
           </Text>
         )}
+        {voice.mode === 'live' && voice.micBlocked && (
+          <Banner
+            tone="warning"
+            title="Microphone off: your coach can talk but can't hear you."
+          >
+            Allow the microphone for this page in Chrome (address bar), or close
+            other tabs using it. Use the buttons on screen meanwhile.
+          </Banner>
+        )}
         {voice.transcriptError && (
           <Banner
             tone="warning"
