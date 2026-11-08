@@ -76,7 +76,10 @@ A1's scripted runtime keeps its controller private so replacing `runtime.therapy
 Releases to `main`: #54 (U2), #59 (U1), #68 (A1–A4), #71 (U3), and the U4 + A5 release.
 
 ### Follow-ups
-- Home shows "Your index range needs a quick redo" twice (hint line above the banner).
-- At 1280×720 the hand renders small inside the wider live stage; tighten U2's fit for the stage size.
-- `mixed-camera-simulator` and `recovery.spec:76` e2e, plus 5 s unit-test timeouts, flake under heavy host load (they pass alone).
-- Contract: add `coach_decisions` and `feelings` to the frontend `SessionDetail` type; add `coach_brake` to `EngineEvent`'s safety sources; make `Runtime.therapy` required.
+- [x] Home repeated the redo hint above the banner: the hint now only says what Start does.
+- [x] The hand rendered small inside the wider live stage at 1280: the stage is height-limited, so the fit rose from 80% to 92% of the
+  viewport (the envelope already includes the whole motion path and ghost rim, so it can't clip).
+- [x] Contract: `SessionDetail.coach_decisions` / `feelings` (optional, absent = empty), `coach_brake` in `EngineEvent`'s safety
+  sources (with SafetyBanner copy), and `Runtime.therapy` required. `03-contracts.md` updated to match.
+- [ ] Open: `mixed-camera-simulator` and `recovery.spec:76` e2e plus 5 s unit-test timeouts still flake under heavy host load (they pass
+  alone). Not masked with retries on purpose: they cover camera-loss and recovery safety flows. Run e2e with `REHAB_E2E_WORKERS=1` on a busy machine.

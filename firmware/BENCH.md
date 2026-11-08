@@ -261,19 +261,15 @@ pull traces and total peak current. Native tests cover a 0.9-to-0 pull ramp in
 ### 7. Watchdog while held open
 
 With board and servo power retained, pull USB while all five are held open on
-the fixture. The opening gate requires **USB loss to all-five slack within 1 second**.
-Record USB-loss time, last valid message, watchdog event, actual slack and PWM
-detach separately. If pulling USB removes board power, record that limitation
-and repeat with messages stopped and independent board power, as in checklist 9.
-
-**Timing conflict for coordinator review:** the frozen protocol faults only
-strictly after 1000 ms without a valid message (1005 ms on regular 5 ms ticks),
-then unwinds at 3 ranges/s. Full pull can take another 335 ms to reach commanded
-slack, before mechanical delay, so this firmware cannot guarantee the gate's
-1-second USB-loss-to-slack bound. Do not mark the gate passed from a watchdog
-event alone. Record any failed bound; the coordinator must reconcile the
-requirement with the protocol before patient use. No watchdog timing is changed
-here. Detach remains 500 ms after slack.
+the fixture. The opening gate requires the **watchdog fault within 1005 ms of the
+last valid message and all-five commanded slack within 1.5 s of USB loss** (the
+protocol faults strictly after 1000 ms, then unwinds at 3 ranges/s: up to ~335 ms
+from full pull, plus mechanical delay). Coordinator decision, Nov 7: this bound
+replaces the earlier "slack within 1 second". Record USB-loss time, last valid
+message, watchdog event, actual slack and PWM detach separately. Do not mark the
+gate passed from a watchdog event alone. If pulling USB removes board power,
+record that limitation and repeat with messages stopped and independent board
+power, as in checklist 9. Detach remains 500 ms after slack.
 
 | Starting pull | USB loss to slack s | Last message to watchdog ms | Watchdog to slack ms | Slack to detach ms | Result / evidence |
 | --- | --- | --- | --- | --- | --- |
