@@ -12,5 +12,10 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     restoreMocks: true,
+    // Shared hosts can extend runner/UI-loading waits without changing assertions.
+    testTimeout: Number(process.env.REHAB_TEST_TIMEOUT_MS ?? 5000),
+    setupFiles: process.env.REHAB_TEST_TIMEOUT_MS
+      ? ['./e2e/test-waits.setup.ts']
+      : [],
   },
 });
