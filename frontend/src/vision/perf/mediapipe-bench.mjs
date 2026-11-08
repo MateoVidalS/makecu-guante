@@ -9,7 +9,7 @@
  * angles, runs the bundled MediaPipe Hand Landmarker (CPU delegate, headless
  * Chromium) and pushes its landmarks through the production joint math.
  * The rendered hand is a proxy: these numbers bound the software, they do not
- * replace recordings of the real glove on a real patient.
+ * replace recordings of a real bare hand with points.
  */
 import { chromium } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
@@ -92,7 +92,8 @@ await page.goto(`${base}src/vision/perf/mediapipe-bench.html`);
 await page.waitForFunction(() => window.bench);
 await page.evaluate(() => window.bench.init('CPU'));
 // Real (anatomically correct) hands by default; the legacy rig is geometrically mirrored.
-const shoot = (shot) => page.evaluate((s) => window.bench.shoot(s), { anatomical: true, ...shot });
+const shoot = (shot) =>
+  page.evaluate((s) => window.bench.shoot(s), { anatomical: true, ...shot });
 
 const views = ['front_upright', 'front_diagonal'];
 const hands = quick ? ['right'] : ['right', 'left'];
@@ -103,12 +104,13 @@ const report = {
   date: new Date().toISOString(),
   method:
     'Rendered capsule hand (hand3d rig) with known joint angles; bundled MediaPipe Hand Landmarker, CPU delegate, ' +
-    'headless Chromium (SwiftShader), 640x480; production jointAngles/pinchRatio. Proxy for, not a replacement of, real glove recordings.',
+    'headless Chromium (SwiftShader), 640x480; production jointAngles/pinchRatio. Proxy for recordings of a real bare hand with points.',
   chirality: [],
   sweep: [],
   poses: [],
   tilt: [],
   jitter: [],
+  points: [],
 };
 
 /** Average of the detected shots; calibration-style endpoints. */
@@ -144,6 +146,69 @@ async function measure(joints, view, h, extra = {}) {
 }
 const closureOf = (flex, cal, f) =>
   (flex[f] - cal.open[f]) / (cal.closed[f] - cal.open[f]);
+
+// Paired upright comparison: identical poses, seeds and noise, both anatomical
+// hands even in quick mode. Calibrate each condition as with the real setup.
+for (const h of ['right', 'left'])
+  for (const points of [false, true]) {
+    const view = 'front_upright';
+    const extra = { anatomical: true, points };
+    console.error(`points ${h} ${points}`);
+    const open = await measure(scaled(0), view, h, extra);
+    const closed = await measure(scaled(1), view, h, extra);
+    const cal =
+      open.flex && closed.flex
+        ? { open: open.flex, closed: closed.flex }
+        : null;
+    const usableCalibration =
+      cal &&
+      FINGERS.every(
+        (f) =>
+          Number.isFinite(cal.closed[f] - cal.open[f]) &&
+          cal.closed[f] !== cal.open[f],
+      );
+    const rows = [];
+    const allErrors = [];
+    for (let s = 0; s <= 1.0001; s += quick ? 0.25 : 0.1) {
+      const m = await measure(scaled(s), view, h, extra);
+      const errors = usableCalibration
+        ? m.shots.flatMap((shot) =>
+            FINGERS.map((f) => Math.abs(closureOf(shot.flex, cal, f) - s)),
+          )
+        : [];
+      allErrors.push(...errors);
+      rows.push({
+        trueClosure: r3(s),
+        detection: m.detection,
+        closureMAE: errors.length ? r3(mean(errors)) : null,
+        closureP95: errors.length ? r3(pct(errors, 95)) : null,
+      });
+    }
+    report.points.push({
+      view,
+      hand: h,
+      anatomical: true,
+      points,
+      calibration: {
+        openDetection: open.detection,
+        closedDetection: closed.detection,
+        rangeDeg:
+          cal &&
+          Object.fromEntries(
+            FINGERS.map((f) => [f, r3(cal.closed[f] - cal.open[f])]),
+          ),
+        error: usableCalibration
+          ? null
+          : 'calibration pose missing or degenerate',
+      },
+      detection: r3(mean(rows.map((r) => r.detection))),
+      // Error is conditional on detection; never count missed shots as zero error.
+      closureMAE: allErrors.length ? r3(mean(allErrors)) : null,
+      closureP95: allErrors.length ? r3(pct(allErrors, 95)) : null,
+      errorSamples: allErrors.length,
+      rows,
+    });
+  }
 
 // Anatomical chirality gate, including both hands even in the quick run.
 // Keep raw flex sums: normalization could hide a reversed sign at calibration.
@@ -388,6 +453,7 @@ console.log(
   JSON.stringify(
     {
       chirality: report.chirality,
+      points: report.points,
       sweep: report.sweep.map(
         ({
           view,

@@ -103,12 +103,12 @@ describe('acknowledges every pose the patient really makes', SLOW, () => {
     }
   });
 
-  it('gloved/poor-light noise (2x): reports hit rate and latency', () => {
+  it('poor-light noise (2x): reports hit rate and latency', () => {
     const rows = [];
     for (const view of VIEWS)
       for (const patient of Object.values(PATIENTS))
         for (const pose of ALL) {
-          const scene: Scene = { view, hand: 'right', noise: NOISE.glove };
+          const scene: Scene = { view, hand: 'right', noise: NOISE.poorLight };
           const s = summarize(
             SEEDS.map((seed) =>
               attempt(patient, scene, pose, reach(patient, pose), seed),
@@ -116,7 +116,7 @@ describe('acknowledges every pose the patient really makes', SLOW, () => {
           );
           rows.push({ view, patient: patient.name, pose, ...row(s) });
         }
-    report('Acknowledgment at 2x noise (gloved hand / poor light)', rows);
+    report('Acknowledgment at 2x noise (poor light)', rows);
     const overall = rows.reduce((a, r) => a + r.hitRate, 0) / rows.length;
     expect(overall).toBeGreaterThan(0.9);
   });

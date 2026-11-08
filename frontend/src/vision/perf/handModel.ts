@@ -331,40 +331,42 @@ export interface NoiseModel {
  * Error levels. `bench` reproduces the per-finger raw flex-sum jitter that the real
  * MediaPipe model showed on the rendered hand (mediapipe-bench.result.json: ~1.2 mm
  * xy / 2.2 mm z correlated landmark jitter, 2.5-12 deg raw flex-sum std). Independent
- * per-landmark noise needs smaller sigmas to give the same angle jitter. `glove` and
- * `severe` are 2x and 3.5x that, for a gloved hand, poor light or a far camera.
+ * per-landmark noise needs smaller sigmas to give the same angle jitter. `poorLight`
+ * and `severe` are 2x and 3.5x that, for poor light or a far camera.
  */
-export const NOISE: Record<'ideal' | 'bench' | 'glove' | 'severe', NoiseModel> =
-  {
-    ideal: {
-      label: 'ideal',
-      worldXyMm: 0,
-      worldZMm: 0,
-      depthScale: 1,
-      imagePx: 0,
-    },
-    bench: {
-      label: 'bench (1x)',
-      worldXyMm: 0.6,
-      worldZMm: 1.2,
-      depthScale: 1,
-      imagePx: 1,
-    },
-    glove: {
-      label: 'glove (2x)',
-      worldXyMm: 1.2,
-      worldZMm: 2.4,
-      depthScale: 1,
-      imagePx: 2,
-    },
-    severe: {
-      label: 'severe (3.5x)',
-      worldXyMm: 2.1,
-      worldZMm: 4.2,
-      depthScale: 1,
-      imagePx: 3,
-    },
-  };
+export const NOISE: Record<
+  'ideal' | 'bench' | 'poorLight' | 'severe',
+  NoiseModel
+> = {
+  ideal: {
+    label: 'ideal',
+    worldXyMm: 0,
+    worldZMm: 0,
+    depthScale: 1,
+    imagePx: 0,
+  },
+  bench: {
+    label: 'bench (1x)',
+    worldXyMm: 0.6,
+    worldZMm: 1.2,
+    depthScale: 1,
+    imagePx: 1,
+  },
+  poorLight: {
+    label: 'poor light (2x)',
+    worldXyMm: 1.2,
+    worldZMm: 2.4,
+    depthScale: 1,
+    imagePx: 2,
+  },
+  severe: {
+    label: 'severe (3.5x)',
+    worldXyMm: 2.1,
+    worldZMm: 4.2,
+    depthScale: 1,
+    imagePx: 3,
+  },
+};
 export const withNoise = (
   base: NoiseModel,
   change: Partial<NoiseModel>,

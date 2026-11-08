@@ -13,7 +13,7 @@ import {
 export const CAMERA_PLACEMENT_GUIDANCE =
   'Raise your hand beside your face, palm facing the laptop screen, with your elbow supported on the table or an armrest. Keep your hand 40–60 cm from the front webcam.';
 
-/** Setup heuristics, pending the team's real-glove day-1 check; not clinical thresholds. */
+/** Setup heuristics, pending the team's day-1 bare-hand-with-points check; not clinical thresholds. */
 export const ROBUSTNESS_THRESHOLDS = {
   windowMs: 5000,
   maxFrameAgeMs: 100,
@@ -201,7 +201,7 @@ export class VisionRobustnessTracker {
     const guidance: string[] = [];
     if (collecting)
       guidance.push(
-        'Keep your gloved hand visible for 5 seconds. Try opening and closing all five fingers.',
+        'Keep your whole hand in frame for 5 seconds. Try opening and closing all five fingers. Roll up your sleeve and remove rings, your watch and bracelets. Keep points clear of the joint creases on your palm side.',
       );
     if (lighting?.status === 'low_light')
       guidance.push(
@@ -222,7 +222,7 @@ export class VisionRobustnessTracker {
         meanConfidence < minMeanConfidence
       )
         guidance.push(
-          'Improve the lighting and use a light, thin glove. If detection stays low, ask the team about exposed fingertips or a bare-hand demo.',
+          'Use good light from in front of you, with no window behind you. If detection stays low, check the lighting and keep points small and on the back of your fingers.',
         );
       if (hidden.length)
         guidance.push(

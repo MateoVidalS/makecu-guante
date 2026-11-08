@@ -9,7 +9,7 @@ This folder measures that end to end, with numbers, in two layers:
 | **Pipeline suite** (`*.test.ts`)            | `make test` (vitest, ~20 s)                          | `FrameProcessor`, `jointAngles`, One Euro filters, `captureStats` calibration, `ExerciseEngine` reach rule and dwell | MediaPipe: a forward-kinematic hand projected into the camera plus a landmark-error model      |
 | **MediaPipe bench** (`mediapipe-bench.mjs`) | `pnpm --dir frontend bench:vision` (opt-in, minutes) | The bundled MediaPipe Hand Landmarker (CPU, headless Chromium) and the production joint math                         | The hand: a skin-toned capsule model on the virtual hand's rig, rendered at known joint angles |
 
-Neither layer replaces recordings of the real glove on a real patient (see
+Neither layer replaces recordings of a real bare hand with points (see
 "Limits" below). Everything is seeded and deterministic.
 
 ```sh
@@ -37,7 +37,7 @@ REHAB_BENCH_QUICK=1 pnpm --dir frontend bench:vision   # ~1 min smoke run
 > jitter measured with the old _unsigned_ angles, which fold noise into a bias
 > and under-report it. With signed angles, real MediaPipe on the bench hand
 > shows ~12–13° raw jitter at the open hand (`mediapipe-bench.result.json`),
-> so treat **`glove (2x)` as the realistic level** until real glove recordings
+> so treat **`poor light (2x)` as the realistic level** until real bare-hand-with-points recordings
 > replace the model. The bench now renders anatomically correct hands
 > (`anatomical: true`); the legacy hand3d rig is geometrically mirrored.
 
@@ -45,8 +45,10 @@ The bench measured real MediaPipe on a still rendered hand with webcam-like
 sensor noise: landmark jitter ≈ 1.2 mm (x/y) and 2.2 mm (depth), giving a raw
 per-finger flex-sum jitter of 2.5–12°. MediaPipe's error is correlated across
 landmarks, so independent synthetic noise needs smaller sigmas for the same
-angle jitter: **`bench` = 0.6 mm x/y, 1.2 mm depth** reproduces it. `glove`
-(2×) and `severe` (3.5×) stand for a gloved hand, poor light or a far camera.
+angle jitter: **`bench` = 0.6 mm x/y, 1.2 mm depth** reproduces it. `poorLight`
+(2×, labeled `poor light (2x)`) and `severe` (3.5×) stand for poor light or a far camera.
+Their noise values and all acceptance thresholds are unchanged; points are rendered
+separately in the MediaPipe bench, not modeled as extra landmark noise.
 Replace these with numbers from real recordings when the team has them.
 
 ## Patients and the opening glove
@@ -90,7 +92,7 @@ Real MediaPipe on anatomically correct hands (upright view, last run in
 `mediapipe-bench.result.json`): flexion is positive and increases open → half → fist
 for every finger of the right hand and every long finger of the left. MediaPipe
 misreads the rendered proxy's left thumb (its IP joint reported bending away from
-the palm), so the left thumb must be confirmed with real glove recordings.
+the palm), so the left thumb must be confirmed with real bare-hand-with-points recordings.
 
 The sections below are the original #62 measurements that motivated the fixes.
 
@@ -125,8 +127,8 @@ The sections below are the original #62 measurements that motivated the fixes.
    (psychometric table). `open` is the opposite: 0.12 still-closed is accepted.
 3. **One missed detection restarts the 0.5 s dwell.** 1–2% misses push p95
    latency from 0.77 s to 1.3 s; 5% to 2.1 s; **10% loses 12% of correct
-   hooks; 20% loses 75%** of correct poses. MediaPipe miss rates with the
-   glove are unknown; this is the most important number to measure on day 1.
+   hooks; 20% loses 75%** of correct poses. MediaPipe miss rates with small points on a
+   bare hand are unknown; this is the most important number to measure on day 1.
 4. **Pinch is slow to acknowledge:** p50 ≈ 1.0 s, p95 up to 2.2 s. The pinch
    ratio has its own One Euro filter and the fingertips approach slowly at
    the end of the reach.
@@ -164,6 +166,40 @@ the gap exists and start failing once it is fixed; then change `it.fails` to `it
 - (5) Make the pinch render and target agree (render ≈ 0.55 of the range, or
   lower the index target).
 
+## Bare hand with points comparison
+
+The device is still called the glove, but the hand has no covering. Small black
+thread-guide points and yellow fingertip anchors are taped directly to the back
+of the fingers. The camera sees an upright bare palm, with a few points at finger
+edges and tips; keep the palm-side joint creases clear.
+
+`BenchShot.points` toggles two small black dorsal guides per finger (proximal and
+middle phalanges; proximal/distal on the thumb) and a yellow dorsal fingertip
+anchor. Points move with the bones and are naturally hidden by the palm when
+occluded. The driver writes a `points` section with `points: false` and
+`points: true` for anatomically correct **right and left hands in the upright
+view**, including quick mode. Each condition uses the same poses, seeds and
+sensor noise, with its own open/closed calibration. It reports sweep detection
+rate, calibration detection/ranges, per-pose and overall calibrated closure MAE
+and p95 absolute error. Errors use individual detected shots; missing detections
+are reported in the detection rate, and unavailable calibration gives null errors.
+
+First run (quick mode, 2 seeds per pose, Nov 8; rendered capsule hand, so a
+warning sign rather than a measurement of real hands):
+
+| Upright view                          | Without points | With points                               |
+| ------------------------------------- | -------------- | ----------------------------------------- |
+| Right hand: sweep detection           | 100%           | **60%**                                   |
+| Right hand: closure error, mean / p95 | 0.12 / 0.39    | 0.15 / 0.62                               |
+| Left hand: calibration                | ok             | **fist not detected; calibration failed** |
+
+The points hurt MediaPipe on the proxy, mostly in a fist, where the backs of the
+fingers (and their points) turn toward the camera. On a real hand the effect may
+be smaller, but it makes the day-1 checks essential: the Setup hand-detection
+check with the points on, and a real upright recording (`bare-hand-points`). If
+detection drops in a fist, try smaller or skin-coloured guides and keep the yellow
+anchors on the very tip, then record again.
+
 ## Results (real MediaPipe bench)
 
 Last full run (`mediapipe-bench.result.json` has every row; CPU delegate,
@@ -184,19 +220,20 @@ for MediaPipe (a proxy artefact as much as a real risk), and calibrated
 closure errors of 0.1–0.3 on this proxy are larger than in the pipeline
 suite. The hook read low in 4 of 4 right-hand upright shots (fingers curl
 toward the lens), and tilting the hand ±25° after calibration produced errors
-up to 1.0 on single shots. Treat these as the reasons to record the real glove
-soon, not as the glove's real accuracy. The previous GPU measurement on a real
+up to 1.0 on single shots. Treat these as the reasons to record a real bare hand with points
+soon, not as measured accuracy on a person. The previous GPU measurement on a real
 photo (`fixtures/browser-benchmark.json`) gave 24.5 ms p50 inference.
 
 ## Limits
 
 - The pipeline suite's hand is ideal geometry and its noise is a model. Real
-  failure modes (thread and anchors on the palm, a dark glove, motion blur,
-  backlight) are not simulated beyond "more noise" and "missed frames".
+  failure modes (skin-mounted points and tape, motion blur, backlight) are not
+  simulated beyond "more noise" and "missed frames" in the pipeline suite.
+  The MediaPipe bench adds dorsal points but does not model tape or threads.
 - The bench hand is a rendered capsule model, not a human hand: MediaPipe
   detects it less reliably than a real hand (especially a fist), so its
   detection rates are pessimistic and its accuracy is indicative only.
 - Neither layer measures the physical camera-to-screen delay.
-- **Next step that matters most:** record the real glove with
+- **Day-1 check:** run a bare-hand-with-points detection check and make a real recording with
   `vision/recorder.ts` (see `vision/README.md`), in the upright posture, and
   add those recordings here as a third layer.
