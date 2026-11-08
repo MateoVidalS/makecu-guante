@@ -107,7 +107,7 @@ def test_fixture_sessions_roundtrip(client, payload, calibration):
         ).json()
         expected = {**item, **{k: ended[k] for k in ("id", "started_at", "ended_at", "n_attempts")}}
         expected["summary"]["previous"] = ended["summary"]["previous"]
-        assert ended == expected
+        assert ended == {**expected, "assist_direction": calibration.assist_direction}
         detail = client.get(f"/api/sessions/{created['id']}").json()
         SessionDetail.model_validate(detail)
         assert detail["coach_decisions"] == detail["feelings"] == []
@@ -126,7 +126,7 @@ def test_evaluations_roundtrip_and_compression(client, db, payload, calibration)
         response = client.post("/api/evaluations", json=body)
         assert response.status_code == 200, response.text
         evaluation = c.Evaluation.model_validate(response.json())
-        assert evaluation.model_dump(exclude={"id"}) == body
+        assert evaluation.model_dump(exclude={"id", "assist_direction"}) == body
         assert client.get(f"/api/evaluations/{evaluation.id}").json() == evaluation.model_dump()
         blob = db.get(m.Evaluation, evaluation.id).sweeps_blob
         assert blob.startswith(b"\x1f\x8b") and json.loads(gzip.decompress(blob)) == body["sweeps"]

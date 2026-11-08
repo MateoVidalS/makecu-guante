@@ -11,12 +11,12 @@ export interface EvalSweep {
   finger: GloveFinger;
   speed: 'slow' | 'fast';
   v: number;
-  points: { pos: number; ma: number; excess_ma: number }[]; // excess = ma − friction(pos, speed)
-  aborted_at: number | null; // closure where overcurrent hit
+  points: { pos: number; ma: number; excess_ma: number }[]; // pos = tendon pull (opening); excess = ma − friction(pos, speed)
+  aborted_at: number | null; // pull where overcurrent hit
 }
 export interface EvalFingerResult {
   finger: GloveFinger;
-  resistance_slow_ma: number | null; // mean excess over pos 0.2–0.9
+  resistance_slow_ma: number | null; // mean excess over pull 0.2–0.9 = resistance to opening (flexor tone)
   resistance_fast_ma: number | null;
   velocity_dependence_ma: number | null; // fast − slow (spasticity proxy)
   peak_excess_ma: number | null;

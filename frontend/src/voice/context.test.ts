@@ -87,7 +87,7 @@ describe('compact five-finger context', () => {
         closing,
       );
       const name = finger === 'pinky' ? 'little finger' : finger;
-      expect(progress?.text).toContain(`${name} now at 40%`);
+      expect(progress?.text).toContain(`${name} closure now at 40%`);
       const cue = eventCue(
         {
           kind: 'assist_started',
@@ -98,7 +98,7 @@ describe('compact five-finger context', () => {
         closing,
       );
       expect(cue?.text).toBe(
-        `[session] Not reached alone (${name} 40%/${finger === 'thumb' ? '70' : '90'}%). The glove is helping now.`,
+        `[session] Not reached alone (${name} 40%/${finger === 'thumb' ? '70' : '90'}%). The glove is helping open now.`,
       );
     },
   );
@@ -130,13 +130,13 @@ describe('compact five-finger context', () => {
         view,
       )?.text,
     ).toBe(
-      '[session] Not reached alone (ring 40%/60%; little finger 50%/60%). The glove is helping now.',
+      '[session] Not reached alone (ring 40%/60%; little finger 50%/60%). The glove is helping open now.',
     );
   });
 
   it('summarizes only unmet or helped fingers with matching previous measurements', () => {
     expect(attemptContext(result, result)).toBe(
-      'active effort 90%; reached yes; glove assisted yes; interrupted no. Fingers below target or needing help: ring active 40%/90%, help needed 50% (previous 40%); little finger active 50%/90%, help needed 40% (previous 50%). Previous rep: included where comparable.',
+      'active effort 90%; reached yes; glove assisted yes; interrupted no. Fingers short of target: ring active closure 40%/90%, active shortfall 50% (previous 40%); little finger active closure 50%/90%, active shortfall 40% (previous 50%). Previous rep: included where comparable.',
     );
     expect(attemptContext(result, { ...result, pose: 'hook' })).not.toContain(
       '(previous',
@@ -155,14 +155,14 @@ describe('compact five-finger context', () => {
       fingers: [{ ...result.fingers[4], active_max: 0.9 }],
     };
     expect(attemptContext(helped)).toContain(
-      'little finger active 90%/90%, help needed 40%',
+      'little finger active closure 90%/90%, active shortfall 40%',
     );
   });
 
   it('does not claim help was delivered when it was only needed', () => {
     const text = attemptContext({ ...result, assisted: false });
     expect(text).toContain('glove assisted no');
-    expect(text).toContain('help needed 50%');
+    expect(text).toContain('active shortfall 50%');
     expect(text).not.toContain('glove helped');
   });
 
@@ -188,7 +188,7 @@ describe('compact five-finger context', () => {
           { ...result.fingers[4], target: 0, active_max: 0, assist_needed: 0 },
         ],
       }),
-    ).toContain('ring active 20%/0%, help needed 20%');
+    ).toContain('ring active closure 20%/0%, opening help needed 20%');
   });
 
   it('does not invent missing measurements or successful fingers', () => {
@@ -216,7 +216,7 @@ describe('compact five-finger context', () => {
   it('recaps assistance and matching prior values without dumping all metrics', () => {
     const text = summaryContext(summary);
     expect(text).toBe(
-      '3 attempts, 1 reached alone, 2 assisted, 0 interrupted; active effort 80%. Fingers needing help: ring active 40%, mean help needed 50% (previous active 30%); little finger active 50%, mean help needed 40% (previous active 30%). Previous active effort: 70%.',
+      '3 attempts, 1 reached alone, 2 assisted, 0 interrupted; active effort 80%. Fingers needing help: ring active closure 40%, mean target shortfall 50% (previous active 30%); little finger active closure 50%, mean target shortfall 40% (previous active 30%). Previous active effort: 70%.',
     );
     expect(text.length).toBeLessThan(JSON.stringify(summary).length);
     expect(eventCue({ kind: 'session_done', summary }, view)?.text).toContain(

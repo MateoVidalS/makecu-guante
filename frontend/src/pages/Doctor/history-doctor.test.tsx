@@ -97,15 +97,19 @@ function mount(path: string) {
   );
 }
 describe('record review pages', () => {
-  it('shows generated improvement, pose selection, accessible tables, and session safety counts', async () => {
+  it('shows generated measurements, pose selection, accessible tables, and session safety counts', async () => {
+    // Compare the current opening cohort; earlier closing data has different mechanics.
+    mockState.sessions = mockState.sessions.filter(
+      (s) => s.assist_direction === 'open',
+    );
     mount('/history');
-    expect(await screen.findByText('16% → 23%')).toBeVisible();
+    expect(await screen.findByText('66% → 60%')).toBeVisible();
     expect(
       screen.getByRole('img', { name: /Hand map, first session/ }),
-    ).toHaveAccessibleName(/Thumb 16% then, 23% now/);
+    ).toHaveAccessibleName(/Thumb 66% then, 60% now/);
     expect(
       await screen.findByRole('img', { name: /Latest session per finger/ }),
-    ).toHaveAccessibleName(/Index 46% on your own and 8% from the glove/);
+    ).toHaveAccessibleName(/Index 59% on your own and 12% from the glove/);
     expect(
       screen.getByRole('img', { name: /Practice calendar/ }),
     ).toBeInTheDocument();
@@ -124,7 +128,9 @@ describe('record review pages', () => {
     expect(within(table).getAllByText('Demo data')).toHaveLength(
       mockState.sessions.filter((s) => s.is_demo).length,
     );
-    expect(within(table).getAllByRole('row')).toHaveLength(15);
+    expect(within(table).getAllByRole('row')).toHaveLength(
+      mockState.sessions.length + 1,
+    );
   });
   it('labels missing latest ring/pinky effort instead of showing an older session', async () => {
     const latest = mockState.sessions.reduce((a, b) =>

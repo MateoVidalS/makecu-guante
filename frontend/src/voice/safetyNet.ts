@@ -6,7 +6,7 @@ export type SafetyEvent = Extract<
 >;
 export function safetyPhrase(event: SafetyEvent): string {
   if (event.kind === 'resistance' || event.source === 'overcurrent')
-    return `Stopping. I felt resistance${event.finger ? ` in your ${fingerName(event.finger)}` : ''}.`;
+    return `I feel resistance opening${event.finger ? ` your ${fingerName(event.finger)}` : ' your hand'}, let's stop here.`;
   if (event.source === 'stop_button')
     return 'Stopped. Release the STOP button, then press Resume.';
   if (event.source === 'camera_lost') return "I can't see your hand. Pausing.";

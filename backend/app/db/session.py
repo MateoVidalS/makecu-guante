@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import settings
@@ -23,8 +23,17 @@ def make_engine(path: str):
 engine = make_engine(settings.rehab_db_path)
 
 
+def upgrade_schema(target_engine):
+    """Add nullable columns without rewriting legacy calibrations or their ranges."""
+    SQLModel.metadata.create_all(target_engine)
+    with target_engine.begin() as connection:
+        columns = {column["name"] for column in inspect(connection).get_columns("calibration")}
+        if "assist_direction" not in columns:
+            connection.exec_driver_sql("ALTER TABLE calibration ADD COLUMN assist_direction TEXT")
+
+
 def init_db():
-    SQLModel.metadata.create_all(engine)
+    upgrade_schema(engine)
     from app.db.seed import seed
 
     with Session(engine) as session:

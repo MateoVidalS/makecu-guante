@@ -10,7 +10,7 @@ import { VoiceController, type VoiceDependencies } from './VoiceController';
 import { FakeTransport } from './transport';
 import { SafetyNet, safetyPhrase, BrowserLocalVoice } from './safetyNet';
 import { CueScheduler, eventCue } from './cues';
-import { fallbackPhrase } from './fallbackCoach';
+import { fallbackPhrase, poseInstruction } from './fallbackCoach';
 import { TranscriptBatcher } from './transcript';
 import { dispatchTool } from './tools';
 import { decodePCM, encodePCM } from './audio';
@@ -75,7 +75,7 @@ afterEach(() => {
 });
 
 it.each([
-  ['overcurrent', 'Stopping. I felt resistance in your index.'],
+  ['overcurrent', "I feel resistance opening your index, let's stop here."],
   ['stop_button', 'Stopped. Release the STOP button, then press Resume.'],
   ['watchdog', 'The glove disconnected. It has released.'],
   ['glove_disconnected', 'The glove disconnected. It has released.'],
@@ -110,7 +110,7 @@ it('announces resistance without a network call', () => {
   const s = setup();
   s.emit({ kind: 'resistance', finger: 'middle', ma: 950 });
   expect(s.deps.local.speak).toHaveBeenCalledWith(
-    'Stopping. I felt resistance in your middle.',
+    "I feel resistance opening your middle, let's stop here.",
     expect.any(Function),
   );
   expect(s.deps.token).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ it.each([
     const s = setup();
     s.controller.setMode('off');
     const event = { kind: 'resistance', finger, ma: 950 } as const;
-    const phrase = `Stopping. I felt resistance in your ${name}.`;
+    const phrase = `I feel resistance opening your ${name}, let's stop here.`;
     s.emit(event);
     expect(s.deps.local.speak).toHaveBeenCalledWith(
       phrase,
@@ -153,7 +153,7 @@ it('does not guess a finger when overcurrent attribution is unavailable', () => 
       finger: null,
       ma: 1500,
     }),
-  ).toBe('Stopping. I felt resistance.');
+  ).toBe("I feel resistance opening your hand, let's stop here.");
 });
 it('gives greeting, cues, tool round trips, interruption and batched transcripts', async () => {
   const s = setup();
@@ -208,7 +208,7 @@ it('gives greeting, cues, tool round trips, interruption and batched transcripts
     expect.arrayContaining([
       expect.objectContaining({
         role: 'system',
-        text: 'Stopping. I felt resistance in your index.',
+        text: "I feel resistance opening your index, let's stop here.",
       }),
     ]),
   );
@@ -227,7 +227,7 @@ it('falls back immediately without a key and visibly reports Simple voice', asyn
   });
   s.emit({ kind: 'phase', phase: 'PRESENT', pose: 'hook', index: 0, rep: 1 });
   expect(s.deps.local.speak).toHaveBeenLastCalledWith(
-    POSES.hook.instruction,
+    poseInstruction('hook'),
     expect.any(Function),
   );
   s.controller.dispose();
@@ -314,11 +314,11 @@ describe('cue table and scheduler', () => {
     expect(cues[5]?.text).toContain('Previous rep');
     expect(cues[7]?.speak).toBe(false);
     expect(events.map(fallbackPhrase)).toEqual([
-      POSES.hook.instruction,
+      poseInstruction('hook'),
       null,
       null,
       'Great, hold it.',
-      'Good effort. The glove will help now.',
+      "Good effort. I'll help you open.",
       'Nice work.',
       'Session done. Well done today.',
       null,
@@ -396,7 +396,9 @@ it('dispatches only runtime tools, with safe errors', async () => {
   }
   expect(
     await dispatchTool(s.runtime, { id: '', name: 'repeat_instruction' }, null),
-  ).toEqual({ instruction: s.runtime.exercise.view().pose.instruction });
+  ).toEqual({
+    instruction: poseInstruction(s.runtime.exercise.view().pose.id),
+  });
   expect(
     await dispatchTool(s.runtime, { id: '', name: 'target' }, null),
   ).toEqual({ error: 'Unknown tool' });
@@ -500,7 +502,7 @@ it('keeps the local safety announcement through the following PAUSED event', asy
   });
   expect(s.deps.local.cancel).toHaveBeenCalledTimes(cancellations);
   expect(s.controller.state.lastCoachLine).toBe(
-    'Stopping. I felt resistance in your index.',
+    "I feel resistance opening your index, let's stop here.",
   );
   s.controller.dispose();
 });
@@ -569,6 +571,7 @@ it('sends compact five-finger context at start and reconnect', async () => {
     readFileSync('../contracts/fixtures/sessions.json', 'utf8'),
   )[0];
   session.id = 7;
+  session.assist_direction = 'open';
   session.summary.per_finger = [
     { finger: 'index', active_max_mean: 0.6, assist_needed_mean: 0 },
     { finger: 'pinky', active_max_mean: 0.3, assist_needed_mean: 0.3 },
@@ -582,7 +585,9 @@ it('sends compact five-finger context at start and reconnect', async () => {
     expect(text).toContain(
       'Active movement (closure/target): ring 40%/60%; little finger 50%/60%',
     );
-    expect(text).toContain('little finger active 30%, mean help needed 30%');
+    expect(text).toContain(
+      'little finger active closure 30%, mean target shortfall 30%',
+    );
     expect(text).not.toContain('index active');
     expect(text).not.toContain('"per_finger"');
     expect(text).not.toContain('pinky');
@@ -635,3 +640,76 @@ it('schedules a distinct three-beep safety cue above the ordinary cue volume', (
     vi.unstubAllGlobals();
   }
 });
+
+it('describes opening assistance and independent fist practice in every instruction path', async () => {
+  const s = setup();
+  const open = {
+    kind: 'phase',
+    phase: 'PRESENT',
+    pose: 'open',
+    rep: 1,
+    index: 0,
+  } as const;
+  const fist = { ...open, pose: 'full_fist' } as const;
+  expect(fallbackPhrase(open)).toBe('Open your hand as wide as you can.');
+  expect(fallbackPhrase(fist)).toBe(
+    'Make a fist on your own; the glove just follows.',
+  );
+  expect(eventCue(fist, s.runtime.exercise.view())?.text).toContain(
+    'on your own; the glove just follows',
+  );
+  const instruction = await dispatchTool(
+    s.runtime,
+    { id: 'repeat', name: 'repeat_instruction' },
+    null,
+  );
+  expect(instruction).toEqual({
+    instruction: poseInstruction(s.runtime.exercise.view().pose.id),
+  });
+  s.controller.dispose();
+});
+
+it('encourages decreasing closure during opening without relaxing speech limits', () => {
+  const sent = vi.fn();
+  const scheduler = new CueScheduler(sent);
+  const s = setup();
+  const view = { ...s.runtime.exercise.view(), pose: POSES.open };
+  const progress = {
+    kind: 'progress',
+    finger: 'index',
+    active_max: 0.6,
+  } as const;
+  const cue = eventCue(progress, view)!;
+  expect(cue.text).toContain('closure now at 60%');
+  scheduler.push(cue, progress);
+  expect(sent).toHaveBeenLastCalledWith(
+    expect.objectContaining({ speak: true }),
+  );
+  vi.advanceTimersByTime(4000);
+  const next = { ...progress, active_max: 0.4 };
+  scheduler.push(eventCue(next, view)!, next);
+  // One encouragement per attempt, even though opening improved by 20%.
+  expect(sent).toHaveBeenCalledTimes(1);
+  scheduler.clear();
+  s.controller.dispose();
+});
+
+it.each(['close', undefined] as const)(
+  'excludes %s legacy summaries from opening greetings',
+  async (direction) => {
+    const s = setup();
+    const old = JSON.parse(
+      readFileSync('../contracts/fixtures/sessions.json', 'utf8'),
+    )[0];
+    old.assist_direction = direction;
+    old.id = 1;
+    vi.mocked(s.deps.sessions).mockResolvedValue([old]);
+    await s.controller.start(2);
+    s.transports[0].emit({ type: 'closed' });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(s.transports.at(-1)!.texts[0].text).toContain(
+      'Previous session: unavailable',
+    );
+    s.controller.dispose();
+  },
+);

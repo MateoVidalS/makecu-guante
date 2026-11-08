@@ -22,6 +22,7 @@ class Calibration(SQLModel, table=True):
     camera_json: str
     friction_json: str
     current_limit_ma: float
+    assist_direction: str | None = None
 
 
 class Session(SQLModel, table=True):

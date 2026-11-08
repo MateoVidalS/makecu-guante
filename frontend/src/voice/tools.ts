@@ -1,3 +1,4 @@
+import { poseInstruction } from './fallbackCoach';
 import type { Runtime } from '../contracts/runtime';
 import type { SessionSummary } from '../contracts/engine';
 import type { ToolCall } from './transport';
@@ -99,7 +100,9 @@ export async function dispatchTool(
         await runtime.exercise.stop();
         break;
       case 'repeat_instruction':
-        return { instruction: runtime.exercise.view().pose.instruction };
+        return {
+          instruction: poseInstruction(runtime.exercise.view().pose.id),
+        };
       case 'get_progress':
         return {
           current: runtime.exercise.view().activeMax,
