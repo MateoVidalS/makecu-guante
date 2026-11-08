@@ -42,10 +42,11 @@ export interface HandProps {
   person?: keyof typeof skin;
   fill?: string;
   fingerFill?: string;
+  armLength?: number;
   style?: React.CSSProperties;
 }
 
-export const Hand: React.FC<HandProps> = ({ openness, side, ghost = false, person = 'rosa', fill, fingerFill, style }) => {
+export const Hand: React.FC<HandProps> = ({ openness, side, ghost = false, person = 'rosa', fill, fingerFill, armLength = 0, style }) => {
   const t = Math.max(0, Math.min(1, openness));
   const color = ghost ? 'none' : fill ?? skin[person];
   const stroke = ghost ? c.target : c.text;
@@ -56,7 +57,7 @@ export const Hand: React.FC<HandProps> = ({ openness, side, ghost = false, perso
       <g transform={side === 'right' ? 'translate(320 0) scale(-1 1)' : undefined} opacity={ghost ? 0.6 : 1}>
         {/* Fingers sit behind the palm so their roots never form extra seams. */}
         {paths.slice(1).map((points, i) => <path key={i} d={outline(points, fingers[i + 1].radius)} fill={ghost ? 'none' : fingerFill ?? color} {...pathStyle} />)}
-        <path d="M110 238 Q103 263 110 293 Q116 320 130 338 L129 420 L222 420 L221 338 Q249 314 248 275 L247 241 Q222 222 202 228 Q182 218 164 223 Q143 221 128 233 Z" fill={color} {...pathStyle} />
+        <path d={`M110 238 Q103 263 110 293 Q116 320 130 338 L129 ${420 + armLength} L222 ${420 + armLength} L221 338 Q249 314 248 275 L247 241 Q222 222 202 228 Q182 218 164 223 Q143 221 128 233 Z`} fill={color} {...pathStyle} />
         <path d={outline(paths[0], fingers[0].radius)} fill={ghost ? 'none' : fingerFill ?? color} {...pathStyle} />
         <g fill="none" {...pathStyle}>
           <path d={`M140 ${291 - 8 * t} Q171 ${304 - 12 * t} 204 ${282 - 8 * t}`} />
