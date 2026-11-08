@@ -29,6 +29,15 @@ console.log(JSON.stringify(script.VO));"""
     return json.loads(subprocess.check_output(['node', '--input-type=module', '-e', code], cwd=ROOT))
 
 
+def timeline():
+    code = """import ts from 'typescript'; import fs from 'node:fs';
+const js = ts.transpileModule(fs.readFileSync('src/timeline.ts', 'utf8'),
+  {compilerOptions: {module: ts.ModuleKind.ESNext}}).outputText;
+const t = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'));
+console.log(JSON.stringify({fps:t.FPS, frames:t.TOTAL_FRAMES, starts:t.SCENE_START}));"""
+    return json.loads(subprocess.check_output(['node', '--input-type=module', '-e', code], cwd=ROOT))
+
+
 def request(payload, label):
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
     path = CACHE / f'{label}-{digest}.json'
@@ -88,21 +97,32 @@ def save_audio(result, output):
     print(f'Saved {output.relative_to(ROOT)}', flush=True)
 
 
-def tts(selected, voice, label, output):
+def tts(selected, voice, label, output, model=None):
     text = '\n\n'.join(line['text'] for line in selected)
     style = ('Warm, calm, confident American English narrator. Human, conversational, '
              'clear, neither salesy nor whispery. Mid pace, crisp consonants. '
              'Read each paragraph verbatim. Leave exactly 0.8 seconds of silence '
              'between paragraphs so the editor can split them. Never speak labels. '
              'Pronounce memo as mem-oh. ')
-    if label == 'scene-coach':
+    if label == 'retry-coach-1':
+        style += ('Read this entire line in under 3.9 seconds at a brisk 230 words per minute. '
+                  'Keep flowing through the full stop with only a tiny pause. '
+                  'Precise, fast launch-film narration, clear and natural. ')
+    elif label == 'retry-session-1':
+        style += ('Recite exactly these eight words, with no additions: memo shows the goal. You try first. '
+                  'Do not add the word "the" before memo. Pronounce memo as the everyday English '
+                  'word memo, MEH-moh, first vowel like memory, never MEE-moh. ')
+    elif label == 'retry-reveal-1':
+        style += ('Pronounce memo exactly like the everyday English word memo: MEH-moh, '
+                  'with the first vowel of memory, never MEE-moh. A warm small smile. ')
+    elif label == 'scene-coach':
         style += ('This short opening narration must finish in 4.1 seconds: '
                   'use a brisk, articulate 205 words per minute. ')
     else:
         style += 'Aim for 170 words per minute, keep natural sentence pauses short. '
     if voice == CONFIG['coach']:
         style += 'Kind, steady coach. Calm reassurance when stopping for resistance. '
-    result = request({'model': CONFIG['ttsModel'], 'input': [{'type': 'user_input',
+    result = request({'model': model or CONFIG['ttsModel'], 'input': [{'type': 'user_input',
         'content': [{'type': 'text', 'text': text, 'annotations': [
             {'type': 'speech_metadata', 'style': style}]}]}],
         'response_format': {'type': 'audio'},
@@ -111,6 +131,8 @@ def tts(selected, voice, label, output):
 
 
 def music(candidate):
+    # Preserve the original requests so the cached free-tier rejections are
+    # reused. The licensed fallback builder follows the current timeline.
     prompt = ('Create a 172.8-second instrumental launch film score, no singing, no vocals. '
               'Exactly 100 BPM, 4/4, D major, 72 bars. Felt piano, warm airy analog pad, '
               'muted wooden plucks, rounded bass, soft kick and fine shaker. Modern, human, '
@@ -130,7 +152,7 @@ def music(candidate):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('kind', choices=['audition', 'scene', 'music'])
+    parser.add_argument('kind', choices=['audition', 'scene', 'music', 'retry'])
     parser.add_argument('id')
     args = parser.parse_args()
     if args.kind == 'music':
@@ -138,6 +160,9 @@ if __name__ == '__main__':
     elif args.kind == 'audition':
         tts([line for line in lines() if line['scene'] == 'problem'], args.id,
             f'audition-{args.id}', f'public/audio/auditions/vo-{args.id.lower()}.wav')
+    elif args.kind == 'retry':
+        selected = [line for line in lines() if line['id'] == args.id]
+        tts(selected, CONFIG['narrator'], f'retry-{args.id}', f'audio/cache/retry-{args.id}.wav', CONFIG['retryModel'])
     else:
         selected = [line for line in lines() if line['scene'] == args.id]
         # A separate request for Puck keeps the narrator voice consistent and avoids
@@ -149,4 +174,5 @@ if __name__ == '__main__':
         if not selected:
             raise SystemExit('Unknown scene or no VO')
         voice = CONFIG['coach'] if args.id == 'session-coach' else CONFIG['narrator']
-        tts(selected, voice, f'scene-{args.id}', f'audio/cache/scene-{args.id}.wav')
+        tts(selected, voice, f'scene-{args.id}', f'audio/cache/scene-{args.id}.wav',
+            CONFIG.get('sceneModels', {}).get(args.id))
