@@ -17,14 +17,17 @@ import type { SimWorld } from '../glove/sim/simWorld';
  */
 export const TEST_SERVO_RANGE = { min_deg: 20, max_deg: 150 };
 
-/** Typical raw flex sums for an open hand and a fist. Finger percentages are approximate. */
+/**
+ * Typical raw flex sums (MediaPipe, palm to the webcam) for a relaxed open hand and a fist.
+ * A real open hand never reads 0°: the fingers keep a slight natural curl. Approximate.
+ */
 export function standardCamera(hand: Handedness): CameraCalibration {
   return {
     affected_hand: hand,
     camera_view: CURRENT_CAMERA_VIEW,
     flex_model: CURRENT_FLEX_MODEL,
-    open_flex: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 },
-    closed_flex: { thumb: 100, index: 270, middle: 270, ring: 270, pinky: 270 },
+    open_flex: { thumb: 0, index: 80, middle: 65, ring: 65, pinky: 55 },
+    closed_flex: { thumb: 105, index: 270, middle: 290, ring: 280, pinky: 265 },
     pinch_closed: 0.1,
     pinch_open: 1,
   };
@@ -42,6 +45,8 @@ export function reusableCamera(
     camera.flex_model !== CURRENT_FLEX_MODEL
   )
     return null;
+  // An all-zero open range is the old simulator default, not a capture of a real hand.
+  if (GLOVE_FINGERS.every((f) => camera.open_flex[f] === 0)) return null;
   const valid = GLOVE_FINGERS.every(
     (f) =>
       Number.isFinite(camera.open_flex[f]) &&

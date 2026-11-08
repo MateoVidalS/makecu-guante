@@ -49,10 +49,8 @@ export function TestModeCard({
       <Stack gap={12} align="start">
         {!compact && (
           <p>
-            Practice with your real hand, the camera and the AI coach. The glove
-            motors are simulated: the screen shows what they would do. This
-            skips the glove calibration and reuses your camera range if you
-            captured one (otherwise finger percentages are approximate).
+            No glove needed. Practice with your real hand, the camera and the AI
+            coach; the screen shows what the motors would do.
           </p>
         )}
         <Button

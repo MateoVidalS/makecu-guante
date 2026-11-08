@@ -56,6 +56,12 @@ import { http, HttpResponse } from 'msw';
 import { sessions, profile } from '../../contracts/fixtures.check';
 import { PreflightGloveControls } from './preflightTestSupport';
 import { PRACTICE_PREFLIGHT_MESSAGE } from './preflight';
+
+/** Step 1 hides per-motor tuning in an "advanced" disclosure. */
+function openAdvanced() {
+  const details = screen.getByText(/Adjust each motor/).closest('details');
+  if (details) details.open = true;
+}
 const handRender = vi.hoisted(() => vi.fn());
 function helperRuntime() {
   const runtime = legacyHelperRuntime();
@@ -528,18 +534,14 @@ describe('Calibration wizard', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Glove stopped. STOP button pressed.',
     );
-    expect(
-      screen.getByRole('button', { name: 'Release glove now' }),
-    ).toBeVisible();
   });
 
   it('validates each range and resumes after leaving', () => {
     const first = mount(<Calibrate />, freshRuntime());
     expect(
-      screen.getByText(
-        /For each finger, set two motor positions: slack with a relaxed fist/,
-      ),
+      screen.getByText(/Standard motor ranges are enough for a first demo/),
     ).toBeVisible();
+    openAdvanced();
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Set slack' }));
     fireEvent.click(screen.getByRole('button', { name: 'Set open' }));
@@ -551,6 +553,7 @@ describe('Calibration wizard', () => {
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeEnabled();
     first.unmount();
     mount(<Calibrate />, freshRuntime());
+    openAdvanced();
     expect(screen.getByText('Slack at 90°')).toBeVisible();
     expect(screen.getByText('Open at 120°')).toBeVisible();
   });

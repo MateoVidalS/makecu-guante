@@ -460,21 +460,22 @@ export default function Calibrate() {
   const simulated = client.kind === 'sim' && vision.source.kind === 'sim';
   /** Simulated glove with the real camera: no servos to range, the patient closes their own hand. */
   const ownFist = client.kind === 'sim' && vision.source.kind === 'camera';
-  function applySimulatedRanges() {
+  /** Standard motor ranges for all five fingers: enough for a first demo, real or simulated glove. */
+  function applyStandardRanges() {
     update({
       friction: {},
       servo: Object.fromEntries(
         GLOVE_FINGERS.map((f) => [f, { finger: f, min_deg: 20, max_deg: 150 }]),
       ) as typeof draft.servo,
       finger: GLOVE_FINGERS.length - 1,
+      step: 1,
     });
-    void action(async () => {
+    if (client.connection() === 'connected') {
       client.release();
       GLOVE_FINGERS.forEach((_, i) =>
         client.calib(i as 0 | 1 | 2 | 3 | 4, 20, 150),
       );
-      update({ step: 1 });
-    });
+    }
   }
   if (saved)
     return (
@@ -556,7 +557,7 @@ export default function Calibrate() {
     <div className="hp-page">
       <PageHeader
         title="Find your comfortable range"
-        lead="Three short steps, about three minutes. Your progress is kept if you leave this page."
+        lead="Motors, then camera. About a minute. Your progress is kept if you leave this page."
       />
       {!simulated && (
         <div className="cal-sim-top">
@@ -577,7 +578,7 @@ export default function Calibrate() {
       <div className="hp-wizard cal-wizard">
         <div className="cal-head">
           <Stepper
-            labels={['Glove range', 'Camera range', 'Review']}
+            labels={['Motors', 'Camera', 'Review']}
             step={draft.step}
             completed={[allRangesSet, cameraDone, false]}
             disabled={busy || capture}
@@ -594,13 +595,6 @@ export default function Calibrate() {
           />
         </div>
         <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
-        <RelaxedHandSafetyStrip
-          release={() => {
-            cancel.current();
-            client.release();
-            void runtime.evaluation.stop();
-          }}
-        />
         {error && (
           <p role="alert" className="hp-alert">
             {error}
@@ -609,243 +603,252 @@ export default function Calibrate() {
         {draft.step === 0 && (
           <Section
             flush
-            title={`Step 1 · Glove range: ${title(finger)}`}
-            description="For each finger, set two motor positions: slack with a relaxed fist, and open with the finger straight."
+            title="Step 1 · Motors"
+            description="Standard motor ranges are enough for a first demo. You can fine-tune each motor later."
           >
-            {ownFist && (
-              <div className="cal-sim-card">
-                <div>
-                  <p className="cal-strong">
-                    The glove is simulated, so there are no motors to range.
-                  </p>
-                  <p className="hp-note">
-                    Use standard ranges and go straight to the camera step.
-                  </p>
-                </div>
-                <Button
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={applySimulatedRanges}
-                >
-                  Use simulated glove ranges
-                </Button>
+            <div className="cal-standard">
+              <div>
+                <p className="cal-strong">Standard motor ranges</p>
+                <p className="hp-note">
+                  All five motors: slack at 20°, open at 150°.
+                  {client.kind === 'sim' &&
+                    ' The glove is simulated, so no motor moves.'}
+                </p>
               </div>
-            )}
-            <div
-              className="cal-fingers"
-              role="group"
-              aria-label="Finger to calibrate"
-            >
-              {GLOVE_FINGERS.map((f, i) => {
-                const r = draft.servo[f];
-                const done = validRange(r);
-                const status = done
-                  ? 'Set'
-                  : i === draft.finger
-                    ? 'Editing'
-                    : 'Not set';
-                return (
-                  <button
-                    type="button"
-                    key={f}
-                    className={`cal-finger${i === draft.finger ? ' is-current' : ''}${done ? ' is-done' : ''}`}
-                    aria-label={`${title(f)} · ${status}`}
-                    aria-current={i === draft.finger ? 'step' : undefined}
-                    disabled={busy}
-                    onClick={() => {
-                      client.release();
-                      update({ finger: i, angle: r?.min_deg ?? 90 });
-                    }}
-                  >
-                    <span
-                      className="cal-dot"
-                      style={{ background: `var(--finger-${f})` }}
-                    />
-                    <span className="cal-finger__name">{title(f)}</span>
-                    <span className="cal-finger__status">
-                      {done ? (
-                        <>
-                          <Icon name="check" size={14} /> {r!.min_deg}°–
-                          {r!.max_deg}°
-                        </>
-                      ) : (
-                        status
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
+              <Button
+                variant="primary"
+                disabled={busy}
+                onClick={applyStandardRanges}
+              >
+                Use standard motor ranges
+              </Button>
             </div>
-            <div className="cal-grid">
-              <div className="cal-main">
-                <Card padding="md" className="cal-motor">
-                  <p className="cal-strong">Move the {finger} motor</p>
-                  <Slider
-                    label="Servo angle"
-                    hint="Move gently. Find a comfortable range without pain."
-                    min={5}
-                    max={175}
-                    value={draft.angle}
-                    onValueChange={jog}
-                    format={(v) => `${v}°`}
-                  />
-                  <div className="hp-actions" aria-label="Fine adjustment">
-                    {[-5, -1, 1, 5].map((n) => (
-                      <Button
-                        key={n}
-                        size="sm"
-                        onClick={() => jog(draft.angle + n)}
-                      >
-                        {n > 0 ? '+' : '−'}
-                        {Math.abs(n)}°
-                      </Button>
-                    ))}
-                  </div>
-                  <RangeBar
-                    min={5}
-                    max={175}
-                    from={range?.min_deg}
-                    to={range?.max_deg}
-                    current={draft.angle}
-                    tone={bothSet && !validRange(range) ? 'caution' : 'active'}
-                  />
-                </Card>
-                <ol
-                  className="cal-tasks"
-                  aria-label={`${title(finger)} positions`}
-                >
-                  <li
-                    className={`cal-task${task === 'slack' ? ' is-active' : ''}${range?.min_deg != null ? ' is-done' : ''}`}
-                  >
-                    <span className="cal-task__num" aria-hidden="true">
-                      {range?.min_deg != null ? (
-                        <Icon name="check" size={16} />
-                      ) : (
-                        1
-                      )}
-                    </span>
-                    <PoseIllustration pose="slack" />
-                    <div className="cal-task__body">
-                      <p className="cal-strong">Slack</p>
-                      <p>
-                        Make a relaxed full fist. Jog until the thread is just
-                        taut.
-                      </p>
-                      <p className="cal-task__value">
-                        {range?.min_deg != null
-                          ? `Slack at ${range.min_deg}°`
-                          : 'Slack not set'}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setRange('min_deg')}
+            <details
+              className="hp-disclosure cal-advanced"
+              open={linkedStep === 'glove' && linkedFinger ? true : undefined}
+            >
+              <summary>Adjust each motor (advanced): {title(finger)}</summary>
+              <RelaxedHandSafetyStrip
+                release={() => {
+                  cancel.current();
+                  client.release();
+                  void runtime.evaluation.stop();
+                }}
+              />
+              <div
+                className="cal-fingers"
+                role="group"
+                aria-label="Finger to calibrate"
+              >
+                {GLOVE_FINGERS.map((f, i) => {
+                  const r = draft.servo[f];
+                  const done = validRange(r);
+                  const status = done
+                    ? 'Set'
+                    : i === draft.finger
+                      ? 'Editing'
+                      : 'Not set';
+                  return (
+                    <button
+                      type="button"
+                      key={f}
+                      className={`cal-finger${i === draft.finger ? ' is-current' : ''}${done ? ' is-done' : ''}`}
+                      aria-label={`${title(f)} · ${status}`}
+                      aria-current={i === draft.finger ? 'step' : undefined}
+                      disabled={busy}
+                      onClick={() => {
+                        client.release();
+                        update({ finger: i, angle: r?.min_deg ?? 90 });
+                      }}
                     >
-                      Set slack
-                    </Button>
-                  </li>
-                  <li
-                    className={`cal-task${task === 'open' ? ' is-active' : ''}${range?.max_deg != null ? ' is-done' : ''}`}
-                  >
-                    <span className="cal-task__num" aria-hidden="true">
-                      {range?.max_deg != null ? (
-                        <Icon name="check" size={16} />
-                      ) : (
-                        2
-                      )}
-                    </span>
-                    <PoseIllustration pose="open" />
-                    <div className="cal-task__body">
-                      <p className="cal-strong">Open</p>
-                      <p>Jog until the finger is straight.</p>
-                      <p id="hyperextension-warning" className="cal-caution">
-                        <Icon name="caution" size={16} />
-                        <span>
-                          Hyperextension warning: stop at straight. Never bend
-                          the finger back.
-                        </span>
-                      </p>
-                      <p className="cal-task__value">
-                        {range?.max_deg != null
-                          ? `Open at ${range.max_deg}°`
-                          : 'Open not set'}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      aria-describedby="hyperextension-warning"
-                      onClick={() => setRange('max_deg')}
-                    >
-                      Set open
-                    </Button>
-                  </li>
-                </ol>
-                {bothSet && !validRange(range) && (
-                  <p role="alert" className="hp-alert">
-                    Slack and open are only {apart}° apart. They must differ by
-                    at least 20°.
-                  </p>
-                )}
+                      <span
+                        className="cal-dot"
+                        style={{ background: `var(--finger-${f})` }}
+                      />
+                      <span className="cal-finger__name">{title(f)}</span>
+                      <span className="cal-finger__status">
+                        {done ? (
+                          <>
+                            <Icon name="check" size={14} /> {r!.min_deg}°–
+                            {r!.max_deg}°
+                          </>
+                        ) : (
+                          status
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <aside className="cal-aside" aria-label="Glove status">
-                <Card tone="inset" padding="sm">
-                  <Meter
-                    label="Motor current"
-                    value={current}
-                    max={600}
-                    limit={400}
-                    valueText={`${Math.round(current)} mA`}
-                    tone={
-                      current > 400
-                        ? 'danger'
-                        : current > 300
-                          ? 'assist'
-                          : 'accent'
-                    }
-                  />
-                  <p className="hp-note">
-                    Limit while adjusting: 400 mA. The glove stops above it.
-                  </p>
-                  {current > 400 && (
+              <div className="cal-grid">
+                <div className="cal-main">
+                  <Card padding="md" className="cal-motor">
+                    <p className="cal-strong">Move the {finger} motor</p>
+                    <Slider
+                      label="Servo angle"
+                      hint="Move gently. Find a comfortable range without pain."
+                      min={5}
+                      max={175}
+                      value={draft.angle}
+                      onValueChange={jog}
+                      format={(v) => `${v}°`}
+                    />
+                    <div className="hp-actions" aria-label="Fine adjustment">
+                      {[-5, -1, 1, 5].map((n) => (
+                        <Button
+                          key={n}
+                          size="sm"
+                          onClick={() => jog(draft.angle + n)}
+                        >
+                          {n > 0 ? '+' : '−'}
+                          {Math.abs(n)}°
+                        </Button>
+                      ))}
+                    </div>
+                    <RangeBar
+                      min={5}
+                      max={175}
+                      from={range?.min_deg}
+                      to={range?.max_deg}
+                      current={draft.angle}
+                      tone={
+                        bothSet && !validRange(range) ? 'caution' : 'active'
+                      }
+                    />
+                  </Card>
+                  <ol
+                    className="cal-tasks"
+                    aria-label={`${title(finger)} positions`}
+                  >
+                    <li
+                      className={`cal-task${task === 'slack' ? ' is-active' : ''}${range?.min_deg != null ? ' is-done' : ''}`}
+                    >
+                      <span className="cal-task__num" aria-hidden="true">
+                        {range?.min_deg != null ? (
+                          <Icon name="check" size={16} />
+                        ) : (
+                          1
+                        )}
+                      </span>
+                      <PoseIllustration pose="slack" />
+                      <div className="cal-task__body">
+                        <p className="cal-strong">Slack</p>
+                        <p>
+                          Make a relaxed full fist. Jog until the thread is just
+                          taut.
+                        </p>
+                        <p className="cal-task__value">
+                          {range?.min_deg != null
+                            ? `Slack at ${range.min_deg}°`
+                            : 'Slack not set'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setRange('min_deg')}
+                      >
+                        Set slack
+                      </Button>
+                    </li>
+                    <li
+                      className={`cal-task${task === 'open' ? ' is-active' : ''}${range?.max_deg != null ? ' is-done' : ''}`}
+                    >
+                      <span className="cal-task__num" aria-hidden="true">
+                        {range?.max_deg != null ? (
+                          <Icon name="check" size={16} />
+                        ) : (
+                          2
+                        )}
+                      </span>
+                      <PoseIllustration pose="open" />
+                      <div className="cal-task__body">
+                        <p className="cal-strong">Open</p>
+                        <p>Jog until the finger is straight.</p>
+                        <p id="hyperextension-warning" className="cal-caution">
+                          <Icon name="caution" size={16} />
+                          <span>
+                            Hyperextension warning: stop at straight. Never bend
+                            the finger back.
+                          </span>
+                        </p>
+                        <p className="cal-task__value">
+                          {range?.max_deg != null
+                            ? `Open at ${range.max_deg}°`
+                            : 'Open not set'}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        aria-describedby="hyperextension-warning"
+                        onClick={() => setRange('max_deg')}
+                      >
+                        Set open
+                      </Button>
+                    </li>
+                  </ol>
+                  {bothSet && !validRange(range) && (
                     <p role="alert" className="hp-alert">
-                      Resistance is rising. Release the glove and check the fit.
+                      Slack and open are only {apart}° apart. They must differ
+                      by at least 20°.
                     </p>
                   )}
-                </Card>
-                <p className="cal-note">
-                  <Icon name="info" size={16} />
-                  <span>
-                    First check the range on a mannequin or helper hand. Adjust
-                    one finger at a time.
-                  </span>
-                </p>
-                <details className="hp-disclosure">
-                  <summary>Helper notes: power</summary>
-                  <p className="hp-note">
-                    Five servos share a 5 V, 2.5 A supply. The normal limit is
-                    1500 mA; never exceed 2200 mA.
-                    {client.kind !== 'sim' &&
-                      ' After sending, wait for the glove to confirm its ranges.'}
+                </div>
+                <aside className="cal-aside" aria-label="Glove status">
+                  <Card tone="inset" padding="sm">
+                    <Meter
+                      label="Motor current"
+                      value={current}
+                      max={600}
+                      limit={400}
+                      valueText={`${Math.round(current)} mA`}
+                      tone={
+                        current > 400
+                          ? 'danger'
+                          : current > 300
+                            ? 'assist'
+                            : 'accent'
+                      }
+                    />
+                    <p className="hp-note">
+                      Limit while adjusting: 400 mA. The glove stops above it.
+                    </p>
+                    {current > 400 && (
+                      <p role="alert" className="hp-alert">
+                        Resistance is rising. Release the glove and check the
+                        fit.
+                      </p>
+                    )}
+                  </Card>
+                  <p className="cal-note">
+                    <Icon name="info" size={16} />
+                    <span>
+                      First check the range on a mannequin or helper hand.
+                      Adjust one finger at a time.
+                    </span>
                   </p>
-                </details>
-              </aside>
-            </div>
-            {(!validRange(range) || !allRangesSet) && (
-              <p id="next-finger-hint" className="hp-note">
-                {!validRange(range)
-                  ? 'Set slack and open first, at least 20° apart.'
-                  : 'Set slack and open for every finger before continuing.'}
-              </p>
-            )}
-            <div className="hp-wizard__footer">
-              <ButtonLink variant="quiet" to="/setup">
-                Back
-              </ButtonLink>
+                  <details className="hp-disclosure">
+                    <summary>Helper notes: power</summary>
+                    <p className="hp-note">
+                      Five servos share a 5 V, 2.5 A supply. The normal limit is
+                      1500 mA; never exceed 2200 mA.
+                      {client.kind !== 'sim' &&
+                        ' After sending, wait for the glove to confirm its ranges.'}
+                    </p>
+                  </details>
+                </aside>
+              </div>
+              {(!validRange(range) || !allRangesSet) && (
+                <p id="next-finger-hint" className="hp-note">
+                  {!validRange(range)
+                    ? 'Set slack and open first, at least 20° apart.'
+                    : 'Set slack and open for every finger before continuing.'}
+                </p>
+              )}
               <div className="hp-actions">
                 <Button
-                  variant="primary"
+                  variant="secondary"
                   aria-describedby={
                     !validRange(range) || !allRangesSet
                       ? 'next-finger-hint'
@@ -874,6 +877,11 @@ export default function Calibrate() {
                     : 'Next finger'}
                 </Button>
               </div>
+            </details>
+            <div className="hp-wizard__footer">
+              <ButtonLink variant="quiet" to="/setup">
+                Back
+              </ButtonLink>
             </div>
           </Section>
         )}

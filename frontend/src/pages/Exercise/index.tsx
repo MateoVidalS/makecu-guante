@@ -294,6 +294,8 @@ export default function Exercise() {
     } catch {
       // Audit failures must not prevent the patient from braking.
     }
+    // The coach goes quiet, says "Stopped" locally and the model is told.
+    voice.brake('You pressed Brake.');
   };
   const { start: startVoice, stop: stopVoice, setMode: setVoiceMode } = voice;
   const voiceMode = useRef(voice.mode);
