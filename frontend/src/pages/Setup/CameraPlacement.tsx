@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import { useVision, useVisionFrame } from '../../vision';
+import { CAMERA_PLACEMENT_GUIDANCE } from '../../vision/robustness';
 import { StatusDot } from '../../design-system';
 import { percent, title } from '../../components/common';
 import './setup.css';
+
+const UPRIGHT_PLACEMENT_GUIDANCE =
+  'Raise your hand beside your face, palm to the screen, elbow resting on the table, about 40–60 cm from the laptop.';
 
 /** Front webcam framing with an upright hand and a supported elbow. */
 export function CameraPlacement() {
@@ -44,10 +48,7 @@ export function CameraPlacement() {
           Elbow supported
         </text>
       </svg>
-      <p>
-        Raise your hand beside your face, palm to the screen, elbow resting on
-        the table, about 40–60 cm from the laptop.
-      </p>
+      <p>{UPRIGHT_PLACEMENT_GUIDANCE}</p>
       <p>Keep your hand relaxed and all five fingers in view.</p>
       <p>Face a light source. Avoid a bright window behind you.</p>
     </figure>
@@ -106,7 +107,11 @@ export function GloveDetectionCheck() {
           </p>
           <ul className="hp-note">
             {stats.guidance.map((line) => (
-              <li key={line}>{line}</li>
+              <li key={line}>
+                {line === CAMERA_PLACEMENT_GUIDANCE
+                  ? UPRIGHT_PLACEMENT_GUIDANCE
+                  : line}
+              </li>
             ))}
           </ul>
           <details className="hp-disclosure">

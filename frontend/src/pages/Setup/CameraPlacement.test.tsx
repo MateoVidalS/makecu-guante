@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
-import type { VisionRobustnessStats } from '../../vision/robustness';
+import {
+  CAMERA_PLACEMENT_GUIDANCE,
+  type VisionRobustnessStats,
+} from '../../vision/robustness';
 import { CameraPlacement, GloveDetectionCheck } from './CameraPlacement';
 
 const mock = vi.hoisted(() => ({
@@ -94,6 +97,16 @@ describe('camera placement and glove check', () => {
     render(<GloveDetectionCheck />);
     expect(screen.getByText(/Simulator check/)).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent('1.2 of 5 s');
+  });
+  it('uses upright placement while the shared vision guidance is being updated', () => {
+    mock.robustness.mockReturnValue(
+      stats({ status: 'poor', guidance: [CAMERA_PLACEMENT_GUIDANCE] }),
+    );
+    render(<GloveDetectionCheck />);
+    expect(screen.getByText(/Raise your hand beside your face/)).toBeVisible();
+    expect(
+      screen.queryByText(/palm down|table edge|towel/i),
+    ).not.toBeInTheDocument();
   });
   it('asks for the camera when stopped', () => {
     mock.running = false;
