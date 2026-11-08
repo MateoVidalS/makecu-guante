@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import { useVision, useVisionFrame } from '../../vision';
 import { CAMERA_PLACEMENT_GUIDANCE } from '../../vision/robustness';
-import { StatusDot } from '../../design-system';
+import { Banner, StatusDot } from '../../design-system';
 import { percent, title } from '../../components/common';
 import './setup.css';
 
@@ -83,6 +83,17 @@ export function GloveDetectionCheck() {
           Lighting check: a bright window behind you can hide your hand. Face
           the light or close the curtain.
         </p>
+      )}
+      {running && !simulated && stats.lighting?.status === 'backlit' && (
+        <Banner tone="warning" title="Your hand is in shadow.">
+          Close the curtain behind you or move away from the window. Light your
+          palm from the laptop side.
+        </Banner>
+      )}
+      {running && !simulated && stats.lighting?.status === 'low_light' && (
+        <Banner tone="warning" title="Your hand needs more light.">
+          Add a light in front of you, facing your palm.
+        </Banner>
       )}
       <p className="hp-capture-status" role="status">
         <StatusDot

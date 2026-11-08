@@ -116,4 +116,49 @@ describe('camera placement and glove check', () => {
       screen.queryByText('Tracking looks steady.'),
     ).not.toBeInTheDocument();
   });
+  it.each([
+    ['backlit', 'Your hand is in shadow.', /Close the curtain behind you/],
+    ['low_light', 'Your hand needs more light.', /Add a light in front/],
+  ] as const)('warns from V1 lighting stats: %s', (status, title, guidance) => {
+    render(<GloveDetectionCheck />);
+    expect(screen.queryByText(title)).not.toBeInTheDocument();
+    mock.robustness.mockReturnValue(
+      stats({
+        status: 'poor',
+        lighting: {
+          status,
+          meanLuminance: 0.2,
+          handLuminance: 0.1,
+          backgroundLuminance: 0.6,
+        },
+      }),
+    );
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.getByText(title)).toBeVisible();
+    expect(screen.getByText(guidance)).toBeVisible();
+    mock.robustness.mockReturnValue(stats());
+    act(() => vi.advanceTimersByTime(250));
+    expect(screen.queryByText(title)).not.toBeInTheDocument();
+  });
+  it.each(['sim', 'stopped'])(
+    'does not show stale exposure warnings for %s',
+    (source) => {
+      mock.kind = source === 'sim' ? 'sim' : 'camera';
+      mock.running = source !== 'stopped';
+      mock.robustness.mockReturnValue(
+        stats({
+          lighting: {
+            status: 'backlit',
+            meanLuminance: 0.4,
+            handLuminance: 0.1,
+            backgroundLuminance: 0.6,
+          },
+        }),
+      );
+      render(<GloveDetectionCheck />);
+      expect(
+        screen.queryByText('Your hand is in shadow.'),
+      ).not.toBeInTheDocument();
+    },
+  );
 });
