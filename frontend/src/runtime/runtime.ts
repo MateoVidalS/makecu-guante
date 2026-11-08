@@ -1,4 +1,5 @@
 import type { TherapyRuntime } from './therapy';
+import { powerAwareSettings } from './power';
 import {
   ASSIST_DIRECTION_RECALIBRATE_MESSAGE,
   validateCameraRange,
@@ -319,9 +320,13 @@ export class RehabRuntime implements TherapyRuntime {
     return structuredClone(this.calibration.current);
   }
   exercise: Runtime['exercise'] = {
-    start: async (plan, settings) => {
+    start: async (plan, requested) => {
       const calibration = this.requireReady();
       if (!plan.length) throw new Error('Choose at least one pose');
+      const settings = powerAwareSettings(
+        requested,
+        this.sources.glove === 'serial',
+      );
       const out = this.exerciseEngine.start(
         plan,
         settings,

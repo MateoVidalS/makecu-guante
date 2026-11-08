@@ -198,7 +198,11 @@ export class SimFirmware {
     ) as Quint;
     this.speed = cmd.t === 'follow' ? FW.V_FOLLOW : Math.min(cmd.v, FW.V_MAX);
     this.jogIndex = null;
-    this.attached.fill(true);
+    // Power only servos that pull (firmware safety.cpp): an unpowered spool is as slack
+    // as pull 0. A powered servo stays powered and unwinds; release detaches all.
+    this.goal.forEach((g, i) => {
+      if (g > 0) this.attached[i] = true;
+    });
     this.releasedAt = null;
   }
   private unwind() {
