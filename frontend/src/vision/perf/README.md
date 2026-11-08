@@ -173,6 +173,13 @@ thread-guide points and yellow fingertip anchors are taped directly to the back
 of the fingers. The camera sees an upright bare palm, with a few points at finger
 edges and tips; keep the palm-side joint creases clear.
 
+`BenchShot.inpaint` paints over the device before inference with a
+`deviceInpaint.ts` variant; the driver also runs both point conditions with
+`inpaint: 'points'` and reports `inpaintMs`. Quick run (Nov 8): with points, right
+hand detection 0.8 → 0.9 and calibration failed → closure MAE 0.12 / p95 0.35;
+left hand 0.8 → 1.0, MAE 0.15 / p95 0.73 (bare: 0.10 / 0.30 and 0.20 / 0.94).
+Without points it paints nothing, so results are identical to bare.
+
 `BenchShot.points` toggles two small black dorsal guides per finger (proximal and
 middle phalanges; proximal/distal on the thumb) and a yellow dorsal fingertip
 anchor. Points move with the bones and are naturally hidden by the palm when

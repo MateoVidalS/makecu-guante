@@ -100,6 +100,7 @@ const hands = quick ? ['right'] : ['right', 'left'];
 const seeds = quick ? [1, 2] : [1, 2, 3, 4];
 const shotNoise = { sensorNoise: 4, shiftPx: 0.5 };
 const inference = [];
+const inpaintTimes = [];
 const report = {
   date: new Date().toISOString(),
   method:
@@ -126,11 +127,13 @@ async function measure(joints, view, h, extra = {}) {
       ...extra,
     });
     inference.push(r.inferenceMs);
+    if (extra.inpaint) inpaintTimes.push(r.inpaintMs);
     shots.push(r);
   }
   const detected = shots.filter((s) => s.detected);
   return {
     detection: detected.length / shots.length,
+    inpainted: mean(shots.map((s) => s.inpainted)),
     flex: detected.length
       ? Object.fromEntries(
           FINGERS.map((f) => [f, mean(detected.map((s) => s.flex[f]))]),
@@ -149,11 +152,18 @@ const closureOf = (flex, cal, f) =>
 
 // Paired upright comparison: identical poses, seeds and noise, both anatomical
 // hands even in quick mode. Calibrate each condition as with the real setup.
+// `inpaint: 'points'` paints over the points before inference (vision/deviceInpaint.ts);
+// without points it should find nothing and change nothing.
 for (const h of ['right', 'left'])
-  for (const points of [false, true]) {
+  for (const [points, inpaint] of [
+    [false, undefined],
+    [true, undefined],
+    [false, 'points'],
+    [true, 'points'],
+  ]) {
     const view = 'front_upright';
-    const extra = { anatomical: true, points };
-    console.error(`points ${h} ${points}`);
+    const extra = { anatomical: true, points, inpaint };
+    console.error(`points ${h} ${points} inpaint ${inpaint ?? 'none'}`);
     const open = await measure(scaled(0), view, h, extra);
     const closed = await measure(scaled(1), view, h, extra);
     const cal =
@@ -180,6 +190,7 @@ for (const h of ['right', 'left'])
       rows.push({
         trueClosure: r3(s),
         detection: m.detection,
+        inpaintedShare: r3(m.inpainted),
         closureMAE: errors.length ? r3(mean(errors)) : null,
         closureP95: errors.length ? r3(pct(errors, 95)) : null,
       });
@@ -189,6 +200,7 @@ for (const h of ['right', 'left'])
       hand: h,
       anatomical: true,
       points,
+      inpaint: inpaint ?? null,
       calibration: {
         openDetection: open.detection,
         closedDetection: closed.detection,
@@ -442,6 +454,11 @@ report.inferenceMs = {
   p95: r3(pct(inference, 95)),
   samples: inference.length,
 };
+report.inpaintMs = {
+  p50: r3(pct(inpaintTimes, 50)),
+  p95: r3(pct(inpaintTimes, 95)),
+  samples: inpaintTimes.length,
+};
 await browser.close();
 await server.close();
 const out = resolve(
@@ -483,6 +500,7 @@ console.log(
       ),
       jitter: report.jitter,
       inferenceMs: report.inferenceMs,
+      inpaintMs: report.inpaintMs,
       out,
     },
     null,

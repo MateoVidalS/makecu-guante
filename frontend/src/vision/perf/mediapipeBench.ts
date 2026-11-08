@@ -37,6 +37,11 @@ import {
 } from '../../hand3d/rig';
 import { jointAngles, pinchRatio } from '../flex';
 import { addHandPoints } from './handPoints';
+import {
+  createDeviceScratch,
+  inpaintDevice,
+  type DeviceVariant,
+} from '../deviceInpaint';
 
 type Joints = Record<FingerId, JointAngles>;
 export interface BenchShot {
@@ -55,6 +60,8 @@ export interface BenchShot {
   anatomical?: boolean;
   /** Small black dorsal guides and yellow dorsal fingertip anchors (default: false). */
   points?: boolean;
+  /** Paint over the device before inference with this deviceInpaint variant (default: none). */
+  inpaint?: DeviceVariant;
 }
 export interface BenchResult {
   detected: boolean;
@@ -66,6 +73,10 @@ export interface BenchResult {
   flex: Record<FingerId, number> | null;
   pinch: number | null;
   inferenceMs: number;
+  /** Fraction of pixels painted over before inference (`inpaint` only). */
+  inpainted: number;
+  /** Time to find and paint them (ms), excluding the pixel readback. */
+  inpaintMs: number;
 }
 
 const canvas = document.getElementById('stage') as HTMLCanvasElement;
@@ -235,6 +246,8 @@ function toResult(
       flex: null,
       pinch: null,
       inferenceMs,
+      inpainted: 0,
+      inpaintMs: 0,
     };
   const tuples = (p: { x: number; y: number; z: number }[]) =>
     p.map((q): [number, number, number] => [q.x, q.y, q.z]);
@@ -253,6 +266,8 @@ function toResult(
     world,
     image,
     inferenceMs,
+    inpainted: 0,
+    inpaintMs: 0,
   };
 }
 
@@ -261,15 +276,37 @@ async function init(delegate: 'GPU' | 'CPU' = 'CPU') {
   videoLandmarker = await create('VIDEO', delegate);
   status.textContent = 'ready';
 }
+const deviceScratch = createDeviceScratch();
 function shoot(shot: BenchShot): BenchResult {
   pose(shot);
-  const image = frameImage(shot);
+  let image: HTMLCanvasElement | ImageData = frameImage(shot);
+  let inpainted = 0,
+    inpaintMs = 0;
+  if (shot.inpaint) {
+    // As a caller would: only a frame where something was painted replaces the raw image.
+    const pixels = ctx.getImageData(0, 0, 640, 480);
+    const t = performance.now();
+    inpainted = inpaintDevice(
+      pixels.data,
+      pixels.data,
+      640,
+      480,
+      shot.inpaint,
+      deviceScratch,
+    );
+    inpaintMs = performance.now() - t;
+    if (inpainted) image = pixels;
+  }
   const start = performance.now();
   const r =
     shot.videoMs === undefined
       ? imageLandmarker!.detect(image)
       : videoLandmarker!.detectForVideo(image, shot.videoMs);
-  return toResult(r, performance.now() - start, shot.view, shot.hand);
+  return {
+    ...toResult(r, performance.now() - start, shot.view, shot.hand),
+    inpainted,
+    inpaintMs,
+  };
 }
 async function resetVideo(delegate: 'GPU' | 'CPU' = 'CPU') {
   videoLandmarker?.close();

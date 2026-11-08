@@ -114,6 +114,75 @@ black table with a black glove) becomes skin-coloured too, so use a contrasting
 background; a uniformly coloured fist that fills most of the frame may still be
 missed; and a black glove the camera clips to pure black has no folds to recover.
 
+## Device inpainting
+
+The device on a bare hand hides the fingers from MediaPipe. `deviceInpaint.ts`
+paints it over on a copy of the frame before inference, in the same calling style
+as `recolorGlove` (pure, no DOM, reusable scratch). It is not wired into
+`CameraVision`: the device profiles call it.
+
+```ts
+const scratch = createDeviceScratch();
+// Fraction of pixels changed; 0 means dst is an exact copy (keep the raw video).
+const share = inpaintDevice(
+  src,
+  dst,
+  width,
+  height,
+  'straps',
+  scratch,
+  handBox,
+);
+// Share of the detected skeleton's points that look like the device.
+const coverage = deviceCoverage(rawPixels, width, height, landmarks, 'straps');
+```
+
+Variants:
+
+- `straps`: the user's device, black velcro straps on every finger segment and
+  the wrist, yellow/orange thread guides and orange cables. A device pixel with
+  solid skin on both sides within 26 px (at 640 px width; `STRAP_TUNING.span`)
+  along a row, column or diagonal is filled with a blend of that skin; wider
+  dark areas (gaps between spread fingers over a black sweater) are kept. Frames
+  480 px wide or more are processed at half resolution. It also fills small dark
+  spots that skin surrounds elsewhere (glasses, hair edges), so run it only for a
+  hand wearing the device. Device-colour coverage of the skeleton was 0.24–0.29
+  (median) on the device hand and about 0 on a bare hand: ~0.1 separates them.
+- `points`: the team's small black dorsal guides and yellow fingertip anchors.
+  Small, compact dark or yellow blobs on skin (up to 24 px, at least 75% skin
+  around a dark one) are painted from their surroundings. It changes nothing on
+  a frame without such blobs. The points are too small for `deviceCoverage` to
+  recognise them.
+
+Pass `region` (the tracked hand's box widened by a third of its larger side)
+while a hand is tracked; use the whole frame while searching. Costs on a 640×480
+real frame (headless Chromium, M-series Mac): `straps` 4–7 ms whole frame,
+~1.7 ms in a hand box; `points` 3–6 ms whole frame (1–1.5 ms on the bench's plain
+scene), ~1.7 ms in a hand box; plus the pixel readback.
+
+Measured with the real MediaPipe Hand Landmarker (thresholds 0.6), counting only
+the device hand (per-recording position rules, bystanders excluded), on three
+real recordings of the user's strap device (12 poses × ~20 frames each; not in the
+repository). Frames found, before → after:
+
+| Recording                     | IMAGE mode, `straps` | VIDEO mode (app emulation), `straps` | VIDEO, `points` |
+| ----------------------------- | -------------------- | ------------------------------------ | --------------- |
+| r5 (hand often horizontal)    | 5 → 38 / 239         | 38 → 119                             | 38 → 21         |
+| r6 (upright)                  | 1 → 24 / 240         | 7 → 40                               | 7 → 9           |
+| r7 (upright, beside the face) | 5 → 25 / 240         | 17 → 157                             | 17 → 35         |
+
+On r7 the fill makes calibration possible (open and fist found 100%; ranges
+95–185° per long finger, thumb 100°), with a per-pose closure error of 0.18–0.26
+for half, hook, tabletop, point and peace, 0.05 for the second open hand, and
+pinch long fingers at 0. Still missed: thumbs up and pinky up, and the second fist
+(found 30%, read as open). r6 never finds the fist, so it cannot be calibrated;
+r5 calibrates with degenerate ranges. Run continuously, the `points` variant is
+not safe with the strap device (r5 loses thumbs up and some peace frames), so
+use it only for the dot device. On the rendered bench hand with points, `points`
+restores calibration for both hands (see `perf/README.md`); with bare hands,
+gloves or the real violet-glove frames it changed no detection when given the
+tracked hand's region (whole frame: one of 120 raw violet frames lost).
+
 ## Provider and overlay
 
 `VisionProvider` uses camera by default and simulator with `VITE_SIM=1`. It obtains
