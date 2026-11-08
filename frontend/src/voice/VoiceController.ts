@@ -350,6 +350,7 @@ export class VoiceController {
         this.partial[event.role] += event.text;
         if (event.role === 'patient') {
           this.checkPatientSafety(this.partial.patient);
+          this.runtime.therapy?.notePatientSpeech?.(this.partial.patient);
           this.scheduler.setTalking(!event.finished);
         }
         this.update(
@@ -495,6 +496,7 @@ export class VoiceController {
         return;
       this.partial.patient = text;
       this.checkPatientSafety(text);
+      this.runtime.therapy?.notePatientSpeech?.(text);
       this.update({ lastPatientLine: text });
       if (finished) this.finishTranscript('patient');
     });

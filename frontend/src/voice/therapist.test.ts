@@ -63,6 +63,8 @@ function setup() {
       assist_delay_s: { thumb: 6, index: 6, middle: 6, ring: 6, pinky: 6 },
       target_scale: { thumb: 1, index: 1, middle: 1, ring: 1, pinky: 1 },
       extra_reps: 0,
+      hold_extra_s: 0,
+      intensified: [],
       attempt_s: 6,
       extra_rest_s: 0,
       next_pose: null,
@@ -77,6 +79,7 @@ function setup() {
       return { ...decision, tool: 'brake', result: 'applied' as const };
     }),
     recordFeeling: vi.fn(() => decision),
+    notePatientSpeech: vi.fn(),
     undo: vi.fn(() => decision),
     decisions: () => [],
     feelings: () => [],
@@ -599,6 +602,16 @@ it('permits a highlight and therapist note after a local brake while rejecting m
         name: 'adjust_target',
         args: { finger: 'pinky', direction: 'raise', reason: 'Raise' },
       },
+      {
+        id: 'intensity',
+        name: 'intensify',
+        args: {
+          finger: 'pinky',
+          kind: 'faster',
+          consent: 'patient_asked',
+          patient_quote: 'Faster',
+        },
+      },
     ],
   });
   await Promise.resolve();
@@ -614,5 +627,189 @@ it('permits a highlight and therapist note after a local brake while rejecting m
   expect(
     s.transport.responses.find((r) => r.call.id === 'target')?.response.ok,
   ).toBe(false);
+  expect(
+    s.transport.responses.find((r) => r.call.id === 'intensity')?.response.ok,
+  ).toBe(false);
+  s.controller.dispose();
+});
+
+it('reports only real patient transcriptions, before tools, without refreshing speech on context or flush', async () => {
+  const s = setup();
+  await s.controller.start(1);
+  s.transcript('Yes, ');
+  s.transcript('hold longer.', true);
+  s.transport.emit({
+    type: 'transcript',
+    role: 'coach',
+    text: 'You said yes.',
+    finished: true,
+  });
+  s.transport.emit({ type: 'turnComplete' });
+  await vi.advanceTimersByTimeAsync(21000);
+  expect(vi.mocked(s.therapy.notePatientSpeech).mock.calls).toEqual([
+    ['Yes, '],
+    ['Yes, hold longer.'],
+  ]);
+  s.controller.stop();
+  expect(s.therapy.notePatientSpeech).toHaveBeenCalledTimes(2);
+  s.controller.dispose();
+});
+
+it.each([
+  ['further', 'patient_asked', 'Can my index close further?'],
+  ['hold_longer', 'accepted_offer', 'Yes, hold it longer.'],
+  ['faster', 'patient_asked', 'Please help my index a little faster.'],
+] as const)(
+  'forwards %s intensity with actual patient speech and the quoted consent',
+  async (kind, consent, patient_quote) => {
+    const s = setup();
+    await s.controller.start(1);
+    s.transcript(patient_quote, true);
+    const call = {
+      id: 'intensity',
+      name: 'intensify',
+      args: { finger: 'index', kind, consent, patient_quote },
+    };
+    s.transport.emit({ type: 'tools', calls: [call] });
+    await Promise.resolve();
+    expect(s.therapy.notePatientSpeech).toHaveBeenCalledExactlyOnceWith(
+      patient_quote,
+    );
+    expect(s.therapy.adjust).toHaveBeenCalledExactlyOnceWith(
+      'intensify',
+      call.args,
+      'coach',
+    );
+    expect(
+      vi.mocked(s.therapy.notePatientSpeech).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(s.therapy.adjust).mock.invocationCallOrder[0]);
+    expect(s.transport.responses[0].response.ok).toBe(true);
+    s.controller.dispose();
+  },
+);
+
+it('reports streamed patient text before a tool even when Live omits the finished flag', async () => {
+  const s = setup();
+  await s.controller.start(1);
+  s.transcript('Yes');
+  const args = {
+    finger: 'index',
+    kind: 'faster',
+    consent: 'accepted_offer',
+    patient_quote: 'Yes',
+  };
+  s.transport.emit({
+    type: 'tools',
+    calls: [{ id: 'streamed', name: 'intensify', args }],
+  });
+  await Promise.resolve();
+  expect(s.therapy.notePatientSpeech).toHaveBeenCalledExactlyOnceWith('Yes');
+  expect(s.therapy.adjust).toHaveBeenCalledExactlyOnceWith(
+    'intensify',
+    args,
+    'coach',
+  );
+  s.controller.dispose();
+});
+
+it('never turns model-provided patient_quote into fresh patient speech and preserves runtime rejections', async () => {
+  const s = setup();
+  await s.controller.start(1);
+  const rejection = {
+    ...decision,
+    tool: 'intensify',
+    result: 'rejected' as const,
+    applied: null,
+    reason: 'Fresh patient consent required.',
+  };
+  vi.mocked(s.therapy.adjust).mockReturnValue(rejection);
+  const args = {
+    finger: 'index',
+    kind: 'faster',
+    consent: 'accepted_offer',
+    patient_quote: 'Invented yes',
+  };
+  s.transport.emit({
+    type: 'tools',
+    calls: [{ id: 'invented', name: 'intensify', args }],
+  });
+  await Promise.resolve();
+  expect(s.therapy.notePatientSpeech).not.toHaveBeenCalled();
+  expect(s.transport.responses[0].response).toEqual({
+    ok: false,
+    reason: rejection.reason,
+    decision: rejection,
+  });
+  s.controller.dispose();
+});
+
+it('reports simple-voice patient lines too, and keeps braking ahead of speech bookkeeping', async () => {
+  const s = setup();
+  s.controller.setMode('simple');
+  await s.controller.start(1);
+  s.patient('Yes');
+  s.patient('Yes, but it hurts.', true);
+  expect(vi.mocked(s.therapy.notePatientSpeech).mock.calls).toEqual([
+    ['Yes'],
+    ['Yes, but it hurts.'],
+  ]);
+  expect(vi.mocked(s.therapy.brake).mock.invocationCallOrder[0]).toBeLessThan(
+    vi.mocked(s.therapy.notePatientSpeech).mock.invocationCallOrder[1],
+  );
+  s.controller.setMuted(true);
+  s.patient('yes', true);
+  s.controller.stop();
+  s.patient('yes', true);
+  expect(s.therapy.notePatientSpeech).toHaveBeenCalledTimes(2);
+  s.controller.dispose();
+});
+
+it('streams intensity and hold overrides and their runtime auto-revert', async () => {
+  const s = setup();
+  await s.controller.start(1);
+  s.state.adjustments.intensified = ['index'];
+  s.state.adjustments.hold_extra_s = 2;
+  s.state.adjustments.assist_speed.index = 0.3;
+  await vi.advanceTimersByTimeAsync(1000);
+  s.state.adjustments.intensified = [];
+  s.state.adjustments.hold_extra_s = 0;
+  s.state.adjustments.assist_speed.index = 0.2;
+  await vi.advanceTimersByTimeAsync(1000);
+  const states = s.transport.texts
+    .filter((text) => text.text.startsWith('[live]'))
+    .map((text) => JSON.parse(text.text.slice(7)));
+  expect(states[0].adjustments).toMatchObject({
+    intensified: ['index'],
+    hold_extra_s: 2,
+    assist_speed: { index: 0.3 },
+  });
+  expect(states[1].adjustments).toMatchObject({
+    intensified: [],
+    hold_extra_s: 0,
+    assist_speed: { index: 0.2 },
+  });
+  s.controller.dispose();
+});
+
+it('fails closed for intensity while the runtime has no patient-speech tracker', async () => {
+  const s = setup();
+  Reflect.deleteProperty(s.therapy, 'notePatientSpeech');
+  expect(
+    await dispatchTool(
+      s.runtime,
+      {
+        id: 'missing-tracker',
+        name: 'intensify',
+        args: {
+          finger: 'index',
+          kind: 'faster',
+          consent: 'patient_asked',
+          patient_quote: 'Please go faster.',
+        },
+      },
+      null,
+    ),
+  ).toEqual({ ok: false, reason: 'Patient consent tracking unavailable.' });
+  expect(s.therapy.adjust).not.toHaveBeenCalled();
   s.controller.dispose();
 });

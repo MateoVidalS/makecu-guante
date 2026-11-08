@@ -36,11 +36,17 @@ export async function dispatchTool(
       case 'highlight_finger':
       case 'note_for_therapist':
       case 'repeat_pose':
+      case 'intensify':
       case 'record_feeling':
       case 'brake':
       case 'undo_last_adjustment': {
         if (!therapy)
           return { ok: false, reason: 'Therapy controls unavailable.' };
+        if (
+          call.name === 'intensify' &&
+          typeof therapy.notePatientSpeech !== 'function'
+        )
+          return { ok: false, reason: 'Patient consent tracking unavailable.' };
         if (call.name === 'brake')
           return decisionResponse(
             therapy.brake(

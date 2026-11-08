@@ -28,9 +28,10 @@ def test_complete_runtime_tool_surface():
         "highlight_finger",
         "note_for_therapist",
         "repeat_pose",
+        "intensify",
     }
     config = types.LiveConnectConfig.model_validate({"tools": TOOLS})
-    assert len(config.tools[0].function_declarations) == 19
+    assert len(config.tools[0].function_declarations) == 20
     tools = {tool["name"]: tool for tool in declarations}
     assert tools["brake"]["parameters"]["required"] == ["reason"]
     help_args = tools["adjust_help"]["parameters"]["properties"]
@@ -52,6 +53,11 @@ def test_complete_runtime_tool_surface():
     assert tools["record_feeling"]["parameters"]["properties"]["pain"]["maximum"] == 10
     assert tools["set_attempt_time"]["parameters"]["properties"]["seconds"]["maximum"] == 9
     assert tools["add_rest"]["parameters"]["properties"]["seconds"]["maximum"] == 20
+    intensity = tools["intensify"]["parameters"]
+    assert intensity["required"] == ["finger", "kind", "consent", "patient_quote"]
+    assert intensity["properties"]["kind"]["enum"] == ["further", "hold_longer", "faster"]
+    assert intensity["properties"]["consent"]["enum"] == ["patient_asked", "accepted_offer"]
+    assert set(intensity["properties"]) == {"finger", "kind", "consent", "patient_quote"}
 
 
 def test_prompt_therapy_policy():
@@ -73,7 +79,7 @@ def test_prompt_therapy_policy():
         "more = help starts 1 second sooner",
         "less = 1 second later",
         "0.10–0.20/s",
-        "never exceeds the 0.20/s default",
+        "Ordinary assist never exceeds the 0.20/s default",
         "Resistance automatically lowers",
         "assist_finger_now",
         "stagger/power rules",
@@ -87,4 +93,19 @@ def test_prompt_therapy_policy():
         "last_safety",
     ]:
         assert rule in prompt
-    assert "0.30" not in prompt
+    for rule in [
+        "Never raise intensity on your own",
+        "after good",
+        "explicit yes",
+        "patient_quote",
+        "actual words",
+        "within 20 seconds",
+        "pain >= 2",
+        "within 60 seconds",
+        "automatically reverts",
+        "at most 2 seconds",
+        "up to 0.30/s",
+        "100% of its",
+        "Never invent, paraphrase or recycle",
+    ]:
+        assert rule in prompt

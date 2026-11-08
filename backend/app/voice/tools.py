@@ -82,6 +82,20 @@ TOOLS = [
                 {"reason": REASON},
             ),
             declaration(
+                "intensify",
+                "Only after the patient explicitly asked or accepted an offer in the last 20s. "
+                "Further: up to 100% calibrated range; hold_longer: at most 2s extra; faster: "
+                "up to 0.30/s, next ATTEMPT. Blocked by pain >= 2 or resistance on that finger "
+                "in the last 60s; automatically reverted on pain/resistance. Never initiate "
+                "intensity yourself or invent consent. Quote the patient's actual words.",
+                {
+                    "finger": FINGER,
+                    "kind": {"type": "STRING", "enum": ["further", "hold_longer", "faster"]},
+                    "consent": {"type": "STRING", "enum": ["patient_asked", "accepted_offer"]},
+                    "patient_quote": {"type": "STRING"},
+                },
+            ),
+            declaration(
                 "set_attempt_time",
                 "Set time to try alone, clamped to 4–9 seconds, starting next ATTEMPT.",
                 {"seconds": {"type": "NUMBER", "minimum": 4, "maximum": 9}, "reason": REASON},

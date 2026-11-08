@@ -77,15 +77,16 @@ start/stop actions; its scaffold does not start voice itself.
 
 ## AI therapy assistant (A2)
 
-All thirteen therapy tools dispatch exclusively through `Runtime.therapy` using the
+All fourteen therapy tools dispatch exclusively through `Runtime.therapy` using the
 frozen `TherapyApi`. Runtime decisions return `ok`, `reason` and the full decision
 (including requested/applied values) so the coach can describe clamping or
 rejection accurately. No voice tool changes calibration, current limits or motors.
 The owner-approved Nov 7 contract defines more help as starting 1 second sooner
 and less help as 1 second later, within 1–9 seconds per finger. Gentler lowers
-speed by 0.05/s, within 0.10–0.20/s; speed never exceeds the default 0.20/s.
+speed by 0.05/s, within 0.10–0.20/s; ordinary assist stays within the default
+0.20/s cap.
 Resistance automatically lowers speed in the runtime. The model cannot undo
-that protection, raise current limits, change calibration or command motors.
+that safety protection, raise current limits, change calibration or command motors.
 
 The added tools request one-finger help now during ATTEMPT (with the same
 stagger/power rules), shape targets by 0.1 within 0.5–1.0 of the pose target,
@@ -144,3 +145,24 @@ switch remains available so the patient can mute recognition.
 Every executed Live tool request and result is also saved as a system transcript
 line, including read/legacy tools and voice-level rejections; mutation responses
 carry the runtime decision's requested/applied values and reason.
+
+The second owner-approved contract update adds `intensify` as the sole exception
+to gentle defaults. It forwards a finger, further/hold_longer/faster, explicit
+patient_asked/accepted_offer consent and the patient's exact quote to the runtime.
+Further stays inside 100% of the calibrated range; hold adds at most two seconds;
+faster stays at or below 0.30/s. The runtime requires speech reported within
+20 seconds, rejects pain >= 2 or resistance on that finger within 60 seconds,
+and automatically reverts intensity on pain or resistance. The prompt allows an
+offer after good progress, then requires an explicit yes; it forbids autonomous
+intensity increases and invented or recycled consent.
+
+Each incoming patient transcription update calls `therapy.notePatientSpeech`
+with the actual cumulative Live text or replacing Simple voice hypothesis,
+before any subsequent tool dispatch. Local stop/pain braking runs first.
+Coach speech, context pushes, tool-provided patient_quote and delayed transcript
+flushes never create or refresh patient consent. This also supports Live input
+transcription that omits a finished flag. Runtime consent timing and safety
+checks remain authoritative; A2 does not infer consent from movement or bypass a
+rejection. Intensity tools are blocked by the local brake guard, and unavailable
+if the runtime has no consent-tracking method. Live snapshots carry hold_extra_s
+and intensified fingers, including their runtime auto-revert.
