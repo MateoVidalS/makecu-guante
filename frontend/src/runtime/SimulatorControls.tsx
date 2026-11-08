@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
+import { benchMirror, BENCH_LIMIT_MA, BENCH_RANGE } from '../glove/benchMirror';
+import type { SimGlove } from '../glove/sim/simGlove';
 import {
   CURRENT_ASSIST_DIRECTION,
   CURRENT_CAMERA_VIEW,
@@ -25,6 +27,7 @@ export function RuntimeSimulatorControls() {
   if (client.kind !== 'sim') return null;
   return (
     <Stack gap={8}>
+      <BenchMirrorControls glove={client as SimGlove} />
       <Select
         label="Patient preset"
         value={world.patient.preset}
@@ -143,5 +146,66 @@ export function RuntimeSimulatorCalibration() {
         </p>
       )}
     </section>
+  );
+}
+
+/** Bench mirror: the simulated session also drives a real board's motors. */
+export function BenchMirrorControls({ glove }: { glove: SimGlove }) {
+  const mirror = useSyncExternalStore(benchMirror.subscribe, benchMirror.state);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const last = mirror.lastEvent;
+  return (
+    <Stack gap={8}>
+      <strong>Real motors (bench mirror)</strong>
+      <p className="hp-note">
+        The simulated hand runs the session; every command also goes to the real
+        board, so its servos move as the app commands. Bench only: nothing
+        attached to a person. Range {BENCH_RANGE.min_deg}–{BENCH_RANGE.max_deg}
+        °, limit {BENCH_LIMIT_MA} mA.
+      </p>
+      {mirror.active ? (
+        <>
+          <p role="status">
+            Mirroring to the real glove ({mirror.connection}), {mirror.commands}{' '}
+            commands sent
+            {last ? `, last board event: ${last.e}` : ''}
+            {mirror.lastError
+              ? `, last board error: ${mirror.lastError.why}`
+              : ''}
+            .
+          </p>
+          <Button size="sm" variant="danger" onClick={() => benchMirror.stop()}>
+            Stop mirroring (release real motors)
+          </Button>
+        </>
+      ) : (
+        <Button
+          size="sm"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setError('');
+            benchMirror
+              .start(glove)
+              .catch((e: unknown) =>
+                setError(
+                  e instanceof Error
+                    ? e.message
+                    : 'Could not connect the board',
+                ),
+              )
+              .finally(() => setBusy(false));
+          }}
+        >
+          {busy ? 'Connecting…' : 'Mirror to real glove (pick the port)'}
+        </Button>
+      )}
+      {error && (
+        <p role="alert" className="hp-alert">
+          {error}
+        </p>
+      )}
+    </Stack>
   );
 }

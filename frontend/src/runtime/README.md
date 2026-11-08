@@ -174,3 +174,14 @@ stored per browser (`runtime/power.ts`). With a real glove it runs the engine wi
 each still gets its time. Speed, targets, current limit and every safety rule are
 unchanged; the simulator ignores it. Turn it off with a 5 V / 2.5 A supply. The firmware
 side powers only the fingers that pull (firmware/README.md).
+
+## Bench mirror: real motors without a hand
+
+Demo tools → **Mirror to real glove** (simulated glove only). The simulated patient and
+glove run the whole session, and every command is also sent to a real ESP32 over Web
+Serial (`glove/benchMirror.ts`), so the servos do what the app commands with nothing on
+a hand. Servo ranges become a fixed 60–120° bench range and the current limit is capped
+at 700 mA. The board's STOP, overcurrent, watchdog, missing-sensor and reset events reach
+the session, which releases and pauses as with the real glove; a USB loss pauses it and
+stops mirroring. "One motor at a time" applies while mirroring. Needs the simulator at
+real speed (`VITE_SIM_SPEED=1`). Bench only.
