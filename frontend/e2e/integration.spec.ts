@@ -35,13 +35,15 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   });
   // This scenario verifies the independent hard-current fault, including its
   // latched banner, release and recovery. Keep its lower limit explicit now
-  // that normal five-servo simulator calibration defaults to 1500 mA.
+  // that normal five-servo simulator calibration defaults to 1500 mA. The S51
+  // index stalls at 650 mA, so the limit must sit below a single stall plus
+  // idle draw (about 700 mA) or the engine's resistance stop eases off first.
   await page.route('**/api/calibrations', (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     return route.continue({
       postData: JSON.stringify({
         ...route.request().postDataJSON(),
-        current_limit_ma: 900,
+        current_limit_ma: 700,
       }),
     });
   });
