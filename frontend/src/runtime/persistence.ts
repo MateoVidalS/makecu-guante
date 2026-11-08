@@ -94,7 +94,9 @@ export class PersistenceQueue {
       while (this.jobs.length) {
         const job = this.jobs[0];
         if (job.kind === 'session') {
-          const session = await this.api.createSession(job.value);
+          const session = await this.api.createSession(
+            sessionForStorage(job.value),
+          );
           this.ids[job.key] = session.id;
           this.onSession?.(job.key, session.id);
         } else if (job.kind === 'evaluation')
@@ -135,4 +137,35 @@ export class PersistenceQueue {
       this.store.setState({ status: 'Offline' });
     }
   }
+}
+
+/** The REST contract stores exactly these settings and rejects any other key. */
+const STORED_SETTINGS = [
+  'present_s',
+  'attempt_s',
+  'hold_s',
+  'assist_max_s',
+  'rest_s',
+  'tolerance',
+  'reach_dwell_s',
+  'assist_speed',
+  'plateau_s',
+  'assist_enabled',
+] as const;
+
+/**
+ * Engine-only settings (e.g. assist_max_parallel from the low-power mode) never reach the
+ * backend, whose schema forbids extra keys: one would fail every retry and hold the
+ * session, its attempts and the recap behind it. Applied when sending, so sessions
+ * already queued with an extra key are saved too.
+ */
+export function sessionForStorage(value: SessionIn): SessionIn {
+  if (!value.settings) return value;
+  const settings = Object.fromEntries(
+    STORED_SETTINGS.filter((key) => key in value.settings!).map((key) => [
+      key,
+      value.settings![key],
+    ]),
+  ) as unknown as SessionIn['settings'];
+  return { ...value, settings };
 }
