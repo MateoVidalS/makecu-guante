@@ -1,11 +1,55 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import type { ChatMessage, ChatRole } from '../../../contracts/chat';
+import type {
+  ChartSection,
+  ChatMessage,
+  ChatRole,
+} from '../../../contracts/chat';
 import { streamChat } from '../../../api/client';
+import { DemoBadge, Icon, IconButton } from '../../../design-system';
 import { isChartSection, showChart } from './showChart';
 import { useChatVoice } from './useChatVoice';
 import './chat.css';
 
 export const CHAT_STORAGE_KEY = 'rehab.doctor-chat';
+const CHART_NAMES: Record<ChartSection, string> = {
+  summary: 'Therapist summary',
+  glance: 'At a glance',
+  range: 'Active range',
+  assistance: 'Assistance',
+  therapy: 'Feelings and coach decisions',
+  sessions: 'Saved sessions',
+  evaluations: 'Evaluations',
+};
+/** Plain-text answers: blank lines split paragraphs; a short line ending in ":" is a heading. */
+function Answer({ text, caret }: { text: string; caret?: boolean }) {
+  const blocks = text.split(/\n\s*\n/);
+  return (
+    <>
+      {blocks.map((block, index) => {
+        const [first, ...rest] = block.split('\n');
+        const heading =
+          rest.length > 0 &&
+          first.trim().endsWith(':') &&
+          first.trim().split(/\s+/).length <= 4;
+        return (
+          <p key={index}>
+            {heading ? (
+              <>
+                <strong className="doctor-chat-heading">{first.trim()}</strong>
+                {'\n' + rest.join('\n')}
+              </>
+            ) : (
+              block
+            )}
+            {caret && index === blocks.length - 1 && (
+              <span className="doctor-chat-caret" aria-hidden="true" />
+            )}
+          </p>
+        );
+      })}
+    </>
+  );
+}
 const unavailable =
   'Chat unavailable. Check the Gemini connection and try again.';
 const suggestions = [
@@ -34,8 +78,18 @@ function restore(): ChatMessage[] {
   }
 }
 
-export function DoctorChat() {
+export function DoctorChat({
+  patient,
+  demo = false,
+}: {
+  /** Pseudonym shown in the panel; falls back to "this patient". */
+  patient?: string;
+  /** Records on the page include demo data. */
+  demo?: boolean;
+} = {}) {
   const [open, setOpen] = useState(false);
+  const [charts, setCharts] = useState<Record<number, ChartSection>>({});
+  const [copied, setCopied] = useState<number>();
   const [messages, setMessages] = useState<ChatMessage[]>(restore);
   const history = useRef(messages);
   const [input, setInput] = useState('');
@@ -154,6 +208,7 @@ export function DoctorChat() {
     setStreaming(true);
     let answerIndex: number | undefined;
     let answer = '';
+    let chart: ChartSection | undefined;
     try {
       await streamChat(next, {
         signal: request.signal,
@@ -171,10 +226,20 @@ export function DoctorChat() {
           } else if (event.type === 'tool') {
             if (event.name === 'show_chart') {
               setTool('Showing the chart');
-              if (isChartSection(event.label)) void showChart(event.label);
+              if (isChartSection(event.label)) {
+                chart = event.label;
+                void showChart(event.label);
+              }
             } else setTool(event.label);
           } else if (event.type === 'error') setError(true);
-          else if (event.type === 'done') voice.speak(answer);
+          else if (event.type === 'done') {
+            if (chart && answerIndex !== undefined) {
+              const index = answerIndex,
+                section = chart;
+              setCharts((current) => ({ ...current, [index]: section }));
+            }
+            voice.speak(answer);
+          }
         },
       });
     } catch {
@@ -191,6 +256,54 @@ export function DoctorChat() {
   }
   latestSend.current = send;
 
+  /** Resend the last question after an error, replacing its partial answer. */
+  function retry() {
+    const last = history.current.map((m) => m.role).lastIndexOf('user');
+    if (last < 0) return;
+    const text = history.current[last].text;
+    update(history.current.slice(0, last));
+    void send(text);
+  }
+  function copy(index: number, text: string) {
+    void navigator.clipboard
+      ?.writeText(text)
+      .then(() => {
+        setCopied(index);
+        setTimeout(
+          () => setCopied((value) => (value === index ? undefined : value)),
+          1500,
+        );
+      })
+      .catch(() => {});
+  }
+  // Auto-grow the composer up to its CSS max height.
+  useEffect(() => {
+    const box = textarea.current;
+    if (!box) return;
+    box.style.height = 'auto';
+    box.style.height = `${box.scrollHeight}px`;
+  }, [input, open]);
+  // On wide screens the page makes room for the panel instead of hiding under it.
+  useEffect(() => {
+    document.documentElement.classList.toggle('doctor-chat-open', open);
+    return () => document.documentElement.classList.remove('doctor-chat-open');
+  }, [open]);
+  const who = patient?.trim() || 'this patient';
+  const voiceOn = voice.mode !== 'off';
+  const voiceLabel =
+    voice.mode === 'connecting'
+      ? 'Connecting to Gemini Live…'
+      : voice.status === 'speaking'
+        ? voice.mode === 'live'
+          ? 'Gemini is speaking'
+          : 'Reading the answer aloud'
+        : voice.mode === 'live'
+          ? 'Listening · speak or type'
+          : 'Dictating · speak your question';
+  const lastModel = messages.map((m) => m.role).lastIndexOf('model');
+  const waiting =
+    streaming && !tool && messages[messages.length - 1]?.role === 'user';
+
   return (
     <div className="doctor-chat no-print">
       <button
@@ -201,6 +314,9 @@ export function DoctorChat() {
         onClick={() => setOpen(true)}
         hidden={open}
       >
+        <span className="doctor-chat-avatar" aria-hidden="true">
+          <Icon name="sparkle" />
+        </span>
         Ask about this patient
       </button>
       {open && (
@@ -217,13 +333,32 @@ export function DoctorChat() {
           }}
         >
           <header className="doctor-chat-header">
-            <div>
-              <h2 id={`${panelId}-title`}>Ask Gemini</h2>
+            <span className="doctor-chat-avatar" aria-hidden="true">
+              <Icon name="sparkle" />
+            </span>
+            <div className="doctor-chat-titles">
+              <h2 id={`${panelId}-title`}>
+                Ask Gemini {demo && <DemoBadge />}
+              </h2>
               <p>Read-only · estimates, not medical advice</p>
             </div>
-            <button onClick={close} aria-label="Close chat">
-              Close
-            </button>
+            <IconButton
+              icon="plus"
+              label="New chat"
+              size="sm"
+              title="New chat"
+              disabled={messages.length === 0 && !error && !input}
+              onClick={() => {
+                stop();
+                voice.stop();
+                update([]);
+                setCharts({});
+                setInput('');
+                setError(false);
+                textarea.current?.focus();
+              }}
+            />
+            <IconButton icon="x" label="Close chat" size="sm" onClick={close} />
           </header>
           <div
             className="doctor-chat-log"
@@ -232,39 +367,149 @@ export function DoctorChat() {
             aria-label="Patient conversation"
             ref={log}
           >
-            {messages.map((message, index) => (
-              <div
-                className={`doctor-chat-message doctor-chat-message-${message.role}`}
-                key={index}
-              >
-                <span className="doctor-chat-role">
-                  {message.role === 'user' ? 'You' : 'Gemini'}
-                </span>
-                <p>{message.text}</p>
-              </div>
-            ))}
             {messages.length === 0 && (
+              <div className="doctor-chat-empty">
+                <p className="doctor-chat-intro">
+                  Ask about <strong>{who}</strong>: practice, movement,
+                  check-ins and safety events. Answers come only from the stored
+                  records.
+                </p>
+                <div
+                  className="doctor-chat-suggestions"
+                  aria-label="Suggested questions"
+                >
+                  {suggestions.map((question) => (
+                    <button key={question} onClick={() => void send(question)}>
+                      <span>{question}</span>
+                      <Icon name="arrow-right" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {messages.map((message, index) =>
+              message.role === 'user' ? (
+                <div
+                  className="doctor-chat-message doctor-chat-message-user"
+                  key={index}
+                >
+                  <span className="sr-only">You: </span>
+                  <p>{message.text}</p>
+                </div>
+              ) : (
+                <div
+                  className="doctor-chat-message doctor-chat-message-model"
+                  key={index}
+                >
+                  <span className="doctor-chat-role">
+                    <Icon name="sparkle" size="1em" /> Gemini
+                  </span>
+                  <Answer
+                    text={message.text}
+                    caret={streaming && index === lastModel}
+                  />
+                  {!(streaming && index === lastModel) && (
+                    <div className="doctor-chat-message-actions">
+                      {charts[index] && (
+                        <button
+                          type="button"
+                          className="doctor-chat-chip"
+                          onClick={() => void showChart(charts[index])}
+                        >
+                          <Icon name="chart" size="1em" />
+                          {CHART_NAMES[charts[index]]}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="doctor-chat-chip doctor-chat-chip--quiet"
+                        onClick={() => copy(index, message.text)}
+                      >
+                        <Icon
+                          name={copied === index ? 'check' : 'copy'}
+                          size="1em"
+                        />
+                        {copied === index ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ),
+            )}
+            {waiting && (
               <div
-                className="doctor-chat-suggestions"
-                aria-label="Suggested questions"
+                className="doctor-chat-thinking"
+                aria-label="Gemini is thinking"
               >
-                {suggestions.map((question) => (
-                  <button key={question} onClick={() => void send(question)}>
-                    {question}
-                  </button>
-                ))}
+                <span />
+                <span />
+                <span />
               </div>
             )}
             {tool && (
               <p className="doctor-chat-status" role="status">
+                <span className="ds-spinner" aria-hidden="true" />
                 {tool}
               </p>
             )}
+            {error && (
+              <div className="doctor-chat-error" role="alert">
+                <Icon name="caution" />
+                <p>{unavailable}</p>
+                <button
+                  type="button"
+                  className="doctor-chat-chip"
+                  onClick={retry}
+                >
+                  <Icon name="refresh" size="1em" />
+                  Try again
+                </button>
+              </div>
+            )}
           </div>
-          {error && (
-            <p className="doctor-chat-error" role="alert">
-              {unavailable}
-            </p>
+          {(voiceOn || voice.fallback) && (
+            <div
+              className="doctor-chat-voice"
+              data-state={voice.mode === 'off' ? 'off' : voice.status}
+            >
+              {voiceOn && (
+                <div className="doctor-chat-voice-row">
+                  <span className="doctor-chat-bars" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                  <span className="doctor-chat-voice-label">{voiceLabel}</span>
+                  <button
+                    type="button"
+                    className="doctor-chat-chip doctor-chat-chip--quiet"
+                    onClick={() => voice.stop()}
+                  >
+                    End voice
+                  </button>
+                </div>
+              )}
+              {voice.fallback && (
+                <p id={`${panelId}-voice-note`} className="doctor-chat-note">
+                  {voice.unsupported
+                    ? 'Live voice unavailable. Dictation is not supported in this browser.'
+                    : 'Live voice unavailable, using dictation.'}
+                </p>
+              )}
+              {voice.fallback && globalThis.speechSynthesis && (
+                <label className="doctor-chat-read-aloud">
+                  <input
+                    type="checkbox"
+                    checked={voice.readAloud}
+                    onChange={(event) => {
+                      voice.setReadAloud(event.target.checked);
+                      if (!event.target.checked) speechSynthesis.cancel();
+                    }}
+                  />
+                  Read answers aloud
+                </label>
+              )}
+            </div>
           )}
           <form
             className="doctor-chat-composer"
@@ -273,61 +518,43 @@ export function DoctorChat() {
               void send();
             }}
           >
-            <label htmlFor={`${panelId}-input`}>
+            <label htmlFor={`${panelId}-input`} className="sr-only">
               Ask about the patient’s records
             </label>
-            <textarea
-              id={`${panelId}-input`}
-              ref={textarea}
-              rows={3}
-              value={input}
-              maxLength={4000}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (
-                  event.key === 'Enter' &&
-                  !event.shiftKey &&
-                  !event.nativeEvent.isComposing
-                ) {
-                  event.preventDefault();
-                  void send();
+            <div className="doctor-chat-field">
+              <textarea
+                id={`${panelId}-input`}
+                ref={textarea}
+                rows={1}
+                value={input}
+                maxLength={4000}
+                placeholder={
+                  voice.mode === 'live'
+                    ? 'Speak, or type a question…'
+                    : 'Ask about the records…'
                 }
-              }}
-            />
-            <div className="doctor-chat-actions">
-              <button
-                type="submit"
-                className="doctor-chat-send"
-                disabled={
-                  !input.trim() || streaming || voice.mode === 'connecting'
-                }
-              >
-                Send
-              </button>
-              {streaming && (
-                <button type="button" onClick={stop}>
-                  Stop
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  stop();
-                  voice.stop();
-                  update([]);
-                  setInput('');
-                  setError(false);
-                  textarea.current?.focus();
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === 'Enter' &&
+                    !event.shiftKey &&
+                    !event.nativeEvent.isComposing
+                  ) {
+                    event.preventDefault();
+                    void send();
+                  }
                 }}
-              >
-                New chat
-              </button>
+              />
               <button
                 type="button"
+                className="doctor-chat-round doctor-chat-mic"
+                data-state={voice.mode === 'off' ? 'off' : voice.status}
                 disabled={
                   voice.unsupported || (streaming && voice.mode === 'off')
                 }
-                aria-pressed={voice.mode !== 'off'}
+                aria-pressed={voiceOn}
+                aria-label={`Mic ${voice.mode === 'connecting' ? 'connecting' : voice.status}`}
+                title={voiceOn ? 'End voice' : 'Talk to Gemini'}
                 aria-describedby={
                   voice.fallback ? `${panelId}-voice-note` : undefined
                 }
@@ -336,29 +563,33 @@ export function DoctorChat() {
                   else voice.stop();
                 }}
               >
-                Mic {voice.mode === 'connecting' ? 'connecting' : voice.status}
+                <Icon name={voiceOn ? 'mic' : 'mic-off'} />
               </button>
+              {streaming ? (
+                <button
+                  type="button"
+                  className="doctor-chat-round doctor-chat-send"
+                  aria-label="Stop"
+                  title="Stop"
+                  onClick={stop}
+                >
+                  <Icon name="stop" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  className="doctor-chat-round doctor-chat-send"
+                  aria-label="Send"
+                  title="Send"
+                  disabled={!input.trim() || voice.mode === 'connecting'}
+                >
+                  <Icon name="arrow-up" />
+                </button>
+              )}
             </div>
-            {voice.fallback && (
-              <p id={`${panelId}-voice-note`} className="doctor-chat-status">
-                {voice.unsupported
-                  ? 'Live voice unavailable. Dictation is not supported in this browser.'
-                  : 'Live voice unavailable, using dictation.'}
-              </p>
-            )}
-            {voice.fallback && globalThis.speechSynthesis && (
-              <label className="doctor-chat-read-aloud">
-                <input
-                  type="checkbox"
-                  checked={voice.readAloud}
-                  onChange={(event) => {
-                    voice.setReadAloud(event.target.checked);
-                    if (!event.target.checked) speechSynthesis.cancel();
-                  }}
-                />
-                Read answers aloud
-              </label>
-            )}
+            <p className="doctor-chat-hint" aria-hidden="true">
+              Enter to send · Shift+Enter for a new line
+            </p>
           </form>
         </section>
       )}

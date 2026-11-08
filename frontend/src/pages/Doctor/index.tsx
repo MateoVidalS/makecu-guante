@@ -322,7 +322,7 @@ export default function Doctor() {
       <div data-chat-section="evaluations">
         <EvaluationList />
       </div>
-      <DoctorChat />
+      <DoctorChat patient={profile.data?.pseudonym} demo={hasDemo} />
     </section>
   );
 }

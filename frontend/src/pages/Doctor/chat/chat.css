@@ -1,162 +1,500 @@
+/* Doctor chat: a quiet side panel in the Doctor view (spec §3, doctor control size 36 px). */
+:root {
+  --doctor-chat-width: calc(var(--content-max) * 0.35);
+}
 .doctor-chat {
-  --chat-control: calc(var(--space-32) + var(--space-4));
-  --chat-width: calc(var(--content-max) * 0.35);
+  --chat-control: var(--control-sm);
   color: var(--text);
   font-size: var(--small);
 }
+/* Doctor-sized controls: opt out of the 64 px patient minimum on bare buttons. */
 .doctor-chat button {
-  min-height: var(--chat-control);
-  padding: var(--space-4) var(--space-12);
-  border: var(--control-border) solid var(--border-strong);
-  border-radius: var(--radius-input);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
+  min-height: 0;
 }
-.doctor-chat button:disabled {
-  color: var(--muted);
-  cursor: default;
-}
-.doctor-chat button:focus-visible,
-.doctor-chat textarea:focus-visible,
-.doctor-chat input:focus-visible {
+.doctor-chat :focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
+
+/* ---------- Launcher ---------- */
 .doctor-chat-launcher {
   position: fixed;
   inset-block-end: var(--space-24);
   inset-inline-end: var(--space-24);
   z-index: var(--z-toast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--control-md);
+  padding: var(--space-4) var(--space-16) var(--space-4) var(--space-4);
+  border: var(--control-border) solid var(--accent);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
   box-shadow: var(--elevation-overlay);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.doctor-chat-launcher:hover {
+  background: var(--accent-soft);
+  transform: translateY(calc(var(--space-4) * -0.5));
 }
 .doctor-chat-launcher[hidden] {
   display: none;
 }
+
+/* The sparkle badge used by the launcher, the header and each answer. */
+.doctor-chat-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--chat-control);
+  height: var(--chat-control);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ---------- Panel ---------- */
 .doctor-chat-panel {
   position: fixed;
   inset-block: 0;
   inset-inline-end: 0;
   z-index: var(--z-dialog);
-  width: min(100%, var(--chat-width));
+  width: min(100%, var(--doctor-chat-width));
   height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border-inline-start: var(--control-border) solid var(--border);
   box-shadow: var(--elevation-overlay);
+  animation: doctor-chat-in var(--dur) var(--ease);
 }
+@keyframes doctor-chat-in {
+  from {
+    transform: translateX(var(--space-24));
+    opacity: 0;
+  }
+}
+/* Wide screens: the report makes room for the panel instead of hiding under it. */
+@media (min-width: 64rem) {
+  :root.doctor-chat-open .shell {
+    padding-inline-end: var(--doctor-chat-width);
+  }
+}
+
 .doctor-chat-header {
   display: flex;
-  align-items: start;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--space-12);
-  padding: var(--space-16);
+  padding: var(--space-12) var(--space-12) var(--space-12) var(--space-16);
   border-block-end: var(--control-border) solid var(--border);
 }
-.doctor-chat-header h2 {
-  margin: 0;
-  font-size: var(--h3);
+.doctor-chat-titles {
+  flex: 1;
+  min-width: 0;
 }
-.doctor-chat-header p,
-.doctor-chat-status,
-.doctor-chat-role {
-  margin: var(--space-4) 0 0;
+.doctor-chat-header h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0;
+  font-size: var(--body);
+}
+.doctor-chat-header p {
+  margin: 0;
   font-size: var(--caption);
   color: var(--muted);
 }
+
+/* ---------- Conversation ---------- */
 .doctor-chat-log {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
   padding: var(--space-16);
 }
-.doctor-chat-message {
-  padding: var(--space-12);
-  margin-block-end: var(--space-12);
-  border-radius: var(--radius-card);
-  background: var(--surface-2);
-  overflow-wrap: anywhere;
+.doctor-chat-empty {
+  display: grid;
+  gap: var(--space-16);
+  margin-block: auto;
 }
-.doctor-chat-message-user {
-  margin-inline-start: var(--space-24);
-  background: var(--accent-soft);
-}
-.doctor-chat-message-model {
-  margin-inline-end: var(--space-24);
-}
-.doctor-chat-message p {
-  margin: var(--space-4) 0 0;
-  white-space: pre-wrap;
+.doctor-chat-intro {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
 }
 .doctor-chat-suggestions {
   display: grid;
   gap: var(--space-8);
 }
 .doctor-chat-suggestions button {
-  text-align: start;
-  font-size: var(--small);
-}
-.doctor-chat-error {
-  margin: 0;
-  padding: var(--space-12) var(--space-16);
-  color: var(--caution-text);
-  background: var(--caution-soft);
-}
-.doctor-chat-composer {
-  display: grid;
-  gap: var(--space-8);
-  padding: var(--space-16);
-  border-block-start: var(--control-border) solid var(--border);
-}
-.doctor-chat-composer > label {
-  font-size: var(--caption);
-}
-.doctor-chat-composer textarea {
-  box-sizing: border-box;
-  width: 100%;
-  resize: vertical;
-  max-height: 30dvh;
-  padding: var(--space-8);
-  border: var(--control-border) solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  min-height: var(--control-md);
+  padding: var(--space-8) var(--space-12);
+  border: var(--control-border) solid var(--border);
   border-radius: var(--radius-input);
-  font: inherit;
-  color: var(--text);
   background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
 }
-.doctor-chat-actions {
+.doctor-chat-suggestions button svg {
+  flex: none;
+  color: var(--muted);
+}
+.doctor-chat-suggestions button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.doctor-chat-suggestions button:hover svg {
+  color: var(--accent);
+}
+
+.doctor-chat-message {
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+.doctor-chat-message p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.doctor-chat-message p + p {
+  margin-block-start: var(--space-8);
+}
+.doctor-chat-message-user {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: var(--space-8) var(--space-12);
+  border-radius: var(--radius-card);
+  border-end-end-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+.doctor-chat-message-model {
+  align-self: stretch;
+}
+.doctor-chat-role {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-block-end: var(--space-4);
+  font-size: var(--caption);
+  font-weight: var(--weight-semibold);
+  color: var(--accent);
+}
+.doctor-chat-heading {
+  font-weight: var(--weight-semibold);
+}
+/* While an answer streams in. */
+.doctor-chat-caret {
+  display: inline-block;
+  width: calc(var(--space-4) * 0.5);
+  height: 1.1em;
+  margin-inline-start: calc(var(--space-4) * 0.5);
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: doctor-chat-caret 1s steps(2, jump-none) infinite;
+}
+@keyframes doctor-chat-caret {
+  50% {
+    opacity: 0;
+  }
+}
+.doctor-chat-message-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-8);
+  margin-block-start: var(--space-8);
 }
-.doctor-chat button.doctor-chat-send {
+
+/* Small pill actions: chart link, copy, retry, end voice. */
+.doctor-chat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: calc(var(--control-sm) - var(--space-8));
+  padding: var(--space-4) var(--space-12);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--caption);
+  cursor: pointer;
+}
+.doctor-chat-chip:hover {
+  border-color: var(--accent);
+}
+.doctor-chat-chip--quiet {
+  border-color: transparent;
+  color: var(--muted);
+}
+.doctor-chat-chip--quiet:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.doctor-chat-thinking {
+  display: inline-flex;
+  gap: var(--space-4);
+  padding: var(--space-8) 0;
+}
+.doctor-chat-thinking span {
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--muted);
+  animation: doctor-chat-dot 1.2s var(--ease) infinite;
+}
+.doctor-chat-thinking span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.doctor-chat-thinking span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes doctor-chat-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: none;
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(calc(var(--space-4) * -1));
+  }
+}
+.doctor-chat-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  align-self: flex-start;
+  margin: 0;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  font-size: var(--caption);
+  color: var(--muted);
+}
+.doctor-chat-error {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-4) var(--space-8);
+  padding: var(--space-12);
+  border-radius: var(--radius-input);
+  color: var(--caution-text);
+  background: var(--caution-soft);
+}
+.doctor-chat-error p {
+  margin: 0;
+}
+.doctor-chat-error .doctor-chat-chip {
+  grid-column: 2;
+  justify-self: start;
+}
+
+/* ---------- Voice bar ---------- */
+.doctor-chat-voice {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
+  border-block-start: var(--control-border) solid var(--border);
+  background: var(--surface-2);
+}
+.doctor-chat-voice-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.doctor-chat-voice-label {
+  flex: 1;
+  font-weight: var(--weight-semibold);
+}
+.doctor-chat-bars {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-4) * 0.5);
+  height: var(--space-16);
+}
+.doctor-chat-bars span {
+  width: calc(var(--space-4) * 0.75);
+  height: 40%;
+  border-radius: var(--radius-pill);
   background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
 }
-.doctor-chat button[aria-pressed='true'] {
-  background: var(--accent-soft);
-  border-color: var(--accent);
+.doctor-chat-voice[data-state='listening'] .doctor-chat-bars span {
+  animation: doctor-chat-bar 1.4s var(--ease) infinite;
+}
+.doctor-chat-voice[data-state='speaking'] .doctor-chat-bars span {
+  animation: doctor-chat-bar 0.7s var(--ease) infinite;
+}
+.doctor-chat-bars span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.doctor-chat-bars span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes doctor-chat-bar {
+  0%,
+  100% {
+    height: 30%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+.doctor-chat-note {
+  margin: 0;
+  font-size: var(--caption);
+  color: var(--caution-text);
 }
 .doctor-chat-read-aloud {
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  min-height: var(--chat-control);
+  font-size: var(--caption);
 }
 .doctor-chat-read-aloud input {
   accent-color: var(--accent);
 }
+
+/* ---------- Composer ---------- */
+.doctor-chat-composer {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-12) var(--space-16) var(--space-16);
+  border-block-start: var(--control-border) solid var(--border);
+}
+.doctor-chat-field {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: var(--control-border) solid var(--border-strong);
+  border-radius: calc(var(--radius-input) * 2);
+  background: var(--surface);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.doctor-chat-field:focus-within {
+  border-color: var(--accent);
+}
+.doctor-chat-field textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--chat-control);
+  max-height: 30dvh;
+  box-sizing: border-box;
+  padding: var(--space-8);
+  border: 0;
+  resize: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.4;
+}
+.doctor-chat-field textarea:focus-visible {
+  outline: none;
+}
+.doctor-chat-round {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--chat-control);
+  height: var(--chat-control);
+  min-height: var(--chat-control);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+.doctor-chat-round:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.doctor-chat-round:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.doctor-chat-send {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.doctor-chat-send:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+}
+.doctor-chat-mic[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.doctor-chat-mic[data-state='listening'] {
+  box-shadow: 0 0 0 var(--focus-width) var(--accent-soft);
+  animation: doctor-chat-ring 1.6s var(--ease) infinite;
+}
+@keyframes doctor-chat-ring {
+  50% {
+    box-shadow: 0 0 0 calc(var(--focus-width) * 3) var(--accent-soft);
+  }
+}
+.doctor-chat-hint {
+  margin: 0;
+  padding-inline: var(--space-8);
+  font-size: var(--caption);
+  color: var(--muted);
+}
+
+/* show_chart: the section the answer points to. */
 .doctor-chat-highlight {
   outline: var(--focus-width) solid var(--accent);
   outline-offset: var(--focus-offset);
+  border-radius: var(--radius-card);
+  transition: outline-color var(--dur-slow) var(--ease);
 }
+
 /* Media query boundaries cannot reference CSS custom properties. */
 @media (max-width: 40rem) {
   .doctor-chat-panel {
     width: 100%;
+  }
+  .doctor-chat-launcher {
+    inset-block-end: var(--space-16);
+    inset-inline-end: var(--space-16);
+  }
+  .doctor-chat-hint {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .doctor-chat-panel,
+  .doctor-chat-caret,
+  .doctor-chat-thinking span,
+  .doctor-chat-bars span,
+  .doctor-chat-mic[data-state='listening'] {
+    animation: none;
+  }
+  .doctor-chat-launcher:hover {
+    transform: none;
   }
 }
 @media print {
