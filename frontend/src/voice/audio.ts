@@ -21,6 +21,10 @@ export class BrowserAudio implements VoiceAudio {
   private player?: AudioWorkletNode;
   private muted = false;
   private generation = 0;
+  /** True while queued reply audio is still playing. */
+  playing = false;
+  /** Called when queued reply audio has finished playing. */
+  onIdle?: () => void;
   async open(send: (data: string) => void) {
     this.close();
     const generation = this.generation;
@@ -46,6 +50,12 @@ export class BrowserAudio implements VoiceAudio {
     if (generation !== this.generation) return;
     this.capture = new AudioWorkletNode(context, 'voice-capture');
     this.player = new AudioWorkletNode(context, 'voice-player');
+    this.player.port.onmessage = ({ data }: MessageEvent<unknown>) => {
+      if (data === 'idle') {
+        this.playing = false;
+        this.onIdle?.();
+      }
+    };
     this.capture.port.onmessage = ({ data }: MessageEvent<ArrayBuffer>) => {
       if (!this.muted) send(encodePCM(data));
     };
@@ -56,10 +66,12 @@ export class BrowserAudio implements VoiceAudio {
     this.setMuted(this.muted);
   }
   play(data: string) {
+    if (this.player) this.playing = true;
     const buffer = decodePCM(data);
     this.player?.port.postMessage(buffer, [buffer]);
   }
   flush() {
+    this.playing = false;
     this.player?.port.postMessage('flush');
   }
   setMuted(muted: boolean) {
@@ -70,6 +82,7 @@ export class BrowserAudio implements VoiceAudio {
   }
   close() {
     this.generation++;
+    this.playing = false;
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = undefined;
     this.capture?.disconnect();
