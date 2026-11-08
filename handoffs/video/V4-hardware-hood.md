@@ -37,3 +37,20 @@ Leave the bottom 180 px free while VO plays (captions).
 - [ ] `HardwareTurntable` renders all parts, deterministic per frame (no `Math.random`, no wall-clock), works inside `scene-reveal`.
 - [ ] `scene-underHood` renders; stills in `evidence/V4/` (turntable at 3 angles + exploded, system strip, layers, numbers).
 - [ ] `pnpm check` green; render time per frame for the turntable reported in the PR.
+
+## 3. Build montage (added): `src/scenes/Build.tsx`, 288 f (4 bars), placed right before UnderHood
+The owner loves the 3D assembly. Show the glove being built, one part per beat (18 f), camera slowly orbiting, on paper.
+VO `build-1` at f 18: "Five micro servos wind thin threads over the back of each finger. A current sensor feels every pull."
+Only the **real** build (hardware/BANCO.md, hardware/ARREGLOS.md). **There is no LED ring. Do not draw one.**
+1. Wrist module (`modulo_muneca.stl`) settles in.
+2. Five micro servos drop into their slots, one per beat (procedural: SG90-style body 23×12×22 mm with mounting tabs, output
+   shaft, a dark blue-grey/black plastic; slight model variety is fine, real ones are mixed SG92R, MG90S, Smraza S51).
+3. Spools (`carrete.stl`) seat on the horns.
+4. Electronics beside the module: ESP32 DevKit 30-pin (board ~51×28 mm, the silver can and pin headers), the INA219 breakout (small
+   purple/blue board, keep it neutral dark), a tactile STOP push button. Procedural boxes with simple detail are enough.
+5. Cables route: each servo's 3-wire lead (brown, red, orange) draws along a smooth tube path to the board (TubeGeometry on a
+   CatmullRom curve, growing with the frame). Keep wire colors true; they are not state colors.
+6. Lid (`tapa.stl`) closes.
+7. Threads: five thin dark lines run out of the module over a **ghost hand** (target style, c.target outline, no fill), through the
+   black guides on the backs of the phalanges to the yellow fingertip anchors. End on that frame.
+Deterministic per frame; reuse the turntable's lights/materials. Stills in `evidence/V4/` at each step.

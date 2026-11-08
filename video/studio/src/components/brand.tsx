@@ -38,7 +38,7 @@ export const Mark: React.FC<{ size: number; ghost?: number; reach?: number; tile
 export type BadgeKind = 'simulated' | 'demoData' | 'illustrative';
 
 const BADGE_TEXT: Record<BadgeKind, string> = {
-  simulated: 'Simulated glove and camera',
+  simulated: 'Simulated device and camera',
   demoData: 'Demo data',
   illustrative: 'Illustrative scene',
 };
@@ -108,7 +108,7 @@ export const Words: React.FC<{
   const frame = useCurrentFrame();
   const words = text.split(' ');
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: '0.28em', ...style }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: Math.round(type[size] * 0.27), ...style }}>
       {words.map((word, i) => {
         const t = interpolate(frame - start - i * stagger, [0, 9], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: ease });
         const key = word.replace(/[.,!?]/g, '').toLowerCase();
