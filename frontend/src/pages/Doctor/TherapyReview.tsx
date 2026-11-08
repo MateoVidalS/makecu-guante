@@ -64,6 +64,7 @@ export function TherapyReview({ sessions }: { sessions: Session[] }) {
   });
   return (
     <DataSection
+      className="report-therapy"
       title="Reported feelings and coach decisions"
       demo={sessions.some((s) => s.is_demo)}
       description="Patient reports, 0–10. Session means; gaps mean no check-in. Demo points are hollow."

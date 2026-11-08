@@ -1,69 +1,22 @@
 import { http, HttpResponse } from 'msw';
-import * as fixtures from '../contracts/fixtures.check';
+import { createDemoState } from './demo';
+import { GLOVE_FINGERS } from '../contracts/glove';
+import type { Profile } from '../contracts/api';
+import type { CoachDecision, FeelingEntry } from '../contracts/therapist';
 import type {
-  Profile,
   Session,
-  SessionDetail,
   CalibrationIn,
   SessionIn,
   Evaluation,
   EvaluationIn,
   SummaryIn,
-  Summary,
   TranscriptLine,
 } from '../contracts/api';
 import type { Calibration } from '../contracts/calibration';
-import type {
-  AttemptResult,
-  AttemptTrace,
-  SessionSummary,
-} from '../contracts/engine';
+import type { AttemptResult, SessionSummary } from '../contracts/engine';
 
-const clone = <T>(value: T): T => structuredClone(value);
 const now = () => new Date().toISOString();
-export function createMockState() {
-  return {
-    profile: clone(fixtures.profile) as Profile,
-    calibrations: [clone(fixtures.calibration)] as Calibration[],
-    sessions: clone(fixtures.sessions) as Session[],
-    details: Object.fromEntries(
-      fixtures.sessions.map((s) => {
-        const attempt = clone(fixtures.session_detail.attempts[0]);
-        attempt.id = s.id === 8 ? 1 : s.id + 1;
-        attempt.session_id = s.id;
-        attempt.started_at = s.started_at;
-        attempt.ended_at = s.ended_at!;
-        attempt.active_ratio = s.summary!.active_ratio_mean;
-        for (const f of attempt.fingers) {
-          const metric = s.summary!.per_finger.find(
-            (m) => m.finger === f.finger,
-          );
-          if (metric) {
-            f.active_max = metric.active_max_mean;
-            f.assist_needed = metric.assist_needed_mean;
-          }
-        }
-        return [
-          s.id,
-          {
-            ...clone(s),
-            attempts: [attempt],
-            transcript:
-              s.id === 8 ? clone(fixtures.session_detail.transcript) : [],
-          },
-        ];
-      }),
-    ) as Record<number, SessionDetail>,
-    traces: Object.fromEntries(
-      Array.from({ length: 8 }, (_, i) => [
-        i + 1,
-        clone(fixtures.attempt_trace),
-      ]),
-    ) as Record<number, AttemptTrace>,
-    evaluations: clone(fixtures.evaluations) as Evaluation[],
-    summaries: clone(fixtures.summaries) as Summary[],
-  };
-}
+export const createMockState = createDemoState;
 export let mockState = createMockState();
 export const resetMocks = () => {
   mockState = createMockState();
@@ -80,6 +33,70 @@ const unavailable = (code: string) =>
   );
 const nextId = (items: { id: number }[]) =>
   Math.max(0, ...items.map((x) => x.id)) + 1;
+const orderedSessions = () =>
+  [...mockState.sessions].sort((a, b) =>
+    a.started_at.localeCompare(b.started_at),
+  );
+const mean = (values: number[]) =>
+  values.reduce((sum, value) => sum + value, 0) / values.length;
+
+/** Same grouping and scored/null rules as backend/app/db/repo.py. */
+export function historyRom(
+  finger: string | null = null,
+  pose: string | null = null,
+) {
+  return orderedSessions().flatMap((s) =>
+    GLOVE_FINGERS.flatMap((f) => {
+      if (finger && f !== finger) return [];
+      const values = (mockState.details[s.id]?.attempts ?? [])
+        .filter((a) => !pose || a.pose === pose)
+        .flatMap((a) =>
+          a.fingers
+            .filter((m) => m.finger === f && m.scored && m.active_max !== null)
+            .map((m) => m.active_max!),
+        );
+      return values.length
+        ? [
+            {
+              session_id: s.id,
+              started_at: s.started_at,
+              finger: f,
+              pose,
+              active_max_mean: mean(values),
+              is_demo: s.is_demo,
+            },
+          ]
+        : [];
+    }),
+  );
+}
+export function historyAssist() {
+  return orderedSessions().flatMap((s) =>
+    GLOVE_FINGERS.flatMap((f) => {
+      const values = (mockState.details[s.id]?.attempts ?? []).flatMap((a) =>
+        a.fingers
+          .filter((m) => m.finger === f && m.scored && m.assist_needed !== null)
+          .map((m) => ({
+            need: m.assist_needed!,
+            helped: a.assisted && m.assist_needed! > 0 ? 1 : 0,
+          })),
+      );
+      return values.length
+        ? [
+            {
+              session_id: s.id,
+              started_at: s.started_at,
+              finger: f,
+              assist_needed_mean: mean(values.map((m) => m.need)),
+              assisted_rate: mean(values.map((m) => m.helped)),
+              is_demo: s.is_demo,
+            },
+          ]
+        : [];
+    }),
+  );
+}
+
 export const handlers = [
   http.get('/api/health', () =>
     HttpResponse.json({ ok: true, version: '0.1.0', gemini: false }),
@@ -126,7 +143,13 @@ export const handlers = [
       n_attempts: 0,
     };
     mockState.sessions.unshift(s);
-    mockState.details[s.id] = { ...s, attempts: [], transcript: [] };
+    mockState.details[s.id] = {
+      ...s,
+      attempts: [],
+      transcript: [],
+      coach_decisions: [],
+      feelings: [],
+    };
     return HttpResponse.json(s);
   }),
   http.get('/api/sessions/:id', ({ params }) =>
@@ -186,6 +209,29 @@ export const handlers = [
     detail.transcript.push(...lines);
     return new HttpResponse(null, { status: 204 });
   }),
+  http.post(
+    '/api/sessions/:id/coach_decisions',
+    async ({ params, request }) => {
+      const detail = mockState.details[Number(params.id)];
+      if (!detail) return missing();
+      const { decisions } = (await request.json()) as {
+        decisions: CoachDecision[];
+      };
+      detail.coach_decisions.push(
+        ...decisions.map((d) => ({ ...d, session_id: detail.id })),
+      );
+      return new HttpResponse(null, { status: 204 });
+    },
+  ),
+  http.post('/api/sessions/:id/feelings', async ({ params, request }) => {
+    const detail = mockState.details[Number(params.id)];
+    if (!detail) return missing();
+    const { feelings } = (await request.json()) as { feelings: FeelingEntry[] };
+    detail.feelings.push(
+      ...feelings.map((f) => ({ ...f, session_id: detail.id })),
+    );
+    return new HttpResponse(null, { status: 204 });
+  }),
   http.get('/api/evaluations', () => HttpResponse.json(mockState.evaluations)),
   http.get('/api/evaluations/:id', ({ params }) => {
     const e = mockState.evaluations.find((e) => e.id === Number(params.id));
@@ -205,77 +251,44 @@ export const handlers = [
     const sorted = [...mockState.sessions].sort((a, b) =>
       a.started_at.localeCompare(b.started_at),
     );
-    const completed = sorted.filter((s) => s.summary);
-    const first = completed[0],
-      last = completed.at(-1);
+    const rom = historyRom(),
+      assist = historyAssist();
+    const today = new Date().toISOString().slice(0, 10);
+    const cutoff = new Date(Date.now() - 6 * 86400000)
+      .toISOString()
+      .slice(0, 10);
     return HttpResponse.json({
       sessions: sorted.length,
       attempts: sorted.reduce((n, s) => n + s.n_attempts, 0),
       evaluations: mockState.evaluations.length,
       days_practiced_last_7: new Set(
         sorted
-          .filter((s) => Date.parse(s.started_at) >= Date.now() - 7 * 86400000)
+          .filter(
+            (s) =>
+              s.started_at.slice(0, 10) >= cutoff &&
+              s.started_at.slice(0, 10) <= today,
+          )
           .map((s) => s.started_at.slice(0, 10)),
       ).size,
       last_session_at: sorted.at(-1)?.started_at ?? null,
-      per_finger: (['thumb', 'index', 'middle', 'ring', 'pinky'] as const).map(
-        (finger) => ({
-          finger,
-          active_max_first:
-            first?.summary?.per_finger.find((f) => f.finger === finger)
-              ?.active_max_mean ?? null,
-          active_max_last:
-            last?.summary?.per_finger.find((f) => f.finger === finger)
-              ?.active_max_mean ?? null,
-          assist_needed_last:
-            last?.summary?.per_finger.find((f) => f.finger === finger)
-              ?.assist_needed_mean ?? null,
-        }),
-      ),
+      per_finger: GLOVE_FINGERS.map((finger) => ({
+        finger,
+        active_max_first:
+          rom.find((p) => p.finger === finger)?.active_max_mean ?? null,
+        active_max_last:
+          rom.filter((p) => p.finger === finger).at(-1)?.active_max_mean ??
+          null,
+        assist_needed_last:
+          assist.filter((p) => p.finger === finger).at(-1)
+            ?.assist_needed_mean ?? null,
+      })),
     });
   }),
   http.get('/api/history/rom', ({ request }) => {
     const q = new URL(request.url).searchParams;
-    const rows = [...mockState.sessions]
-      .sort((a, b) => a.started_at.localeCompare(b.started_at))
-      .flatMap((s) =>
-        (s.summary?.per_finger ?? [])
-          .filter(
-            (f) =>
-              f.active_max_mean !== null &&
-              (!q.get('finger') || f.finger === q.get('finger')) &&
-              (!q.get('pose') || s.plan.some((p) => p.pose === q.get('pose'))),
-          )
-          .map((f) => ({
-            session_id: s.id,
-            started_at: s.started_at,
-            finger: f.finger,
-            pose: s.plan.length === 1 ? s.plan[0].pose : null,
-            active_max_mean: f.active_max_mean,
-            is_demo: s.is_demo,
-          })),
-      );
-    return HttpResponse.json(rows);
+    return HttpResponse.json(historyRom(q.get('finger'), q.get('pose')));
   }),
-  http.get('/api/history/assist', () =>
-    HttpResponse.json(
-      [...mockState.sessions]
-        .sort((a, b) => a.started_at.localeCompare(b.started_at))
-        .flatMap((s) =>
-          (s.summary?.per_finger ?? [])
-            .filter((f) => f.assist_needed_mean !== null)
-            .map((f) => ({
-              session_id: s.id,
-              started_at: s.started_at,
-              finger: f.finger,
-              assist_needed_mean: f.assist_needed_mean,
-              assisted_rate:
-                s.summary!.assisted / Math.max(1, s.summary!.attempts),
-              is_demo: s.is_demo,
-            })),
-        ),
-    ),
-  ),
+  http.get('/api/history/assist', () => HttpResponse.json(historyAssist())),
   http.get('/api/history/resistance', () =>
     HttpResponse.json(
       [...mockState.evaluations]
@@ -305,17 +318,7 @@ export const handlers = [
     const value = (await request.json()) as SummaryIn;
     if (value.kind === 'session' && !mockState.details[value.session_id])
       return missing();
-    const s: Summary = {
-      id: nextId(mockState.summaries),
-      kind: value.kind,
-      session_id: value.kind === 'session' ? value.session_id : null,
-      days: value.kind === 'therapist' ? value.days : null,
-      created_at: now(),
-      model: 'fixture',
-      text: fixtures.summaries.find((s) => s.kind === value.kind)!.text,
-    };
-    mockState.summaries.unshift(s);
-    return HttpResponse.json(s);
+    return unavailable('llm_unavailable');
   }),
   http.post('/api/voice/token', () => unavailable('voice_unavailable')),
   http.get('/api/export', ({ request }) => {
@@ -337,6 +340,10 @@ export const handlers = [
           sessions: mockState.sessions,
           attempts,
           evaluations: mockState.evaluations,
+          coach_decisions: Object.values(mockState.details).flatMap(
+            (s) => s.coach_decisions,
+          ),
+          feelings: Object.values(mockState.details).flatMap((s) => s.feelings),
         });
     return new HttpResponse(payload, {
       headers: {
