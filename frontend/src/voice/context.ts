@@ -82,3 +82,34 @@ export function summaryContext(summary: SessionSummary | null): string {
     `Fingers needing help: ${details || 'none measured'}. Previous active effort: ${pct(summary.previous?.active_ratio_mean)}.`
   );
 }
+
+/** One compact, non-speaking snapshot; unknown measurements remain null. */
+export function liveContext(
+  state: import('../contracts/therapist').LiveTherapyState,
+): string {
+  return (
+    '[live] ' +
+    JSON.stringify({
+      phase: state.phase,
+      pose: state.pose,
+      rep: state.rep,
+      index: state.index,
+      total: state.total,
+      seconds_in_phase: Math.round(state.seconds_in_phase),
+      fingers: state.fingers.map((f) => ({
+        ...f,
+        now: f.now === null ? null : Math.round(f.now * 100),
+        target: f.target === null ? null : Math.round(f.target * 100),
+        best_alone:
+          f.best_alone === null ? null : Math.round(f.best_alone * 100),
+      })),
+      units: 'finger values are percentages',
+      last_attempt: state.last_attempt,
+      adjustments: state.adjustments,
+      last_feeling: state.last_feeling,
+      highlighted_finger: state.highlighted_finger,
+      glove: state.glove,
+      last_safety: state.last_safety,
+    })
+  );
+}
