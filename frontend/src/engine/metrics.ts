@@ -6,7 +6,7 @@ import type {
   FingerAttemptMetrics,
   SessionSummary,
 } from '../contracts/engine';
-import { GLOVE_FINGERS } from '../contracts/glove';
+import { GLOVE_FINGERS, pullFromClosure } from '../contracts/glove';
 import type { GloveFinger } from '../contracts/glove';
 import type { FingerId } from '../contracts/vision';
 import type { EngineInput } from './types';
@@ -78,6 +78,7 @@ export class AttemptMetrics {
     readonly index: number,
     readonly start: number,
     private readonly timestamp: (now: number) => string = isoTime,
+    private readonly tolerance = 0,
   ) {
     this.trace = new TraceBuilder(start);
   }
@@ -139,10 +140,7 @@ export class AttemptMetrics {
         assist_needed:
           best === null || target === null
             ? null
-            : Math.max(
-                0,
-                this.pose.id === 'open' ? best - target : target - best,
-              ),
+            : Math.max(0, best > target + this.tolerance ? best - target : 0),
         final: this.final[f] ?? null,
       };
     });
@@ -153,7 +151,7 @@ export class AttemptMetrics {
           ? 0
           : clamp01(
               this.pose.id === 'open'
-                ? 1 - f.active_max
+                ? pullFromClosure(f.active_max)
                 : f.active_max / f.target!,
             ),
       );

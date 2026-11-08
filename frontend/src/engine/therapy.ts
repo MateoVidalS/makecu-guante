@@ -3,9 +3,13 @@ import type {
   ExerciseSettings,
   ExercisePhase,
 } from '../contracts/engine';
-import { GLOVE_FINGERS } from '../contracts/glove';
+import {
+  GLOVE_FINGERS,
+  pullFromClosure,
+  closureFromPull,
+} from '../contracts/glove';
 import type { FingerId } from '../contracts/vision';
-import { POSES, MAX_ASSIST_CLOSURE } from '../contracts/poses';
+import { POSES, MAX_ASSIST_PULL } from '../contracts/poses';
 import type { PoseDef, PoseId } from '../contracts/poses';
 import { THERAPY_LIMITS } from '../contracts/therapist';
 import type {
@@ -65,11 +69,25 @@ export function shapePose(
   const closure = { ...pose.closure };
   const render = { ...pose.render };
   for (const f of GLOVE_FINGERS) {
-    closure[f] = pose.closure[f] === null ? null : pose.closure[f]! * scales[f];
+    closure[f] =
+      pose.closure[f] === null
+        ? null
+        : pose.id === 'open'
+          ? closureFromPull(pullFromClosure(pose.closure[f]!) * scales[f])
+          : pose.closure[f]! * scales[f];
     render[f] = {
-      mcp: pose.render[f].mcp * scales[f],
-      pip: pose.render[f].pip * scales[f],
-      dip: pose.render[f].dip * scales[f],
+      mcp:
+        pose.id === 'open'
+          ? POSES.full_fist.render[f].mcp * closure[f]!
+          : pose.render[f].mcp * scales[f],
+      pip:
+        pose.id === 'open'
+          ? POSES.full_fist.render[f].pip * closure[f]!
+          : pose.render[f].pip * scales[f],
+      dip:
+        pose.id === 'open'
+          ? POSES.full_fist.render[f].dip * closure[f]!
+          : pose.render[f].dip * scales[f],
     };
   }
   return { ...pose, closure, render };
@@ -317,9 +335,15 @@ export class TherapyController implements TherapyApi {
   pose(base: PoseDef): PoseDef {
     const pose = shapePose(base, this.active.target_scale);
     for (const [finger, kinds] of this.activeRaised) {
-      if (kinds.has('further') && (base.closure[finger] ?? 0) > 0) {
-        pose.closure[finger] = this.bounds.intensify_target_max;
-        pose.render[finger] = { ...POSES.full_fist.render[finger] };
+      if (
+        kinds.has('further') &&
+        base.id === 'open' &&
+        base.closure[finger] !== null
+      ) {
+        pose.closure[finger] = closureFromPull(
+          this.bounds.intensify_target_max,
+        );
+        pose.render[finger] = { ...POSES.open.render[finger] };
       }
     }
     return pose;
@@ -327,7 +351,7 @@ export class TherapyController implements TherapyApi {
   targetCap(finger: FingerId) {
     return this.activeRaised.get(finger)?.has('further')
       ? this.bounds.intensify_target_max
-      : MAX_ASSIST_CLOSURE;
+      : MAX_ASSIST_PULL;
   }
   holdSeconds(base: number) {
     return base + this.active.hold_extra_s;
@@ -742,7 +766,7 @@ export class TherapyController implements TherapyApi {
               ? /\b(faster|quicker|rapido|rapida)\b/
               : kind === 'hold_longer'
                 ? /\b(longer|hold|tiempo|manten)\b/
-                : /\b(more|further|farther|closer|close|bend|mas|cierra|cerrar)\b/;
+                : /\b(open|wider|stretch|straighten|abrir|abri|estirar)\b/;
         if (!consentWords.test(quote))
           return reject(
             'Ask the patient for a clear request or yes before raising intensity.',
@@ -769,9 +793,9 @@ export class TherapyController implements TherapyApi {
         if (
           target === null ||
           target === undefined ||
-          (kind === 'further' && target <= 0)
+          (kind === 'further' && state.pose !== 'open')
         )
-          return reject('This pose has no closing target for that finger.');
+          return reject('The glove can only help this finger open.');
         const previousRaised = cloneRaised(this.raised);
         const previousPending = new Map(this.intensityPending);
         const previousSpeed = this.desired.assist_speed[finger];
@@ -902,7 +926,7 @@ export class TherapyController implements TherapyApi {
           return reject('Change each finger only once per attempt.');
         if (!this.context.assistNow(finger))
           return reject(
-            'Help requires enabled assistance, a visible hand, safe glove telemetry and an unreached target.',
+            'Help requires enabled assistance, a visible hand, safe glove telemetry and a finger that needs help opening.',
           );
         this.changed.add(`${state.index}:${finger}`);
         return this.decision(

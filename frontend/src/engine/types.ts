@@ -81,6 +81,8 @@ export interface EngineOptions {
   onTherapyOutput?: (out: Output) => void;
   timestamp?: (now: number) => string;
   /** Bench-measured stall currents can replace the provisional engine profiles. */
+  /** Current firmware info.limit, when it differs from the calibration limit. */
+  currentLimitMa?: number;
   servoProfiles?: Partial<
     Record<
       GloveFinger,
