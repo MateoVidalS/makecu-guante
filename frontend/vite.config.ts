@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
+  cacheDir: process.env.REHAB_VITE_CACHE_DIR ?? 'node_modules/.vite',
+  optimizeDeps: { include: ['@mediapipe/tasks-vision'] },
   server: {
     port: Number(process.env.REHAB_FRONTEND_PORT ?? 5173),
     strictPort: true,
@@ -12,5 +14,10 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     restoreMocks: true,
+    // Shared hosts can extend runner/UI-loading waits without changing assertions.
+    testTimeout: Number(process.env.REHAB_TEST_TIMEOUT_MS ?? 5000),
+    setupFiles: process.env.REHAB_TEST_TIMEOUT_MS
+      ? ['./e2e/test-waits.setup.ts']
+      : [],
   },
 });

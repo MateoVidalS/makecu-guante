@@ -51,3 +51,32 @@ SafetyBanner + local phrase + Resume; "Release glove now" and the relaxed-hand/S
 glove-closed captures; the "Hand relaxed" check and mandatory friction before Evaluate; the current limit; Saving/Saved **as a state**
 (it may hide when healthy, never when Offline); "Demo data" and "estimate" labels; session replay with the current chart; orange =
 glove helped, red = safety only; the A4 Brake control always visible in the live screen.
+
+## 5. Outcome (Nov 8)
+
+All four packages were built by Codex workers through Orca handoffs, reviewed by the coordinator, merged into
+`MateoVidalS/rehab-hub` with merge commits, and released to `main`.
+
+| # | Finding | Fixed by | Notes |
+|---|---|---|---|
+| 1 | Invalid calibration was a dead end; pages disagreed on its status | U1 #55, U4 #72 | One `useCalibrationStatus` selector; `CalibrationIssueBanner` deep-links to the exact step; Start disabled with a reason on the plan page |
+| 2 | Target and actual hand hard to tell apart; weak state tint; small hand | U2 #51, U4 #72 | Ghost outline + per-finger blue/orange/green; framing fits the pose family; stage ≥ 55% width at 1440 |
+| 3 | "Pose 1 of 15 · Rep 1" | U4 #72 | Counts poses and reps from the plan; evaluation counts sweeps from the selected fingers |
+| 4 | "Saved" and demo tools in the patient view | U4 #72 | Hidden while healthy; Offline and slow saves still show; demo tools stay in the setup shell |
+| 5 | Inconsistent safety strips and copy in Calibrate/Evaluate | U1 #55 (+ #53) | Shared `RelaxedHandSafetyStrip`; one secondary simulator shortcut |
+| 6 | Lopsided Setup, Continue far below the fold | U1 #55 | One column; statuses + Continue above the fold; glove and camera have separate busy states; raw preview while the model loads |
+| 7 | Uniform demo data | #58 (backend seed), U3 #69 (MSW) | Mocks are generated from the same story as `make demo-seed`; a parity test prevents drift |
+| 8 | Doctor/History grids with large empty areas | U3 #69 | Content-height cards; print keeps sections together (A4 + Letter) |
+| 9 | Safety banner pushed the live screen off the fold | U4 #72 | Browser test: every phase and safety state fits 1280×720 and 1440×900; Pause/Skip visible but disabled during the banner; Brake always available |
+| 10 | Minimal coach panel | U4 #72 (with A4 #56) | Status + speaking bars, caption, labeled microphone, latest decision + Undo; older decisions in Timeline |
+
+Coordinator review fixes made during the wave: A4's Brake now always releases and pauses even if the therapy API throws (#56);
+A1's scripted runtime keeps its controller private so replacing `runtime.therapy` can't break `start()` (#60); a lint fix in A2 (#52).
+
+Releases to `main`: #54 (U2), #59 (U1), #68 (A1–A4), #71 (U3), and the U4 + A5 release.
+
+### Follow-ups
+- Home shows "Your index range needs a quick redo" twice (hint line above the banner).
+- At 1280×720 the hand renders small inside the wider live stage; tighten U2's fit for the stage size.
+- `mixed-camera-simulator` and `recovery.spec:76` e2e, plus 5 s unit-test timeouts, flake under heavy host load (they pass alone).
+- Contract: add `coach_decisions` and `feelings` to the frontend `SessionDetail` type; add `coach_brake` to `EngineEvent`'s safety sources; make `Runtime.therapy` required.

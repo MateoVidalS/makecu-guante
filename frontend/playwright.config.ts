@@ -8,8 +8,13 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   // Leave CPU headroom for concurrent 3D scenes and wall-time recovery checks.
-  workers: 3,
-  use: { baseURL, trace: 'retain-on-failure', actionTimeout: 10_000 },
+  workers: Number(process.env.REHAB_E2E_WORKERS ?? 3),
+  retries: Number(process.env.REHAB_E2E_RETRIES ?? 0),
+  use: {
+    baseURL,
+    trace: 'retain-on-failure',
+    actionTimeout: Number(process.env.REHAB_TEST_TIMEOUT_MS ?? 10_000),
+  },
   projects: [
     {
       name: 'chromium',
@@ -25,12 +30,15 @@ export default defineConfig({
     },
   ],
   webServer: {
+    // Seeding and the first Vite build share CPU with other integration workers.
+    timeout: 180_000,
     command:
       process.env.REHAB_E2E_MOCK === '1'
         ? 'make -C .. dev-mock'
         : 'make -C .. demo-seed && make -C .. dev-sim',
     env: {
       REHAB_FRONTEND_PORT: frontendPort,
+      REHAB_VITE_CACHE_DIR: join(tmpdir(), `rehab-vite-e2e-${process.pid}`),
       REHAB_PORT: apiPort,
       REHAB_DB_PATH: join(tmpdir(), `rehab-e2e-${process.pid}.db`),
       GEMINI_API_KEY: '',
