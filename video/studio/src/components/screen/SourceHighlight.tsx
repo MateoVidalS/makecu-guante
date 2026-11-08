@@ -1,13 +1,14 @@
 import React from 'react';
 import { interpolate, useCurrentFrame } from 'remotion';
 import { c, ease, radius } from '../../brand/tokens';
-import { mapPoint, targetBox } from './camera';
+import { findEvent, mapPoint } from './camera';
 import { useScreen } from './ScreenFrame';
 
 export const SourceHighlight: React.FC<{ target: string; at: number }> = ({ target, at }) => {
   const frame = useCurrentFrame();
   const screen = useScreen();
-  const box = targetBox(screen.clip, target, screen.frame);
+  const box = findEvent(screen.clip, target, screen.frame)?.box;
+  if (!box) return null;
   const point = mapPoint(box, screen.camera);
   const reveal = interpolate(frame - at, [0, 15], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: ease });
   const viewport = screen.camera.viewport;
