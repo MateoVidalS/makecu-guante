@@ -14,6 +14,7 @@ from sqlalchemy import delete
 from sqlmodel import Session, SQLModel, select
 
 from app.config import settings
+from app.contracts import therapist as therapy
 from app.contracts import types as c
 from app.db import models as m
 from app.db import repo
@@ -56,6 +57,12 @@ def _validate_fingers(calibration, sessions, evaluations) -> None:
             require(s.finger for s in evaluation.sweeps if s.speed == speed)
 
 
+def _profile_is_replaceable(db, demo: c.Profile) -> bool:
+    """Fill the profile only when nobody has entered one, or it is the previous demo patient."""
+    current = repo.get_profile(db)
+    return not current.pseudonym.strip() or current.pseudonym == demo.pseudonym
+
+
 def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tuple[int, int]:
     SQLModel.metadata.create_all(engine)
     with Session(engine) as db:
@@ -75,6 +82,19 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
         )
         for value in payload["sessions"]
     ]
+    profile = c.Profile.model_validate(payload["profile"])
+    decisions = [
+        [therapy.CoachDecision.model_validate(d) for d in value.get("decisions", [])]
+        for value in payload["sessions"]
+    ]
+    # Session ids are assigned on insert; validate with a placeholder now.
+    feelings = [
+        [
+            therapy.FeelingEntry.model_validate({**f, "session_id": 1})
+            for f in value.get("feelings", [])
+        ]
+        for value in payload["sessions"]
+    ]
     evaluations = [
         c.EvaluationIn.model_validate({**value, "calibration_id": 1, "is_demo": True})
         for value in payload["evaluations"]
@@ -92,7 +112,7 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
                 db.exec(delete(m.Evaluation).where(m.Evaluation.is_demo))
                 db.commit()
             # Reuse a historical seed calibration on reset; leave newer hardware ranges alone.
-            created_at = (end - timedelta(days=21)).isoformat().replace("+00:00", "Z")
+            created_at = (end - timedelta(days=28)).isoformat().replace("+00:00", "Z")
             row = db.exec(
                 select(m.Calibration).where(m.Calibration.created_at == created_at)
             ).first()
@@ -103,7 +123,11 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
                 db.add(row)
                 db.commit()
             calibration_id = row.id
-            for value, attempts, summary in sessions:
+            if _profile_is_replaceable(db, profile):
+                repo.put_profile(db, profile)
+            for (value, attempts, summary), coach, felt in zip(
+                sessions, decisions, feelings, strict=True
+            ):
                 saved = repo.create_session(
                     db,
                     c.SessionIn(
@@ -118,6 +142,12 @@ def seed_demo(engine, *, reset: bool = False, end: datetime | None = None) -> tu
                 for attempt in attempts:
                     repo.create_attempt(db, saved.id, attempt)
                 repo.end_session(db, saved.id, summary, ended_at=value["ended_at"])
+                if coach:
+                    repo.add_coach_decisions(db, saved.id, coach)
+                if felt:
+                    repo.add_feelings(
+                        db, saved.id, [f.model_copy(update={"session_id": saved.id}) for f in felt]
+                    )
             for evaluation in evaluations:
                 repo.create_evaluation(
                     db, evaluation.model_copy(update={"calibration_id": calibration_id})
