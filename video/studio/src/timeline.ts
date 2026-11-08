@@ -9,8 +9,8 @@ export const BEAT = (60 / BPM) * FPS; // 18
 export const BAR = BEAT * 4; // 72
 
 export type SceneId =
-  | 'hook'
   | 'team'
+  | 'hook'
   | 'problem'
   | 'reveal'
   | 'session'
@@ -30,8 +30,8 @@ export interface SceneDef {
 }
 
 export const SCENES: SceneDef[] = [
+  { id: 'team', bars: 3, title: 'We did not sleep', owner: 'team', what: 'Cold open, the three of us to camera: "Hi, I\'m Matías, Martín and Mateo, and we didn\'t sleep a lot last night. And this is why:" Hard cut into the hook.' },
   { id: 'hook', bars: 3, title: 'Rosa and her mug', owner: 'V3', what: 'Cold open. Rosa reaches for her coffee mug; her hand tries to open and stays closed. No joke.' },
-  { id: 'team', bars: 4, title: 'Founders', owner: 'team', what: 'The three of us on camera, six words or fewer each. Lower thirds by the coordinator.' },
   { id: 'problem', bars: 5, title: 'The problem', owner: 'V3', what: 'Many hands can still close; opening is the hard part. 77% stat with citation.' },
   { id: 'reveal', bars: 5, title: 'memo', owner: 'V3', what: 'Mark animation, hardware turntable (V4 component), "It watches. It coaches. It helps open."' },
   { id: 'session', bars: 19, title: 'Try first', owner: 'V5', what: 'App recording: ghost vs. solid, blue on your own, orange memo helped, green reached; resist and it lets go.' },
