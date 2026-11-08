@@ -1,4 +1,4 @@
-"""Doctor chat wire models, mirroring frontend/src/contracts/chat.ts (docs/plan/03-contracts.md §4.1).
+"""Doctor chat wire models, mirroring frontend/src/contracts/chat.ts (03-contracts.md §4.1).
 
 The doctor chat is read-only: its tools only read the patient's stored records. It never
 controls the glove and never writes data.
