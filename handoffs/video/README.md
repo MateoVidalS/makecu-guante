@@ -32,7 +32,7 @@ memo-blue accent per frame, slate (`c.chrome`) for at most a few dark beats. Atk
 case, tabular numbers. `src/brand/tokens.ts` has everything; never hard-code a hex in a scene (illustration skin tones are the one
 documented exception, kept in one palette file).
 
-**Meaning of color (non-negotiable, it is the product's language):** blue = the patient on their own, orange = the glove helped,
+**Meaning of color (non-negotiable, it is the product's language):** blue = the patient on their own, orange = memo helped,
 green = reached, red = safety only, purple = demo/simulated, grey ghost = the goal. Never use them as decoration: no green
 waveforms, no orange emphasis words, no red for "important".
 
@@ -49,7 +49,7 @@ Ghost-and-solid is the visual metaphor: a faint target shape, a solid shape reac
 | Rosa as a composite character, her hand that stays closed | Flat illustration in the app's style; **no grandson, no high-five joke (owner decision)**: Rosa reaches for her mug and can't open her hand; at the end she opens it (ghost → solid) and holds the mug |
 | "77% have arm weakness after a first stroke" (Lawrence et al., Stroke, 2001) | Big tabular number, citation visible, on paper, not on a dark gradient |
 | "It watches. It coaches. It helps open." | Same triad; the waveform is memo blue, not green; only "helps open" may use the assist orange (it IS the glove helping) |
-| Callouts on the live hand: Ghost = the goal, Solid = your hand, Blue = on your own, Orange = the glove helped, Green = you reached it | Pills with a state-colored dot and a leader line driven by recording coordinates; the app is zoomed so the hand fills the frame |
+| Callouts on the live hand: Ghost = the goal, Solid = your hand, Blue = on your own, Orange = memo helped, Green = you reached it | Pills with a state-colored dot and a leader line driven by recording coordinates; the app is zoomed so the hand fills the frame |
 | "The board decides. Not the browser." + the four safety layers | Same list, correct firmware numbers (100 ms cut-off, 1 s watchdog), typeset as app cards |
 | STL renders of the wrist module, spools and anchors | Soft studio light on paper, slow turntable, not a dark void |
 | End card: lockup, "Your hand remembers.", "Try first. memo helps with the rest.", disclaimer, music credit | Same content; lockup on paper; disclaimer at caption size |
