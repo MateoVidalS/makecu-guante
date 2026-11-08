@@ -166,3 +166,11 @@ checks remain authoritative; A2 does not infer consent from movement or bypass a
 rejection. Intensity tools are blocked by the local brake guard, and unavailable
 if the runtime has no consent-tracking method. Live snapshots carry hold_extra_s
 and intensified fingers, including their runtime auto-revert.
+
+Coach output always remains English, even when patient input uses another
+language. The server prompt explicitly forbids switching languages, and the
+configuration-constrained Live token locks `speech_config.language_code` to
+`en-US` alongside the selected voice. The local EN/ES stop/pain rules remain
+bilingual. `cd backend && uv run pytest -q app/voice tests/voice` also checks the
+actual SDK token payload for both extended-thinking and plain Live models,
+including English speech configuration and the retained `intensify` declaration.

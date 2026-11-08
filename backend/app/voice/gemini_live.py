@@ -53,7 +53,8 @@ def create_token(session_id: int | None, db: DbSession) -> VoiceToken:
     config = {
         "response_modalities": ["AUDIO"],
         "speech_config": {
-            "voice_config": {"prebuilt_voice_config": {"voice_name": settings.gemini_live_voice}}
+            "language_code": "en-US",
+            "voice_config": {"prebuilt_voice_config": {"voice_name": settings.gemini_live_voice}},
         },
         "system_instruction": prompt,
         "tools": TOOLS,
