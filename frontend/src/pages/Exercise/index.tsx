@@ -47,6 +47,7 @@ import {
 import './exercise.css';
 import { CoachDecisions } from './CoachDecisions';
 import { useProgressPlan } from '../../components/common/SessionProgress';
+import { useSafetyBannerVisible } from '../../components/common/safetyPresence';
 import { CalibrationIssueBanner } from '../../components/calibration';
 import { useCalibrationStatus } from '../../runtime/calibrationValidation';
 import type { Runtime } from '../../contracts/runtime';
@@ -305,6 +306,7 @@ export default function Exercise() {
       () => new URLSearchParams(location.search).get('customize') === '1',
     ),
     [preset, setPreset] = useState(short ? 'short' : 'glides');
+  const safetyVisible = useSafetyBannerVisible();
   useProgressPlan(plan);
   const calibrationStatus = useCalibrationStatus();
   const live = phase !== 'DONE';
@@ -515,6 +517,7 @@ export default function Exercise() {
           <Inline justify="center" gap={12} className="practice-actions">
             <Button
               size="lg"
+              disabled={safetyVisible}
               icon={paused ? 'play' : 'pause'}
               variant={paused ? 'primary' : 'secondary'}
               onClick={() =>
@@ -535,6 +538,7 @@ export default function Exercise() {
               size="lg"
               variant="quiet"
               iconAfter="arrow-right"
+              disabled={safetyVisible}
               onClick={runtime.exercise.skip}
             >
               Skip pose

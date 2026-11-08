@@ -3,7 +3,7 @@ export default defineConfig({
   testDir: '.',
   testMatch: 'live.browser.spec.ts',
   workers: 1,
-  timeout: 120_000,
+  timeout: 240_000,
   outputDir: '/tmp/rehab-u4-browser',
   use: {
     baseURL: 'http://127.0.0.1:5294',

@@ -104,6 +104,17 @@ for (const [width, height] of [
         safety.getByRole('button', { name: 'Resume', exact: true }),
       ).toBeFocused();
       await expect(page.getByLabel('Voice mode')).not.toBeVisible();
+      await expect(
+        page
+          .locator('.practice-actions')
+          .getByRole('button', { name: 'Resume', exact: true }),
+      ).toBeDisabled();
+      await expect(
+        page.getByRole('button', { name: 'Skip pose', exact: true }),
+      ).toBeDisabled();
+      await expect(
+        page.getByRole('button', { name: 'Brake', exact: true }),
+      ).toBeEnabled();
       await frame(page, source, width);
       await safety.getByText('What happened?', { exact: true }).click();
       await frame(page, `${source}-details`, width);

@@ -9,6 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   // Leave CPU headroom for concurrent 3D scenes and wall-time recovery checks.
   workers: Number(process.env.REHAB_E2E_WORKERS ?? 3),
+  retries: Number(process.env.REHAB_E2E_RETRIES ?? 0),
   use: { baseURL, trace: 'retain-on-failure', actionTimeout: 10_000 },
   projects: [
     {
