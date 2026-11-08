@@ -140,7 +140,9 @@ def run_chat(db, messages) -> Iterator[ChatStreamEvent]:
                                     )
                                 )
                             )
-                        history.append(types.Content(role="tool", parts=replies))
+                        history.append(
+                            types.Content(role="user", parts=replies)
+                        )  # Gemini takes function responses as user turns; "tool" is a 400
                 except Exception as error:
                     gemini._cool(model, error)
                     if not gemini._transient(error):

@@ -61,6 +61,7 @@ def test_manual_tool_round_preserves_signatures_and_show_chart(client, sdk):
     }
     assert stream[1] == {"type": "tool", "name": "show_chart", "label": "range"}
     assert histories[1][1].parts[0].thought_signature == b"signature"
+    assert histories[1][2].role == "user"  # Gemini rejects role "tool" with a 400
     responses = histories[1][2].parts
     assert responses[0].function_response.response["readable"]["sessions"][0]["attempts"]
     assert responses[1].function_response.response == {"shown": True}

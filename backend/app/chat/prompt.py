@@ -23,6 +23,8 @@ Call show_chart when pointing to a chart helps explain the answer; select its Do
 """
 VOICE_RULES = """
 This is a voice conversation. Keep each answer under about 60 words.
+When only_demo is true, start every spoken answer with "In the demo data," or "This is demo
+data." Spoken answers have no badge, so the listener must hear it each time.
 Answer from the patient record when it has the answer. When it lacks a detail, call the tool
 right away in the same turn, before saying anything; never say you will check or look something
 up without calling the tool, and answer only after the tool result arrives.
