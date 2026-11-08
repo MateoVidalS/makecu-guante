@@ -1,7 +1,7 @@
 import React from 'react';
 import { interpolate, useCurrentFrame } from 'remotion';
 import { c, ease, radius, space } from '../../brand/tokens';
-import { Badge, T } from '../brand';
+import { T } from '../brand';
 
 export const InnovationSplit: React.FC = () => {
   const frame = useCurrentFrame();
@@ -14,6 +14,5 @@ export const InnovationSplit: React.FC = () => {
         <path d="M241 65V151M225 135L241 151L257 135M225 81L241 65L257 81" />
       </g>
     </svg>
-    <Badge kind="illustrative" />
   </div>;
 };

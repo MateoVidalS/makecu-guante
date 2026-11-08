@@ -21,11 +21,11 @@ export const Bench: React.FC = () => (
     <TeamFootage
       id="bench-real"
       label="It works: the real board and servos"
-      durationS={(2 * BAR) / FPS}
+      durationS={(3 * BAR) / FPS}
       notes={[
         'One continuous shot, phone on a tripod: laptop with the app on the left, the board and the 5 servos on the right.',
         'Someone opens and closes their hand at the webcam; the threads wind and pay out on a hand-shaped fixture. Then press Brake: everything releases.',
-        'Never attached to a person. Keep the servo sound. Landscape, 30 fps, 6–8 s.',
+        'Never attached to a person. Keep the servo sound. Landscape, 30 fps, 7 s.',
       ]}
     />
     <Label />

@@ -27,10 +27,9 @@ export const VO: VoLine[] = [
   { id: 'problem-2', scene: 'problem', at: 126, maxFrames: 54, voice: 'narrator', text: 'Opening it is the hard part.' },
   { id: 'problem-3', scene: 'problem', at: 186, maxFrames: 96, voice: 'narrator', text: 'And most practice happens at home, alone.' },
 
-  // reveal (360 f)
+  // reveal (288 f)
   { id: 'reveal-1', scene: 'reveal', at: 36, maxFrames: 54, voice: 'narrator', text: 'This is memo.', direction: 'warm, a small smile' },
-  { id: 'reveal-2', scene: 'reveal', at: 108, maxFrames: 108, voice: 'narrator', text: 'A small wrist module, a webcam, and a voice coach.' },
-  { id: 'reveal-3', scene: 'reveal', at: 228, maxFrames: 126, voice: 'narrator', text: 'It watches. It coaches. It helps you open.' },
+  { id: 'reveal-3', scene: 'reveal', at: 108, maxFrames: 168, voice: 'narrator', text: 'It watches. It coaches. It helps you open.' },
 
   // session (1296 f)
   { id: 'session-1', scene: 'session', at: 18, maxFrames: 132, voice: 'narrator', text: 'Passive devices move your hand for you. memo lets you try first.' },

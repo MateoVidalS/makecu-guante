@@ -2,7 +2,7 @@ import React from 'react';
 import { interpolate, useCurrentFrame } from 'remotion';
 import { c, ease, radius, shadow, space } from '../../brand/tokens';
 import { COPY } from '../../script';
-import { Badge, T } from '../brand';
+import { T } from '../brand';
 
 const points = [
   [160, 294], [109, 250], [77, 212], [51, 181], [30, 160],
@@ -25,7 +25,6 @@ export const VisionInset: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: space.s16 }}>
       <T size="small">{COPY.session.vision.title}</T>
       <T size="caption" color={c.muted} w={400}>{COPY.session.vision.sub}</T>
-      <Badge kind="illustrative" style={{ alignSelf: 'flex-start' }} />
     </div>
   </div>;
 };

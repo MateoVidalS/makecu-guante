@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 import { Freeze, Img, OffthreadVideo, staticFile, useCurrentFrame } from 'remotion';
 import { c, radius, shadow, space } from '../../brand/tokens';
 import type { RecordingClip, RecordingManifest } from '../../contracts';
-import { Badge, T } from '../brand';
+import { T } from '../brand';
 import { useJson } from '../useJson';
 import { cameraAt, fitViewport, type CameraKeyframe, type CameraTransform, type Viewport } from './camera';
 import { mockManifest, mockSafetySource, mockSources } from './mock/manifest';
@@ -51,10 +51,6 @@ export const ScreenFrame: React.FC<{
               {id === 'doctor-summary' && frame < 54 ? <div style={{ position: 'absolute', left: 0, top: 95, width: clip.width, height: 70, background: c.bg }} /> : null}
             </> : null}
           </div>
-        </div>
-        <div style={{ position: 'absolute', right: 1920 - viewport.x - viewport.w + space.s16, top: viewport.y + space.s16, display: 'flex', gap: space.s8 }}>
-          {clip.simulated ? <Badge kind="simulated" /> : null}
-          {clip.demoData ? <Badge kind="demoData" /> : null}
         </div>
         {mock ? <T size="caption" w={400} color={c.muted} style={{ position: 'absolute', left: viewport.x + space.s16, top: viewport.y + viewport.h + space.s8 }}>Screenshot preview · recording pending</T> : null}
         {children}
