@@ -50,11 +50,12 @@ export const VO: VoLine[] = [
   { id: 'ai-3', scene: 'gemini', at: 258, maxFrames: 54, voice: 'narrator', text: 'None of them moves a motor.' },
   { id: 'ai-4', scene: 'gemini', at: 318, maxFrames: 108, voice: 'narrator', text: 'Gemini also writes the summaries, and voiced this video.' },
 
-  // doctor (720 f)
+  // doctor (720 f): history 0-200, replay 200-290, Gemini chat 290-500, summary 500-600, statement 600-720
   { id: 'doctor-1', scene: 'doctor', at: 12, maxFrames: 60, voice: 'narrator', text: 'Every attempt is saved.' },
   { id: 'doctor-2', scene: 'doctor', at: 72, maxFrames: 132, voice: 'narrator', text: 'Therapists see every finger, on its own and with help, over weeks.' },
   { id: 'doctor-3', scene: 'doctor', at: 216, maxFrames: 60, voice: 'narrator', text: 'They can replay any attempt,' },
-  { id: 'doctor-4', scene: 'doctor', at: 300, maxFrames: 120, voice: 'narrator', text: 'and get a summary from Gemini in one click.' },
+  { id: 'doctor-4', scene: 'doctor', at: 300, maxFrames: 186, voice: 'narrator', text: 'And they can ask Gemini about the record. It answers with the real numbers.' },
+  { id: 'doctor-4b', scene: 'doctor', at: 508, maxFrames: 84, voice: 'narrator', text: 'It writes the summary, too.' },
   { id: 'doctor-5', scene: 'doctor', at: 606, maxFrames: 108, voice: 'narrator', text: 'Honest numbers for the people who guide you.' },
 
   // build (288 f)

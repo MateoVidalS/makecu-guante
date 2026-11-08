@@ -109,7 +109,7 @@
     {
       "id": "doctor-4",
       "file": "audio/vo/doctor-4.wav",
-      "durationFrames": 82
+      "durationFrames": 133
     },
     {
       "id": "doctor-5",
@@ -135,6 +135,11 @@
       "id": "hood-2",
       "file": "audio/vo/hood-2.wav",
       "durationFrames": 159
+    },
+    {
+      "id": "doctor-4b",
+      "file": "audio/vo/doctor-4b.wav",
+      "durationFrames": 42
     }
   ]
 }

@@ -3,6 +3,7 @@ import { AbsoluteFill, Series } from 'remotion';
 import { AudioLayer, useVoDurations } from './audio/AudioLayer';
 import { c } from './brand/tokens';
 import { Chapters } from './components/Chapters';
+import { Transitions } from './components/Transitions';
 import { CaptionLayer } from './components/media';
 import { SCENE_COMPONENTS } from './scenes';
 import { SCENES, sceneFrames } from './timeline';
@@ -21,6 +22,7 @@ export const Main: React.FC = () => {
           );
         })}
       </Series>
+      <Transitions />
       <Chapters />
       <CaptionLayer durations={durations} />
       <AudioLayer />
