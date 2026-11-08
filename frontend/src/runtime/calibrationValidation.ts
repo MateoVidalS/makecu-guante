@@ -14,7 +14,8 @@ export const CAMERA_VIEW_RECAPTURE_MESSAGE =
   'Your camera range was captured in the old position. Recapture it with your hand raised.';
 
 export interface CalibrationIssue {
-  finger: FingerId;
+  /** Absent when the whole camera capture needs redoing. */
+  finger?: FingerId;
   step: 'glove' | 'camera';
   message: string;
 }
@@ -93,7 +94,6 @@ export function selectCalibrationStatus(
   }
   if (calibration.camera.camera_view !== CURRENT_CAMERA_VIEW) {
     issues.push({
-      finger: 'thumb',
       step: 'camera',
       message: CAMERA_VIEW_RECAPTURE_MESSAGE,
     });
@@ -129,7 +129,7 @@ export function useCalibrationStatus(): CalibrationStatus {
   );
 }
 export const calibrationIssueHref = (issue: CalibrationIssue) =>
-  `/calibrate?step=${issue.step}&finger=${issue.finger}`;
+  `/calibrate?step=${issue.step}${issue.finger ? `&finger=${issue.finger}` : ''}`;
 export function calibrationReadiness(status: CalibrationStatus) {
   return {
     label: 'Calibration',

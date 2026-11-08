@@ -71,13 +71,13 @@ it('routes old-view calibration to camera recapture before practice', () => {
   mountHelper(<Home />, runtime);
   expect(
     screen.getByRole('link', { name: 'Redo camera range' }),
-  ).toHaveAttribute('href', '/calibrate?step=camera&finger=thumb');
+  ).toHaveAttribute('href', '/calibrate?step=camera');
   expect(screen.getByText(/Support your elbow and relax/)).toBeVisible();
   fireEvent.click(
     screen.getByRole('button', { name: "Start today's practice" }),
   );
   expect(screen.getByLabelText('Current route')).toHaveTextContent(
-    '/calibrate?step=camera&finger=thumb',
+    '/calibrate?step=camera',
   );
   expect(start).not.toHaveBeenCalled();
 });

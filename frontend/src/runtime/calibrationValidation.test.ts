@@ -134,7 +134,6 @@ it.each([undefined, 'front_diagonal'] as const)(
       state: 'invalid',
       issues: [
         {
-          finger: 'thumb',
           step: 'camera',
           message: CAMERA_VIEW_RECAPTURE_MESSAGE,
         },
@@ -142,7 +141,7 @@ it.each([undefined, 'front_diagonal'] as const)(
     });
     expect(calibrationReadiness(status)).toMatchObject({
       value: 'Needed',
-      href: '/calibrate?step=camera&finger=thumb',
+      href: '/calibrate?step=camera',
     });
     expect(value.servo).toEqual(calibration.servo);
   },
