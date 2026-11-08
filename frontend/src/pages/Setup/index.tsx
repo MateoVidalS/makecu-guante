@@ -115,17 +115,16 @@ export default function Setup() {
     }
   }
   async function camera() {
-    await vision.setKind('camera');
+    await vision.setKind('camera', {
+      deviceId: deviceId || undefined,
+      affectedHand:
+        runtime.calibration.current?.camera.affected_hand ?? 'right',
+    });
     try {
       await runtime.sources.setVision('camera');
     } catch (e) {
       if (!/comes in WP3/.test((e as Error).message)) throw e;
     }
-    await vision.start({
-      deviceId: deviceId || undefined,
-      affectedHand:
-        runtime.calibration.current?.camera.affected_hand ?? 'right',
-    });
     setDevices(await navigator.mediaDevices.enumerateDevices());
   }
   const connected = connection === 'connected';
