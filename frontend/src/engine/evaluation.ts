@@ -5,8 +5,13 @@ import type {
   EvalSweep,
   EvaluationResult,
 } from '../contracts/evaluation';
-import { GLOVE_FINGERS } from '../contracts/glove';
+import {
+  GLOVE_FINGERS,
+  pullFromClosure,
+  closureFromPull,
+} from '../contracts/glove';
 import type { GloveFinger, Quint } from '../contracts/glove';
+import { MAX_ASSIST_PULL } from '../contracts/poses';
 import type { EvaluationView } from '../contracts/runtime';
 import type {
   EngineInput,
@@ -230,7 +235,8 @@ class Evaluation implements FrictionEngine {
       this.point(input);
       if (
         input.tel &&
-        input.tel.a[GLOVE_FINGERS.indexOf(this.sweep!.finger)] >= 0.98
+        input.tel.a[GLOVE_FINGERS.indexOf(this.sweep!.finger)] >=
+          (this.raw ? 0.98 : 0.93)
       )
         this.endSweep(input, false, out);
     } else if (this.stage === 'cooldown' && this.now - this.phaseAt >= 2000)
@@ -310,7 +316,7 @@ class Evaluation implements FrictionEngine {
     return curves;
   }
 
-  /** 06-session §5.2 sweep entry: one finger closes; all others stay released. */
+  /** 06-session §5.2 sweep entry: one finger opens against flexor tone; all others stay released. */
   private beginSweep(input: EngineInput, out: Output): void {
     const item = this.queue[this.index];
     this.stage = 'sweep';
@@ -325,7 +331,9 @@ class Evaluation implements FrictionEngine {
     if (!this.curve) this.allFriction = false;
     this.sweep = { ...item, points: [], aborted_at: null };
     const target: Quint = [0, 0, 0, 0, 0];
-    target[GLOVE_FINGERS.indexOf(item.finger)] = 1;
+    target[GLOVE_FINGERS.indexOf(item.finger)] = this.raw
+      ? pullFromClosure(0)
+      : pullFromClosure(closureFromPull(MAX_ASSIST_PULL));
     out.commands.push({ t: 'target', f: target, v: item.v });
     this.point(input);
   }

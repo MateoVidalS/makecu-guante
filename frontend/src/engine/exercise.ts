@@ -5,7 +5,11 @@ import type {
   ExercisePhase,
   ExercisePlanItem,
 } from '../contracts/engine';
-import { GLOVE_FINGERS } from '../contracts/glove';
+import {
+  GLOVE_FINGERS,
+  pullFromClosure,
+  closureFromPull,
+} from '../contracts/glove';
 import type { GloveFinger, Quint } from '../contracts/glove';
 import { calibratedPinch, POSES } from '../contracts/poses';
 import type { PoseDef, PoseId } from '../contracts/poses';
@@ -25,6 +29,7 @@ import {
   DEFAULT_ASSIST_STAGGER_MS,
   MAX_ASSIST_PARALLEL,
   SERVO_PROFILES,
+  heldPull,
 } from './assist';
 
 type Safety = Extract<EngineEvent, { kind: 'safety' }>;
@@ -66,6 +71,8 @@ class Exercise implements ExerciseEngine {
   private high: { at: number; finger: GloveFinger; closure: number } | null =
     null;
   private resistance = false;
+  private loadHighAt: number | null = null;
+  private loadBlocked = false;
   private seenSafety = new Set<string>();
   readonly therapy: TherapyController;
   private restDuration = 0;
@@ -121,7 +128,7 @@ class Exercise implements ExerciseEngine {
           !Number.isFinite(this.input.tel!.ma) ||
           this.input.tel!.ma >= this.calibration.current_limit_ma ||
           this.pose.closure[finger] === null ||
-          this.fingerReached(finger)
+          !this.assistable()[GLOVE_FINGERS.indexOf(finger)]
         )
           return false;
         this.forced.add(finger);
@@ -191,7 +198,10 @@ class Exercise implements ExerciseEngine {
           this.targetSent &&
           target !== null &&
           this.target[i] >
-            (now ?? this.input?.tel?.a[i] ?? this.target[i]) + 0.02,
+            (now === null
+              ? (this.input?.tel?.a[i] ?? this.target[i])
+              : pullFromClosure(now)) +
+              0.02,
         lagging: false,
       };
     });
@@ -243,7 +253,7 @@ class Exercise implements ExerciseEngine {
     if (this.assistAt !== null) return this.assistAt;
     const due = Math.min(
       ...GLOVE_FINGERS.filter(
-        (f, i) => this.unreached()[i] && !this.suppressed.has(f),
+        (f, i) => this.assistable()[i] && !this.suppressed.has(f),
       ).map((f) => this.metrics!.start + this.therapy.delay(f) * 1000),
     );
     return Math.max(this.phaseAt, Number.isFinite(due) ? due : this.phaseAt);
@@ -330,6 +340,13 @@ class Exercise implements ExerciseEngine {
     for (const profile of Object.values(this.options.servoProfiles ?? {}))
       if (!Number.isFinite(profile.stall_ma) || profile.stall_ma <= 0)
         throw new Error('Servo stall current must be positive');
+    if (
+      !Number.isFinite(
+        this.options.currentLimitMa ?? calibration.current_limit_ma,
+      ) ||
+      (this.options.currentLimitMa ?? calibration.current_limit_ma) <= 0
+    )
+      throw new Error('Current limit must be positive');
     this.settings = {
       ...settings,
       assist_stagger_ms: stagger,
@@ -448,7 +465,7 @@ class Exercise implements ExerciseEngine {
       case 'ATTEMPT':
         if (
           this.settings.assist_enabled &&
-          this.unreached().some(
+          this.assistable().some(
             (unreached, i) => unreached && this.eligible(GLOVE_FINGERS[i]),
           )
         ) {
@@ -456,6 +473,11 @@ class Exercise implements ExerciseEngine {
           this.collectBaseline();
           if (this.detectResistance(out)) break;
         } else if (!this.metrics?.assisted) this.follow(out);
+        else {
+          this.governLoad(out);
+          this.refreshTarget();
+          this.sendTarget(out);
+        }
         if (
           this.assistAt !== null &&
           this.now - this.assistAt >= this.settings.assist_max_s * 1000
@@ -480,7 +502,12 @@ class Exercise implements ExerciseEngine {
           elapsed >= this.therapy.attemptSeconds() ||
           this.isPlateau()
         ) {
-          this.enter(this.settings.assist_enabled ? 'ASSIST' : 'RELEASE', out);
+          this.enter(
+            this.settings.assist_enabled && this.assistable().some(Boolean)
+              ? 'ASSIST'
+              : 'RELEASE',
+            out,
+          );
         }
         break;
       case 'HOLD':
@@ -492,6 +519,10 @@ class Exercise implements ExerciseEngine {
         this.assist(out);
         break;
       case 'ASSIST_HOLD':
+        this.governLoad(out);
+        if (!this.resistance) this.detectResistance(out);
+        this.refreshTarget();
+        this.sendTarget(out);
         if (elapsed >= this.therapy.holdSeconds(this.settings.hold_s))
           this.enter('RELEASE', out);
         break;
@@ -617,12 +648,15 @@ class Exercise implements ExerciseEngine {
       this.baselineTel = null;
       this.high = null;
       this.resistance = false;
+      this.loadHighAt = null;
+      this.loadBlocked = false;
       this.metrics = new AttemptMetrics(
         this.pose,
         this.rep,
         this.index,
         this.now,
         this.options.timestamp ?? isoTime,
+        this.settings.tolerance,
       );
       this.metrics.observe(this.input!, phase);
       this.progress.clear();
@@ -761,7 +795,10 @@ class Exercise implements ExerciseEngine {
 
   private follow(out: Output): void {
     if (motorSafe(this.input!) && this.input!.vision!.t !== this.lastFollow) {
-      out.commands.push({ t: 'follow', f: closure(this.input!) });
+      out.commands.push({
+        t: 'follow',
+        f: closure(this.input!).map(pullFromClosure) as Quint,
+      });
       this.lastFollow = this.input!.vision!.t;
     }
   }
@@ -771,7 +808,7 @@ class Exercise implements ExerciseEngine {
       rawTarget === null
         ? null
         : this.phase === 'ASSIST' || this.phase === 'ASSIST_HOLD'
-          ? Math.min(rawTarget, this.therapy.targetCap(f))
+          ? Math.max(rawTarget, closureFromPull(this.therapy.targetCap(f)))
           : rawTarget;
     const value = this.input!.vision?.closure?.[f];
     return (
@@ -848,10 +885,16 @@ class Exercise implements ExerciseEngine {
       return (this.pose.id === 'open' ? prior - best : best - prior) <= 0.03;
     });
   }
-  private unreached(): boolean[] {
-    return GLOVE_FINGERS.map(
-      (f) => this.pose.closure[f] !== null && !this.fingerReached(f),
-    );
+  private assistable(): boolean[] {
+    return GLOVE_FINGERS.map((f) => {
+      const target = this.pose.closure[f];
+      const value = this.input?.vision?.closure?.[f];
+      return (
+        target !== null &&
+        value !== undefined &&
+        value > target + this.settings.tolerance
+      );
+    });
   }
   private eligible(finger: GloveFinger): boolean {
     return (
@@ -863,12 +906,28 @@ class Exercise implements ExerciseEngine {
   }
   private refreshTarget(): void {
     if (!this.scheduler || !this.input?.tel) return;
-    // A full-vector command must not start an unscheduled motor. Keep queued
-    // fingers at the measured position captured by the stagger scheduler.
-    this.target = [...this.scheduler.target];
+    if (visible(this.input))
+      this.scheduler.refreshHeld(
+        this.input.tel.a,
+        closure(this.input),
+        this.assistable(),
+      );
+    const target: Quint = this.resistance
+      ? (this.scheduler.target.map((v, i) =>
+          Math.min(
+            v,
+            this.target[i],
+            heldPull(this.input!.tel!.a[i], closure(this.input!)[i]),
+          ),
+        ) as Quint)
+      : [...this.scheduler.target];
+    if (target.some((v, i) => Math.abs(v - this.target[i]) > 1e-6))
+      this.targetSent = false;
+    this.target = target;
   }
   private scheduleAssist(out: Output): void {
     if (!motorSafe(this.input!)) return;
+    this.governLoad(out);
     this.scheduler ??= new AssistScheduler(
       this.pose,
       [...this.input!.tel!.a],
@@ -876,8 +935,9 @@ class Exercise implements ExerciseEngine {
       this.settings.assist_max_parallel!,
       GLOVE_FINGERS.map((f) => this.therapy.targetCap(f)) as Quint,
     );
+    this.refreshTarget();
     const first = !this.metrics!.assisted;
-    const eligible = this.unreached().map(
+    const eligible = this.assistable().map(
       (value, i) => value && this.eligible(GLOVE_FINGERS[i]),
     );
     const changed = this.scheduler.advance(
@@ -885,6 +945,7 @@ class Exercise implements ExerciseEngine {
       this.input!.tel!.a,
       closure(this.input!),
       eligible,
+      this.loadBlocked || this.resistance,
     );
     if (changed) {
       this.metrics!.assisted = true;
@@ -896,7 +957,7 @@ class Exercise implements ExerciseEngine {
           kind: 'assist_started',
           fingers: GLOVE_FINGERS.filter((_, i) => eligible[i]),
           from: closure(this.input!),
-          to: [...this.scheduler.goal],
+          to: this.scheduler.goal.map(closureFromPull) as Quint,
         });
       this.settledAt = null;
     }
@@ -904,12 +965,17 @@ class Exercise implements ExerciseEngine {
     this.refreshTarget();
     if (changed || previous.some((v, i) => Math.abs(v - this.target[i]) > 1e-6))
       this.targetSent = false;
-    this.sendTarget(out);
+    if (this.metrics!.assisted) this.sendTarget(out);
   }
   private sendTarget(out: Output): void {
-    if (motorSafe(this.input!) && !this.targetSent) {
+    if (
+      this.scheduler &&
+      this.metrics?.assisted &&
+      motorSafe(this.input!) &&
+      !this.targetSent
+    ) {
       const moving = GLOVE_FINGERS.filter(
-        (_, i) => Math.abs(this.target[i] - this.input!.tel!.a[i]) > 1e-6,
+        (_, i) => this.target[i] > this.input!.tel!.a[i] + 1e-6,
       );
       const capped = moving.length ? moving : GLOVE_FINGERS;
       out.commands.push({
@@ -927,6 +993,7 @@ class Exercise implements ExerciseEngine {
     const input = this.input!;
     const elapsed = this.now - this.assistClockStart();
     this.collectBaseline();
+    this.governLoad(out);
     if (this.detectResistance(out)) return;
     if (this.reachedDwell()) {
       this.metrics!.reachedFinal = true;
@@ -942,7 +1009,11 @@ class Exercise implements ExerciseEngine {
     if (
       this.targetSent &&
       input.tel &&
-      this.scheduler!.complete(input.tel.a, closure(input), this.unreached()) &&
+      this.scheduler?.complete(
+        input.tel.a,
+        closure(input),
+        this.assistable(),
+      ) &&
       input.tel.a.every((v, i) => Math.abs(v - this.target[i]) <= 0.02)
     )
       this.settledAt ??= this.now;
@@ -952,6 +1023,32 @@ class Exercise implements ExerciseEngine {
       elapsed >= this.settings.assist_max_s * 1000
     )
       this.enter('ASSIST_HOLD', out);
+  }
+  /** Sustained flexor tone also loads stationary tendons during the hold. */
+  private governLoad(out: Output): void {
+    const tel = this.input?.tel;
+    const ceiling =
+      0.8 * (this.options.currentLimitMa ?? this.calibration.current_limit_ma);
+    if (!tel || !Number.isFinite(tel.ma) || tel.ma <= ceiling) {
+      this.loadHighAt = null;
+      this.loadBlocked = false;
+      return;
+    }
+    // Block new starts immediately; shed only after 200 ms of sustained load.
+    this.loadBlocked = true;
+    this.loadHighAt ??= this.now;
+    if (this.now - this.loadHighAt < 200 || !motorSafe(this.input!)) return;
+    this.loadHighAt = this.now;
+    const i = this.scheduler?.shedLoad(tel.a, closure(this.input!));
+    if (i === null || i === undefined) return;
+    this.metrics?.safety.push({
+      source: 'load_shed',
+      finger: GLOVE_FINGERS[i],
+      ma: tel.ma,
+      t_rel: (this.now - this.metrics.start) / 1000,
+    });
+    this.refreshTarget();
+    this.sendTarget(out);
   }
   private collectBaseline(): void {
     const tel = this.input!.tel;
@@ -971,7 +1068,8 @@ class Exercise implements ExerciseEngine {
       this.gaps.push({
         now: this.now,
         gaps: GLOVE_FINGERS.map(
-          (f, i) => input.tel!.a[i] - input.vision!.closure![f],
+          (f, i) =>
+            input.tel!.a[i] - pullFromClosure(input.vision!.closure![f]),
         ) as Quint,
       });
   }
@@ -1015,7 +1113,7 @@ class Exercise implements ExerciseEngine {
       : 250;
     const gap = finger
       ? tel.a[GLOVE_FINGERS.indexOf(finger)] -
-        this.input!.vision!.closure![finger]
+        pullFromClosure(this.input!.vision!.closure![finger])
       : 0;
     // Stagger changes total current as each motor starts. Require real pulling
     // lag, rather than classifying a settled finger's camera noise as a stall.
@@ -1039,7 +1137,7 @@ class Exercise implements ExerciseEngine {
         finger,
         closure: this.input!.vision!.closure![finger],
       };
-    if (this.input!.vision!.closure![finger] - this.high.closure > 0.02) {
+    if (this.high.closure - this.input!.vision!.closure![finger] > 0.02) {
       this.high = {
         at: this.now,
         finger,
@@ -1047,12 +1145,16 @@ class Exercise implements ExerciseEngine {
       };
       return false;
     }
-    if (this.now - this.high.at <= 200) return false;
+    if (this.now - this.high.at < 200) return false;
     this.resistance = true;
     this.lastSafety = { source: 'resistance', finger, at: this.now };
     this.therapy.resistance(finger);
     this.currentPose = this.therapy.pose(this.basePose);
     if (this.metrics) this.metrics.pose = this.currentPose;
+    this.scheduler?.reduceGoals(
+      this.currentPose,
+      GLOVE_FINGERS.map((f) => this.therapy.targetCap(f)) as Quint,
+    );
     out.events.push({ kind: 'resistance', finger, ma: tel.ma });
     this.metrics!.safety.push({
       source: 'resistance',
@@ -1061,11 +1163,13 @@ class Exercise implements ExerciseEngine {
       ma: tel.ma,
     });
     this.target = tel.a.map((a, i) =>
-      Math.min(a, this.pose.closure[GLOVE_FINGERS[i]] ?? a),
+      Math.min(a, this.scheduler?.goal[i] ?? a),
     ) as Quint;
+    for (const [i, value] of this.target.entries())
+      this.scheduler?.suspend(i, value);
     this.targetSent = false;
     this.sendTarget(out);
-    this.enter('ASSIST_HOLD', out);
+    if (this.phase !== 'ASSIST_HOLD') this.enter('ASSIST_HOLD', out);
     return true;
   }
 }
