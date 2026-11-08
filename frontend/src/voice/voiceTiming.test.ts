@@ -71,6 +71,7 @@ function setup() {
   const controller = new VoiceController(runtime, deps);
   return {
     controller,
+    runtime,
     deps,
     audio,
     voiceBusy,
@@ -310,6 +311,44 @@ describe('timing log', () => {
     expect(t.first_audio_ms).toBeGreaterThanOrEqual(t.queued_ms);
     expect(t.end_ms).toBeGreaterThanOrEqual(t.first_audio_ms);
     expect(t.late).toBe(false);
+    s.controller.dispose();
+  });
+});
+
+describe('the patient request when the coach started help first (live run)', () => {
+  it('still goes to the session during ASSIST, and says what it widened', async () => {
+    const s = setup();
+    await s.controller.start(1);
+    const requestHelp = vi.fn();
+    s.runtime.exercise.requestHelp = requestHelp;
+    s.setView({ phase: 'ASSIST', assisting: true, index: 0 });
+    transport(s).emit({
+      type: 'transcript',
+      role: 'patient',
+      text: 'Yes please, help me.',
+      finished: true,
+    });
+    expect(requestHelp).toHaveBeenCalledWith(undefined);
+    expect(s.deps.local.speak).toHaveBeenCalledWith(
+      'Opening your hand now.',
+      expect.any(Function),
+    );
+    s.controller.dispose();
+  });
+
+  it('a "reached" cue is never spoken once the attempt is resting', async () => {
+    const s = setup();
+    await s.controller.start(1);
+    s.setView({ phase: 'HOLD', index: 0 });
+    transport(s).emit({ type: 'audio', data: 'AAAA' });
+    s.emit({ kind: 'reached', t_rel: 2.4, assisted: false });
+    s.setView({ phase: 'REST', index: 0 });
+    transport(s).emit({ type: 'turnComplete' });
+    await vi.advanceTimersByTimeAsync(3000);
+    const reached = transport(s).texts.filter((t) =>
+      t.text.includes('Reached the position'),
+    );
+    expect(reached.every((t) => !t.speak)).toBe(true);
     s.controller.dispose();
   });
 });

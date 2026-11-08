@@ -834,7 +834,13 @@ export class VoiceController {
    */
   private checkHelpRequest(text: string, finished: boolean) {
     const view = this.runtime.exercise.view();
-    if (view.phase !== 'ATTEMPT' || this.helpAskedFor === view.index) return;
+    // ASSIST too: the coach's tool can start help (on the finger it chose) before this
+    // transcript arrives; the patient's own request then sets which fingers get help.
+    if (
+      (view.phase !== 'ATTEMPT' && view.phase !== 'ASSIST') ||
+      this.helpAskedFor === view.index
+    )
+      return;
     const said = normalizePatientText(text);
     const asks =
       /\b(help|ayuda|ayudame|ayudar|ayudes)\b/.test(said) ||
@@ -850,12 +856,20 @@ export class VoiceController {
     const index = view.index;
     const send = () => {
       const now = this.runtime.exercise.view();
-      if (now.phase !== 'ATTEMPT' || now.index !== index) return;
+      if (
+        (now.phase !== 'ATTEMPT' && now.phase !== 'ASSIST') ||
+        now.index !== index
+      )
+        return;
       if (this.helpAskedFor === index || this.brakeLatched) return;
       this.helpAskedFor = index;
       // "Help my index" helps the index; "help" or "the whole hand" helps every finger.
       const fingers = namedFingers(this.helpText);
       this.runtime.exercise.requestHelp(fingers.length ? fingers : undefined);
+      // Help had already started on the coach's choice of finger: the request widens it,
+      // and only this sentence says so (no new assist_started event).
+      if (now.phase === 'ASSIST' && this.state.mode === 'live')
+        this.announceHelp(fingers);
     };
     if (finished) send();
     else this.helpTimer = setTimeout(send, HELP_SENTENCE_MS);

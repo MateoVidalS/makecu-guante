@@ -37,7 +37,9 @@ export function cueValidity(
     case 'progress':
       return (v) => v.index === index && v.phase === 'ATTEMPT';
     case 'reached':
-      return (v) => v.index === index;
+      // Praise belongs to the attempt: never during the rest or the next invitation.
+      return (v) =>
+        v.index === index && v.phase !== 'REST' && v.phase !== 'PRESENT';
     case 'assist_started':
       return (v) => v.index === index && v.assisting;
     case 'help_offered':
