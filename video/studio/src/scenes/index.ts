@@ -1,5 +1,6 @@
 import type React from 'react';
 import type { SceneId } from '../timeline';
+import { Bench } from './Bench';
 import { Build } from './Build';
 import { Close } from './Close';
 import { Coach } from './Coach';
@@ -23,6 +24,7 @@ export const SCENE_COMPONENTS: Record<SceneId, React.FC> = {
   gemini: Gemini,
   doctor: Doctor,
   build: Build,
+  bench: Bench,
   underHood: UnderHood,
   next: Next,
   close: Close,
