@@ -4,6 +4,7 @@ import type { AttemptResult, SessionSummary } from '../contracts/engine';
 import type { EvaluationResult } from '../contracts/evaluation';
 import type {
   Profile,
+  Evaluation,
   Session,
   SessionDetail,
   Summary,
@@ -151,11 +152,11 @@ export function createDemoState(endDate = new Date().toISOString()) {
     details,
     traces,
     evaluations: story.evaluations
-      .map((e, index) => ({
+      .map((e, index): Evaluation => ({
         ...e,
         id: index + 1,
         calibration_id: 1,
-        assist_direction: 'open' as const,
+        assist_direction: 'open',
         is_demo: true,
       }))
       .reverse(),
