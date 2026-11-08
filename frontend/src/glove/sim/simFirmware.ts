@@ -18,7 +18,7 @@ export const FW = Object.freeze({
   V_FOLLOW: 1.5,
   V_RELEASE: 3,
   V_JOG_DEG: 60,
-  FOLLOW_SLACK: 0.05,
+  FOLLOW_SLACK: 0.08,
   LIMIT_DEFAULT_MA: 1500,
   LIMIT_MAX_MA: 2200,
   OVERCURRENT_MS: 100,
@@ -224,7 +224,9 @@ export class SimFirmware {
     else this.events.emit({ t: now, e: 'stop_released' });
   }
   tick(now: number, rawCurrentMa = 30) {
-    const dt = Math.max(0, now - this.lastTick) / 1000;
+    // Match the native controller: missed deadlines cannot cause a catch-up jump.
+    const dt =
+      Math.min(1000 / FW.CONTROL_HZ, Math.max(0, now - this.lastTick)) / 1000;
     this.lastTick = now;
     const median = (rawCurrentMa + this.previousCurrent) / 2;
     this.previousCurrent = rawCurrentMa;
@@ -255,7 +257,13 @@ export class SimFirmware {
     } else {
       for (let i = 0; i < 5; i++) {
         this.position[i] = clamp(
-          move(this.position[i], this.goal[i], this.speed * dt),
+          move(
+            this.position[i],
+            this.goal[i],
+            (this.state === 'run' && this.goal[i] < this.position[i]
+              ? FW.V_RELEASE
+              : this.speed) * dt,
+          ),
         );
         const c = this.calibration[i];
         if (c)

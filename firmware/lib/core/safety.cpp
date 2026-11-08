@@ -45,8 +45,8 @@ void SafetyController::release(uint32_t now) {
   releaseComplete_ = false;
   lastRamp_ = now;
   for (std::size_t i = 0; i < config::FINGERS; ++i) {
-    // A pre-calibration jog has no known safe opening direction. Go limp rather
-    // than invent an open angle (in particular for a mirrored mount).
+    // A pre-calibration jog has no known safe unwinding direction. Go limp rather
+    // than invent a slack angle (in particular for a mirrored mount).
     if (!calibration_[i].valid) attached_[i] = false;
   }
 }
@@ -77,7 +77,8 @@ void SafetyController::sensorMissing(uint32_t now) {
 ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
   // Validate again so callers cannot bypass the wire decoder's checks.
   if (!protocol::validCommand(c)) {
-    if (c.type == CommandType::Calib && state_ == State::Idle && c.i >= 0 && c.i < static_cast<int>(config::FINGERS)) {
+    if (c.type == CommandType::Calib && state_ == State::Idle && c.i >= 0 &&
+        c.i < static_cast<int>(config::FINGERS)) {
       calibration_[c.i].valid = false;
       attached_[c.i] = false;
     }
@@ -109,7 +110,7 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
       for (std::size_t i = 0; i < config::FINGERS; ++i) {
         goals_[i] =
             calib::clampClosure(c.f[i] - (mode_ == Mode::Follow ? config::FOLLOW_SLACK : 0));
-        // A detached actuator has no feedback; the first commanded position is open.
+        // A detached actuator has no feedback; the first commanded position is slack.
         if (!attached_[i]) angles_[i] = calib::toAngle(0, calibration_[i]);
         attached_[i] = true;
       }
@@ -193,7 +194,7 @@ void SafetyController::tick(uint32_t now) {
   const auto elapsed = std::min(static_cast<uint32_t>(now - lastRamp_), config::CONTROL_MS);
   lastRamp_ = now;
   const float seconds = static_cast<float>(elapsed) / 1000.0F;
-  bool opened = true;
+  bool slack = true;
   for (std::size_t i = 0; i < config::FINGERS; ++i) {
     if (!attached_[i]) continue;
     const auto& c = calibration_[i];
@@ -204,16 +205,17 @@ void SafetyController::tick(uint32_t now) {
       }
       const float rate = config::V_RELEASE * std::fabs(c.max - c.min);
       angles_[i] = calib::clampAngle(ramp::advance(angle(i), c.min, rate, seconds));
-      opened = opened && angles_[i] == c.min;
+      slack = slack && angles_[i] == c.min;
     } else if (mode_ == Mode::Jog) {
       angles_[i] =
           calib::clampAngle(ramp::advance(angle(i), goals_[i], config::V_JOG_DEG, seconds));
     } else if (state_ == State::Run && c.valid) {
-      const float pos = ramp::advance(calib::toClosure(angle(i), c), goals_[i], speed_, seconds);
-      angles_[i] = calib::toAngle(pos, c);
+      const float pos = calib::toClosure(angle(i), c);
+      const float rate = goals_[i] < pos ? config::V_RELEASE : speed_;
+      angles_[i] = calib::toAngle(ramp::advance(pos, goals_[i], rate, seconds), c);
     }
   }
-  if (releasing_ && opened) {
+  if (releasing_ && slack) {
     if (!releaseComplete_) {
       releaseComplete_ = true;
       releasedAt_ = now;
