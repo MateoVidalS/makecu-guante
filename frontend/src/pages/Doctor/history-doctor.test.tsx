@@ -362,6 +362,35 @@ describe('record review pages', () => {
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
   });
+  it('flags a stored therapist summary that predates the latest records', async () => {
+    const newest = mockState.sessions[0].ended_at!;
+    const summary = (created_at: string) => ({
+      id: 1,
+      kind: 'therapist' as const,
+      created_at,
+      session_id: null,
+      days: 7,
+      model: 'gemini-test',
+      text: 'Practice:\nSix sessions.',
+    });
+    mockState.summaries = [
+      summary(new Date(Date.parse(newest) - 86_400_000).toISOString()),
+    ];
+    mount('/doctor');
+    expect(await screen.findByText(/Six sessions/)).toBeVisible();
+    expect(
+      screen.getByText(/Generated before the latest sessions or evaluations/),
+    ).toBeVisible();
+    cleanup();
+    mockState.summaries = [
+      summary(new Date(Date.parse(newest) + 60_000).toISOString()),
+    ];
+    mount('/doctor');
+    expect(await screen.findByText(/Six sessions/)).toBeVisible();
+    expect(
+      screen.queryByText(/Generated before the latest sessions or evaluations/),
+    ).not.toBeInTheDocument();
+  });
   it('hides the empty patient profile in Doctor view', async () => {
     server.use(
       http.get('/api/profile', () =>
