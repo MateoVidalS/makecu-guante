@@ -2,6 +2,7 @@ import type { ExercisePhase } from '../../contracts/engine';
 import type { PoseId } from '../../contracts/poses';
 import {
   GLOVE_FINGERS,
+  pullFromClosure,
   type GloveFinger,
   type Quint,
 } from '../../contracts/glove';
@@ -122,17 +123,21 @@ export class SimWorld {
         let goal = f.position[i];
         if (!f.attached[i]) return 0;
         // A stalled shaft can lag far behind the commanded ramp. Release must
-        // never make it catch up by closing while the command is unwinding.
-        if (f.mode === 'none') goal = Math.min(goal, position);
+        // never make it catch up by winding while the command is unwinding.
+        if (f.mode === 'none' || f.position[i] < before[i])
+          goal = Math.min(goal, position);
         if (goal > position) {
-          // Model the current-limited supply as loss of closing torque. A rigid
+          // Model the current-limited supply as loss of opening torque. A rigid
           // finger stalls its own servo; unwinding remains possible for release.
           if (
             this.power.saturated ||
             this.power.perServoMa[i] >= profile.stall_ma
           )
             return position;
-          if (this.patient.rigid[GLOVE_FINGERS[i]]) goal = Math.min(goal, 0.22);
+          goal = Math.min(
+            goal,
+            pullFromClosure(this.patient.rigidFloor(GLOVE_FINGERS[i])),
+          );
         }
         const step = ((profile.max_speed_deg_s / ranges[i]) * tickMs) / 1000;
         return position + Math.max(-step, Math.min(step, goal - position));

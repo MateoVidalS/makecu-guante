@@ -5,6 +5,37 @@ fault latch and watchdog. The browser is not a safety layer. No board was flashe
 or exercised during development; hardware acceptance belongs to the team using
 [BENCH.md](BENCH.md).
 
+## Direction
+
+The threads run over the back of the fingers: winding a spool opens its finger.
+Every glove-side value (`target.f`, `follow.f`, `tel.a`, `tel.tg`) is normalized
+**tendon pull**, not finger closure: **0 = slack = the safe state**, at calibrated
+`min`; 1 = full calibrated pull, at `max`, with the finger straight. Vision and
+poses use closure in the opposite direction. The host uses the contract's
+`pullFromClosure` / `closureFromPull` functions for that conversion; firmware
+only maps pull to servo angle. The legacy `calib::toClosure` / `clampClosure`
+helper names also mean pull here.
+
+**Never swap `min` and `max` to change the assist direction.** Release, faults,
+watchdog and first attach all command pull 0. That endpoint must leave the tendon
+slack, rather than yank the finger open at the release rate. `min > max` is valid
+for a physically mirrored servo mount only when `min` still means slack and
+`max` means full pull.
+
+Recalibrate every finger for dorsal routing; do not reuse a closing-glove range:
+
+1. With a helper and the low setup current limit, make a relaxed full fist. Jog
+   until the thread is just taut without extending the finger; record **Slack**
+   as `min` (pull 0).
+2. Jog slowly until the finger is straight and neutral, **never bent back**;
+   record **Open** as `max` (pull 1). Stop before hyperextension or discomfort.
+3. Both angles must be within 5–175 degrees and at least **20 degrees apart**.
+   Send `release` before the five `calib` commands. Recheck that release pays out
+   the thread to slack on every finger.
+
+The hardware team completes the opening glove gate in BENCH.md before patient
+use; these directions do not replace that gate.
+
 ## Build and test
 
 From this directory:
@@ -121,13 +152,16 @@ back into the range, preserving the ramp speed cap on the transition.
 
 The browser (`frontend/src/glove/webSerialGlove.ts`, runtime and engine) is the
 only host. On every connect it sends `hello`, `release`, the five `calib`
-ranges and `limit`. During an attempt it streams `follow` at up to 30 Hz (the
-servos only take up slack); assistance is a `target` at 0.3 range/s, sent once
-per stagger stage (fingers start 150 ms apart, waiting fingers hold position).
+ranges and `limit`. During an attempt it streams `follow` at up to 30 Hz using
+vision converted to pull (the servos only take up slack). Opening assistance
+uses slow `target` winding (0.20 range/s by default; 0.30 only with consent),
+with fingers starting 150 ms apart. Held fingers' goals pay out when the patient
+closes. Every run-mode decrease in pull unwinds at 3.0 ranges/s, regardless of
+the requested winding speed.
 The calibration wizard sets `limit 400`, jogs one finger at a time, sends
 `release`, then the ranges. The client pings only after 300 ms without any
 other write, so follow lines alone keep the watchdog fed. Native tests replay
-these exact sequences (`app_*` in `test/test_native/test_main.cpp`): every
+these command patterns (`app_*` in `test/test_native/test_main.cpp`): every
 command is accepted and no safety event fires on a healthy run, while 1005 ms
 of silence still trips the watchdog.
 
@@ -184,14 +218,18 @@ field in the contracts so the app can expose it.
 
 - Boot leaves PWM detached and signal pins low. No remembered calibration or
   motion is restored. The initial commanded position of a newly attached,
-  calibrated servo is its calibrated open angle. An uncalibrated jog starts from
+  calibrated servo is its calibrated slack angle. An uncalibrated jog starts from
   the last commanded angle (90 degrees on boot), without position feedback.
-- Target closure is clamped to 0–1 and speed to at most 1 range/second. Follow
-  replaces target, uses 1.5 ranges/second and sets goals to
-  `clamp(vision - 0.05, 0, 1)`. The output is commanded position, not measured
-  position; neither tracking error nor tendon force is directly measured.
-- All calibrated release paths unwind to the open angle at 3 ranges/second,
-  then wait 500 ms **after reaching open** before detaching PWM. This includes
+- Target pull is clamped to 0–1 and winding speed to at most 1 range/second.
+  Follow replaces target, winds at up to 1.5 ranges/second and sets goals to
+  `clamp(f - 0.08, 0, 1)`, where `f` is vision converted to pull by the host.
+  Both run modes unwind at 3 ranges/second whenever a goal is below the current
+  pull, even for a slow target. Each ramp update is capped to one 5 ms period;
+  missed ticks and mode changes never cause a catch-up jump. The output is
+  commanded position, not measured position; neither tracking error nor tendon
+  force is directly measured.
+- All calibrated release paths unwind to the slack angle at 3 ranges/second,
+  then wait 500 ms **after reaching slack** before detaching PWM. This includes
   faults. A pre-calibration jog has no known safe unwind direction, so release
   detaches that channel immediately. A new accepted move reattaches PWM.
 - Current is the total servo current. A two-sample median (the midpoint for two
@@ -213,12 +251,13 @@ field in the contracts so the app can expose it.
   Jog and release remain available for setup. A runtime sensor read failure
   inhibits assistance until reset and releases/faults any active motion.
 
-The 24-pixel ring shows five 4-pixel position bars in wire order: thumb 0–3,
-index 5–8, middle 10–13, ring 15–18, pinky 20–23. Pixels 4/9/14/19 are dark
+The 24-pixel ring shows five 4-pixel pull bars (how much the glove is opening
+each finger) in wire order: thumb 0–3, index 5–8, middle 10–13, ring 15–18,
+pinky 20–23. Pixels 4/9/14/19 are dark
 1-pixel gaps (no trailing gap). Bars are dim white in idle, blue in follow,
 orange in target and amber in calibration. Fault overrides **all 24 pixels**,
-including gaps, with a 2 Hz red blink. At zero calibrated closure a segment is dark, including before
-calibration.
+including gaps, with a 2 Hz red blink. At zero calibrated pull (slack) a segment
+is dark, including before calibration.
 
 ## Bounded loop and allocation audit
 
