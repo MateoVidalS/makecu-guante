@@ -87,7 +87,8 @@ export default function Home() {
               : null;
   const list = sessions.data ?? [];
   const week = lastSevenDays(list.map((s) => s.started_at));
-  const range = rangeComparison(list, opening.data);
+  // Wait for the open-pose points too: without them every opening session looks unmeasured.
+  const range = opening.isPending ? null : rangeComparison(list, opening.data);
   const mirrored = runtime.calibration.current?.camera.affected_hand === 'left';
   return (
     <div className="hp-page">
@@ -192,7 +193,8 @@ export default function Home() {
                 mirrored={mirrored}
               />
               <p className="hp-note">
-                {directionLabel(range.latest)}. {range.changeText}{' '}
+                {directionLabel(range.latest)}. {range.note && `${range.note} `}
+                {range.changeText}{' '}
                 <Link to={`/history/sessions/${range.latest.id}`}>
                   See session
                 </Link>
@@ -200,11 +202,13 @@ export default function Home() {
             </div>
           ) : (
             <p className="hp-note">
-              {sessions.isPending
+              {sessions.isPending || opening.isPending
                 ? 'Loading your last session…'
-                : sessions.isError
+                : sessions.isError || opening.isError
                   ? 'Session history is unavailable.'
-                  : 'No sessions yet. Your first practice will appear here.'}
+                  : list.some((s) => s.summary)
+                    ? 'No open-hand range measured yet. It will show after a session with an open-hand pose.'
+                    : 'No sessions yet. Your first practice will appear here.'}
             </p>
           )}
         </Section>

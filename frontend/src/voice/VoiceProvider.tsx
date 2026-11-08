@@ -60,6 +60,7 @@ export function useVoice() {
   const actions = useMemo(
     () => ({
       start: (id: number | null) => controller.start(id),
+      attach: (id: number) => controller.attach(id),
       stop: () => controller.stop(),
       setMode: (mode: 'live' | 'simple' | 'off') => controller.setMode(mode),
       setMuted: (muted: boolean) => controller.setMuted(muted),

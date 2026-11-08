@@ -38,6 +38,11 @@
   height: 0.75em;
   border-radius: var(--radius-sm);
 }
+/* The empty part of a split bar: still to open. */
+.mx-swatch--track {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
 .mx-swatch--band {
   background: repeating-linear-gradient(
     45deg,
@@ -184,6 +189,16 @@
 .mx-gauge[data-state='assist'] .mx-gauge__status {
   color: var(--assist-text);
 }
+/* The finger the glove stopped for (resistance). */
+.mx-gauge[data-state='stopped'] .mx-gauge__name,
+.mx-gauge[data-state='stopped'] .mx-gauge__status,
+.mx-gauge[data-state='stopped'] .mx-gauge__icon {
+  color: var(--caution-text);
+  font-weight: var(--weight-semibold);
+}
+.mx-gauge[data-state='stopped'] .mx-gauge__track {
+  box-shadow: 0 0 0 var(--space-2) var(--caution);
+}
 .mx-gauge[data-state='free'] .mx-gauge__track {
   opacity: 0.5;
 }
@@ -232,6 +247,14 @@
 }
 .mx-attempt[data-outcome='helped'] .mx-attempt__icon {
   color: var(--assist-text);
+}
+/* The glove stopped for resistance: amber, the system working (not red, not "helped"). */
+.mx-attempt[data-outcome='stopped'] {
+  background: var(--caution-soft);
+  border-color: color-mix(in srgb, var(--caution) 40%, var(--border));
+}
+.mx-attempt[data-outcome='stopped'] .mx-attempt__icon {
+  color: var(--caution-text);
 }
 .mx-legend--inline {
   font-size: var(--small);
@@ -290,6 +313,15 @@
     var(--active) 0 calc(50% - 1px),
     var(--surface) calc(50% - 1px) calc(50% + 1px),
     var(--assist) calc(50% + 1px) 100%
+  );
+}
+/* Own effort on the left, an orange ring: the glove took part but the pose was not reached. */
+.mx-dot--partial {
+  border: 2px solid var(--assist);
+  background: linear-gradient(
+    90deg,
+    var(--active) 0 50%,
+    var(--surface) 50% 100%
   );
 }
 .mx-dot--paused {
@@ -479,6 +511,16 @@
 .mx-week__streak {
   margin: 0;
   font-size: var(--small);
+}
+.mx-week__goal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  font-size: var(--small);
+}
+.mx-week__goal[data-met='true'] {
+  color: var(--reached-text);
 }
 
 /* ---- Slow vs fast dumbbell ---- */

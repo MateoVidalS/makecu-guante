@@ -30,6 +30,14 @@ export function CameraOverlay(props: CameraOverlayProps) {
 function ConnectedOverlay(props: CameraOverlayProps) {
   return <SourceOverlay {...props} source={useVision().source} />;
 }
+/**
+ * Closure can overshoot the calibrated range (a fist tighter than the calibration one, or a finger
+ * bent back). Show it on the same 0–100% scale as the live gauges, never "104%".
+ */
+function closurePercent(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  return `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
+}
 /** Simulated frames carry joints but no landmarks; sketch them so the panel still reads. */
 function drawable(
   frame: VisionFrame | null,
@@ -134,11 +142,7 @@ function SourceOverlay({
             {FINGERS.map((finger) => (
               <div key={finger}>
                 <dt>{finger[0].toUpperCase() + finger.slice(1)}</dt>
-                <dd>
-                  {frame?.closure
-                    ? `${Math.round(frame.closure[finger] * 100)}%`
-                    : '—'}
-                </dd>
+                <dd>{closurePercent(frame?.closure?.[finger])}</dd>
               </div>
             ))}
           </dl>

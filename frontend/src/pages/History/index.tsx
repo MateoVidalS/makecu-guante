@@ -94,13 +94,13 @@ export default function History() {
                 ) : (
                   <>
                     <HandRangeMap
-                      loading={sessions.isPending}
+                      loading={sessions.isPending || allRom.isPending}
                       {...handFromOverview(
                         overview.data,
                         sessions.data,
                         allRom.data,
                       )}
-                      {...firstAndLast(sessions.data)}
+                      {...firstAndLast(sessions.data, allRom.data)}
                     />
                     <div className="viz-grid-2">
                       <LatestEffortBars

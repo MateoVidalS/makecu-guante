@@ -1,8 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { cx } from './cx';
 
+/** `caution`: a non-safety heads-up, e.g. the glove stopped for resistance (never red). */
 export type ProgressTone =
-  'accent' | 'active' | 'assist' | 'reached' | 'neutral';
+  'accent' | 'active' | 'assist' | 'reached' | 'neutral' | 'caution';
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
 

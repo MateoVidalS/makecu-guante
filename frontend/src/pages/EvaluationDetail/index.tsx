@@ -53,6 +53,7 @@ export default function EvaluationDetail() {
             >
               <ResistanceDumbbells
                 points={compareWithPrevious(data, history.data ?? [])}
+                evaluations={[data]}
                 highlightId={data.id}
                 loading={history.isPending}
                 table={

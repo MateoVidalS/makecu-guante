@@ -153,6 +153,19 @@ it('settles for one second at capped pull, or ends at the assist time limit with
   expect(cap.world.now - start).toBe(200);
 });
 
+it('counts a reach that lands during the assisted hold as reached_final', () => {
+  // The harness shortens the hold to 0.2 s; use the real 2 s hold so the 0.5 s dwell can land.
+  const r = new Run('open', { assist_max_s: 15, hold_s: 2 });
+  r.until('ASSIST');
+  r.until('ASSIST_HOLD');
+  expect(r.results()).toHaveLength(0);
+  r.world.hand = [0.05, 0.05, 0.05, 0.05, 0.05];
+  r.until('DONE');
+  expect(r.results()[0].assisted).toBe(true);
+  expect(r.results()[0].reached_final).toBe(true);
+  expect(r.results()[0].reached_active).toBe(false);
+});
+
 it('accepts assisted opening within the calibrated cap, and retains pinch gating', () => {
   const r = new Run();
   r.until('ASSIST');

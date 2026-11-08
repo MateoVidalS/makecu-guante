@@ -5,26 +5,36 @@ export interface StripAttempt {
   /** Pose name shown under its group, e.g. "Hook". Omit to draw one flat row. */
   group?: string;
   outcome: AttemptOutcome;
+  /** Extra detail for this attempt, e.g. why the glove eased off. */
+  note?: string;
 }
 
-const WORDS: Record<AttemptOutcome, string> = {
+const OUTCOME_WORDS: Record<AttemptOutcome, string> = {
   own: 'Reached on your own',
   helped: 'Reached with the glove',
-  paused: 'Paused',
+  partial: 'Part way with the glove',
+  paused: 'Ended early',
   tried: 'Tried',
 };
+const ORDER: AttemptOutcome[] = ['own', 'helped', 'partial', 'paused', 'tried'];
 
-function Dot({ outcome }: { outcome: AttemptOutcome }) {
+function Dot({ outcome, note }: { outcome: AttemptOutcome; note?: string }) {
   return (
-    <span className={`mx-dot mx-dot--${outcome}`} title={WORDS[outcome]}>
+    <span
+      className={`mx-dot mx-dot--${outcome}`}
+      title={
+        note ? `${OUTCOME_WORDS[outcome]}. ${note}` : OUTCOME_WORDS[outcome]
+      }
+    >
       {outcome === 'own' && <Icon name="check" size="0.8em" />}
     </span>
   );
 }
 
 /**
- * One dot per attempt, grouped by pose: filled = reached alone, half = with the glove,
- * ring = paused. Shape carries the meaning; color and the legend back it up.
+ * One dot per attempt, grouped by pose: filled = reached alone, half = reached with the glove,
+ * half with an orange ring = the glove went part of the way, grey ring = ended early.
+ * Shape carries the meaning; color and the legend back it up.
  */
 export function AttemptStrip({
   attempts,
@@ -51,9 +61,10 @@ export function AttemptStrip({
                 n += 1;
                 return (
                   <li key={n}>
-                    <Dot outcome={a.outcome} />
+                    <Dot outcome={a.outcome} note={a.note} />
                     <span className="mx-sr">
-                      Attempt {n}: {WORDS[a.outcome]}
+                      Attempt {n}: {OUTCOME_WORDS[a.outcome]}
+                      {a.note ? `. ${a.note}` : ''}
                     </span>
                   </li>
                 );
@@ -67,15 +78,14 @@ export function AttemptStrip({
           </li>
         ))}
       </ol>
+      {/* Only outcomes that happened today, so the legend never suggests a result that did not occur. */}
       <ul className="mx-legend" aria-hidden="true">
-        {(['own', 'helped', 'paused', 'tried'] as const)
-          .filter((o) => used.has(o) || o === 'own' || o === 'helped')
-          .map((o) => (
-            <li key={o}>
-              <Dot outcome={o} />
-              {WORDS[o]}
-            </li>
-          ))}
+        {ORDER.filter((o) => used.has(o)).map((o) => (
+          <li key={o}>
+            <Dot outcome={o} />
+            {OUTCOME_WORDS[o]}
+          </li>
+        ))}
       </ul>
     </div>
   );

@@ -2,6 +2,7 @@ import { useId, type ReactNode } from 'react';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
 import type { AssistDirection } from '../../contracts/calibration';
 import { directionLabel } from './direction';
+import { compareRange, RANGE_MARGIN_POINTS } from './thresholds';
 import type { HandValue, HandValues } from './visuals';
 import { VisualCard, type LegendEntry } from './VisualCard';
 
@@ -29,6 +30,7 @@ const WRIST = 'M88 208 H138 Q141 230 139 252 H87 Q85 230 88 208 Z';
 const pct = (v: number | null | undefined) =>
   v == null ? 'Not measured' : `${Math.round(v * 100)}%`;
 const fingerName = (f: string) => f.charAt(0).toUpperCase() + f.slice(1);
+const pointsLabel = (n: number) => `${n} ${n === 1 ? 'point' : 'points'}`;
 
 function place(g: Geometry, mirror: boolean): Geometry {
   return mirror ? { ...g, x: 2 * CENTER - g.x, angle: -g.angle } : g;
@@ -158,6 +160,7 @@ export function HandRangeMap({
   lastDate,
   compact,
   assistDirection = 'close',
+  note,
 }: {
   first: HandValues;
   last: HandValues;
@@ -169,13 +172,16 @@ export function HandRangeMap({
   lastDate?: string;
   compact?: boolean;
   assistDirection?: AssistDirection;
+  /** Shown when the newest session had nothing to show and an older one is drawn as "Now". */
+  note?: string;
 }) {
   const has = GLOVE_FINGERS.some(
     (f) => first[f]?.own != null || last[f]?.own != null,
   );
+  // Changes smaller than the margin are "about the same", never "further".
   const gains = GLOVE_FINGERS.flatMap((f) =>
     first[f]?.own != null && last[f]?.own != null
-      ? [Math.round(last[f]!.own! * 100) - Math.round(first[f]!.own! * 100)]
+      ? [compareRange(last[f]!.own!, first[f]!.own!)]
       : [],
   );
   const motion = assistDirection === 'open' ? 'opens' : 'closes';
@@ -197,6 +203,7 @@ export function HandRangeMap({
       ).join('; ')}.`}
       loading={loading}
       empty={!has}
+      note={note}
       legend={[
         OWN,
         {
@@ -221,11 +228,13 @@ export function HandRangeMap({
                 <span className="hand-deltas__change">
                   {d == null
                     ? '—'
-                    : d > 0
-                      ? `▲ ${d} points (better)`
-                      : d < 0
-                        ? `▼ ${-d} points`
-                        : 'No change'}
+                    : d === 0
+                      ? 'No change'
+                      : Math.abs(d) < RANGE_MARGIN_POINTS
+                        ? `About the same (${d > 0 ? '+' : '−'}${pointsLabel(Math.abs(d))})`
+                        : d > 0
+                          ? `▲ ${pointsLabel(d)} (better)`
+                          : `▼ ${pointsLabel(-d)}`}
                 </span>
               </li>
             );

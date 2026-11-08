@@ -2,7 +2,13 @@ import type { AssistPoint, RomPoint } from '../../contracts/api';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
 import { directionOf, directionLabel, LEGACY_GLOVE } from './direction';
 import type { TimelineEntry } from './transforms';
-import { effortSeries, effortTakeaway, type EffortPoint } from './visuals';
+import {
+  effortSeries,
+  effortTakeaway,
+  latestEffort,
+  latestEffortTitle,
+  type EffortPoint,
+} from './visuals';
 import { useWidth, VisualCard, type LegendEntry } from './VisualCard';
 
 const pct = (v: number | null | undefined) =>
@@ -283,28 +289,26 @@ export function LatestEffortBars({
 }: {
   rom: RomPoint[];
   assist: AssistPoint[];
-  timeline?: TimelineEntry[];
+  /** Sessions from the API: unfinished ones (summary null) are never "the latest". */
+  timeline?: (TimelineEntry & { summary?: unknown })[];
   loading?: boolean;
 }) {
-  const rows = GLOVE_FINGERS.map((finger) => ({
-    finger,
-    row: effortSeries(rom, assist, finger, timeline).at(-1),
-  }));
-  const date = rows[0]?.row?.date;
-  const measured = rows.filter((l) => l.row?.own != null);
-  const best = measured.reduce<(typeof rows)[number] | undefined>(
-    (best, l) => (!best || l.row!.own! > best.row!.own! ? l : best),
-    undefined,
+  // The newest finished session that measured something; a fist-only or unfinished
+  // session never blanks the bars. Fingers it did not measure stay "Not measured".
+  const { session, rows, note } = latestEffort(
+    GLOVE_FINGERS.map((finger) => ({
+      finger,
+      rows: effortSeries(rom, assist, finger, timeline),
+    })),
+    timeline,
   );
+  const date = session?.date;
   return (
     <VisualCard
       className="effort-latest"
-      title={
-        best
-          ? `${fingerName(best.finger)} did the most on its own last time`
-          : 'Latest session'
-      }
+      title={latestEffortTitle(rows)}
       hint={`Latest session${date ? `, ${longDate(date)}` : ''}. Blue: active opening in open poses. Orange: mean opening the glove completed.`}
+      note={note}
       label={`Latest session per finger: ${rows
         .map(
           (l) =>

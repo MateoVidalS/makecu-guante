@@ -3,10 +3,12 @@ import type { ResistancePoint } from '../../contracts/api';
 import { directionOf, directionLabel, LEGACY_GLOVE } from './direction';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import {
+  compactDumbbellRows,
   dumbbellDomain,
   dumbbellRows,
   resistanceTakeaway,
   type DumbbellRow,
+  type StoppedSweeps,
 } from './visuals';
 import { useWidth, VisualCard } from './VisualCard';
 
@@ -26,6 +28,8 @@ const longDate = (d: string) =>
   });
 const ma = (v: number | null | undefined) =>
   v == null ? 'Not measured' : `${Math.round(v)} mA`;
+/** Same wording as the evaluation detail's sweep status. */
+const STOPPED = 'Stopped safely; incomplete';
 
 const GROUP_GAP = 10;
 const M = { top: 4, right: 76, left: 100, axis: 40 };
@@ -62,8 +66,11 @@ export function ResistanceDumbbells({
   hint,
   table,
   compact = false,
+  evaluations,
 }: {
   points: ResistancePoint[];
+  /** Evaluation records: sweeps that stopped safely are marked and left out of comparisons. */
+  evaluations?: StoppedSweeps;
   /** Evaluation to draw in color; defaults to the latest. */
   highlightId?: number;
   /** Only evaluations up to this time (ms). */
@@ -83,22 +90,21 @@ export function ResistanceDumbbells({
   const visible = points.filter(
     (p) => upTo == null || Date.parse(p.started_at) <= upTo,
   );
-  const groups = dumbbellRows(visible);
   const focusId =
     highlightId ??
     [...visible]
       .sort((a, b) => Date.parse(a.started_at) - Date.parse(b.started_at))
       .at(-1)?.evaluation_id;
-  if (compact)
-    for (const f of GLOVE_FINGERS)
-      groups[f] = groups[f].filter(
-        (r, i) => i === 0 || r.evaluationId === focusId,
-      );
+  const every = dumbbellRows(visible, evaluations);
+  // Compact: per finger, the first finished result and the latest one, which may be
+  // older than the focus evaluation when that one stopped early or skipped the finger.
+  const groups = compact ? compactDumbbellRows(every, focusId) : every;
   const all = GLOVE_FINGERS.flatMap((f) => groups[f]);
-  const latest = [...all]
-    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
-    .at(-1);
-  const focus = highlightId ?? latest?.evaluationId;
+  const focusRows = new Set(
+    compact
+      ? GLOVE_FINGERS.flatMap((f) => groups[f].slice(-1))
+      : all.filter((r) => r.evaluationId === focusId),
+  );
   const [lo, hi] = dumbbellDomain(all);
   const plotW = Math.max(80, width - M.left - M.right);
   const x = (v: number) => M.left + ((v - lo) / (hi - lo)) * plotW;
@@ -116,7 +122,7 @@ export function ResistanceDumbbells({
   const plotBottom = cursor - groupGap + 4;
   const height = plotBottom + M.axis;
   const row = (f: string, r: DumbbellRow, cy: number) => {
-    const on = r.evaluationId === focus && directionOf(r) === 'open';
+    const on = focusRows.has(r) && directionOf(r) === 'open';
     const cls = `${on ? 'db-on' : 'db-off'}${r.demo ? ' viz-demo' : ''}`;
     const color = on ? `var(--chart-${f})` : undefined;
     return (
@@ -126,7 +132,7 @@ export function ResistanceDumbbells({
         style={color ? { color } : undefined}
       >
         <title>
-          {`${fingerName(f)} · ${directionLabel(r)} · ${longDate(r.date)}${r.demo ? ' · Demo data' : ''} · Slow ${ma(r.slow)} · Fast ${ma(r.fast)} · Fast − slow ${ma(r.gap)}`}
+          {`${fingerName(f)} · ${directionLabel(r)} · ${longDate(r.date)}${r.demo ? ' · Demo data' : ''}${r.stopped ? ` · ${STOPPED}` : ''} · Slow ${ma(r.slow)} · Fast ${ma(r.fast)} · Fast − slow ${ma(r.gap)}`}
         </title>
         <rect
           className="viz-hit"
@@ -143,7 +149,13 @@ export function ResistanceDumbbells({
           textAnchor="end"
         >
           {shortDate(r.date)}
-          {directionOf(r) === 'close' ? ' · earlier' : r.demo ? ' · demo' : ''}
+          {directionOf(r) === 'close'
+            ? ' · earlier'
+            : r.stopped
+              ? ' · stopped'
+              : r.demo
+                ? ' · demo'
+                : ''}
         </text>
         {r.slow != null && r.fast != null && (
           <line
@@ -174,7 +186,8 @@ export function ResistanceDumbbells({
           >
             {r.gap == null
               ? '—'
-              : `${r.gap > 0 ? '+' : ''}${Math.round(r.gap)} mA`}
+              : // Sign from the shown value: 0.4 mA is "0 mA", never "+0 mA".
+                `${Math.round(r.gap) > 0 ? '+' : ''}${Math.round(r.gap) || 0} mA`}
           </text>
         )}
       </g>
@@ -194,7 +207,7 @@ export function ResistanceDumbbells({
             `${fingerName(g.finger)}: ${g.rows
               .map(
                 (r) =>
-                  `${shortDate(r.date)} ${directionLabel(r)} slow ${ma(r.slow)}, fast ${ma(r.fast)}, gap ${ma(r.gap)}`,
+                  `${shortDate(r.date)} ${directionLabel(r)}${r.stopped ? ` (${STOPPED})` : ''} slow ${ma(r.slow)}, fast ${ma(r.fast)}, gap ${ma(r.gap)}`,
               )
               .join('; ')}`,
         )
@@ -242,6 +255,7 @@ export function ResistanceDumbbells({
                     <td className="num">{ma(r.gap)}</td>
                     <td>
                       {r.demo ? 'Demo data' : 'Recorded'} · {directionLabel(r)}
+                      {r.stopped && ` · ${STOPPED}`}
                     </td>
                   </tr>
                 )),

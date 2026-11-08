@@ -177,9 +177,11 @@ export default function Doctor() {
             <div className="report-glance__grid">
               <HandRangeMap
                 {...handFromOverview(overview.data, sessions.data, rom.data)}
-                {...firstAndLast(sessions.data)}
+                {...firstAndLast(sessions.data, rom.data)}
                 mirror={profile.data?.affected_hand === 'left'}
-                loading={overview.isPending || sessions.isPending}
+                loading={
+                  overview.isPending || sessions.isPending || rom.isPending
+                }
                 compact
               />
               <LatestEffortBars
@@ -196,7 +198,8 @@ export default function Doctor() {
               />
               <ResistanceDumbbells
                 points={resistance.data ?? []}
-                loading={resistance.isPending}
+                evaluations={evaluations.data}
+                loading={resistance.isPending || evaluations.isPending}
                 compact
                 hint="Extra motor current. Circle: slow sweep. Diamond: fast sweep. The bar is fast − slow, a velocity-dependence estimate. Check friction calibration and incomplete sweeps in evaluation details."
               />

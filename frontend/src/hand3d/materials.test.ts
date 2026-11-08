@@ -30,6 +30,7 @@ describe('legible hand materials', () => {
           'active',
           'assist',
           'reached',
+          'stopped',
         ] as FingerState[]) {
           animator.tick(
             POSES.open.render,
@@ -40,8 +41,12 @@ describe('legible hand materials', () => {
             true,
           );
           const expected = new Color(palette.hand);
+          // A resistance stop uses the caution amber, never the "helping" orange.
           if (state !== 'idle')
-            expected.lerp(new Color(palette[state]), STATE_TINT);
+            expected.lerp(
+              new Color(palette[state === 'stopped' ? 'caution' : state]),
+              STATE_TINT,
+            );
           for (const material of scene.fingers) {
             expect(material.color.equals(expected)).toBe(true);
             expect(material.opacity).toBe(1);

@@ -1156,6 +1156,9 @@ button.ds-stepper__button:hover {
 .ds-ring--neutral {
   --ring: var(--target);
 }
+.ds-ring--caution {
+  --ring: var(--caution);
+}
 .ds-ring--indeterminate > svg {
   animation: ds-spin 2.4s linear infinite;
 }

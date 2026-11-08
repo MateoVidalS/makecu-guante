@@ -12,7 +12,8 @@ import { tokens } from '../styles/tokens';
 import { createHandRig, FINGERS, HAND_PROPORTIONS } from './rig';
 import type { Handedness } from '../contracts/vision';
 export type HandTheme = typeof tokens.light | typeof tokens.dark;
-export type FingerState = 'idle' | 'active' | 'assist' | 'reached';
+/** `stopped`: the glove stopped helping because this finger resisted (caution amber). */
+export type FingerState = 'idle' | 'active' | 'assist' | 'reached' | 'stopped';
 /** Unlit target remains a flat silhouette beside the shaded actual hand. */
 export const GHOST_OPACITY = 0.35;
 export const OUTLINE_RATIO = 1.6;

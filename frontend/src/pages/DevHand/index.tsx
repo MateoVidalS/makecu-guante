@@ -32,7 +32,8 @@ const names: Record<FingerId, string> = {
   ring: 'Ring',
   pinky: 'Pinky',
 };
-const labels: Record<FingerState, string> = {
+// The live-only resistance stop state is not part of this gallery.
+const labels: Record<Exclude<FingerState, 'stopped'>, string> = {
   idle: 'Resting',
   active: 'Moving alone',
   assist: 'Glove helping',
@@ -213,7 +214,7 @@ export default function DevHand() {
           role="group"
           aria-label={`${POSES[pose].name} state comparison`}
         >
-          {(Object.keys(labels) as FingerState[]).map((status) => (
+          {(Object.keys(labels) as (keyof typeof labels)[]).map((status) => (
             <Card key={status} title={labels[status]}>
               <VirtualHand
                 target={POSES[pose].render}

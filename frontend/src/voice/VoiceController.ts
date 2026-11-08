@@ -247,15 +247,36 @@ export class VoiceController {
       ...(forcedSimple ? { mode: 'live' as const } : {}),
     });
     this.deps.local.unlock();
-    if (id !== null) {
-      this.batch = new TranscriptBatcher(
-        (lines) => this.deps.save(id, lines),
-        () => this.update({ transcriptError: true }),
-      );
-      this.batches.add(this.batch);
-      this.batch.start();
-    }
+    if (id !== null) this.record(id);
     const generation = this.generation;
+    this.loadPrevious(id, generation);
+    if (this.state.mode === 'simple') {
+      this.simple(false);
+      return;
+    }
+    if (this.state.mode === 'off') return;
+    await this.connect(generation);
+  }
+  /**
+   * The session got its server id after the coach had started (a slow or offline save). Keep
+   * coaching as is (no restart, no second greeting); save the transcript from now on and use the
+   * right previous session for context.
+   */
+  attach(id: number) {
+    if (!this.active || this.id !== null) return;
+    this.id = id;
+    this.record(id);
+    this.loadPrevious(id, this.generation);
+  }
+  private record(id: number) {
+    this.batch = new TranscriptBatcher(
+      (lines) => this.deps.save(id, lines),
+      () => this.update({ transcriptError: true }),
+    );
+    this.batches.add(this.batch);
+    this.batch.start();
+  }
+  private loadPrevious(id: number | null, generation: number) {
     void this.deps
       .sessions()
       .then((sessions) => {
@@ -276,12 +297,6 @@ export class VoiceController {
           )?.summary ?? null;
       })
       .catch(() => {});
-    if (this.state.mode === 'simple') {
-      this.simple(false);
-      return;
-    }
-    if (this.state.mode === 'off') return;
-    await this.connect(generation);
   }
   private async connect(generation: number) {
     if (
