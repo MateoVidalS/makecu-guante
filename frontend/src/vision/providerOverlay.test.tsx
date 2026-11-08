@@ -92,9 +92,8 @@ describe('vision source controller', () => {
     let shared = false;
     function Probe() {
       const source = useVision().source;
-      shared =
-        source instanceof SimVision &&
-        source.delegate === useGlove().world.vision;
+      const { world } = useGlove();
+      shared = source instanceof SimVision && source.delegate === world.vision;
       return null;
     }
     const view = render(
