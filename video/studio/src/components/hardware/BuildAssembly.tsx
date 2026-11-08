@@ -2,7 +2,7 @@ import { useThree } from '@react-three/fiber';
 import { ThreeCanvas } from '@remotion/three';
 import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import { interpolate } from 'remotion';
-import { BufferGeometry, CatmullRomCurve3, OrthographicCamera, TubeGeometry, Vector3 } from 'three';
+import { Box3, BufferGeometry, CatmullRomCurve3, OrthographicCamera, TubeGeometry, Vector3 } from 'three';
 import { c, ease } from '../../brand/tokens';
 import { HardwareLighting, hardwarePlastic, servoShafts, useHardwareGeometry } from './Hardware';
 import { wirePalette } from './wirePalette';
@@ -21,8 +21,8 @@ const Block: React.FC<{ at: Point; size: Point; color?: string; metal?: boolean 
 );
 
 /** Only the visible curve length grows. There is no draw-range jump or clock-driven animation. */
-const Tube: React.FC<{ points: Point[]; progress?: number; radius?: number; color?: string; opacity?: number; closed?: boolean }> = ({
-  points, progress = 1, radius = 0.4, color = c.text, opacity = 1, closed = false,
+const Tube: React.FC<{ points: Point[]; progress?: number; radius?: number; color?: string; opacity?: number; closed?: boolean; unlit?: boolean }> = ({
+  points, progress = 1, radius = 0.4, color = c.text, opacity = 1, closed = false, unlit = false,
 }) => {
   const geometry = useMemo(() => {
     const path = new CatmullRomCurve3(points.map((p) => new Vector3(...p)), closed, 'centripetal');
@@ -31,7 +31,9 @@ const Tube: React.FC<{ points: Point[]; progress?: number; radius?: number; colo
   }, [points, progress, radius, closed]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   if (progress <= 0 || opacity <= 0) return null;
-  return <mesh geometry={geometry} castShadow={opacity === 1}><Plastic color={color} opacity={opacity} /></mesh>;
+  return <mesh geometry={geometry} castShadow={!unlit && opacity === 1}>
+    {unlit ? <meshBasicMaterial color={color} transparent={opacity < 1} opacity={opacity} toneMapped={false} /> : <Plastic color={color} opacity={opacity} />}
+  </mesh>;
 };
 
 const Stl: React.FC<{ geometry: BufferGeometry; at?: Point; color: string; opacity?: number; angle?: number }> = ({
@@ -117,17 +119,56 @@ const boardWires: { color: string; points: Point[] }[] = [
   { color: c.text, points: [[-10, -90, 1], [-15, -97, 3], [-44, -78, 4], [-49, -62, 4]] },
 ];
 
-const BuildCamera: React.FC<{ frame: number; width: number; height: number }> = ({ frame, width, height }) => {
+type SubjectBox = [Point, Point];
+type View = { center: Vector3; offset: Vector3; zoom: number };
+const moduleBox: SubjectBox = [[-80.5, 0, -40], [0, 41, 40]];
+const lidBox: SubjectBox = [[-80.5, 0, -51], [0, 47, 51]];
+const electronicsBox: SubjectBox = [[-105, 0, 55], [22, 16, 106]];
+const harnessBox: SubjectBox = [[-102, 0, -40], [-13, 42, 106]];
+const handBox: SubjectBox = [[-35, 50, -80], [158, 56, 45]];
+
+// Fit the current subject in screen space, then blend those views on the beats.
+// Background parts may pass out of view during a close-up; the subject stays
+// inside the canvas, which itself ends above the caption reserve.
+const subjectView = (boxes: SubjectBox[], offset: Point, fraction: number, width: number, height: number): View => {
+  const camera = new OrthographicCamera();
+  camera.position.set(...offset);
+  camera.lookAt(0, 0, 0);
+  const inverse = camera.quaternion.clone().invert();
+  const projected = new Box3();
+  for (const [min, max] of boxes) {
+    for (const x of [min[0], max[0]]) for (const y of [min[1], max[1]]) for (const z of [min[2], max[2]]) {
+      projected.expandByPoint(new Vector3(x, y, z).applyQuaternion(inverse));
+    }
+  }
+  const size = projected.getSize(new Vector3());
+  const center = projected.getCenter(new Vector3());
+  center.z = 0;
+  center.applyQuaternion(camera.quaternion);
+  return { center, offset: new Vector3(...offset), zoom: Math.min(width * fraction / size.x, height * 0.93 / size.y) };
+};
+const blendView = (a: View, b: View, progress: number): View => ({
+  center: a.center.clone().lerp(b.center, progress), offset: a.offset.clone().lerp(b.offset, progress),
+  zoom: a.zoom + (b.zoom - a.zoom) * progress,
+});
+const buildView = (frame: number, width: number, height: number): View => {
+  const orbit: Point = [190 - frame * 0.1, 220, 330];
+  let view = subjectView([moduleBox], orbit, 0.52, width, height);
+  view = blendView(view, subjectView([electronicsBox], [25, 300, 330], 0.78, width, height), ramp(frame, 192, 12));
+  view = blendView(view, subjectView([moduleBox, electronicsBox, harnessBox], [260, 240, 330], 0.82, width, height), ramp(frame, 216, 9));
+  view = blendView(view, subjectView([lidBox], orbit, 0.52, width, height), ramp(frame, 234, 9));
+  return blendView(view, subjectView([lidBox, electronicsBox, harnessBox, handBox], [30, 210, 350], 0.82, width, height), ramp(frame, 248, 18));
+};
+
+const BuildCamera: React.FC<{ view: View }> = ({ view }) => {
   const camera = useThree((state) => state.camera);
   useLayoutEffect(() => {
     if (!(camera instanceof OrthographicCamera)) return;
-    const widen = ramp(frame, 222, 36);
-    const center = new Vector3(-35 + widen * 65, 27, 24 - widen * 12);
-    camera.position.copy(center).add(new Vector3(65 - frame * 0.12, 280, 320));
-    camera.lookAt(center);
-    camera.zoom = Math.min(width / (190 + widen * 125), height / (133 + widen * 34));
+    camera.position.copy(view.center).add(view.offset);
+    camera.lookAt(view.center);
+    camera.zoom = view.zoom;
     camera.updateProjectionMatrix();
-  }, [camera, frame, width, height]);
+  }, [camera, view]);
   return null;
 };
 
@@ -135,7 +176,8 @@ export const BuildAssembly: React.FC<{ frame: number; width?: number; height?: n
   const geometry = useHardwareGeometry();
   if (!geometry) return null;
   const module = ramp(frame, 0, 15);
-  const ghost = ramp(frame, 240);
+  const ghost = ramp(frame, 252, 9);
+  const view = buildView(frame, width, height);
   return (
     <ThreeCanvas width={width} height={height} orthographic shadows dpr={1} camera={{ near: 1, far: 1200, position: [65, 280, 320] }} gl={{ antialias: true }}>
       <HardwareLighting />
@@ -159,8 +201,8 @@ export const BuildAssembly: React.FC<{ frame: number; width?: number; height?: n
           {boardWires.map((wire, i) => <Tube key={`board-wire-${i}`} points={wire.points} progress={ramp(frame, 218, 12)} color={wire.color} radius={0.42} />)}
         </>}
         {frame >= 234 && <Stl geometry={geometry.lid} color={hardwarePlastic.lid} at={[0, 0, 41 + (1 - ramp(frame, 234, 15)) * 70]} />}
-        {frame >= 240 && <>
-          <Tube points={ghostOutline} closed color={c.target} radius={0.45} opacity={ghost * 0.65} />
+        {frame >= 252 && <>
+          <Tube points={ghostOutline} closed color={c.target} radius={1.5 / view.zoom} opacity={ghost} unlit />
           {guides.map((pair, i) => <React.Fragment key={`finger-${i}`}>
             {pair.map((point, j) => <Stl key={j} geometry={geometry.guides} color={hardwarePlastic.guides} at={point} opacity={ghost} angle={i === 0 ? 0.65 : 0} />)}
             <Stl geometry={geometry.anchors} color={hardwarePlastic.anchors} at={fingertips[i]} opacity={ghost} angle={i === 0 ? 0.65 : 0} />
@@ -172,7 +214,7 @@ export const BuildAssembly: React.FC<{ frame: number; width?: number; height?: n
           ]} />)}
         </>}
       </group>
-      <BuildCamera frame={frame} width={width} height={height} />
+      <BuildCamera view={view} />
     </ThreeCanvas>
   );
 };

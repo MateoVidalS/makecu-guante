@@ -1,7 +1,7 @@
 import React from 'react';
 import { useCurrentFrame } from 'remotion';
 import { c, safe } from '../brand/tokens';
-import { Badge, Fill, T } from '../components/brand';
+import { Fill, T } from '../components/brand';
 import { BuildAssembly } from '../components/hardware/BuildAssembly';
 
 const steps = [
@@ -18,8 +18,8 @@ export const Build: React.FC = () => {
   const frame = useCurrentFrame();
   const step = [...steps].reverse().find((item) => frame >= item.at)!;
   return <Fill>
-    <T size="h3" style={{ position: 'absolute', left: safe.x, top: safe.y, color: c.text }}>{step.label}</T>
-    <Badge kind="illustrative" style={{ position: 'absolute', right: safe.x, top: safe.y }} />
-    <div style={{ position: 'absolute', top: 144, left: safe.x }}><BuildAssembly frame={frame} width={1728} height={720} /></div>
+    <div style={{ position: 'absolute', top: 64, left: 0 }}><BuildAssembly frame={frame} width={1920} height={760} /></div>
+    <T size="h2" style={{ position: 'absolute', left: safe.x, top: safe.y, color: c.text }}>{step.label}</T>
+    <T size="caption" w={400} color={c.muted} style={{ position: 'absolute', left: safe.x, bottom: 216 }}>Model of the printed parts and wiring</T>
   </Fill>;
 };
