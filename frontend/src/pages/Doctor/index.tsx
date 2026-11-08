@@ -35,6 +35,7 @@ import {
 import { firstAndLast, useAllSessions } from '../History/data';
 import { ExportButtons } from './ExportButtons';
 import './doctor.css';
+import { TherapyReview } from './TherapyReview';
 
 const capitalize = (value: string) =>
   value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
@@ -265,6 +266,7 @@ export default function Doctor() {
           </>
         )}
       </details>
+      <TherapyReview sessions={sessions.data ?? []} />
       <SessionList doctor />
       <EvaluationList />
     </section>

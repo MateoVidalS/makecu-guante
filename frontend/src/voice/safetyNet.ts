@@ -87,6 +87,10 @@ export class SafetyNet {
   ) {}
   handle(event: EngineEvent): boolean {
     if (event.kind !== 'safety' && event.kind !== 'resistance') return false;
+    this.announce(safetyPhrase(event));
+    return true;
+  }
+  announce(phrase: string) {
     // No promises, timers, React effects, or network on this path.
     const generation = ++this.generation;
     this.interrupt();
@@ -96,11 +100,9 @@ export class SafetyNet {
       /* Speech and captions must survive audio failures. */
     }
     this.local.cancel();
-    const phrase = safetyPhrase(event);
     this.caption(phrase);
     this.local.speak(phrase, () => {
       if (generation === this.generation) this.finished?.();
     });
-    return true;
   }
 }

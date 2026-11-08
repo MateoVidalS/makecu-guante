@@ -450,3 +450,54 @@
   .live-tools {
   display: none;
 }
+
+/* The compact audit line reserves its own row below the hand. */
+.exercise-live {
+  grid-template-rows: minmax(0, 1fr) auto auto;
+}
+
+/* Leave room for wrapping speech, the audit row and attempt feedback together. */
+@media (max-height: 760px) {
+  .exercise-live .live-details {
+    gap: var(--space-8);
+  }
+  .exercise-live .mx-gauge {
+    --gauge-h: var(--control-lg);
+  }
+  .exercise-live .phase-ring {
+    padding-block-end: var(--space-8);
+  }
+  .exercise-live .live-tools {
+    padding-block-start: var(--space-8);
+  }
+  .shell--focus:has(#safety-banner-slot [role='alert'])
+    .exercise-live
+    .mx-gauge {
+    --gauge-h: var(--space-32);
+  }
+  .shell--focus:has(#safety-banner-slot [role='alert'])
+    .exercise-live
+    .mx-legend--gauge {
+    display: none;
+  }
+}
+
+/* Safety owns Resume, while the patient's Brake stays available below the hand. */
+.shell--focus:has(#safety-banner-slot [role='alert'])
+  .exercise-live
+  .practice-actions {
+  display: flex;
+}
+.shell--focus:has(#safety-banner-slot [role='alert'])
+  .exercise-live
+  .practice-actions
+  > :not(.therapy-brake) {
+  display: none;
+}
+
+/* Coach focus is separate from the movement state and uses no animation. */
+.exercise-live .mx-gauge[data-highlighted] {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--space-4);
+  border-radius: var(--radius-input);
+}
