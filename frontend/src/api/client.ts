@@ -27,6 +27,14 @@ import type {
 } from '../contracts/engine';
 import type { GloveFinger } from '../contracts/glove';
 import type { PoseId } from '../contracts/poses';
+import type {
+  ChatMessage,
+  ChatStreamEvent,
+  ChatToolName,
+  ChatToolResult,
+  ChatVoiceToken,
+} from '../contracts/chat';
+import { parseChatEvents } from './sse';
 
 export class ApiRequestError extends Error {
   constructor(
@@ -223,3 +231,53 @@ export const useCreateSummary = () => useWrite(createSummary, ['summaries']);
 export const useCreateVoiceToken = () =>
   useMutation({ mutationFn: createVoiceToken });
 export const useExportData = () => useMutation({ mutationFn: exportData });
+
+export async function streamChat(
+  messages: ChatMessage[],
+  {
+    signal,
+    onEvent,
+  }: { signal?: AbortSignal; onEvent: (event: ChatStreamEvent) => void },
+): Promise<void> {
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body: JSON.stringify({
+      messages: messages
+        .filter((m) => m.text.trim())
+        .slice(-20)
+        .map((m) => ({ ...m, text: m.text.slice(0, 4000) })),
+    }),
+    signal,
+  });
+  if (!response.ok) {
+    const payload = (await response
+      .json()
+      .catch(() => null)) as ApiError | null;
+    onEvent({
+      type: 'error',
+      code:
+        payload?.error?.code === 'invalid_request'
+          ? 'invalid_request'
+          : 'chat_unavailable',
+      message: payload?.error?.message ?? 'Chat unavailable',
+    });
+    return;
+  }
+  if (!response.body) throw new Error('Chat response has no stream');
+  await parseChatEvents(response.body, onEvent, signal);
+}
+
+export const createChatVoiceToken = () =>
+  request<ChatVoiceToken>('/chat/voice-token', body('POST'));
+export const runChatTool = (
+  name: ChatToolName,
+  args: Record<string, unknown>,
+) =>
+  request<ChatToolResult>(
+    `/chat/tools/${encodeURIComponent(name)}`,
+    body('POST', { args }),
+  );

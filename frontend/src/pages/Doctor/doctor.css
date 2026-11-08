@@ -252,7 +252,11 @@
   display: grid;
   gap: var(--space-32);
 }
-.report-details > .report-page + .report-page {
+/* Doctor chat scroll targets (show_chart) wrap sections without adding layout. */
+[data-chat-section] {
+  min-width: 0;
+}
+.report-details > [data-chat-section] + [data-chat-section] > .report-page {
   padding-block-start: var(--space-32);
   border-block-start: var(--control-border) solid var(--border);
 }

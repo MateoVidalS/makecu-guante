@@ -14,6 +14,7 @@ import type {
 } from '../contracts/api';
 import type { Calibration } from '../contracts/calibration';
 import type { AttemptResult, SessionSummary } from '../contracts/engine';
+import type { ChatStreamEvent } from '../contracts/chat';
 
 const now = () => new Date().toISOString();
 export const createMockState = createDemoState;
@@ -107,6 +108,91 @@ export function historyAssist() {
 }
 
 export const handlers = [
+  http.post('/api/chat', () => {
+    const events: ChatStreamEvent[] = [
+      {
+        type: 'tool',
+        name: 'get_session',
+        label: 'Looking up the Nov 3 session…',
+      },
+      {
+        type: 'delta',
+        text: 'Demo data: this is a sample answer, not a live analysis.\n',
+      },
+      {
+        type: 'delta',
+        text: 'The fixture records illustrate changes in active range and assistance. ',
+      },
+      {
+        type: 'delta',
+        text: 'Review the charts and safety events for the full context.',
+      },
+      { type: 'done', model: 'fixture' },
+    ];
+    const encoder = new TextEncoder();
+    let index = 0;
+    let cancelled = false;
+    return new HttpResponse(
+      new ReadableStream({
+        async pull(controller) {
+          if (index === events.length) {
+            controller.close();
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 120));
+          if (cancelled) return;
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(events[index++])}\n\n`),
+          );
+        },
+        cancel() {
+          cancelled = true;
+        },
+      }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    );
+  }),
+  http.post('/api/chat/voice-token', () =>
+    HttpResponse.json(
+      {
+        error: {
+          code: 'chat_unavailable',
+          message: 'Live voice is unavailable in demo mode.',
+        },
+      },
+      { status: 503 },
+    ),
+  ),
+  http.post('/api/chat/tools/:name', ({ params }) => {
+    if (params.name === 'show_chart')
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'invalid_request',
+            message: 'show_chart is browser-only.',
+          },
+        },
+        { status: 422 },
+      );
+    if (
+      ![
+        'get_session',
+        'get_transcript',
+        'get_evaluation',
+        'compare',
+        'find',
+      ].includes(String(params.name))
+    )
+      return missing();
+    return HttpResponse.json({
+      name: params.name,
+      result: {
+        is_demo: true,
+        message: 'Demo data: sample patient records.',
+        sessions: mockState.sessions.slice(0, 2),
+      },
+    });
+  }),
   http.get('/api/health', () =>
     HttpResponse.json({ ok: true, version: '0.1.0', gemini: false }),
   ),
