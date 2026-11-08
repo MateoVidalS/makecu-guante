@@ -16,9 +16,9 @@ bool valid(float min, float max) {
          min <= config::HARD_MAX && max >= config::HARD_MIN && max <= config::HARD_MAX &&
          std::fabs(max - min) >= 20.0F;
 }
-float toAngle(float closure, const Calibration& calibration) {
+float toAngle(float pull, const Calibration& calibration) {
   if (!calibration.valid || !valid(calibration.min, calibration.max)) return config::HARD_MIN;
-  return clampAngle(calibration.min + clampClosure(closure) * (calibration.max - calibration.min));
+  return clampAngle(calibration.min + clampClosure(pull) * (calibration.max - calibration.min));
 }
 float toClosure(float angle, const Calibration& calibration) {
   if (!calibration.valid || !valid(calibration.min, calibration.max)) return 0;
