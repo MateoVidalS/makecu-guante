@@ -1,0 +1,38 @@
+{
+  "sourceUrl": "https://www.scottbuckley.com.au/library/wp-content/uploads/2022/10/AKindOfHope.mp3",
+  "sourceSha256": "d0dc554c0db9ea208b4f59e4f0c1b4446aa7ef622c7bfeffca278130a46c51f1",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "chosenCandidate": 2,
+  "candidateExcerptSeconds": 48,
+  "sampleRate": 48000,
+  "samples": 8294400,
+  "edits": [
+    {
+      "fromSeconds": 0,
+      "toSeconds": 28.8,
+      "sourceSeconds": 6.0
+    },
+    {
+      "fromSeconds": 28.8,
+      "toSeconds": 139.2,
+      "sourceSeconds": 82.8
+    },
+    {
+      "fromSeconds": 139.2,
+      "toSeconds": 153.6,
+      "sourceSeconds": 250.8
+    },
+    {
+      "fromSeconds": 153.6,
+      "toSeconds": 163.2,
+      "sourceSeconds": 25.2
+    },
+    {
+      "fromSeconds": 163.2,
+      "toSeconds": 172.8,
+      "sourceSeconds": 328.2
+    }
+  ],
+  "crossfadeSeconds": 0.12,
+  "percussionSeed": 100
+}

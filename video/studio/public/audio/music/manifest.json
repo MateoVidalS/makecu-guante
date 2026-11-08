@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "file": "audio/music/bed.wav",
+  "bpm": 100,
+  "source": "A Kind Of Hope by Scott Buckley (2022), CC BY 4.0. https://www.scottbuckley.com.au/library/a-kind-of-hope/ Edited, crossfaded, with original synthesized 100 BPM percussion.",
+  "credit": "A Kind Of Hope \u00b7 Scott Buckley \u00b7 CC BY 4.0 \u00b7 scottbuckley.com.au \u00b7 Edited",
+  "cues": [
+    {
+      "frame": 0,
+      "gain": 0.52
+    },
+    {
+      "frame": 210,
+      "gain": 0.52
+    },
+    {
+      "frame": 216,
+      "gain": 0.3
+    },
+    {
+      "frame": 498,
+      "gain": 0.3
+    },
+    {
+      "frame": 504,
+      "gain": 0.52
+    },
+    {
+      "frame": 846,
+      "gain": 0.52
+    },
+    {
+      "frame": 864,
+      "gain": 0.78
+    },
+    {
+      "frame": 1224,
+      "gain": 0.68
+    },
+    {
+      "frame": 2106,
+      "gain": 0.68
+    },
+    {
+      "frame": 2124,
+      "gain": 0.035
+    },
+    {
+      "frame": 2199,
+      "gain": 0.035
+    },
+    {
+      "frame": 2364,
+      "gain": 0.12
+    },
+    {
+      "frame": 2376,
+      "gain": 0.68
+    },
+    {
+      "frame": 4176,
+      "gain": 0.82
+    },
+    {
+      "frame": 4596,
+      "gain": 0.82
+    },
+    {
+      "frame": 4608,
+      "gain": 0.34
+    },
+    {
+      "frame": 4884,
+      "gain": 0.34
+    },
+    {
+      "frame": 4896,
+      "gain": 0.72
+    },
+    {
+      "frame": 5112,
+      "gain": 0.6
+    },
+    {
+      "frame": 5183,
+      "gain": 0
+    }
+  ]
+}
