@@ -150,8 +150,8 @@ describe('live stage', () => {
     runtime.exercise.pause();
     runtime.dispose();
     mount(<Exercise />, runtime);
-    const resume = screen.getByRole('button', { name: 'Resume', exact: true });
-    const skip = screen.getByRole('button', { name: 'Skip pose', exact: true });
+    const resume = screen.getByRole('button', { name: 'Resume' });
+    const skip = screen.getByRole('button', { name: 'Skip pose' });
     try {
       expect(resume).toBeEnabled();
       const alert = document.createElement('div');
@@ -161,9 +161,7 @@ describe('live stage', () => {
       expect(resume).toBeVisible();
       expect(skip).toBeVisible();
       expect(skip).toBeDisabled();
-      expect(
-        screen.getByRole('button', { name: 'Brake', exact: true }),
-      ).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Brake' })).toBeEnabled();
       act(() => slot.replaceChildren());
       await waitFor(() => expect(resume).toBeEnabled());
       expect(skip).toBeEnabled();

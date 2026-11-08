@@ -33,6 +33,7 @@ export default defineConfig({
         : 'make -C .. demo-seed && make -C .. dev-sim',
     env: {
       REHAB_FRONTEND_PORT: frontendPort,
+      REHAB_VITE_CACHE_DIR: join(tmpdir(), `rehab-vite-e2e-${process.pid}`),
       REHAB_PORT: apiPort,
       REHAB_DB_PATH: join(tmpdir(), `rehab-e2e-${process.pid}.db`),
       GEMINI_API_KEY: '',
