@@ -17,6 +17,7 @@ import re
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -38,13 +39,21 @@ class Check:
     expect_any: list[str] = field(default_factory=list)  # answer contains one (case-insensitive)
     expect_tool: set[str] = field(default_factory=set)  # one of these tools must be called
     note: str = ""
+    # Facts that depend on the seeded record: the demo's noise follows its end date.
+    expect_from_record: Callable[[dict], list[str]] | None = None
+
+
+def index_gain(record: dict) -> list[str]:
+    """The latest session's index change since the first opening session, in points."""
+    sessions = [s for s in record["readable"]["sessions"] if s.get("since_first_opening_session")]
+    return [str(sessions[-1]["since_first_opening_session"]["change_points"]["index"])]
 
 
 CHECKS = [
     Check(
         "How has the index finger's opening changed since the first opening session?",
-        expect_any=["42"],
-        note="index gains most: +42 points",
+        expect_from_record=index_gain,
+        note="index gains most, about +42 points",
     ),
     Check("Summarize the safety events.", expect_any=["brake", "pause", "stop"]),
     Check(
@@ -194,7 +203,8 @@ def main():
         if not args.db:
             seed_demo(engine, end=datetime.now(timezone.utc))
         with Session(engine) as db:
-            print(f"Mode: {args.mode} · record {len(json.dumps(build_patient_record(db)))} chars")
+            record = build_patient_record(db)
+            print(f"Mode: {args.mode} · record {len(json.dumps(record))} chars")
             for position, number in enumerate(picked):
                 check = CHECKS[number - 1]
                 if position:
@@ -213,8 +223,11 @@ def main():
                 if answer:
                     problems += rule_problems(answer, limit)
                     lowered = answer.lower()
-                    if check.expect_any and not any(e in lowered for e in check.expect_any):
-                        problems.append(f"expected one of {check.expect_any} ({check.note})")
+                    expected = check.expect_any + (
+                        check.expect_from_record(record) if check.expect_from_record else []
+                    )
+                    if expected and not any(e in lowered for e in expected):
+                        problems.append(f"expected one of {expected} ({check.note})")
                     if check.expect_tool and not check.expect_tool & set(called):
                         problems.append(f"expected tool {sorted(check.expect_tool)}")
                 failures += bool(problems)
