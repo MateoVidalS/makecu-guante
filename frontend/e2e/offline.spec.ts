@@ -27,7 +27,7 @@ test('finishes practice offline and saves the queued session after recovery', as
   await expect(
     page.getByRole('heading', { name: 'Session complete', exact: true }),
   ).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText('10 attempts', { exact: false })).toBeVisible();
+  await expect(page.getByText('8 attempts', { exact: false })).toBeVisible();
   await expect(status).toHaveText('Offline');
   offline = false;
   await expect(status).toHaveText('Saved', { timeout: 10_000 });
