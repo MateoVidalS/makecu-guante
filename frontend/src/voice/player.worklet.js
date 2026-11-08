@@ -74,6 +74,8 @@ class Player extends AudioWorkletProcessor {
         this.started = false;
         this.waited = 0;
         this.offset = 0;
+        // Tell the page the reply has finished playing (half-duplex mic gating).
+        this.port.postMessage('idle');
       }
     }
     return true;
