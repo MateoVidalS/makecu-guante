@@ -39,10 +39,15 @@ and `assist_max_parallel` (default/maximum 3). Invalid values are rejected
 before commands. The scheduler starts one finger per tick, largest opening
 deficit first. Its queue and start clock persist across early assistance in
 ATTEMPT and the transition to ASSIST. A winding slot stays occupied until
-telemetry confirms arrival. Queued, reached, free or otherwise held fingers
-use `min(tel.a, max(0, pullFromClosure(vision) - 0.08))` on every target refresh,
-including ASSIST_HOLD. Held fingers may only pay out. Safe payout remains
-immediate even while other fingers wind.
+telemetry confirms arrival. Fingers that the glove has never started (queued,
+free, reached by the patient alone or otherwise unassisted) use
+`min(tel.a, max(0, pullFromClosure(vision) - 0.08))` on every target refresh,
+including ASSIST_HOLD, and may only pay out. Once started, a finger retains its
+assisted target through ASSIST and ASSIST_HOLD until RELEASE. Vision crossing
+the tolerance boundary never clears its started state or lowers/restarts its
+pull. Only resistance, load shedding or an explicit therapy reduction can
+lower that target. This hysteresis prevents repeated release/re-pull cycles
+while preserving safe payout for fingers that were never assisted.
 
 Ordinary pull goals are capped at `MAX_ASSIST_PULL` (0.95). Only consented
 `intensify('further')` permits pull 1.0 for that finger. Assisted opening reaches

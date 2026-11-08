@@ -79,12 +79,12 @@ describe('power-aware assist scheduler', () => {
     const scheduler = new AssistScheduler(POSES.hook, position, 150, 3);
     const vision: Quint = [0.9, 0.6, 0.8, 0.95, 0.9];
     const assistable = [false, false, true, true, true];
-    scheduler.refreshHeld(position, vision, assistable);
+    scheduler.refreshHeld(position, vision);
     scheduler.advance(0, position, vision, assistable);
     expect(scheduler.target[3]).toBeCloseTo(0.4);
     for (const i of [0, 1, 2, 4])
       expect(scheduler.target[i]).toBeLessThanOrEqual(position[i]);
-    scheduler.refreshHeld(position, [1, 0.6, 0.8, 0.95, 0.9], assistable);
+    scheduler.refreshHeld(position, [1, 0.6, 0.8, 0.95, 0.9]);
     expect(scheduler.target[0]).toBe(0);
     scheduler.advance(150, position, [1, 0.6, 1, 0.95, 0.9], assistable);
     expect(scheduler.target[2]).toBeCloseTo(0.4);
@@ -112,7 +112,7 @@ it('sheds in reverse start order down to the held pull, waiting for actual payou
   expect(scheduler.target[1]).toBeCloseTo(0);
   expect(scheduler.shedLoad([0, 0.5, 0, 0, 0], vision)).toBeNull();
   expect(scheduler.shedLoad(zeros(), vision)).toBe(0);
-  scheduler.refreshHeld(zeros(), vision, eligible);
+  scheduler.refreshHeld(zeros(), vision);
   scheduler.advance(1000, zeros(), vision, eligible);
   expect(scheduler.target[1]).toBeCloseTo(0);
 });

@@ -907,11 +907,7 @@ class Exercise implements ExerciseEngine {
   private refreshTarget(): void {
     if (!this.scheduler || !this.input?.tel) return;
     if (visible(this.input))
-      this.scheduler.refreshHeld(
-        this.input.tel.a,
-        closure(this.input),
-        this.assistable(),
-      );
+      this.scheduler.refreshHeld(this.input.tel.a, closure(this.input));
     const target: Quint = this.resistance
       ? (this.scheduler.target.map((v, i) =>
           Math.min(

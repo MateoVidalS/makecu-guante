@@ -37,6 +37,7 @@ export class AssistScheduler {
   hasStarted(index: number) {
     return this.started.has(index);
   }
+  /** Explicit therapy/resistance reduction, never an automatic vision-reach action. */
   suspend(index: number, position: number) {
     this.moving.delete(index);
     this.started.delete(index);
@@ -74,10 +75,11 @@ export class AssistScheduler {
     }
   }
 
-  refreshHeld(position: Quint, vision: Quint, assistable: boolean[]): void {
+  refreshHeld(position: Quint, vision: Quint): void {
     for (const i of GLOVE_FINGERS.keys()) {
-      if (!assistable[i]) this.suspend(i, heldPull(position[i], vision[i]));
-      else if (!this.started.has(i))
+      // Assistance owns this target until an explicit reduction or release.
+      // Reaching tolerance must not unwind and requeue the same tendon.
+      if (!this.started.has(i))
         this.target[i] = heldPull(position[i], vision[i]);
       if (this.shed.has(i))
         this.target[i] = Math.min(this.target[i], this.goal[i]);
