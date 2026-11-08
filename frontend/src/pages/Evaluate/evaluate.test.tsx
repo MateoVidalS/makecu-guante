@@ -26,6 +26,13 @@ afterEach(() => {
 function mount({ fresh = false } = {}) {
   const runtime = new ScriptedRuntime({ persist: false });
   if (fresh) runtime.calibration.current!.created_at = new Date().toISOString();
+  runtime.calibration.current!.camera.closed_flex = {
+    thumb: 100,
+    index: 270,
+    middle: 270,
+    ring: 270,
+    pinky: 270,
+  };
   const curves = structuredClone(runtime.calibration.current!.friction);
   const save = vi
     .spyOn(runtime.calibration, 'save')
@@ -227,4 +234,29 @@ it('accepts only complete, recent slow/fast baselines, including ring and pinky'
   delete calibration.friction.pinky;
   expect(hasRecentFriction(calibration)).toBe(false);
   expect(hasRecentFriction(null)).toBe(false);
+});
+
+it('blocks invalid saved calibration and links directly to the same repair', () => {
+  const { runtime } = mount({ fresh: true });
+  act(() => {
+    runtime.calibration.current!.camera.closed_flex.index = 200;
+    runtime.evaluationStore.setState({ stage: 'idle' });
+  });
+  expect(screen.getByText('Needs a quick redo')).toBeVisible();
+  expect(screen.getByRole('link', { name: 'Fix' })).toHaveAttribute(
+    'href',
+    '/calibrate?step=camera&finger=index',
+  );
+  fireEvent.click(
+    screen.getByRole('checkbox', { name: 'Hand relaxed in the glove' }),
+  );
+  expect(
+    screen.getByRole('button', { name: 'Start evaluation' }),
+  ).toBeDisabled();
+  const strip = screen
+    .getByRole('button', { name: 'Release glove now' })
+    .closest('.ds-banner');
+  expect(strip).toHaveClass('ds-banner--warning');
+  expect(screen.getAllByText('Keep your hand relaxed.')).toHaveLength(1);
+  expect(strip).toHaveTextContent('Press STOP anytime. Stop if it hurts.');
 });
