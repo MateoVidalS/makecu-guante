@@ -1,0 +1,23 @@
+{
+  "id": "doctor-replay",
+  "file": "recordings/doctor-replay.mp4",
+  "width": 3840,
+  "height": 2160,
+  "fps": 30,
+  "durationFrames": 360,
+  "simulated": true,
+  "demoData": true,
+  "events": [
+    {
+      "frame": 0,
+      "kind": "focus",
+      "label": "focus:vision-servo-current-phase-bands",
+      "box": {
+        "x": 784,
+        "y": 192.5,
+        "w": 2272,
+        "h": 1845.21875
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "id": "doctor-export",
+  "file": "recordings/doctor-export.mp4",
+  "width": 3840,
+  "height": 2160,
+  "fps": 30,
+  "durationFrames": 180,
+  "simulated": true,
+  "demoData": true,
+  "events": [
+    {
+      "frame": 60,
+      "kind": "click",
+      "label": "click:Export CSV",
+      "box": {
+        "x": 1372.5,
+        "y": 661.25,
+        "w": 206.5,
+        "h": 64
+      }
+    },
+    {
+      "frame": 60,
+      "kind": "mark",
+      "label": "mark:export-downloaded",
+      "box": {
+        "x": 1120.5,
+        "y": 733.25,
+        "w": 790.90625,
+        "h": 46.09375
+      }
+    }
+  ]
+}
