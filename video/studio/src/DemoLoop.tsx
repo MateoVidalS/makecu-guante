@@ -1,4 +1,4 @@
-// Silent 45 s loop for the screen at the demo table. Reuses the film's scenes; big captions; starts and ends on the
+// Silent 52 s loop for the screen at the demo table. Reuses the film's scenes; big captions; starts and ends on the
 // same title card so it loops seamlessly. Render with --muted.
 import React from 'react';
 import { AbsoluteFill, interpolate, Sequence, useCurrentFrame } from 'remotion';
@@ -7,12 +7,11 @@ import { Mark } from './components/brand';
 import { Wordmark } from './components/story/Wordmark';
 import { Bench } from './scenes/Bench';
 import { Coach } from './scenes/Coach';
-import { Team } from './scenes/Team';
 import { Build } from './scenes/Build';
 import { Doctor } from './scenes/Doctor';
 import { SessionRemapped } from './scenes/SessionRemapped';
 
-export const LOOP_FRAMES = 1710;
+export const LOOP_FRAMES = 1560;
 
 const Title: React.FC = () => (
   <AbsoluteFill style={{ background: c.bg, fontFamily: font, alignItems: 'center', justifyContent: 'center' }}>
@@ -61,7 +60,6 @@ const SEGMENTS: Seg[] = [
   { len: 300, node: <Clip offset={156}><Coach /></Clip>, caption: 'Ask the Gemini coach for help. It answers.', dip: true },
   { len: 180, node: <Clip offset={700}><SessionRemapped /></Clip>, caption: 'Resist, and it lets go.', dip: true },
   { len: 210, node: <Clip offset={290}><Doctor /></Clip>, caption: 'Therapists ask Gemini about the record.', dip: true },
-  { len: 150, node: <Clip offset={20}><Team /></Clip>, caption: 'Built at MakeCU by Matías, Martín and Mateo', dip: true },
   { len: 90, node: <Title /> },
 ];
 
