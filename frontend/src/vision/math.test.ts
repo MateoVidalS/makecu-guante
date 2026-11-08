@@ -44,11 +44,18 @@ const clips = Object.fromEntries(
     ) as Clip,
   ]),
 );
-// Frozen legacy contract recordings use the old mirrored "right" geometry.
-// Reflect their test input into an anatomical right hand without changing fixtures.
+// Frozen legacy contract recordings use the old mirrored "right" geometry in the
+// hand frame (fingers +y, palm +z). Reflect their test input into an anatomical
+// right hand and place it palm to the lens, as camera-aligned MediaPipe world
+// landmarks are in the default upright view (fingers -y, palm -z), without
+// changing fixtures.
 for (const clip of Object.values(clips))
   for (const frame of clip.frames) {
-    frame.worldLandmarks = frame.worldLandmarks.map(([x, y, z]) => [-x, y, z]);
+    frame.worldLandmarks = frame.worldLandmarks.map(([x, y, z]) => [
+      -x,
+      -y,
+      -z,
+    ]);
     frame.landmarks = frame.landmarks.map(([x, y, z]) => [1 - x, y, z]);
   }
 const result = (clip: Clip, i = 0): HandResult => ({
@@ -111,15 +118,23 @@ describe('synthetic landmark fixtures', () => {
     const pinches = poses.map((p) => pinchRatio(clips[p].frames[0].landmarks));
     expect(pinches.at(-1)).toBeLessThan(Math.min(...pinches.slice(0, -1)));
   });
-  it('keeps 3D angles and pinch invariant under rigid transforms and scale', () => {
+  it('keeps 3D angles and pinch invariant under rigid transforms and scale (upright: in-plane)', () => {
     const frame = clips.hook.frames[0];
     const transform = (points: Landmark[]): Landmark[] =>
       points.map(([x, y, z]) => [2 * z + 1, 2 * y - 3, -2 * x + 5]);
-    const a = jointAngles(frame.worldLandmarks),
-      b = jointAngles(transform(frame.worldLandmarks));
-    for (const f of FINGERS)
-      for (const j of ['mcp', 'pip', 'dip'] as const)
-        expect(a[f][j]).toBeCloseTo(b[f][j], 4);
+    // Upright long fingers measure against the lens axis: rotate in the image plane.
+    const inPlane = (points: Landmark[]): Landmark[] =>
+      points.map(([x, y, z]) => [-2 * y + 1, 2 * x - 3, 2 * z + 5]);
+    for (const [view, move] of [
+      ['front_upright', inPlane],
+      ['front_diagonal', transform],
+    ] as const) {
+      const a = jointAngles(frame.worldLandmarks, view),
+        b = jointAngles(move(frame.worldLandmarks), view);
+      for (const f of FINGERS)
+        for (const j of ['mcp', 'pip', 'dip'] as const)
+          expect(a[f][j], `${view} ${f} ${j}`).toBeCloseTo(b[f][j], 4);
+    }
     expect(pinchRatio(frame.landmarks)).toBeCloseTo(
       pinchRatio(transform(frame.landmarks)),
       5,

@@ -111,17 +111,21 @@ describe('hand position accuracy, noise-free (math and geometry)', SLOW, () => {
         expect(row.max, `size ${size} ${row.pose}`).toBeLessThan(0.005);
     }
   });
-  it('does not depend on how the hand is turned after calibration (yaw, pitch, roll up to 30°)', () => {
-    const tilts: Tilt[] = [
-      { yaw: 30 },
-      { yaw: -30 },
-      { pitch: 30 },
-      { pitch: -30 },
-      { roll: 30 },
-      { roll: -30 },
-    ];
+  it('does not depend on how the hand is turned after calibration (legacy: yaw, pitch, roll up to 30°; upright: roll)', () => {
+    const rolls: Tilt[] = [{ roll: 30 }, { roll: -30 }];
+    const tilts: Record<CameraView, Tilt[]> = {
+      // Upright long fingers measure toward the lens; pitch/yaw cost is reported below.
+      front_upright: rolls,
+      front_diagonal: [
+        { yaw: 30 },
+        { yaw: -30 },
+        { pitch: 30 },
+        { pitch: -30 },
+        ...rolls,
+      ],
+    };
     for (const view of VIEWS)
-      for (const tilt of tilts) {
+      for (const tilt of tilts[view]) {
         const scene: Scene = { view, hand: 'right', noise: NOISE.ideal };
         const rows = holdErrors(PATIENTS.healthy, scene, 1, POSES, {
           ...scene,
@@ -133,6 +137,55 @@ describe('hand position accuracy, noise-free (math and geometry)', SLOW, () => {
             `${view} ${JSON.stringify(tilt)} ${row.pose}`,
           ).toBeLessThan(0.005);
       }
+  });
+  it('upright: reports the closure cost of pitching or yawing the hand after calibration', () => {
+    // MediaPipe barely reports a near-frontal palm's tilt (bench: rendered ±25°
+    // pitch/yaw leave its world palm normal unchanged), so upright long fingers
+    // measure toward the lens. This model's landmarks are exact geometry, so it
+    // shows the price of that choice; the bench measures what real MediaPipe does.
+    const LONG = ['index', 'middle', 'ring', 'pinky'] as const;
+    const rows: Record<string, string | number>[] = [];
+    for (const hand of HANDS)
+      for (const noise of [NOISE.ideal, NOISE.bench])
+        for (const axis of ['pitch', 'yaw'] as const)
+          for (const degrees of [-35, -25, -15, 15, 25, 35]) {
+            const scene: Scene = { view: 'front_upright', hand, noise };
+            const tilted = holdErrors(PATIENTS.healthy, scene, 1, POSES, {
+              ...scene,
+              tilt: { [axis]: degrees },
+            });
+            const biases = tilted.flatMap((row) =>
+              LONG.map((f) => row.fingerBias[f]),
+            );
+            rows.push({
+              hand,
+              noise: noise.label,
+              tilt: `${axis} ${degrees}`,
+              meanAbsLongBias: round(mean(biases.map(Math.abs))),
+              worstLongBias: round(
+                biases.reduce((a, b) => (Math.abs(b) > Math.abs(a) ? b : a)),
+              ),
+              ...Object.fromEntries(
+                tilted.map((row) => [
+                  row.pose,
+                  round(mean(LONG.map((f) => row.fingerBias[f]))),
+                ]),
+              ),
+            });
+          }
+    report(
+      'Upright long-finger closure bias after turning the hand (healthy patient, calibrated frontal)',
+      rows,
+    );
+    // Guard the documented cost: about 0.05 at 15° and 0.09 at 25°.
+    for (const row of rows) {
+      const degrees = Math.abs(Number(String(row.tilt).split(' ')[1]));
+      const limit = degrees <= 15 ? 0.06 : degrees <= 25 ? 0.1 : 0.13;
+      expect(
+        row.meanAbsLongBias,
+        `${row.hand} ${row.noise} ${row.tilt}`,
+      ).toBeLessThan(limit);
+    }
   });
 });
 

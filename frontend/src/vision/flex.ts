@@ -49,7 +49,9 @@ const cross = (a: Landmark, b: Landmark): Landmark => [
   a[0] * b[1] - a[1] * b[0],
 ];
 
-/** Area normal of the MCP arch, independent of wrist position and camera axes. */
+/** Area normal of the MCP arch, independent of wrist position and camera axes.
+ * Used by the thumb and the legacy view; see LENS_PALMAR for upright long fingers.
+ */
 function palmNormal(points: Landmark[]): Landmark {
   const knuckles = [5, 9, 13, 17].map((i) => points[i]);
   const origin = knuckles[0];
@@ -65,8 +67,23 @@ function palmNormal(points: Landmark[]): Landmark {
   return normal;
 }
 
-/** World-space flexion; upright MCP is the proximal bone's angle to the palm plane.
- * Axes point toward palmar flexion for the configured hand, independently of labels.
+/** Palmar direction of the long fingers in the upright view: toward the lens.
+ * World landmarks are camera-aligned (x right, y down, z away from the lens),
+ * and front_upright is defined by the palm facing the lens. A near-frontal
+ * palm's tilt is barely observable in one image (foreshortening is second
+ * order and its sign is ambiguous), so MediaPipe's world palm orientation is a
+ * guess: on the real-MediaPipe bench it ignores ±25° tilts of a rendered palm
+ * yet swings 35–50° as the fingers flex, and the MCP arch's own area normal
+ * (four nearly collinear knuckles) tilts 25–65° with knuckle depth noise. Any
+ * of those tilts would add to every MCP reading; the lens axis does not move.
+ */
+const LENS_PALMAR: Landmark = [0, 0, -1];
+
+/** World-space flexion. Upright long fingers measure MCP as the proximal
+ * bone's elevation toward the lens and are independent of the configured hand
+ * and of rotations in the image plane; pitch/yaw away from a frontal palm after
+ * calibration shift MCP instead. The thumb and the legacy view orient their
+ * axes toward palmar flexion for the configured hand, independently of labels.
  */
 export function jointAngles(
   landmarks: Landmark[],
@@ -78,14 +95,12 @@ export function jointAngles(
   const bone = (a: number, b: number) => vector(landmarks[a], landmarks[b]);
   // For an anatomical right hand, distal x palmar points to the thumb side.
   // The MCP arch's area normal is palmar on right hands and dorsal on left.
-  // Use the configured hand, never the detector label, to orient long flexion.
+  // Use the configured hand, never the detector label, to orient it.
   const normal = unit(palmNormal(landmarks)).map(
     (value) => value * (hand === 'right' ? 1 : -1),
   ) as Landmark;
-  const flexionAxis = (reference: Landmark) => unit(cross(reference, normal));
-  const forward = cross(normal, bone(5, 17)).map(
-    (value) => value * (hand === 'right' ? -1 : 1),
-  ) as Landmark;
+  const upright = view === 'front_upright';
+  const palmar = upright ? LENS_PALMAR : normal;
   return fingerMap((finger) => {
     if (finger === 'thumb') {
       // Full 3D bend, signed by where it points: real thumbs flex partly palmar and
@@ -113,22 +128,31 @@ export function jointAngles(
       };
     }
     const base = { index: 5, middle: 9, ring: 13, pinky: 17 }[finger];
-    const axis = flexionAxis(bone(0, base));
+    const metacarpal = bone(0, base);
+    // Perpendicular to the finger's metacarpal and the palmar direction, so it
+    // points toward flexion. Upright, both are hand-independent.
+    const axis = unit(cross(metacarpal, palmar));
     const proximal = bone(base, base + 1);
+    // This finger's distal direction within the palm plane.
+    const along = dot(metacarpal, palmar);
+    const distal: Landmark = [
+      metacarpal[0] - along * palmar[0],
+      metacarpal[1] - along * palmar[1],
+      metacarpal[2] - along * palmar[2],
+    ];
     return {
-      // Keep the palm-plane elevation, including splay invariance. Give its
-      // in-plane component a forward/backward sign so noise at a 90° MCP can
-      // land on either side of 90°, rather than rectifying downward at a fist.
-      mcp:
-        view === 'front_upright'
-          ? (Math.atan2(
-              dot(normal, proximal),
-              length(cross(normal, proximal)) *
-                (dot(forward, proximal) < 0 ? -1 : 1),
-            ) *
-              180) /
-            Math.PI
-          : signedAngle(bone(0, base), proximal, axis),
+      // Elevation out of the palm plane, so splay does not count. Its in-plane
+      // component keeps a distal/proximal sign so noise at a 90° MCP can land on
+      // either side of 90°, rather than rectifying downward at a fist.
+      mcp: upright
+        ? (Math.atan2(
+            dot(palmar, proximal),
+            length(cross(palmar, proximal)) *
+              (dot(distal, proximal) < 0 ? -1 : 1),
+          ) *
+            180) /
+          Math.PI
+        : signedAngle(metacarpal, proximal, axis),
       pip: signedAngle(proximal, bone(base + 1, base + 2), axis),
       dip: signedAngle(
         bone(base + 1, base + 2),
