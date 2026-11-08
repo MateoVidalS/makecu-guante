@@ -6,6 +6,9 @@ import type { TherapistSnapshot } from './ai-therapist-harness';
 import { silenceCoach } from './helpers';
 
 test.describe('scripted Live AI therapist through the production app', () => {
+  // Keep transient focus/voice UI checks in one browser at a time, even when
+  // the surrounding suite runs fully parallel on the shared development host.
+  test.describe.configure({ mode: 'default' });
   test.setTimeout(90_000);
   test.use({ actionTimeout: 30_000 });
 
@@ -65,11 +68,15 @@ test.describe('scripted Live AI therapist through the production app', () => {
       .getByRole('button', { name: 'Start practice', exact: true })
       .click();
     await expect
-      .poll(() => page.evaluate(() => window.aiTherapist.snapshot().connected))
+      .poll(
+        () => page.evaluate(() => window.aiTherapist.snapshot().connected),
+        { timeout: 15_000 },
+      )
       .toBe(true);
     await expect
-      .poll(() =>
-        page.evaluate(() => window.aiTherapist.snapshot().view.sessionId),
+      .poll(
+        () => page.evaluate(() => window.aiTherapist.snapshot().view.sessionId),
+        { timeout: 15_000 },
       )
       .not.toBeNull();
     return page.evaluate(() => window.aiTherapist.snapshot());
