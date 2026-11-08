@@ -75,7 +75,11 @@ const r3 = (x) => (Number.isFinite(x) ? Math.round(x * 1000) / 1000 : null);
 const server = await createServer({
   root,
   logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false },
+  server: {
+    host: '127.0.0.1',
+    port: Number(process.env.REHAB_BENCH_PORT ?? 5417),
+    strictPort: false,
+  },
 });
 await server.listen();
 const base = server.resolvedUrls.local[0];
@@ -99,6 +103,7 @@ const report = {
   method:
     'Rendered capsule hand (hand3d rig) with known joint angles; bundled MediaPipe Hand Landmarker, CPU delegate, ' +
     'headless Chromium (SwiftShader), 640x480; production jointAngles/pinchRatio. Proxy for, not a replacement of, real glove recordings.',
+  chirality: [],
   sweep: [],
   poses: [],
   tilt: [],
@@ -138,6 +143,52 @@ async function measure(joints, view, h, extra = {}) {
 }
 const closureOf = (flex, cal, f) =>
   (flex[f] - cal.open[f]) / (cal.closed[f] - cal.open[f]);
+
+// Anatomical chirality gate, including both hands even in the quick run.
+// Keep raw flex sums: normalization could hide a reversed sign at calibration.
+for (const view of views)
+  for (const h of ['right', 'left']) {
+    console.error(`chirality ${view} ${h} (anatomical)`);
+    const poses = [];
+    for (const [pose, closure] of [
+      ['open', 0],
+      ['half', 0.5],
+      ['fist', 1],
+    ]) {
+      const m = await measure(scaled(closure), view, h, {
+        anatomical: true,
+        sensorNoise: 3,
+        shiftPx: 0.5,
+      });
+      poses.push({
+        pose,
+        detection: m.detection,
+        labels: [...new Set(m.shots.map((shot) => shot.label))],
+        flex:
+          m.flex && Object.fromEntries(FINGERS.map((f) => [f, r3(m.flex[f])])),
+      });
+    }
+    const signByFinger = Object.fromEntries(
+      FINGERS.map((f) => {
+        const [open, half, fist] = poses.map((pose) => pose.flex?.[f]);
+        return [
+          f,
+          [open, half, fist].every(Number.isFinite) &&
+            open < half &&
+            half < fist &&
+            fist - open > (f === 'thumb' ? 30 : 100),
+        ];
+      }),
+    );
+    report.chirality.push({
+      view,
+      hand: h,
+      anatomical: true,
+      poses,
+      signByFinger,
+      signOk: Object.values(signByFinger).every(Boolean),
+    });
+  }
 
 for (const view of views)
   for (const h of hands) {
@@ -335,6 +386,7 @@ await writeFile(out, JSON.stringify(report, null, 2) + '\n');
 console.log(
   JSON.stringify(
     {
+      chirality: report.chirality,
       sweep: report.sweep.map(
         ({
           view,

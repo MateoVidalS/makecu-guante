@@ -3,7 +3,7 @@ import type {
   HandLandmarker,
   HandLandmarkerResult,
 } from '@mediapipe/tasks-vision';
-import open from '../../../contracts/fixtures/landmarks_open.json';
+import open from './fixtures/front_upright_open.json';
 import { CameraVision } from './cameraVision';
 const mp = vi.hoisted(() => ({
   create: vi.fn(),
@@ -231,7 +231,7 @@ describe('CameraVision lifecycle', () => {
   });
   it('honors upright and legacy views without rotating inference input, and reports label and exposure diagnostics', async () => {
     const tilted = structuredClone(result);
-    tilted.worldLandmarks[0][0].z += 0.08;
+    tilted.worldLandmarks[0][0].z -= 0.08;
     tilted.handedness[0][0].categoryName = 'Left';
     detect.mockReturnValue(tilted);
     const data = new Uint8ClampedArray(64 * 48 * 4).fill(20);

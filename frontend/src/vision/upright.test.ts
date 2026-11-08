@@ -193,11 +193,11 @@ describe('upright flexion and label cross-check', () => {
       ]);
       // Move just the wrist out of the palm plane: MCP must not follow it.
       tilted[0][0] += 0.1;
-      for (const points of [
-        tilted,
-        original.map(([x, y, z]): Landmark => [-x, y, z]),
-      ]) {
-        const measured = jointAngles(points);
+      for (const [points, hand] of [
+        [tilted, 'right'],
+        [original.map(([x, y, z]): Landmark => [-x, y, z]), 'left'],
+      ] as const) {
+        const measured = jointAngles(points, 'front_upright', hand);
         for (const f of FINGERS)
           for (const joint of ['mcp', 'pip', 'dip'] as const)
             expect(measured[f][joint]).toBeCloseTo(expected[f][joint], 4);

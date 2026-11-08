@@ -19,7 +19,7 @@ import {
 import type { FingerId, VisionFrame } from '../../contracts/vision';
 import { createExerciseEngine } from '../../engine';
 import { captureStats } from '../calibration';
-import { FINGERS, fingerMap, jointAngles } from '../flex';
+import { FINGERS, fingerMap } from '../flex';
 import { FrameProcessor, type HandResult } from '../frameProcessor';
 import {
   EMPTY_RESULT,
@@ -66,16 +66,28 @@ export function stream(
 ): Sample[] {
   const rand = rng(seed);
   const samples: Sample[] = [];
-  // Ground truth = the production joint math on the exact (noise-free) geometry, so contact
-  // poses (pinch) are scored on the thumb the camera really sees.
+  // Independent oracle on exact geometry: never call production jointAngles.
+  // Contact changes the actual thumb shape, so measure its exact bone angles.
   const geometrySums = (angles: HandAngles, contact = 0) => {
-    // Bone-to-bone math on exact geometry = the model's joint angles. (The upright
-    // palm-plane MCP gives the same value here: the model's knuckles lie in the palm plane.)
-    const j = jointAngles(
-      handLandmarks(angles, { size: patient.size, contact }),
-      'front_diagonal',
-    );
-    return fingerMap((f) => j[f].mcp + j[f].pip + j[f].dip);
+    const points = handLandmarks(angles, { size: patient.size, contact });
+    const bone = (a: number, b: number) =>
+      points[b].map((v, k) => v - points[a][k]);
+    const angle = (a: number[], b: number[]) => {
+      const cosine =
+        a.reduce((sum, v, k) => sum + v * b[k], 0) /
+        (Math.hypot(...a) * Math.hypot(...b));
+      return (Math.acos(Math.max(-1, Math.min(1, cosine))) * 180) / Math.PI;
+    };
+    return fingerMap((finger) => {
+      if (finger === 'thumb')
+        return angle(bone(1, 2), bone(2, 3)) + angle(bone(2, 3), bone(3, 4));
+      const base = { index: 5, middle: 9, ring: 13, pinky: 17 }[finger];
+      return (
+        angle(bone(0, base), bone(base, base + 1)) +
+        angle(bone(base, base + 1), bone(base + 1, base + 2)) +
+        angle(bone(base + 1, base + 2), bone(base + 2, base + 3))
+      );
+    });
   };
   const open = geometrySums(patient.open),
     closed = geometrySums(patient.closed);

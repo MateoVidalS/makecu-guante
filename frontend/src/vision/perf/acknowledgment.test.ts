@@ -48,7 +48,7 @@ const LATENCY = {
   close: { lagMs: 400, p95Ms: 1000 },
   // Opening ends slowly as it approaches 0, where the 0.10 band is crossed late in the movement.
   open: { lagMs: 700, p95Ms: 1400 },
-  pinch: { lagMs: 800, p95Ms: 2500 },
+  pinch: { lagMs: 800, p95Ms: 1200 },
 };
 const budget = (pose: PoseId) =>
   pose === 'pinch'
@@ -149,74 +149,73 @@ describe(
       },
     );
 
-    // The thumb's flexion comes from two short bones (MCP + IP, ~100° of range). Landmark noise
-    // makes near-zero angles read high (acos of noisy vectors is never negative), so the open-hand
-    // calibration is inflated and a half-closed thumb reads ~0.08 low in the upright view. A thumb
-    // exactly on its straight-fist target (0.50) reads ~0.42: 0.02 above the 0.40 acceptance line.
-    it.fails(
-      'a thumb exactly on its straight-fist target keeps at least half the tolerance of margin (upright, benchmarked noise)',
-      () => {
-        const patient = PATIENTS.healthy;
-        const scene: Scene = {
-          view: 'front_upright',
-          hand: 'right',
-          noise: NOISE.bench,
-        };
-        const camera = cal(patient, scene);
-        const goal = shaped(patient, 'straight_fist', {
-          thumb: POSES.straight_fist.closure.thumb,
-          index: 0.7,
-          middle: 0.7,
-          ring: 0.7,
-          pinky: 0.7,
-        });
-        const samples = stream(
-          patient,
-          scene,
-          reach(patient, 'straight_fist', goal),
-          6000,
-          { seed: 3 },
-        );
-        const thumb = runVision(samples, scene, camera)
-          .slice(-60)
-          .map((f) => f.closure!.thumb);
-        const measured = thumb.reduce((a, b) => a + b, 0) / thumb.length;
-        expect(measured).toBeGreaterThanOrEqual(
-          POSES.straight_fist.closure.thumb! - TOL / 2,
-        );
-      },
-    );
+    // Signed flexion must preserve the thumb's margin inside the reach tolerance.
+    it('a thumb exactly on its straight-fist target keeps at least half the tolerance of margin (upright, benchmarked noise)', () => {
+      const patient = PATIENTS.healthy;
+      const scene: Scene = {
+        view: 'front_upright',
+        hand: 'right',
+        noise: NOISE.bench,
+      };
+      const camera = cal(patient, scene);
+      const goal = shaped(patient, 'straight_fist', {
+        thumb: POSES.straight_fist.closure.thumb,
+        index: 0.7,
+        middle: 0.7,
+        ring: 0.7,
+        pinky: 0.7,
+      });
+      const samples = stream(
+        patient,
+        scene,
+        reach(patient, 'straight_fist', goal),
+        6000,
+        { seed: 3 },
+      );
+      const thumb = runVision(samples, scene, camera)
+        .slice(-60)
+        .map((f) => f.closure!.thumb);
+      const measured = thumb.reduce((a, b) => a + b, 0) / thumb.length;
+      report('Thumb exactly at the straight-fist target', [
+        {
+          view: scene.view,
+          target: POSES.straight_fist.closure.thumb,
+          measured: round(measured),
+          margin: round(measured - (POSES.straight_fist.closure.thumb! - TOL)),
+        },
+      ]);
+      expect(measured).toBeGreaterThanOrEqual(
+        POSES.straight_fist.closure.thumb! - TOL / 2,
+      );
+    });
 
-    it.fails(
-      'a straight fist held 0.05 short of every target (inside the 0.10 tolerance) is acknowledged (upright, benchmarked noise)',
-      () => {
-        const patient = PATIENTS.healthy;
-        const scene: Scene = {
-          view: 'front_upright',
-          hand: 'right',
-          noise: NOISE.bench,
-        };
-        const goal = shaped(patient, 'straight_fist', {
-          thumb: 0.45,
-          index: 0.65,
-          middle: 0.65,
-          ring: 0.65,
-          pinky: 0.65,
-        });
-        const s = summarize(
-          SEEDS.map((seed) =>
-            attempt(
-              patient,
-              scene,
-              'straight_fist',
-              reach(patient, 'straight_fist', goal),
-              seed,
-            ),
+    it('a straight fist held 0.05 short of every target (inside the 0.10 tolerance) is acknowledged (upright, benchmarked noise)', () => {
+      const patient = PATIENTS.healthy;
+      const scene: Scene = {
+        view: 'front_upright',
+        hand: 'right',
+        noise: NOISE.bench,
+      };
+      const goal = shaped(patient, 'straight_fist', {
+        thumb: 0.45,
+        index: 0.65,
+        middle: 0.65,
+        ring: 0.65,
+        pinky: 0.65,
+      });
+      const s = summarize(
+        SEEDS.map((seed) =>
+          attempt(
+            patient,
+            scene,
+            'straight_fist',
+            reach(patient, 'straight_fist', goal),
+            seed,
           ),
-        );
-        expect(s.hits / s.runs).toBeGreaterThanOrEqual(0.9);
-      },
-    );
+        ),
+      );
+      expect(s.hits / s.runs).toBeGreaterThanOrEqual(0.9);
+    });
   },
 );
 
@@ -296,6 +295,7 @@ describe(
         // Well short of the target: never acknowledged. On target: always.
         expect(r['-0.3'], name).toBe(0);
         expect(r['-0.2'], name).toBe(0);
+        expect(r['-0.05'], name).toBe(1);
         expect(r['0'], name).toBe(1);
       }
     });

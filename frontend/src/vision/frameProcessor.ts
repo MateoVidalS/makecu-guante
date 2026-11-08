@@ -40,12 +40,21 @@ export class FrameProcessor {
   handednessMismatch: boolean | null = null;
   readonly confidence = new ConfidenceTracker();
   private jointFilter = new JointFilter();
-  private pinchFilter = new OneEuroFilter();
+  // Denoise thumb geometry before measuring its non-planar opposition magnitude.
+  // Coordinates are metres: retain fast motion while reducing near-straight bias.
+  private thumbFilters = Array.from({ length: 4 }, () =>
+    Array.from({ length: 3 }, () => new OneEuroFilter(3, 10, 1)),
+  );
+  // Pinch is a dimensionless ratio: adapt per ratio/s rather than per degree/s.
+  private pinchFilter = new OneEuroFilter(0.1, 5, 0.5);
   private hand: Handedness | null = null;
   private view: CameraView | null = null;
   private lastSeen = -Infinity;
   reset() {
     this.jointFilter.reset();
+    this.thumbFilters.forEach((axes) =>
+      axes.forEach((filter) => filter.reset()),
+    );
     this.pinchFilter.reset();
     this.confidence.reset();
     this.lastSeen = -Infinity;
@@ -73,7 +82,7 @@ export class FrameProcessor {
     if (!selected || !validLandmarks(world) || !validLandmarks(image))
       return this.missing(t);
     try {
-      const raw = jointAngles(world, view),
+      const raw = jointAngles(world, view, affected),
         pinch = pinchRatio(image);
       if (
         this.hand !== affected ||
@@ -81,6 +90,13 @@ export class FrameProcessor {
         t - this.lastSeen >= 200
       )
         this.reset();
+      const thumbWorld = world.slice();
+      this.thumbFilters.forEach((axes, i) => {
+        thumbWorld[i + 1] = axes.map((filter, axis) =>
+          filter.filter(world[i + 1][axis], t),
+        ) as Landmark;
+      });
+      raw.thumb = jointAngles(thumbWorld, view, affected).thumb;
       this.handednessMismatch = selected.mismatch;
       this.hand = affected;
       this.view = view;
