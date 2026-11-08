@@ -58,6 +58,11 @@ export interface ExerciseEngine {
   readonly therapy: TherapyController;
   phaseDuration(): number | null;
   hasAssistance(): boolean;
+  /**
+   * The live voice coach is talking, about to talk, or hearing the patient. PRESENT waits
+   * for it and the help offer pauses (both capped). Only a live voice calls this.
+   */
+  setVoiceBusy(now: number, busy: boolean): void;
   /** Help has been offered this attempt and not requested yet. */
   helpOffered(): boolean;
   /** The patient asks for the glove's help (button or voice). */

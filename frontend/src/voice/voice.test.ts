@@ -576,17 +576,23 @@ it('times out stalled token requests and reaches fallback', async () => {
   expect(s.controller.state.mode).toBe('simple');
   s.controller.dispose();
 });
-it('protects pending PRESENT instructions from progress pushes', async () => {
+it('sends a PRESENT instruction at once, and later speech keeps its spacing', async () => {
   const send = vi.fn();
   const scheduler = new CueScheduler(send);
   scheduler.push({ text: 'previous coach line', speak: true });
   scheduler.push({ text: 'instruction', speak: true, present: true });
-  scheduler.push({ text: 'noncritical progress', speak: true });
-  await vi.advanceTimersByTimeAsync(2500);
   expect(send).toHaveBeenLastCalledWith({
     text: 'instruction',
     speak: true,
     present: true,
+  });
+  scheduler.push({ text: 'noncritical progress', speak: true });
+  await vi.advanceTimersByTimeAsync(2400);
+  expect(send).toHaveBeenCalledTimes(2);
+  await vi.advanceTimersByTimeAsync(200);
+  expect(send).toHaveBeenLastCalledWith({
+    text: 'noncritical progress',
+    speak: true,
   });
   scheduler.clear();
 });
