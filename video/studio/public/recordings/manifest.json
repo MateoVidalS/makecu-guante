@@ -1262,6 +1262,139 @@
           }
         }
       ]
+    },
+    {
+      "id": "doctor-chat",
+      "file": "recordings/doctor-chat.mp4",
+      "width": 3840,
+      "height": 2160,
+      "fps": 30,
+      "durationFrames": 360,
+      "simulated": true,
+      "demoData": true,
+      "events": [
+        {
+          "frame": 0,
+          "kind": "focus",
+          "label": "focus:chat-panel",
+          "box": {
+            "x": 3000,
+            "y": 0,
+            "w": 840,
+            "h": 2160
+          }
+        },
+        {
+          "frame": 12,
+          "kind": "click",
+          "label": "click:chat-input",
+          "box": {
+            "x": 3044,
+            "y": 1996.5,
+            "w": 610,
+            "h": 74
+          }
+        },
+        {
+          "frame": 12,
+          "kind": "focus",
+          "label": "focus:chat-input",
+          "box": {
+            "x": 3044,
+            "y": 1996.5,
+            "w": 610,
+            "h": 74
+          }
+        },
+        {
+          "frame": 156,
+          "kind": "click",
+          "label": "click:Send chat question",
+          "box": {
+            "x": 3734,
+            "y": 2006.5,
+            "w": 64,
+            "h": 64
+          }
+        },
+        {
+          "frame": 168,
+          "kind": "focus",
+          "label": "focus:tool:compare",
+          "box": {
+            "x": 3034,
+            "y": 372.40625,
+            "w": 493.0625,
+            "h": 55.5
+          }
+        },
+        {
+          "frame": 195,
+          "kind": "focus",
+          "label": "focus:tool:show_chart",
+          "box": {
+            "x": 3034,
+            "y": 372.40625,
+            "w": 293.5,
+            "h": 55.5
+          }
+        },
+        {
+          "frame": 240,
+          "kind": "focus",
+          "label": "focus:chat-chart",
+          "box": {
+            "x": 364,
+            "y": 191.90625,
+            "w": 2272,
+            "h": 1918.5625
+          }
+        },
+        {
+          "frame": 280,
+          "kind": "focus",
+          "label": "focus:chat-chart",
+          "box": {
+            "x": 364,
+            "y": 191.90625,
+            "w": 2272,
+            "h": 1918.5625
+          }
+        },
+        {
+          "frame": 280,
+          "kind": "focus",
+          "label": "focus:chat-answer",
+          "box": {
+            "x": 3034,
+            "y": 372.40625,
+            "w": 774,
+            "h": 307.375
+          }
+        },
+        {
+          "frame": 280,
+          "kind": "focus",
+          "label": "focus:chat-panel",
+          "box": {
+            "x": 3000,
+            "y": 0,
+            "w": 840,
+            "h": 2160
+          }
+        },
+        {
+          "frame": 280,
+          "kind": "focus",
+          "label": "focus:chart-chip",
+          "box": {
+            "x": 3034,
+            "y": 620.28125,
+            "w": 225.25,
+            "h": 59.5
+          }
+        }
+      ]
     }
   ]
 }

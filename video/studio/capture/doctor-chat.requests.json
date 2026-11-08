@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-11-08T16:50:18.643232+00:00",
+  "question": "How many points did index opening change from Oct 24 to Nov 7? Use the comparison tool and show the chart.",
+  "fixtureSha256": "399637e001406827298046a377f1f7819b876f01a4884e52c719f8a8256b532d",
+  "requests": [
+    {
+      "model": "gemini-4-argon",
+      "status": 429
+    },
+    {
+      "model": "gemini-3.8-flash",
+      "status": "failed"
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": 503
+    },
+    {
+      "model": "gemini-3.5-flash",
+      "status": 429
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": "complete"
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": "complete"
+    },
+    {
+      "model": "gemini-3.8-flash-lite",
+      "status": 404
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": "complete"
+    },
+    {
+      "model": "gemini-3.5-flash-lite",
+      "status": "complete"
+    }
+  ],
+  "requestLimit": 10,
+  "status": "complete: production compare/chart response cached",
+  "responseCached": true
+}
