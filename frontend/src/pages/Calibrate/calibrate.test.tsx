@@ -15,6 +15,12 @@ import {
   mountHelper,
   resetHelperStorage,
 } from '../../components/calibration/testSupport';
+
+/** Step 1 hides per-motor tuning in an "advanced" disclosure. */
+function openAdvanced() {
+  const details = screen.getByText(/Adjust each motor/).closest('details');
+  if (details) details.open = true;
+}
 function helperRuntime() {
   const runtime = legacyHelperRuntime();
   runtime.calibration.current!.camera.camera_view = 'front_upright';
@@ -75,7 +81,10 @@ it('deep-links to the affected glove finger while retaining other saved ranges',
   runtime.calibration.current!.servo[3].max_deg = 22;
   mountHelper(<Calibrate />, runtime, '/calibrate?step=glove&finger=ring');
   expect(
-    screen.getByRole('heading', { name: 'Step 1 · Glove range: Ring' }),
+    screen.getByRole('heading', { name: 'Step 1 · Motors' }),
+  ).toBeVisible();
+  expect(
+    screen.getByText(/Adjust each motor \(advanced\): Ring/),
   ).toBeVisible();
   expect(screen.getByRole('button', { name: 'Thumb · Set' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
@@ -97,6 +106,8 @@ it('hydrates a late backend reload even without camera frames', () => {
 });
 it('shares the amber safety strip and releases on request', () => {
   mountHelper(<Calibrate />, helperRuntime());
+  fireEvent.click(screen.getByRole('button', { name: /Motors/ }));
+  openAdvanced();
   const release = screen.getByRole('button', { name: 'Release glove now' });
   expect(release.closest('.ds-banner')).toHaveClass('ds-banner--warning');
   expect(release.closest('.ds-banner')).toHaveTextContent(
@@ -153,7 +164,8 @@ it('opens legacy calibration at the camera step with glove ranges retained', () 
   expect(screen.getByText(/Raise your hand, palm to the screen/)).toBeVisible();
   expect(screen.getByText('Not captured')).toBeVisible();
   expect(screen.getByText('Capture your fist first')).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: /Glove range/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Motors/ }));
+  openAdvanced();
   for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
     expect(
       screen.getByRole('button', { name: `${finger} · Set` }),
@@ -205,11 +217,12 @@ it('starts a legacy closing calibration from unset glove ranges', () => {
   runtime.calibration.current!.assist_direction = 'close';
   mountHelper(<Calibrate />, runtime);
   expect(
-    screen.getByRole('heading', { name: 'Step 1 · Glove range: Thumb' }),
+    screen.getByRole('heading', { name: 'Step 1 · Motors' }),
   ).toBeVisible();
   expect(
     screen.getByText('The glove now helps the hand open. Calibrate it again.'),
   ).toBeVisible();
+  openAdvanced();
   expect(screen.getByText('Slack not set')).toBeVisible();
   expect(screen.getByText('Open not set')).toBeVisible();
 });

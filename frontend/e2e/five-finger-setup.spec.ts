@@ -8,6 +8,7 @@ test('all five manual servo ranges must be set and acknowledged', async ({
     route.fulfill({ json: null }),
   );
   await page.goto('/calibrate');
+  await page.getByText(/Adjust each motor/).click();
   const fingers = page.getByRole('group', { name: 'Finger to calibrate' });
   await expect(fingers.getByRole('button')).toHaveCount(5);
   await fingers.getByRole('button', { name: /^Pinky ·/ }).click();

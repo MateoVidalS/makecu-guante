@@ -31,6 +31,7 @@ import {
   calibrationReadiness,
 } from '../../runtime/calibrationValidation';
 import { RelaxedHandSafetyStrip } from '../../components/calibration';
+import { CameraOverlay } from '../../vision/CameraOverlay';
 import './evaluate.css';
 interface Point {
   pos: number;
@@ -314,7 +315,17 @@ export default function Evaluate() {
           speed={view.speed}
           progress={view.stage === 'sweep' ? view.progress : 0}
         />
-        <SweepChart measuringFriction={measuringFriction} />
+        {measuringFriction ? (
+          <SweepChart measuringFriction={measuringFriction} />
+        ) : (
+          <div className="eval-stage">
+            <SweepChart measuringFriction={measuringFriction} />
+            <section className="eval-camera" aria-label="Camera">
+              <h2 className="eval-camera__title">Camera</h2>
+              <CameraOverlay compact mirrored />
+            </section>
+          </div>
+        )}
       </div>
     );
   }
@@ -479,6 +490,13 @@ export default function Evaluate() {
               },
             ]}
           />
+          <div className="eval-camera eval-camera--check">
+            <p className="hp-note">
+              The evaluation watches your hand. Keep it in view, palm to the
+              screen.
+            </p>
+            <CameraOverlay compact mirrored />
+          </div>
           {!frictionReady ? (
             <div className="eval-friction">
               <h3>Measure thread friction (unhooked) first</h3>

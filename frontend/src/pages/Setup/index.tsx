@@ -1,3 +1,4 @@
+import { TestModeCard } from '../../components/calibration';
 import { Fragment, useEffect, useState } from 'react';
 import {
   Button,
@@ -207,6 +208,7 @@ export default function Setup() {
           Continue to calibration
         </ButtonLink>
       </div>
+      <TestModeCard />
       <div className="setup-cards">
         <Card
           aria-label="Glove connection"

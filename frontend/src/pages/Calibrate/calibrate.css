@@ -416,3 +416,30 @@
 .cal-review__issue {
   color: var(--caution-text);
 }
+
+/* Step 1: one-click standard motor ranges; manual tuning is advanced. */
+.cal-standard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding: var(--space-16) var(--space-24);
+  border: var(--control-border) solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.cal-standard p {
+  margin: 0;
+}
+.cal-advanced {
+  margin-block-start: var(--space-16);
+}
+.cal-advanced[open] > summary {
+  margin-block-end: var(--space-16);
+}
+.cal-advanced[open] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}

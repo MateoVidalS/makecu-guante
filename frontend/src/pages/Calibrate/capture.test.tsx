@@ -16,6 +16,12 @@ import { MAX_ASSIST_PULL } from '../../contracts/poses';
 import { freshDraft, saveDraft } from './draft';
 import Calibrate from './index';
 
+/** Step 1 hides per-motor tuning in an "advanced" disclosure. */
+function openAdvanced() {
+  const details = screen.getByText(/Adjust each motor/).closest('details');
+  if (details) details.open = true;
+}
+
 const state = vi.hoisted(() => ({
   client: {} as Record<string, unknown>,
   vision: {} as Record<string, unknown>,
@@ -214,6 +220,7 @@ it('uses the patient’s own open hand with a simulated glove and real camera', 
 });
 it('shows Slack then Open, warns about hyperextension, and releases before calib', () => {
   mount('glove');
+  openAdvanced();
   expect(
     screen.getByText(/First check the range on a mannequin or helper hand/),
   ).toBeVisible();
