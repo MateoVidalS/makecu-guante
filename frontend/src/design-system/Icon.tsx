@@ -194,8 +194,8 @@ const paths = {
   dot: <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />,
   logo: (
     <>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none" />
+      {/* The memo "m" at icon weight; the full mark is LogoMark in Logo.tsx. */}
+      <path d="M5.5 18v-5.5a3.25 3.25 0 0 1 6.5 0V18M12 12.5a3.25 3.25 0 0 1 6.5 0V18" />
     </>
   ),
 } as const;

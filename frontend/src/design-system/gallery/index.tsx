@@ -17,6 +17,9 @@ import {
   iconNames,
   Inline,
   Input,
+  Logo,
+  LogoMark,
+  Wordmark,
   KpiTile,
   Meter,
   PageHeader,
@@ -43,6 +46,7 @@ import { contrast } from '../contrast';
 import './gallery.css';
 
 const SECTIONS = [
+  ['brand', 'Brand'],
   ['foundations', 'Foundations'],
   ['buttons', 'Buttons'],
   ['status', 'Status'],
@@ -918,6 +922,18 @@ export default function DesignGallery() {
           </a>
         ))}
       </nav>
+      <Section
+        id="brand"
+        title="Brand"
+        lead="The memo logo, drawn not typeset. Rules in docs/brand/BRAND.md."
+      >
+        <Inline gap={32} align="center">
+          <Logo size={32} />
+          <LogoMark size={48} />
+          <LogoMark size={16} />
+          <Wordmark height={24} />
+        </Inline>
+      </Section>
       <Section
         id="foundations"
         title="Foundations"

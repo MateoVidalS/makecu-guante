@@ -44,6 +44,8 @@ export const tokens = {
     hand: '#D9CFC4',
     chrome: '#2F3A47',
     onChrome: '#FFFFFF',
+    brand: '#2F5B9A',
+    onBrand: '#FFFFFF',
   },
   dark: {
     bg: '#141619',
@@ -88,6 +90,8 @@ export const tokens = {
     hand: '#BFB3A6',
     chrome: '#262F3A',
     onChrome: '#ECEEF0',
+    brand: '#2F5B9A',
+    onBrand: '#FFFFFF',
   },
   root: '17px',
   font: "'Atkinson Hyperlegible Next Variable', 'Atkinson Hyperlegible', system-ui, sans-serif",
