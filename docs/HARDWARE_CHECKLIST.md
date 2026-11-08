@@ -12,22 +12,47 @@ sheet. Its steps **1–7 must pass on the real board and be recorded before anyo
 connects a person's hand**. Complete the remaining bench checks too; any failed
 check blocks use with a person. Do not treat passing host tests as board evidence.
 
+Read [Matias' first bench session, 7 Nov 2026](../hardware/BANCO.md) before
+wiring. It records unloaded jogs and STOP observations, with no INA219 connected;
+it does **not** pass the BENCH gate. The actual Facmogu adapter has **no current
+limit**, and the MB102 breadboard regulator is insufficient for glove practice.
+Use the checks below instead of assuming the laboratory supply described elsewhere
+is the supply on the bench.
+
 | Record | Event value / evidence link |
 | --- | --- |
 | Operator / date / second checker | Pending |
 | Board and wiring revision / firmware commit | Pending |
 | Servo model / spool radius / tendon routing | Pending |
 | Supply / DMM / INA219 shunt | Pending |
+| Fuse or current-limited supply / measured 5 V rail / polarity | Pending |
+| INA219 wired and checked / 800 mA cut-off evidence | Pending — blocks practice |
 | BENCH steps 1–7 results and raw captures | Pending — blocks hand mounting |
 | BENCH steps 8–13 results and limitations | Pending |
 | STOP / release / watchdog evidence | Pending |
 | Upright wrist-module decision: strap fit / weight / thread exit / gravity | Pending — blocks hand mounting |
 | Decision: fixture only or helper-hand calibration | Pending |
 
-- [ ] Servo power off: check common ground; INA219 in the positive servo rail;
-  signal pins and STOP wiring against README. Keep USB/ESP32 power separate from
-  the servo supply. Verify 5.0 V on a DMM; supply limit **2.5 A**. Fit a correctly polarized **470–1000 µF**
-  capacitor across the servo 5 V/GND rail near the connectors.
+- [ ] Servo power off: check common ground, signal pins and STOP wiring. Keep
+  USB/ESP32 power separate from servo power. **Measure breadboard rail polarity
+  with a multimeter before connecting servos**; do not infer +/− from row position.
+  BANCO records reversed red/brown servo leads causing heat within seconds.
+- [ ] **INA219 required before any physical practice:** wire it in the positive
+  servo rail and verify sensor/current readings against the DMM. Without it the
+  firmware refuses assistance (`target`/`follow`); `jog` still works and a zero
+  `ma` reading without a sensor does not establish safe current.
+- [ ] **Demo power protection:** the actual Facmogu adapter has no adjustable
+  current limit; its 5 A rating is not a safety cut-off. Use a team-selected fuse
+  or a current-limited supply for the demo. With a limited supply, retain the
+  bench procedure's **2.5 A** limit. Verify the servo rail is **5.0 V** with a DMM.
+  For glove practice, power the rail directly from the 5 V supply through the
+  INA219, bypassing the MB102; fit a correctly polarized **470–1000 µF** capacitor
+  near the servo connectors. Record the protection and wiring decision above.
+- [ ] **MB102 is for single-servo bench tests only (~0.8 A maximum)**, never
+  five-servo glove practice. If using it on the empty bench, set both rail jumpers
+  to **5V**, measure the output, and keep the Facmogu input **at or below 9 V**:
+  the recorded MB102 capacitor is rated 10 V. Its onboard capacitor does not
+  replace the glove's dedicated servo-rail capacitor.
 - [ ] Inspect tendons, anchors, guides, spools, strain relief and quick removal.
   No sharp edges, loose connections, crossed threads or trapped fingers.
 - [ ] **Open hardware question — team decision required:** the wrist module was
@@ -42,11 +67,22 @@ check blocks use with a person. Do not treat passing host tests as board evidenc
   the power switch must also be reachable. A browser button is an extra layer.
 - [ ] On the fixture, verify no boot twitch, bounded jogging, calibrated ranges,
   current cut-off, latched STOP, and watchdog/release behavior using BENCH.
+- [ ] **Manual bench keepalive:** while jogging with the repository firmware,
+  send `ping` about every **300 ms** (`{"t":"ping"}` plus newline). A manual
+  serial console needs a keepalive sender; a single jog command is insufficient.
+  Without valid messages the watchdog releases/faults after more than 1 s. Never
+  disable or lengthen it to make manual testing easier.
 - [ ] Verify all five servos can remain attached at once, including the fifth
   channel. Firmware allocates **two LEDC timers** (PR #39); see BENCH step 4.
   Check GPIO4/13 boot behavior and no reset during five-servo startup.
 - [ ] Confirm the current sensor agrees with the DMM. Do not increase the limit
   to hide friction or repeated stops. Diagnose the mechanism on the bench.
+- [ ] With the INA219 working and the fuse/limited supply in place, test the
+  low-current cut-off on an **empty fixture**, following BENCH step 7: `limit 800`
+  means send `{"t":"limit","ma":800}` plus newline. Record the measured current,
+  overcurrent event and release. This is an 800 mA firmware threshold, not a
+  supply current limit or an approved patient setting. Never test the cut on a
+  person's hand; the bench team still must approve the practice limit.
 - [ ] Capture the evidence and obtain the team's go/no-go decision above.
 
 ## 2. Mount only after the gate passes
@@ -138,7 +174,8 @@ not the mechanical limits of this mounting.
 | Saved history / replay / export | Pending |
 | Go/no-go and unresolved limitations | Pending |
 
-Pack laptop/charger, tested data USB cable plus spare, separate regulated supply,
-DMM, spare servo/board, STOP switch, glove, tendons/guides/anchors, tape/Velcro,
+Pack laptop/charger, tested data USB cable plus spare, separate regulated supply
+with a team-approved fuse or current limit, wired INA219, DMM, spare servo/board,
+STOP switch, glove, tendons/guides/anchors, tape/Velcro,
 strain relief, and the recorded bench evidence. Keep the fully simulated demo
 ready even when hardware passes.
