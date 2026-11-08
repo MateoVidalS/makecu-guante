@@ -15,17 +15,69 @@ from app.contracts.chat import ChatDelta, ChatDone, ChatErrorEvent, ChatStreamEv
 from app.llm import gemini
 
 MAX_TOOL_ROUNDS = 3
+UNAVAILABLE_MESSAGE = "Doctor chat is unavailable. Please try again later."
 # Smaller fallback models sometimes write the chart call as text instead of calling the tool.
 _WRITTEN_CHART = re.compile(r"`?\bshow_chart\(\s*(?:section\s*=\s*)?[\"']?(\w+)[\"']?\s*\)`?")
 
 
-def _written_charts(answer: str) -> tuple[str, list[str]]:
-    sections = [s for s in _WRITTEN_CHART.findall(answer) if s in tools.CHART_SECTIONS]
-    cleaned = re.sub(r"\n{3,}", "\n\n", _WRITTEN_CHART.sub("", answer)).strip()
-    return cleaned, sections
+class _Leak(Exception):
+    pass
 
 
-UNAVAILABLE_MESSAGE = "Doctor chat is unavailable. Please try again later."
+class _Writer:
+    """Streams an answer as it arrives, a sentence or line at a time.
+
+    Whole sentences and lines are cleaned before they are sent: stray Markdown is stripped,
+    a chart call written as text becomes a show_chart event, and demo answers open with the
+    demo statement when the first sentence does not make it.
+    """
+
+    _BOUNDARY = re.compile(r"\n|[.!?][\"')\]]?[ \t]")
+
+    def __init__(self, only_demo: bool):
+        self.only_demo = only_demo
+        self.buffer = ""
+        self.started = False
+        self.charted = False
+        self.sent = ""
+        self.spacing = ""  # trailing whitespace, sent only once more text follows
+
+    def feed(self, text: str) -> Iterator[ChatStreamEvent]:
+        self.buffer += text
+        cut = max((m.end() for m in self._BOUNDARY.finditer(self.buffer)), default=0)
+        if cut:
+            segment, self.buffer = self.buffer[:cut], self.buffer[cut:]
+            yield from self._emit(segment)
+
+    def finish(self) -> Iterator[ChatStreamEvent]:
+        segment, self.buffer = self.buffer, ""
+        yield from self._emit(segment, last=True)
+
+    def _emit(self, segment: str, last: bool = False) -> Iterator[ChatStreamEvent]:
+        sections = [s for s in _WRITTEN_CHART.findall(segment) if s in tools.CHART_SECTIONS]
+        segment = _WRITTEN_CHART.sub("", segment)
+        for pattern, replacement in gemini._MARKDOWN:
+            segment = pattern.sub(replacement, segment)
+        segment = re.sub(r"[ \t]+\n", "\n", segment)
+        if not self.started:
+            segment = segment.lstrip()
+        if sections and not self.charted:
+            self.charted = True
+            yield ChatToolEvent(type="tool", name="show_chart", label=sections[0])
+        body = segment.rstrip()
+        if not body.strip():
+            if self.started and not last:
+                self.spacing += segment
+            return
+        segment, self.spacing = self.spacing + body, segment[len(body) :]
+        if settings.gemini_api_key and settings.gemini_api_key in self.sent + segment:
+            raise _Leak()
+        if not self.started:
+            self.started = True
+            if self.only_demo and "demo" not in segment.lower():
+                segment = f"This is demo data. {segment}"
+        self.sent += segment
+        yield ChatDelta(type="delta", text=segment)
 
 
 def _error():
@@ -44,6 +96,7 @@ def run_chat(db, messages) -> Iterator[ChatStreamEvent]:
             types.Content(role=m.role, parts=[types.Part.from_text(text=m.text)]) for m in messages
         ]
         rounds = 0
+        writer = _Writer(record["only_demo"])
         with genai.Client(
             api_key=settings.gemini_api_key,
             http_options=types.HttpOptions(
@@ -64,7 +117,7 @@ def run_chat(db, messages) -> Iterator[ChatStreamEvent]:
                 model_deadline = min(deadline, time.monotonic() + budget)
                 try:
                     while (remaining := min(deadline, model_deadline) - time.monotonic()) >= 1:
-                        response = client.models.generate_content(
+                        stream = client.models.generate_content_stream(
                             model=model,
                             contents=history,
                             config=types.GenerateContentConfig(
@@ -83,37 +136,24 @@ def run_chat(db, messages) -> Iterator[ChatStreamEvent]:
                                 http_options=types.HttpOptions(timeout=int(remaining * 1000)),
                             ),
                         )
-                        content = response.candidates[0].content if response.candidates else None
-                        calls = (
-                            [p.function_call for p in (content.parts or []) if p.function_call]
-                            if content
-                            else []
-                        )
+                        parts, calls = [], []
+                        for chunk in stream:
+                            content = chunk.candidates[0].content if chunk.candidates else None
+                            for part in (content.parts or []) if content else []:
+                                parts.append(part)
+                                if part.function_call:
+                                    calls.append(part.function_call)
+                                elif part.text and not part.thought and not calls:
+                                    # Read text parts directly: SDK .text warns on function calls.
+                                    yield from writer.feed(part.text)
                         if not calls:
-                            # Read text parts directly: SDK response.text warns on function calls.
-                            answer = gemini._plain(
-                                "".join(
-                                    p.text
-                                    for p in (content.parts or [])
-                                    if p.text and not p.thought
-                                )
-                                if content
-                                else ""
-                            )
-                            if not answer:
+                            yield from writer.finish()
+                            if not writer.started:
                                 break  # blocked/empty response: try the next model
-                            if settings.gemini_api_key in answer:
-                                yield _error()
-                                return
-                            if record["only_demo"] and "demo" not in answer.lower():
-                                answer = f"This is demo data. {answer}"
-                            answer, charts = _written_charts(answer)
                             gemini._cooling.pop(model, None)
-                            for section in charts[:1]:
-                                yield ChatToolEvent(type="tool", name="show_chart", label=section)
-                            yield ChatDelta(type="delta", text=answer)
                             yield ChatDone(type="done", model=model)
                             return
+                        content = types.Content(role="model", parts=parts)
                         if rounds >= MAX_TOOL_ROUNDS or len(calls) > 16:
                             yield _error()
                             return
@@ -145,7 +185,9 @@ def run_chat(db, messages) -> Iterator[ChatStreamEvent]:
                         )  # Gemini takes function responses as user turns; "tool" is a 400
                 except Exception as error:
                     gemini._cool(model, error)
-                    if not gemini._transient(error):
+                    # Text already reached the browser: another model would repeat or contradict
+                    # it, so a mid-answer failure ends the turn with an error instead.
+                    if writer.started or not gemini._transient(error):
                         raise
                     continue
     except Exception:

@@ -22,13 +22,17 @@ def events(client):
     return [json.loads(frame[6:]) for frame in result.text.strip().split("\n\n")]
 
 
+def answer_of(stream):
+    return "".join(e["text"] for e in stream if e["type"] == "delta")
+
+
 def test_text_stream_plain_final_and_done(client, sdk):
     sdk.models.generate_content.return_value = response(
         "## Progress\n**Index** opened 73% on Nov 5."
     )
     stream = events(client)
-    assert [e["type"] for e in stream] == ["delta", "done"]
-    assert stream[0]["text"] == "This is demo data. Progress\nIndex opened 73% on Nov 5."
+    assert [e["type"] for e in stream] == ["delta", "delta", "done"]  # streamed per line
+    assert answer_of(stream) == "This is demo data. Progress\nIndex opened 73% on Nov 5."
     assert stream[-1]["model"] == settings.gemini_text_model
     call = sdk.models.generate_content.call_args.kwargs
     assert call["config"].automatic_function_calling.disable is True
@@ -214,13 +218,50 @@ def test_chart_call_written_as_text_becomes_a_show_chart_event(client, sdk):
         'Index opened 42 points further, demo data.\n\nshow_chart(section="range")'
     )
     stream = events(client)
-    assert stream[0] == {"type": "tool", "name": "show_chart", "label": "range"}
-    assert stream[1]["text"] == "Index opened 42 points further, demo data."
-    assert "show_chart" not in json.dumps(stream[1:])
+    assert {"type": "tool", "name": "show_chart", "label": "range"} in stream
+    assert answer_of(stream) == "Index opened 42 points further, demo data."
+    assert "show_chart" not in answer_of(stream)
 
 
 def test_written_chart_with_unknown_section_is_only_removed(client, sdk):
     sdk.models.generate_content.return_value = response("Demo data. show_chart(section='bogus')")
     stream = events(client)
-    assert [e["type"] for e in stream] == ["delta", "done"]
-    assert stream[0]["text"] == "Demo data."
+    assert [e["type"] for e in stream if e["type"] != "delta"] == ["done"]
+    assert answer_of(stream) == "Demo data."
+
+
+def test_answer_streams_sentence_by_sentence_as_chunks_arrive(client, sdk):
+    sdk.models.generate_content.return_value = [
+        response("This is demo data. The index finger opened"),
+        response(" 42 points further. The **little"),
+        response(" finger** gained least.\n\n"),
+        response("Practice:\nFive days."),
+    ]
+    stream = events(client)
+    deltas = [e["text"] for e in stream if e["type"] == "delta"]
+    assert deltas[0] == "This is demo data."  # sent before the rest of the reply arrived
+    assert len(deltas) >= 4
+    assert answer_of(stream) == (
+        "This is demo data. The index finger opened 42 points further. "
+        "The little finger gained least.\n\nPractice:\nFive days."
+    )
+    assert stream[-1]["type"] == "done"
+
+
+def test_failure_after_streaming_started_never_switches_model(client, sdk, monkeypatch):
+    calls = []
+
+    def flaky(**kwargs):
+        calls.append(kwargs["model"])
+
+        def chunks():
+            yield response("This is demo data. Partial answer. ")
+            raise Busy("503 busy")
+
+        return chunks()
+
+    sdk.models.generate_content_stream.side_effect = flaky
+    stream = events(client)
+    assert answer_of(stream) == "This is demo data. Partial answer."
+    assert stream[-1]["type"] == "error"
+    assert len(calls) == 1  # no second model repeating or contradicting the streamed text
