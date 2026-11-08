@@ -7,6 +7,7 @@ const server = await createServer({
   configFile: false,
   server: { middlewareMode: true },
   logLevel: "error",
+  optimizeDeps: { noDiscovery: true, include: [] },
 });
 try {
   const { generateDemo } = await server.ssrLoadModule(

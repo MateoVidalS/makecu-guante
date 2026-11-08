@@ -51,14 +51,15 @@ TOOLS = [
             ),
             declaration(
                 "assist_finger_now",
-                "Request help on one finger now, only in ATTEMPT. Uses its gentle speed and "
+                "Request opening help on one finger now, only in ATTEMPT. Uses gentle speed and "
                 "shaped target through the runtime's existing stagger/power safety rules.",
                 {"finger": FINGER, "reason": REASON},
             ),
             declaration(
                 "adjust_target",
-                "Lower or raise one finger's target scale by 0.1 within 0.5–1.0 of the pose "
-                "target, starting next ATTEMPT. Never above the calibrated range.",
+                "Lower or raise target_scale by 0.1 within 0.5–1.0: how far to open. "
+                "Lower means less opening; raise means more opening. Closing poses remain "
+                "independent effort. Starts next ATTEMPT; never above the calibrated range.",
                 {
                     "finger": FINGER,
                     "direction": {"type": "STRING", "enum": ["lower", "raise"]},
@@ -84,7 +85,8 @@ TOOLS = [
             declaration(
                 "intensify",
                 "Only after the patient explicitly asked or accepted an offer in the last 20s. "
-                "Further: up to 100% calibrated range; hold_longer: at most 2s extra; faster: "
+                "Further: open further up to 100% calibrated range; hold_longer: at most 2s extra; "
+                "faster: "
                 "up to 0.30/s, next ATTEMPT. Blocked by pain >= 2 or resistance on that finger "
                 "in the last 60s; automatically reverted on pain/resistance. Never initiate "
                 "intensity yourself or invent consent. Quote the patient's actual words.",

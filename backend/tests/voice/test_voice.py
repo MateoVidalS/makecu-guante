@@ -68,8 +68,14 @@ def test_provider_failure_does_not_leak_key(client, monkeypatch):
 
 def test_context_uses_wp5_boundary(monkeypatch):
     profile = SimpleNamespace(pseudonym="Sam", goals="Practice a pinch")
-    previous = SimpleNamespace(id=1, is_demo=False, summary=SimpleNamespace())
-    current = SimpleNamespace(is_demo=False)
+    previous = SimpleNamespace(
+        id=1,
+        is_demo=False,
+        summary=SimpleNamespace(),
+        assist_direction="open",
+        started_at="2026-11-01",
+    )
+    current = SimpleNamespace(is_demo=False, assist_direction="open", started_at="2026-11-02")
     monkeypatch.setattr(gemini_live.repo, "get_profile", lambda db: profile)
     monkeypatch.setattr(gemini_live.repo, "get_session", lambda db, id: current)
     monkeypatch.setattr(gemini_live.repo, "list_sessions", lambda db, limit: [previous])
@@ -164,3 +170,19 @@ def test_profile_previous_session_and_transcript_with_merged_storage(client, mon
         == 204
     )
     assert client.get(f"/api/sessions/{current['id']}").json()["transcript"] == lines
+
+
+def test_opening_prompt_and_tools_preserve_safety_limits():
+    from app.voice.tools import TOOLS
+
+    prompt = render_prompt(None, None)
+    assert "helps OPEN the hand, never close it" in prompt
+    assert "For fists and other closing poses" in prompt
+    assert "further may open one finger" in prompt
+    assert "earlier closing-assist glove" in prompt
+    assert "never compare" in prompt.lower()
+    descriptions = {d["name"]: d["description"] for d in TOOLS[0]["functionDeclarations"]}
+    assert "open further" in descriptions["intensify"]
+    assert "how far to open" in descriptions["adjust_target"]
+    assert "0.30/s" in descriptions["intensify"]
+    assert "reverted on pain/resistance" in descriptions["intensify"]

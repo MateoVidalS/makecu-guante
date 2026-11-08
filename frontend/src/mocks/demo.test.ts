@@ -26,25 +26,42 @@ describe('shared backend and MSW demo story', () => {
     expect(state.sessions).toHaveLength(14);
     expect(state.evaluations).toHaveLength(4);
     expect(state.sessions.every((s) => s.is_demo)).toBe(true);
-    expect(state.evaluations.every((e) => e.is_demo)).toBe(true);
+    expect(
+      state.evaluations.every(
+        (e) => e.is_demo && e.assist_direction === 'open',
+      ),
+    ).toBe(true);
+    expect(
+      state.sessions.filter((s) => s.assist_direction === 'open'),
+    ).toHaveLength(12);
+    expect(
+      state.sessions.filter((s) => s.assist_direction === 'close'),
+    ).toHaveLength(2);
+    expect(state.details[3].summary?.previous).toBeNull();
     expect(state.sessions[0].started_at.slice(0, 10)).toBe('2026-12-10');
     for (const [index, visit] of story.sessions.entries()) {
       const detail = state.details[index + 1];
+      expect(detail.assist_direction).toBe(visit.assist_direction);
+      expect(detail.calibration_id).toBe(
+        visit.assist_direction === 'open' ? 1 : 2,
+      );
+      const previous = story.sessions
+        .slice(0, index)
+        .reverse()
+        .find((s) => s.assist_direction === visit.assist_direction);
       expect(detail.summary).toEqual({
         ...visit.summary,
-        previous:
-          index === 0
-            ? null
-            : {
-                active_ratio_mean:
-                  story.sessions[index - 1].summary.active_ratio_mean,
-                per_finger: story.sessions[index - 1].summary.per_finger.map(
-                  ({ finger, active_max_mean }) => ({
-                    finger,
-                    active_max_mean,
-                  }),
-                ),
-              },
+        previous: !previous
+          ? null
+          : {
+              active_ratio_mean: previous.summary.active_ratio_mean,
+              per_finger: previous.summary.per_finger.map(
+                ({ finger, active_max_mean }) => ({
+                  finger,
+                  active_max_mean,
+                }),
+              ),
+            },
       });
       expect(detail.attempts).toHaveLength(visit.attempts.length);
       expect(
@@ -70,7 +87,7 @@ describe('shared backend and MSW demo story', () => {
         visit.feelings.map((f) => ({ ...f, session_id: detail.id })),
       );
     }
-    expect(state.sessions.reduce((n, s) => n + s.n_attempts, 0)).toBe(160);
+    expect(state.sessions.reduce((n, s) => n + s.n_attempts, 0)).toBe(110);
     expect(
       Object.values(state.details)
         .flatMap((s) => s.attempts)
@@ -121,7 +138,9 @@ describe('shared backend and MSW demo story', () => {
     }
     expect(historyRom('index', 'pinch')).toEqual([]);
     expect(historyRom('index', 'open')[0].active_max_mean).not.toBe(
-      historyRom('index', 'full_fist')[0].active_max_mean,
+      historyRom('index', 'full_fist').find(
+        (p) => p.assist_direction === 'open',
+      )?.active_max_mean,
     );
   });
 });

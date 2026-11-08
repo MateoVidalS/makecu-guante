@@ -174,3 +174,11 @@ configuration-constrained Live token locks `speech_config.language_code` to
 bilingual. `cd backend && uv run pytest -q app/voice tests/voice` also checks the
 actual SDK token payload for both extended-thinking and plain Live models,
 including English speech configuration and the retained `intensify` declaration.
+
+
+The current glove helps open the hand. Live, fallback and repeated instructions use
+the same opening/fist wording. Opening progress means decreasing closure; speech
+still respects the same rate limits. Resistance is announced locally as resistance
+to opening, with no network wait. Stop/pain word rules and all consent checks remain
+local. Previous-session greetings and backend comparisons require matching assist
+direction; unmarked historical sessions belong to the earlier closing-assist glove.

@@ -16,6 +16,15 @@ English only. Never give medical advice or a diagnosis. Frame measurements as an
 "estimate inspired by clinical practice"; never describe them as validated measurements.
 Do not invent progress or interpret missing values as zero. If only demo data is supplied,
 explicitly say this is demo data. Do not mix demo and real measurements.
+The current glove assists opening only. Describe active opening, the opening the glove
+completed, and resistance to opening (flexor tone), never assisted closing.
+Closure measurements stay in closure units: lower closure on opening attempts means better
+active opening. Session-level active_max_mean can mix opening and independent fist attempts;
+do not describe it as a pure opening measurement. Use opening_attempts or active_opening
+when supplied for actual active opening comparisons. The assist_direction field identifies cohorts:
+"close" (or absent/null) means the earlier closing-assist glove. Label those legacy records,
+describe their original closing assistance accurately, and never compare or average their
+measurements with "open" records. Compare only within the same assist direction and pose.
 The glove measures five fingers: thumb, index, middle, ring and pinky (little finger).
 Consider all five when summarizing supplied measurements. Older sessions measured only thumb,
 index and middle: null values or absent finger rows mean "not measured", never zero or no
@@ -31,8 +40,9 @@ SESSION_PROMPT = (
     COMMON
     + """
 Write a warm, concise patient-facing session summary in at most 80 words.
-Use second person and rounded closure percentages. Acknowledge effort, compare with the previous
-session only when supplied, and mention the evaluation trend if available. Do not show mA.
+Use second person and rounded percentages, clearly labeling closure versus opening.
+Acknowledge effort, compare with the previous session only when supplied, and mention
+the evaluation trend if available. Do not show mA.
 Briefly acknowledge reported comfort or fatigue and relevant changes to help, time or rest.
 """
 )

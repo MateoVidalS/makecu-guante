@@ -164,9 +164,9 @@ export const flexSums = (angles: HandAngles) =>
 // ---------- patients ----------
 export interface Patient {
   name: string;
-  /** Relaxed open hand (calibration open_flex). */
+  /** Calibration open_flex: the relaxed hand as opened by the glove (open-assist, docs/plan/15). */
   open: HandAngles;
-  /** Relaxed hand closed as far as the glove goes (calibration closed_flex). */
+  /** Calibration closed_flex: the patient's own fist (the glove can only open, never close). */
   closed: HandAngles;
   size: number;
 }
@@ -196,9 +196,10 @@ export const PATIENTS: Record<'healthy' | 'spastic', Patient> = {
     closed: FIST,
     size: 1,
   },
-  // Post-stroke flexor tone: never fully open; the glove reaches ~70% of a fist (12-five-finger H6).
+  // Post-stroke flexor tone (docs/plan/15 P7): the glove may not fully straighten the relaxed hand,
+  // and the patient's own fist reaches ~70% of a full fist.
   spastic: {
-    name: 'resting flexion, glove-limited close',
+    name: 'flexor tone, limited own fist',
     open: uniform(15, 25, 10, [15, 10]),
     closed: scaleAngles(FIST, 0.7),
     size: 0.9,

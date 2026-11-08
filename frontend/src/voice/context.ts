@@ -39,6 +39,8 @@ export function attemptContext(
       f.target !== null &&
       (targetUnmet(f.active_max, f.target) || (f.assist_needed ?? 0) > 0),
   );
+  const needLabel =
+    result.pose === 'open' ? 'opening help needed' : 'active shortfall';
   const details = relevant
     .map((f) => {
       const prior =
@@ -48,7 +50,7 @@ export function attemptContext(
             )
           : undefined;
       return (
-        `${fingerName(f.finger)} active ${pct(f.active_max)}/${pct(f.target)}, help needed ${pct(f.assist_needed)}` +
+        `${fingerName(f.finger)} active closure ${pct(f.active_max)}/${pct(f.target)}, ${needLabel} ${pct(f.assist_needed)}` +
         (prior?.active_max != null
           ? ` (previous ${pct(prior.active_max)})`
           : '')
@@ -57,7 +59,7 @@ export function attemptContext(
     .join('; ');
   return (
     `active effort ${pct(result.active_ratio)}; reached ${result.reached_final ? 'yes' : 'no'}; glove assisted ${result.assisted ? 'yes' : 'no'}; interrupted ${result.interrupted ? 'yes' : 'no'}. ` +
-    `Fingers below target or needing help: ${details || 'none measured'}. Previous rep: ${previous?.pose === result.pose ? 'included where comparable' : 'unavailable'}.`
+    `Fingers short of target: ${details || 'none measured'}. Previous rep: ${previous?.pose === result.pose ? 'included where comparable' : 'unavailable'}.`
   );
 }
 
@@ -70,7 +72,7 @@ export function summaryContext(summary: SessionSummary | null): string {
         (p) => p.finger === f.finger,
       );
       return (
-        `${fingerName(f.finger)} active ${pct(f.active_max_mean)}, mean help needed ${pct(f.assist_needed_mean)}` +
+        `${fingerName(f.finger)} active closure ${pct(f.active_max_mean)}, mean target shortfall ${pct(f.assist_needed_mean)}` +
         (prior?.active_max_mean != null
           ? ` (previous active ${pct(prior.active_max_mean)})`
           : '')
@@ -103,7 +105,8 @@ export function liveContext(
         best_alone:
           f.best_alone === null ? null : Math.round(f.best_alone * 100),
       })),
-      units: 'finger values are percentages',
+      units: 'finger values are closure percentages; lower is more open',
+      assist_direction: 'open',
       last_attempt: state.last_attempt,
       adjustments: state.adjustments,
       last_feeling: state.last_feeling,
