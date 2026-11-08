@@ -6,6 +6,8 @@ import { Hand } from '../components/story/Hand';
 import { progress } from '../components/story/motion';
 import { COPY, VO } from '../script';
 
+const firstAt = VO.find((line) => line.id === 'problem-1')!.at;
+const openingAt = VO.find((line) => line.id === 'problem-2')!.at;
 const statAt = VO.find((line) => line.id === 'problem-3')!.at;
 const statValue = Number.parseInt(COPY.problem.stat, 10);
 
@@ -27,22 +29,22 @@ export const Problem: React.FC = () => {
       ) : (
         <>
           <div style={{ position: 'absolute', left: safe.x, top: 150, width: 960 }}>
-            <Words text={COPY.problem.a} start={12} stagger={4} size="display" w={400} />
+            <Words text={COPY.problem.a} start={firstAt} stagger={4} size="display" w={400} />
             <div style={{ marginTop: space.s64, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.28em', fontSize: type.display }}>
-              <div style={{ position: 'relative', opacity: progress(f, 144, 9) }}>
+              <div style={{ position: 'relative', opacity: progress(f, openingAt, 9) }}>
                 <T size="display">{b[0]}</T>
                 <svg width="100%" height="18" viewBox="0 0 354 18" preserveAspectRatio="none" style={{ position: 'absolute', left: 0, bottom: -15 }} aria-hidden>
-                  <path d="M4 12 Q160 3 350 9" fill="none" stroke={c.text} strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - progress(f, 153, 15)} />
+                  <path d="M4 12 Q160 3 350 9" fill="none" stroke={c.text} strokeWidth={6} strokeLinecap="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - progress(f, openingAt + 9, 15)} />
                 </svg>
               </div>
-              <Words text={b.slice(1).join(' ')} start={148} stagger={4} size="display" w={400} />
+              <Words text={b.slice(1).join(' ')} start={openingAt + 4} stagger={4} size="display" w={400} />
             </div>
           </div>
         </>
       )}
       <div style={{ position: 'absolute', left: 1100, top: 130, width: 520, height: 699 }}>
         <Hand openness={1} side="left" ghost style={{ position: 'absolute', inset: 0, opacity: progress(f, statAt) }} />
-        <Hand openness={0.08 * progress(f, 144, 24)} side="left" style={{ position: 'absolute', inset: 0 }} />
+        <Hand openness={0.08 * progress(f, openingAt, 24)} side="left" style={{ position: 'absolute', inset: 0 }} />
       </div>
     </Fill>
   );

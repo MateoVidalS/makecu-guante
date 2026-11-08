@@ -33,20 +33,21 @@ export const Close: React.FC = () => {
           <StoryNote />
         </>
       ) : (
-        <>
-          <div style={{ position: 'absolute', left: safe.x, top: 0, bottom: 0, right: safe.x, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', opacity: endEnter, transform: `translateY(${(1 - endEnter) * 12}px)` }}>
+        <div style={{ position: 'absolute', left: safe.x, top: safe.y, bottom: safe.y, right: safe.x, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', opacity: endEnter, transform: `translateY(${(1 - endEnter) * 12}px)` }}>
             <Lockup height={120} />
             <T size="h1" style={{ marginTop: space.s48 }}>{COPY.close.line}</T>
             <div style={{ display: 'flex', gap: space.s64, marginTop: space.s64 }}>
               {TEAM.map((person) => <div key={person.name} style={{ textAlign: 'center' }}><T size="h3">{person.name}</T>{person.role && <T size="small" w={400} color={c.muted} style={{ marginTop: space.s8 }}>{person.role}</T>}</div>)}
             </div>
             <T size="body" w={400} color={c.muted} style={{ marginTop: space.s64 }}>{COPY.close.event}</T>
+          <div style={{ width: '100%', marginTop: space.s48, textAlign: 'center', opacity: progress(f, 162) }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: space.s8 / 2 }}>
+              {COPY.close.credits.map((credit) => <T key={credit} size="caption" w={400} color={c.muted}>{credit}</T>)}
+            </div>
+            {music?.credit && <T size="caption" w={400} color={c.muted} style={{ marginTop: space.s8 }}>{music.credit}</T>}
+            <T size="caption" w={400} color={c.muted} style={{ marginTop: space.s16 }}>{COPY.close.disclaimer}</T>
           </div>
-          <div style={{ position: 'absolute', left: safe.x + space.s64, right: safe.x + space.s64, bottom: safe.y, textAlign: 'center', opacity: progress(f, 162) }}>
-            <T size="caption" w={400} color={c.muted}>{COPY.close.disclaimer}</T>
-            {music?.credit && <T size="caption" w={400} color={c.muted} style={{ marginTop: space.s16 }}>{music.credit}</T>}
-          </div>
-        </>
+        </div>
       )}
     </Fill>
   );
