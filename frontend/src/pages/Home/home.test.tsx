@@ -66,6 +66,7 @@ it('routes a missing calibration to the wizard with an explanation', () => {
 
 it('routes old-view calibration to camera recapture before practice', () => {
   const runtime = legacyHelperRuntime();
+  delete runtime.calibration.current!.camera.camera_view;
   const start = vi.spyOn(runtime.exercise, 'start');
   mountHelper(<Home />, runtime);
   expect(

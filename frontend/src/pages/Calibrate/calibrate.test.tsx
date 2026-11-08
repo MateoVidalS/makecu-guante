@@ -136,7 +136,9 @@ it('the single simulator shortcut saves both sources and refreshes Review', asyn
 });
 
 it('opens legacy calibration at the camera step with glove ranges retained', () => {
-  mountHelper(<Calibrate />, legacyHelperRuntime());
+  const runtime = legacyHelperRuntime();
+  delete runtime.calibration.current!.camera.camera_view;
+  mountHelper(<Calibrate />, runtime);
   expect(
     screen.getByRole('heading', { name: 'Step 2 · Camera range' }),
   ).toBeVisible();
