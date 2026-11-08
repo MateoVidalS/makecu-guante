@@ -34,6 +34,7 @@ const live = vi.hoisted(() => ({
   audioClose: vi.fn(),
   play: vi.fn(),
   flush: vi.fn(),
+  audio: undefined as { playing: boolean; onIdle?: () => void } | undefined,
   callbacks: undefined as
     | { onmessage(message: Partial<LiveServerMessage>): void; onclose(): void }
     | undefined,
@@ -49,6 +50,11 @@ vi.mock('../../../voice/audio', () => ({
     close = live.audioClose;
     play = live.play;
     flush = live.flush;
+    playing = false;
+    onIdle?: () => void;
+    constructor() {
+      live.audio = this;
+    }
   },
 }));
 class FakeRecognition {
@@ -410,6 +416,43 @@ describe('Doctor chat voice', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mic off' }));
     expect(await screen.findByText(/Dictation is not supported/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Mic off' })).toBeDisabled();
+  });
+  it('keeps the mic closed while a Live reply plays, then listens again', async () => {
+    open();
+    enableLive();
+    await screen.findByRole('button', { name: 'Mic listening' });
+    const sendMic = (
+      live.open.mock.calls.at(-1) as unknown as [(d: string) => void]
+    )[0];
+    live.sendRealtimeInput.mockClear();
+    sendMic('before');
+    expect(live.sendRealtimeInput).toHaveBeenCalledTimes(1);
+    act(() => {
+      live.audio!.playing = true;
+      live.callbacks!.onmessage({
+        serverContent: {
+          modelTurn: {
+            parts: [
+              {
+                inlineData: { data: 'AAAA', mimeType: 'audio/pcm;rate=24000' },
+              },
+            ],
+          },
+        },
+      });
+      live.callbacks!.onmessage({ serverContent: { turnComplete: true } });
+    });
+    // The reply is still playing after turnComplete: speaking, and the room is not sent.
+    expect(screen.getByRole('button', { name: 'Mic speaking' })).toBeVisible();
+    sendMic('own voice through the speakers');
+    expect(live.sendRealtimeInput).toHaveBeenCalledTimes(1);
+    act(() => {
+      live.audio!.playing = false;
+      live.audio!.onIdle?.();
+    });
+    expect(screen.getByRole('button', { name: 'Mic listening' })).toBeVisible();
+    sendMic('next question');
+    expect(live.sendRealtimeInput).toHaveBeenCalledTimes(2);
   });
   it('uses Live transcripts, typed turns and read-only tool responses; closes audio on unmount', async () => {
     const toolRequest = vi.fn();

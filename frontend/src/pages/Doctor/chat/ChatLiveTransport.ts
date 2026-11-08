@@ -76,7 +76,8 @@ export class ChatLiveTransport {
           }
           if (content?.turnComplete) {
             callbacks.turnComplete();
-            callbacks.status('listening');
+            // Still "speaking" until the queued reply has actually finished playing.
+            if (!this.audio.playing) callbacks.status('listening');
             callbacks.tool('');
           }
           for (const id of message.toolCallCancellation?.ids ?? [])
@@ -100,8 +101,13 @@ export class ChatLiveTransport {
         turns: [{ role: 'user', parts: [{ text: token.context }] }],
         turnComplete: false,
       });
+    this.audio.onIdle = () => {
+      if (!this.stopped) callbacks.status('listening');
+    };
     await this.audio.open((data) => {
-      if (!this.stopped) {
+      // Half-duplex: while Gemini's reply plays, the mic would pick up that voice (or the
+      // room) and Live would cut its own answer short. End voice still interrupts.
+      if (!this.stopped && !this.audio.playing) {
         try {
           this.session?.sendRealtimeInput({
             audio: { data, mimeType: 'audio/pcm;rate=16000' },
