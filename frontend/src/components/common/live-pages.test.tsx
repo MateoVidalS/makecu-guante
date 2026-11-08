@@ -30,7 +30,8 @@ import Setup from '../../pages/Setup';
 import Exercise from '../../pages/Exercise';
 import Evaluate from '../../pages/Evaluate';
 import Calibrate from '../../pages/Calibrate';
-import { helperRuntime } from '../calibration/testSupport';
+import { helperRuntime as legacyHelperRuntime } from '../calibration/testSupport';
+import { CURRENT_CAMERA_VIEW } from '../../contracts/calibration';
 import { freshDraft, loadDraft, saveDraft } from '../../pages/Calibrate/draft';
 import { RuntimeFallbackControls } from '../../runtime/FallbackControls';
 import {
@@ -51,6 +52,11 @@ import type { EngineEvent } from '../../contracts/engine';
 import { http, HttpResponse } from 'msw';
 import { sessions, profile } from '../../contracts/fixtures.check';
 const handRender = vi.hoisted(() => vi.fn());
+function helperRuntime() {
+  const runtime = legacyHelperRuntime();
+  runtime.calibration.current!.camera.camera_view = CURRENT_CAMERA_VIEW;
+  return runtime;
+}
 vi.mock('../../hand3d/VirtualHand', () => ({
   VirtualHand: () => {
     handRender();
@@ -524,7 +530,9 @@ describe('Calibration wizard', () => {
   it('validates each range and resumes after leaving', () => {
     const first = mount(<Calibrate />, freshRuntime());
     expect(
-      screen.getByText('Rest palm down, forearm on a towel. Stop if it hurts.'),
+      screen.getByText(
+        'Support your elbow. Keep your raised hand relaxed. Stop if it hurts.',
+      ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Set open' }));

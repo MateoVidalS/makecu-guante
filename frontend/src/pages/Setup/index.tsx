@@ -18,6 +18,10 @@ import { GLOVE_FINGERS } from '../../contracts/glove';
 import { CameraPlacement, GloveDetectionCheck } from './CameraPlacement';
 import { SetupCameraPreview } from './SetupCameraPreview';
 import {
+  CurrentSensorNotice,
+  useCurrentSensorMissing,
+} from './CurrentSensorNotice';
+import {
   useRuntime,
   RuntimeDiagnostics,
   RuntimeBrownoutNotice,
@@ -127,12 +131,15 @@ export default function Setup() {
     }
     setDevices(await navigator.mediaDevices.enumerateDevices());
   }
+  const missingCurrentSensor = useCurrentSensorMissing();
   const connected = connection === 'connected';
   const fault = connected && tel?.st === 'fault';
   const gloveTone: StatusTone = fault
     ? 'danger'
     : connected
-      ? 'reached'
+      ? missingCurrentSensor
+        ? 'caution'
+        : 'reached'
       : connection === 'connecting'
         ? 'neutral'
         : 'off';
@@ -152,6 +159,7 @@ export default function Setup() {
         lead="Both need to be ready before calibration and practice."
       />
       <RuntimeBrownoutNotice />
+      <CurrentSensorNotice missing={missingCurrentSensor} />
       <BrowserSupportBanner />
       {(error || connectionError) && (
         <p role="alert" className="hp-alert">
@@ -162,7 +170,15 @@ export default function Setup() {
         <Inline>
           <StatusChip
             label="Glove"
-            value={fault ? 'Stopped' : connected ? 'Ready' : 'Not connected'}
+            value={
+              fault
+                ? 'Stopped'
+                : connected
+                  ? missingCurrentSensor
+                    ? 'Calibration only'
+                    : 'Ready'
+                  : 'Not connected'
+            }
             tone={gloveTone}
           />
           <StatusChip
@@ -191,7 +207,9 @@ export default function Setup() {
               {connected
                 ? fault
                   ? 'Glove stopped'
-                  : 'Glove ready'
+                  : missingCurrentSensor
+                    ? 'Glove calibration only'
+                    : 'Glove ready'
                 : connection === 'connecting'
                   ? 'Connecting glove…'
                   : 'Glove not connected'}
