@@ -1,9 +1,11 @@
 import { captureStats } from '../../vision/calibration';
 import type { CalibrationIn } from '../../contracts/api';
 import type { FingerId, VisionFrame } from '../../contracts/vision';
-import type {
-  Calibration,
-  ServoCalibration,
+import {
+  CURRENT_CAMERA_VIEW,
+  type CameraView,
+  type Calibration,
+  type ServoCalibration,
 } from '../../contracts/calibration';
 export const fingers: FingerId[] = [
   'thumb',
@@ -18,6 +20,7 @@ export interface Capture {
 }
 export interface Draft {
   sourceId?: number;
+  cameraView?: CameraView;
   edited?: boolean;
   step: number;
   finger: number;
@@ -37,6 +40,7 @@ export interface Draft {
   limit: number;
 }
 export const freshDraft = (): Draft => ({
+  cameraView: CURRENT_CAMERA_VIEW,
   step: 0,
   finger: 0,
   angle: 90,
@@ -49,19 +53,39 @@ export const freshDraft = (): Draft => ({
   friction: {},
   limit: 1500,
 });
+/** A posture change invalidates camera captures, never glove ranges or friction. */
+function currentViewDraft(draft: Draft): Draft {
+  return draft.cameraView === CURRENT_CAMERA_VIEW
+    ? draft
+    : {
+        ...draft,
+        cameraView: CURRENT_CAMERA_VIEW,
+        step: fingers.every((finger) => validRange(draft.servo[finger]))
+          ? 1
+          : 0,
+        open: null,
+        closed: null,
+        pinch: null,
+      };
+}
 // Keep only calibration values, never a movement command, across route changes.
 let memory = freshDraft();
 export function loadDraft(): Draft {
   try {
     const value = sessionStorage.getItem('rehab-calibration');
     if (value) {
-      const saved = { ...freshDraft(), ...JSON.parse(value) } as Draft;
-      return { ...saved, step: Math.min(2, saved.step) };
+      const parsed = JSON.parse(value) as Draft;
+      const saved = { ...freshDraft(), ...parsed };
+      return currentViewDraft({
+        ...saved,
+        cameraView: parsed.cameraView,
+        step: Math.min(2, saved.step),
+      });
     }
   } catch {
     /* Storage may be disabled. */
   }
-  return memory;
+  return currentViewDraft(memory);
 }
 export function saveDraft(draft: Draft) {
   memory = draft;
@@ -113,8 +137,9 @@ export function stableCapture(frames: VisionFrame[]): Capture {
 
 /** Saved values are a complete starting point for review or a focused redo. */
 export function draftFromCalibration(calibration: Calibration): Draft {
-  return {
+  return currentViewDraft({
     ...freshDraft(),
+    cameraView: calibration.camera.camera_view,
     step: 2,
     sourceId: calibration.id,
     servo: Object.fromEntries(
@@ -131,7 +156,7 @@ export function draftFromCalibration(calibration: Calibration): Draft {
     },
     limit: calibration.current_limit_ma,
     friction: calibration.friction,
-  };
+  });
 }
 
 export function resumableDraft(calibration: Calibration | null): Draft {

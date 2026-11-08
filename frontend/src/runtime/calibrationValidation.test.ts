@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { calibration } from '../contracts/fixtures.check';
+import { CURRENT_CAMERA_VIEW } from '../contracts/calibration';
+import { calibration as legacyCalibration } from '../contracts/fixtures.check';
 import type { VisionFrame } from '../contracts/vision';
 import {
   validateCameraRange,
   selectCalibrationStatus,
   calibrationIssueHref,
+  calibrationReadiness,
+  CAMERA_VIEW_RECAPTURE_MESSAGE,
 } from './calibrationValidation';
+const calibration = {
+  ...legacyCalibration,
+  camera: { ...legacyCalibration.camera, camera_view: CURRENT_CAMERA_VIEW },
+};
 const camera = {
   ...calibration.camera,
   closed_flex: { thumb: 100, index: 270, middle: 270, ring: 270, pinky: 270 },
@@ -117,3 +124,26 @@ describe('shared calibration status', () => {
     ).toBe('ok');
   });
 });
+
+it.each([undefined, 'front_diagonal'] as const)(
+  'requires only camera recapture for old view %s',
+  (camera_view) => {
+    const value = { ...calibration, camera: { ...camera, camera_view } };
+    const status = selectCalibrationStatus(value, true, null);
+    expect(status).toEqual({
+      state: 'invalid',
+      issues: [
+        {
+          finger: 'thumb',
+          step: 'camera',
+          message: CAMERA_VIEW_RECAPTURE_MESSAGE,
+        },
+      ],
+    });
+    expect(calibrationReadiness(status)).toMatchObject({
+      value: 'Needed',
+      href: '/calibrate?step=camera&finger=thumb',
+    });
+    expect(value.servo).toEqual(calibration.servo);
+  },
+);
