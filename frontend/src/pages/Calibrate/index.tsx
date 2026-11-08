@@ -429,6 +429,7 @@ export default function Calibrate() {
       finger: GLOVE_FINGERS.length - 1,
     });
     void action(async () => {
+      client.release();
       GLOVE_FINGERS.forEach((_, i) =>
         client.calib(i as 0 | 1 | 2 | 3 | 4, 20, 150),
       );
