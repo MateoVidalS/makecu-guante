@@ -101,4 +101,43 @@ describe('the glove helps only when the patient asks', () => {
     expect(decision.result).not.toBe('applied');
     expect(run.engine.state().phase).toBe('ATTEMPT');
   });
+
+  it('help asked between attempts starts in the next opening attempt, on that finger only', () => {
+    const run = new Run('open', { ...onRequest, attempt_s: 9 });
+    run.world.hand = [...CLOSED] as Quint;
+    // Asked before the attempt (e.g. during a check-in): the coach queues it.
+    const queued = run.engine.therapy.adjust(
+      'assist_finger_now',
+      { finger: 'index', reason: 'The patient asked for index help.' },
+      'coach',
+    );
+    expect(queued.result).toBe('applied');
+    run.until('ASSIST', 4000);
+    for (let i = 0; i < 40; i++) run.step();
+    const pulled = new Set(
+      run
+        .targets()
+        .flatMap((t) =>
+          t.f.flatMap((p, i) =>
+            p > pullFromClosure(CLOSED[i]) + 1e-6 ? [i] : [],
+          ),
+        ),
+    );
+    expect([...pulled]).toEqual([1]);
+  });
+
+  it('once the patient asked, the coach can add a finger, and nothing is queued for later', () => {
+    const run = new Run('open', onRequest);
+    run.world.hand = [...CLOSED] as Quint;
+    run.until('ATTEMPT');
+    run.step();
+    run.accept(run.engine.requestHelp(run.world.now));
+    expect(run.engine.state().phase).toBe('ASSIST');
+    run.engine.therapy.adjust(
+      'assist_finger_now',
+      { finger: 'ring', reason: 'The patient named the ring finger.' },
+      'coach',
+    );
+    expect(run.engine.therapy.queuedHelp()).toEqual([]);
+  });
 });

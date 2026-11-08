@@ -460,6 +460,40 @@ it.each([44100, 48000])(
     expect(out.some((v) => v > 0)).toBe(true);
   },
 );
+it('plays every sample of a long reply that arrives faster than real time', () => {
+  // Gemini Live streams a 10 s answer in bursts, far ahead of playback. The player must
+  // queue all of it: dropping the oldest audio made long doctor-chat answers sound chopped.
+  const processors = new Map<
+    string,
+    new () => {
+      port: { onmessage: (e: { data: ArrayBuffer | string }) => void };
+      process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean;
+    }
+  >();
+  const sampleRate = 24000;
+  runInNewContext(readFileSync('src/voice/player.worklet.js', 'utf8'), {
+    sampleRate,
+    AudioWorkletProcessor: class {
+      port = { postMessage: () => {}, onmessage: () => {} };
+    },
+    registerProcessor: (name: string, ctor: never) =>
+      processors.set(name, ctor),
+  });
+  const player = new (processors.get('voice-player')!)();
+  const seconds = 10;
+  for (let chunk = 0; chunk < seconds * 10; chunk++) {
+    const pcm = new DataView(new ArrayBuffer(4800)); // 100 ms of 24 kHz PCM16
+    for (let i = 0; i < 2400; i++) pcm.setInt16(i * 2, 8000, true);
+    player.port.onmessage({ data: pcm.buffer });
+  }
+  let played = 0;
+  const out = new Float32Array(128);
+  for (let block = 0; block < (seconds + 1) * (sampleRate / 128); block++) {
+    player.process([], [[out]]);
+    played += out.filter((v) => v > 0).length;
+  }
+  expect(played).toBeGreaterThan(seconds * sampleRate * 0.99);
+});
 it('uses browser speech synthesis synchronously', () => {
   const speak = vi.fn();
   vi.stubGlobal('speechSynthesis', {

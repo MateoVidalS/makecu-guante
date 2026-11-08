@@ -112,6 +112,9 @@ export class TherapyController implements TherapyApi {
   private active = defaults();
   private allowedPoses = new Set<PoseId>();
   private changed = new Set<string>();
+  private settingsAssist = true;
+  /** Help asked for outside an attempt: started by the engine at the next opening ATTEMPT. */
+  private queued = new Set<FingerId>();
   private undoStack: Undo[] = [];
   private log: CoachDecision[] = [];
   private feelingLog: FeelingEntry[] = [];
@@ -147,6 +150,7 @@ export class TherapyController implements TherapyApi {
   constructor(private readonly context: TherapyContext) {}
 
   reset(plan: ExercisePlanItem[], settings: ExerciseSettings) {
+    this.settingsAssist = settings.assist_enabled;
     this.desired = defaults();
     this.speedCap = Math.min(
       this.bounds.assist_speed[1],
@@ -175,6 +179,7 @@ export class TherapyController implements TherapyApi {
       plan.map((p) => p.pose).filter((p) => p !== 'pinch'),
     );
     this.changed.clear();
+    this.queued.clear();
     this.undoStack = [];
     this.log = [];
     this.feelingLog = [];
@@ -362,6 +367,13 @@ export class TherapyController implements TherapyApi {
   delay(finger: FingerId) {
     return this.active.assist_delay_s[finger];
   }
+  /** Fingers waiting for help at the next opening attempt. */
+  queuedHelp(): FingerId[] {
+    return [...this.queued];
+  }
+  consumeQueuedHelp(finger: FingerId) {
+    this.queued.delete(finger);
+  }
   takeCanceled(index: number): FingerId[] {
     const fingers = [...this.pendingCanceled]
       .filter(([, attempt]) => attempt === index)
@@ -518,6 +530,7 @@ export class TherapyController implements TherapyApi {
   ): CoachDecision {
     // Release precedes audit listeners or network work, even outside a running session.
     this.context.brake();
+    this.queued.clear(); // a brake never leaves motion waiting for later
     this.revertIntensity('Braking cleared patient-requested intensity.', false);
     return this.decision(
       'brake',
@@ -917,8 +930,47 @@ export class TherapyController implements TherapyApi {
         if (!GLOVE_FINGERS.includes(args.finger as FingerId))
           return reject('Unknown finger.');
         const finger = args.finger as FingerId;
-        if (state.phase !== 'ATTEMPT')
-          return reject('Immediate help is available only during ATTEMPT.');
+        if (state.phase === 'ASSIST' || state.phase === 'ASSIST_HOLD') {
+          // The patient already asked and the glove is helping: add the finger now,
+          // never queue more motion for a later attempt.
+          if (this.changed.has(`${state.index}:${finger}`))
+            return reject('Change each finger only once per attempt.');
+          if (!this.context.assistNow(finger))
+            return reject(
+              'The glove is already helping in this attempt; this finger needs no more help now.',
+            );
+          this.changed.add(`${state.index}:${finger}`);
+          return this.decision(
+            tool,
+            args,
+            { finger, applies: 'now, within the power stagger' },
+            'applied',
+            reason,
+            source,
+          );
+        }
+        if (state.phase !== 'ATTEMPT') {
+          // Asked between attempts: start it at the next opening attempt, so the
+          // request always has a real effect the coach can truthfully describe.
+          if (!this.settingsAssist)
+            return reject('Assistance is off for this session.');
+          if (this.queued.has(finger))
+            return reject(
+              'Help for this finger is already set for the next attempt.',
+            );
+          this.queued.add(finger);
+          return this.decision(
+            tool,
+            args,
+            { finger, applies: 'next opening ATTEMPT' },
+            'applied',
+            reason,
+            source,
+            () => {
+              this.queued.delete(finger);
+            },
+          );
+        }
         if (this.changed.has(`${state.index}:${finger}`))
           return reject('Change each finger only once per attempt.');
         if (!this.context.assistNow(finger))

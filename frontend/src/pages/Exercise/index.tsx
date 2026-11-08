@@ -1,3 +1,4 @@
+import { BenchMirrorStatus } from '../../runtime/BenchMirrorStatus';
 import {
   Button,
   ButtonLink,
@@ -240,6 +241,7 @@ function LiveDetails({ onBrake }: { onBrake: () => void }) {
           sessionId={view.sessionId}
           onBrake={onBrake}
         />
+        <BenchMirrorStatus />
       </div>
     </aside>
   );

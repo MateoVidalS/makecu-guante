@@ -43,7 +43,18 @@ def live_setup(db) -> tuple[str, dict, str | None]:
         "tools": tools.TOOLS,
         "input_audio_transcription": {},
         "output_audio_transcription": {},
-        "realtime_input_config": {"automatic_activity_detection": {"disabled": False}},
+        # A clinician asks, then listens. Sound picked up while Gemini answers (its own voice
+        # through speakers, people in the room) must not cut the answer short, and quiet
+        # background talk should not count as a question.
+        "realtime_input_config": {
+            "automatic_activity_detection": {
+                "disabled": False,
+                "start_of_speech_sensitivity": "START_SENSITIVITY_LOW",
+                "end_of_speech_sensitivity": "END_SENSITIVITY_LOW",
+                "silence_duration_ms": 800,
+            },
+            "activity_handling": "NO_INTERRUPTION",
+        },
         "context_window_compression": {"sliding_window": {}},
     }
     if settings.gemini_live_thinking_level and "thinking" in model:

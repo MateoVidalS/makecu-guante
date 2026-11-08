@@ -14,6 +14,10 @@ import { BrowserLocalVoice, SafetyNet, type LocalVoice } from './safetyNet';
 import { fallbackPhrase } from './fallbackCoach';
 import { CueScheduler, eventCue, type Cue } from './cues';
 import { liveContext, movementContext, summaryContext } from './context';
+import { claimsGloveHelp, HONESTY_CORRECTION } from './honesty';
+
+/** A tool call can arrive just after the words that describe it. */
+const HELP_CLAIM_GRACE_MS = 1500;
 import { dispatchTool } from './tools';
 import { TranscriptBatcher } from './transcript';
 import {
@@ -104,6 +108,9 @@ export class VoiceController {
   private coachSpokeSinceEnd = false;
   private endTimer?: ReturnType<typeof setTimeout>;
   private brakeLatched = false;
+  /** When the runtime last accepted a help tool (help now, help sooner, intensity). */
+  private helpAppliedAt = -Infinity;
+  private correctedAt = -Infinity;
   private failures = 0;
   private greeted = false;
   private reconnecting = false;
@@ -474,6 +481,14 @@ export class VoiceController {
           if (braking) this.brakeLatched = true;
           void response.then((response) => {
             this.auditTool(call, response, batch);
+            if (
+              response.ok === true &&
+              (call.name === 'assist_finger_now' ||
+                call.name === 'intensify' ||
+                (call.name === 'adjust_help' &&
+                  call.args?.direction === 'more'))
+            )
+              this.helpAppliedAt = performance.now();
             if (transport === this.transport && !this.cancelled.has(call.id)) {
               if (braking && response.ok === true)
                 this.safety.announce(
@@ -514,6 +529,7 @@ export class VoiceController {
     if (role === 'coach') {
       this.caption(text);
       this.scheduler.noteCoachSpeech();
+      if (claimsGloveHelp(text)) this.checkHelpClaim(text);
     } else {
       this.batch?.add(role, text);
       if (
@@ -528,6 +544,36 @@ export class VoiceController {
         this.brakeLatched = false;
       this.patientBraked = false;
     }
+  }
+  /**
+   * A coach line said the glove helps. Give a tool that arrives with the speech a moment,
+   * then compare with what the runtime did; if nothing was applied, correct the coach and
+   * mark it in the session transcript for review.
+   */
+  private checkHelpClaim(text: string) {
+    const transport = this.transport;
+    const batch = this.batch;
+    setTimeout(() => {
+      const now = performance.now();
+      const helping = this.runtime.therapy
+        ?.state()
+        ?.fingers.some((finger) => finger.glove_helping);
+      if (
+        helping ||
+        now - this.helpAppliedAt < 15_000 ||
+        now - this.correctedAt < 10_000 ||
+        this.brakeLatched ||
+        transport !== this.transport
+      )
+        return;
+      this.correctedAt = now;
+      batch?.add(
+        'system',
+        '[honesty] The coach said the glove was helping, but no help was applied: ' +
+          JSON.stringify(text),
+      );
+      transport?.sendText(HONESTY_CORRECTION, true);
+    }, HELP_CLAIM_GRACE_MS);
   }
   /** The patient pressed Brake on screen: silence the coach, say so locally and tell the model. */
   brake(reason = 'You pressed Brake.') {
