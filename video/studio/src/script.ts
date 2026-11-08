@@ -47,7 +47,6 @@ export const VO: VoLine[] = [
   // gemini (432 f)
   { id: 'ai-1', scene: 'gemini', at: 12, maxFrames: 120, voice: 'narrator', text: 'Under the hood, the coach is Gemini Live, with function calling.' },
   { id: 'ai-2', scene: 'gemini', at: 138, maxFrames: 114, voice: 'narrator', text: 'Twenty tools. Every call is clamped, logged, and undoable.' },
-  { id: 'ai-3', scene: 'gemini', at: 258, maxFrames: 54, voice: 'narrator', text: 'None of them moves a motor.' },
   { id: 'ai-4', scene: 'gemini', at: 318, maxFrames: 108, voice: 'narrator', text: 'Gemini also writes the summaries, and voiced this video.' },
 
   // doctor (720 f): history 0-200, replay 200-290, Gemini chat 290-500, summary 500-600, statement 600-720
@@ -97,12 +96,12 @@ export const COPY = {
     green: 'Green = you reached it',
     resist: 'Resist, and it lets go.',
   },
-  coach: { rule: 'The model never moves the motors.', sub: 'It adjusts the session inside fixed safe limits. Every decision has Undo.' },
+  coach: { rule: 'Every decision has Undo.', sub: 'It adjusts the session inside fixed safe limits. Every decision has Undo.' },
   gemini: {
     title: 'How memo uses Gemini.',
     flow: ['Patient speaks', 'Gemini Live', 'Tool call', 'Runtime clamps', 'Session engine'],
     exampleCall: "adjust_help({ finger: 'index', direction: 'more' })",
-    toolCount: '20 tools · 0 motor controls',
+    toolCount: '20 tools',
     tools: ['get_live_state', 'adjust_help', 'assist_finger_now', 'adjust_target', 'highlight_finger', 'record_feeling', 'note_for_therapist', 'add_rest', 'choose_next_pose', 'brake'],
     localRule: 'Stop and pain words are caught on the laptop before Gemini answers.',
     uses: [

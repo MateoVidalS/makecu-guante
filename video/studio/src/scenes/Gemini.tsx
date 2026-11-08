@@ -2,7 +2,7 @@ import React from 'react';
 import { useCurrentFrame } from 'remotion';
 import { safe } from '../brand/tokens';
 import { Fill, T } from '../components/brand';
-import { BoundedCall, MotorBoundary, SpeechFlow, Uses } from '../components/gemini/Diagram';
+import { BoundedCall, LocalSafety, SpeechFlow, Uses } from '../components/gemini/Diagram';
 import { enter } from '../components/gemini/primitives';
 import { COPY } from '../script';
 
@@ -15,7 +15,7 @@ export const Gemini: React.FC = () => {
       </T>
       {frame < 132 ? <SpeechFlow frame={frame} />
         : frame < 252 ? <BoundedCall frame={frame} />
-          : frame < 318 ? <MotorBoundary frame={frame} />
+          : frame < 318 ? <LocalSafety frame={frame} />
             : <Uses frame={frame} />}
     </Fill>
   );

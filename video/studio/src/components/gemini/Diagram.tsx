@@ -95,28 +95,12 @@ export const BoundedCall: React.FC<{ frame: number }> = ({ frame }) => {
   );
 };
 
-export const MotorBoundary: React.FC<{ frame: number }> = ({ frame }) => {
-  const cut = enter(frame, 252, 9);
+export const LocalSafety: React.FC<{ frame: number }> = ({ frame }) => {
   return (
     <>
       <T size="h3" style={{ position: 'absolute', left: safe.x, top: 304 }}>{COPY.gemini.toolCount}</T>
       <ToolGrid tools={coachTools} frame={frame} start={222}
         style={{ left: safe.x, right: safe.x, top: 400 }} />
-      <Line path={`M 960 592 L 960 672 L ${1298 - 34 * cut} 672`} progress={1} />
-      <Line path={`M ${1298 + 34 * cut} 672 L 1492 672`} progress={1} />
-      <div style={{ position: 'absolute', left: 1266, top: 640, width: 64, height: 64, background: c.bg,
-        display: 'grid', placeItems: 'center', opacity: cut }}><Icon name="lock" /></div>
-      <T size="small" w={400} color={c.muted} style={{ position: 'absolute', left: 1120, top: 704, width: 356, textAlign: 'center', opacity: cut }}>
-        No direct motor access
-      </T>
-      <Card style={{ left: 1492, top: 616, width: 332, height: 112, padding: space.s16,
-        display: 'flex', alignItems: 'center', gap: space.s16 }}>
-        <Icon name="engine" size={32} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: space.s8 }}>
-          <T size="body" style={{ whiteSpace: 'nowrap' }}>5 micro servos</T>
-          <T size="caption" w={400} color={c.muted}>Beyond the session engine</T>
-        </div>
-      </Card>
       <Card style={{ left: safe.x, right: safe.x, top: 752, height: 128, padding: space.s32,
         display: 'flex', gap: space.s32, alignItems: 'center', opacity: enter(frame, 258) }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: space.s16, flexShrink: 0 }}>
