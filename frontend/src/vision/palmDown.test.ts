@@ -43,7 +43,8 @@ const result = (
   pose: string,
   hand: Handedness,
   i = 0,
-  label = 'Left',
+  label: string = hand === 'left' ? 'Left' : 'Right',
+  score = 0.95,
 ): HandResult => {
   const points = (p: Landmark[]) =>
     p.map(([x, y, z]) => ({
@@ -61,9 +62,7 @@ const result = (
   return {
     landmarks: [image],
     worldLandmarks: [points(clips[pose].frames[i].worldLandmarks)],
-    handedness: [
-      [{ categoryName: label, score: 0.95, index: 0, displayName: '' }],
-    ],
+    handedness: [[{ categoryName: label, score, index: 0, displayName: '' }]],
   };
 };
 
@@ -144,36 +143,57 @@ describe('synthetic palm-down, thumb-side diagonal view (not hardware validation
         );
     },
   );
-  it('does not reset joint smoothing when a lone-hand MediaPipe label flips', () => {
+  it('does not reset joint smoothing when a lone-hand label flips or the other hand is dropped', () => {
     const processor = new FrameProcessor();
-    processor.process(
-      result('open', 'right', 0, 'Right'),
-      0,
-      'right',
-      false,
-      'front_diagonal',
-    );
-    const frame = processor.process(
-      result('full_fist', 'right', 0, 'Left'),
+    const view = 'front_diagonal';
+    processor.process(result('open', 'right'), 0, 'right', false, view);
+    // An unsure opposite label (below OTHER_HAND_MIN_SCORE) keeps the configured hand.
+    const unsure = processor.process(
+      result('full_fist', 'right', 0, 'Left', 0.8),
       1000 / 30,
       'right',
       false,
-      'front_diagonal',
+      view,
     );
+    expect(unsure.handedness).toBe('right');
     for (const finger of FINGERS) {
-      expect(frame.rawFlexSum![finger]).toBeGreaterThan(0);
-      expect(frame.rawFlexSum![finger]).toBeLessThan(sums('full_fist')[finger]);
-      expect(frame.rawFlexSum![finger]).toBeCloseTo(
-        Object.values(frame.joints![finger]).reduce((a, b) => a + b, 0),
+      expect(unsure.rawFlexSum![finger]).toBeGreaterThan(0);
+      expect(unsure.rawFlexSum![finger]).toBeLessThan(
+        sums('full_fist')[finger],
+      );
+      expect(unsure.rawFlexSum![finger]).toBeCloseTo(
+        Object.values(unsure.joints![finger]).reduce((a, b) => a + b, 0),
         5,
       );
     }
-    const reacquired = processor.process(
-      result('full_fist', 'right'),
-      300,
+    // A confident opposite label is another hand: dropped, without a reset.
+    const other = processor.process(
+      result('full_fist', 'right', 0, 'Left', 0.95),
+      2000 / 30,
       'right',
       false,
-      'front_diagonal',
+      view,
+    );
+    expect(other.detected).toBe(false);
+    const next = processor.process(
+      result('full_fist', 'right'),
+      100,
+      'right',
+      false,
+      view,
+    );
+    for (const finger of FINGERS) {
+      expect(next.rawFlexSum![finger]).toBeGreaterThan(
+        unsure.rawFlexSum![finger],
+      );
+      expect(next.rawFlexSum![finger]).toBeLessThan(sums('full_fist')[finger]);
+    }
+    const reacquired = processor.process(
+      result('full_fist', 'right'),
+      400,
+      'right',
+      false,
+      view,
     );
     for (const finger of FINGERS)
       expect(reacquired.rawFlexSum![finger]).toBeCloseTo(

@@ -29,6 +29,12 @@ const result: HandLandmarkerResult = {
   ],
   handednesses: [],
 };
+/** The same hand with another MediaPipe label and score. */
+const labelled = (categoryName: string, score = 0.95): HandLandmarkerResult => {
+  const copy = structuredClone(result);
+  copy.handedness[0][0] = { ...copy.handedness[0][0], categoryName, score };
+  return copy;
+};
 Object.defineProperty(HTMLVideoElement.prototype, 'requestVideoFrameCallback', {
   configurable: true,
   value: () => 0,
@@ -177,12 +183,14 @@ describe('CameraVision lifecycle', () => {
   it('offers raw landmarks for recordings, including empty results, without changing normal frames', async () => {
     const listener = vi.fn();
     const unsubscribe = source.onLandmarks(listener);
+    const left = labelled('Left');
+    detect.mockReturnValue(left);
     await source.start({ affectedHand: 'left' });
     await vi.advanceTimersByTimeAsync(34);
     await frame(34);
     expect(listener).toHaveBeenLastCalledWith({
       t: expect.any(Number),
-      result,
+      result: left,
     });
     expect(source.latest()?.handedness).toBe('left');
     const empty = {
@@ -225,8 +233,14 @@ describe('CameraVision lifecycle', () => {
       pinch_closed: 0.1,
     });
     expect(source.latest()?.detected).toBe(false);
+    // The camera still sees the right hand: it is not published as the left one.
     await vi.advanceTimersByTimeAsync(34);
     await frame(68);
+    expect(source.latest()?.detected).toBe(false);
+    expect(source.diagnostics().handednessMismatch).toBe(true);
+    detect.mockReturnValue(labelled('Left'));
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(102);
     expect(source.latest()?.handedness).toBe('left');
     expect(Object.keys(source.latest()!.closure!)).toEqual([
       'thumb',
@@ -237,9 +251,9 @@ describe('CameraVision lifecycle', () => {
     ]);
   });
   it('honors upright and legacy views without rotating inference input, and reports label and exposure diagnostics', async () => {
-    const tilted = structuredClone(result);
+    // An unsure opposite label (below OTHER_HAND_MIN_SCORE) keeps the configured hand.
+    const tilted = labelled('Left', 0.8);
     tilted.worldLandmarks[0][0].z -= 0.08;
-    tilted.handedness[0][0].categoryName = 'Left';
     detect.mockReturnValue(tilted);
     const data = new Uint8ClampedArray(64 * 48 * 4).fill(20);
     const context = vi
@@ -268,10 +282,26 @@ describe('CameraVision lifecycle', () => {
       lighting: null,
       handednessMismatch: null,
     });
-    await source.start({ affectedHand: 'right', view: 'front_diagonal' });
+    // A confident opposite label is dropped, and Setup can still see why.
+    const opposite = structuredClone(tilted);
+    opposite.handedness[0][0].score = 0.95;
+    detect.mockReturnValue(opposite);
     await vi.advanceTimersByTimeAsync(34);
     await frame(218);
+    expect(source.latest()?.detected).toBe(false);
+    expect(source.diagnostics().handednessMismatch).toBe(true);
+    await vi.advanceTimersByTimeAsync(150);
+    expect(source.diagnostics().handednessMismatch).toBeNull();
+    detect.mockReturnValue(tilted);
+    await source.start({ affectedHand: 'right', view: 'front_diagonal' });
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(402);
     expect(source.latest()?.joints?.index.mcp).toBeGreaterThan(30);
+    expect(source.diagnostics().handednessMismatch).toBeNull();
+    detect.mockReturnValue(opposite);
+    await vi.advanceTimersByTimeAsync(34);
+    await frame(436);
+    expect(source.latest()?.detected).toBe(false);
     expect(source.diagnostics().handednessMismatch).toBeNull();
     source.stop();
     expect(source.diagnostics().lighting).toBeNull();
@@ -279,6 +309,7 @@ describe('CameraVision lifecycle', () => {
   });
   it('falls back to CPU if GPU initialization fails', async () => {
     mp.create.mockRejectedValueOnce(new Error('No WebGL'));
+    detect.mockReturnValue(labelled('Left'));
     await source.start({ affectedHand: 'left' });
     expect(source.stats().delegate).toBe('CPU');
     await vi.advanceTimersByTimeAsync(34);

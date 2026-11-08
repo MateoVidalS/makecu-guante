@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { captureStats } from './calibration';
-import { ConfidenceTracker, selectHand } from './confidence';
+import {
+  ConfidenceTracker,
+  isOtherHand,
+  OTHER_HAND_MIN_SCORE,
+  selectHand,
+} from './confidence';
 import {
   FINGERS,
   fingerMap,
@@ -175,8 +180,9 @@ describe('hand selection and confidence', () => {
   it('selects affected hand, accepts a lone high-confidence hand, and mirrors labels', () => {
     expect(selectHand([left, right], 'right')?.index).toBe(1);
     expect(selectHand([left, right], 'right', true)?.index).toBe(0);
-    expect(selectHand([left], 'right')?.handedness).toBe('right');
+    expect(selectHand([right], 'right')?.handedness).toBe('right');
     expect(selectHand([right], 'left', true)?.handedness).toBe('left');
+    expect(selectHand([left], 'right', true)?.handedness).toBe('right');
     expect(
       selectHand([[{ categoryName: 'Unknown', score: 0.9 }]], 'left')
         ?.handedness,
@@ -189,6 +195,41 @@ describe('hand selection and confidence', () => {
       selectHand([[{ categoryName: 'Right', score: 0.59 }]], 'right'),
     ).toBeNull();
     expect(selectHand([], 'right')).toBeNull();
+  });
+  it('drops a lone hand confidently labelled as the other hand, in both views and for both hands', () => {
+    const label = (categoryName: string, score: number) => [
+      { categoryName, score },
+    ];
+    for (const view of ['front_upright', 'front_diagonal'] as const) {
+      expect(selectHand([left], 'right', false, view)).toBeNull();
+      expect(
+        selectHand([label('Right', 0.99)], 'left', false, view),
+      ).toBeNull();
+      expect(
+        selectHand([label('Left', OTHER_HAND_MIN_SCORE)], 'right', false, view),
+      ).toBeNull();
+      // An unsure opposite label keeps the configured hand.
+      expect(
+        selectHand([label('Left', 0.94)], 'right', false, view),
+      ).toMatchObject({
+        index: 0,
+        handedness: 'right',
+        mismatch: view === 'front_upright' ? true : null,
+      });
+      // The label inversion setting applies to the check.
+      expect(
+        selectHand([label('Right', 0.99)], 'left', true, view)?.handedness,
+      ).toBe('left');
+      expect(selectHand([left], 'right', true, view)?.handedness).toBe('right');
+    }
+    expect(OTHER_HAND_MIN_SCORE).toBe(0.95);
+    expect(isOtherHand([left], 'right')).toBe(true);
+    expect(isOtherHand([left], 'left')).toBe(false);
+    expect(isOtherHand([left], 'right', true)).toBe(false);
+    expect(isOtherHand([label('Unknown', 0.99)], 'right')).toBe(false);
+    // Two hands: labels already select the configured one.
+    expect(isOtherHand([left, left], 'right')).toBe(false);
+    expect(selectHand([left, left], 'right')).toBeNull();
   });
   it('decays internal presence to zero in 200ms', () => {
     const confidence = new ConfidenceTracker();

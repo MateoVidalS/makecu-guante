@@ -154,7 +154,8 @@ export class VisionRobustnessTracker {
         }
       }
       const mismatch = s.diagnostics?.handednessMismatch;
-      if (s.detected && mismatch !== null && mismatch !== undefined) {
+      // A lone hand dropped as the other hand is undetected but still counts.
+      if (mismatch === true || (s.detected && mismatch === false)) {
         checkedMs += duration;
         if (mismatch) mismatchedMs += duration;
       }

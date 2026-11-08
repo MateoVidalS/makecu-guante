@@ -5,7 +5,7 @@ import {
   type CameraCalibration,
 } from '../contracts/calibration';
 import type { Handedness, VisionFrame } from '../contracts/vision';
-import { ConfidenceTracker, selectHand } from './confidence';
+import { ConfidenceTracker, isOtherHand, selectHand } from './confidence';
 import {
   fingerMap,
   jointAngles,
@@ -38,6 +38,10 @@ export function missingFrame(t: number): VisionFrame {
 /** Shared by the camera and fixture tests, independent of the DOM and MediaPipe runtime. */
 export class FrameProcessor {
   calibration: CameraCalibration | null = null;
+  /** front_upright only: does the last observed hand's MediaPipe label disagree
+   * with the configured hand? True also when a lone hand was dropped for being
+   * confidently labelled as the other hand, so Setup can explain the missing hand.
+   * Null when unmeasured (missing frame, unknown label, legacy view). */
   handednessMismatch: boolean | null = null;
   readonly confidence = new ConfidenceTracker();
   private jointFilter = new JointFilter();
@@ -80,8 +84,16 @@ export class FrameProcessor {
     const image = tuples(
       selected ? result.landmarks[selected.index] : undefined,
     );
-    if (!selected || !validLandmarks(world) || !validLandmarks(image))
-      return this.missing(t);
+    if (!selected || !validLandmarks(world) || !validLandmarks(image)) {
+      const frame = this.missing(t);
+      if (
+        !selected &&
+        view === 'front_upright' &&
+        isOtherHand(result.handedness, affected, mirror)
+      )
+        this.handednessMismatch = true;
+      return frame;
+    }
     try {
       const raw = jointAngles(world, view, affected),
         pinch = pinchRatio(image);

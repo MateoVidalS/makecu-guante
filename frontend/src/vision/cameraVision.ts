@@ -483,7 +483,8 @@ export class CameraVision implements VisionSource {
     if (!frame.detected)
       this.quality = {
         lighting: this.quality.lighting,
-        handednessMismatch: null,
+        // Null, or true when the lone hand was dropped as the other hand.
+        handednessMismatch: this.processor.handednessMismatch,
       };
     if (!this.stream)
       this.quality = { lighting: null, handednessMismatch: null };

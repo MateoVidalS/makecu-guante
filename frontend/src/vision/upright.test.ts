@@ -43,7 +43,8 @@ const result = (
   pose: string,
   hand: Handedness,
   i = 0,
-  label = 'Left',
+  label: string = hand === 'left' ? 'Left' : 'Right',
+  score = 0.95,
 ): HandResult => {
   const points = (p: Landmark[]) =>
     p.map(([x, y, z]) => ({
@@ -61,9 +62,7 @@ const result = (
   return {
     landmarks: [image],
     worldLandmarks: [points(clips[pose].frames[i].worldLandmarks)],
-    handedness: [
-      [{ categoryName: label, score: 0.95, index: 0, displayName: '' }],
-    ],
+    handedness: [[{ categoryName: label, score, index: 0, displayName: '' }]],
   };
 };
 
@@ -144,36 +143,57 @@ describe('synthetic front-upright, palm-to-lens view (not hardware validation)',
         );
     },
   );
-  it('does not reset joint smoothing when a lone-hand MediaPipe label flips', () => {
+  it('does not reset joint smoothing when a lone-hand label flips or the other hand is dropped', () => {
     const processor = new FrameProcessor();
-    processor.process(
-      result('open', 'right', 0, 'Right'),
-      0,
-      'right',
-      false,
-      'front_upright',
-    );
-    const frame = processor.process(
-      result('full_fist', 'right', 0, 'Left'),
+    const view = 'front_upright';
+    processor.process(result('open', 'right'), 0, 'right', false, view);
+    // An unsure opposite label (below OTHER_HAND_MIN_SCORE) keeps the configured hand.
+    const unsure = processor.process(
+      result('full_fist', 'right', 0, 'Left', 0.8),
       1000 / 30,
       'right',
       false,
-      'front_upright',
+      view,
     );
+    expect(unsure.handedness).toBe('right');
     for (const finger of FINGERS) {
-      expect(frame.rawFlexSum![finger]).toBeGreaterThan(0);
-      expect(frame.rawFlexSum![finger]).toBeLessThan(sums('full_fist')[finger]);
-      expect(frame.rawFlexSum![finger]).toBeCloseTo(
-        Object.values(frame.joints![finger]).reduce((a, b) => a + b, 0),
+      expect(unsure.rawFlexSum![finger]).toBeGreaterThan(0);
+      expect(unsure.rawFlexSum![finger]).toBeLessThan(
+        sums('full_fist')[finger],
+      );
+      expect(unsure.rawFlexSum![finger]).toBeCloseTo(
+        Object.values(unsure.joints![finger]).reduce((a, b) => a + b, 0),
         5,
       );
     }
-    const reacquired = processor.process(
-      result('full_fist', 'right'),
-      300,
+    // A confident opposite label is another hand: dropped, without a reset.
+    const other = processor.process(
+      result('full_fist', 'right', 0, 'Left', 0.95),
+      2000 / 30,
       'right',
       false,
-      'front_upright',
+      view,
+    );
+    expect(other.detected).toBe(false);
+    const next = processor.process(
+      result('full_fist', 'right'),
+      100,
+      'right',
+      false,
+      view,
+    );
+    for (const finger of FINGERS) {
+      expect(next.rawFlexSum![finger]).toBeGreaterThan(
+        unsure.rawFlexSum![finger],
+      );
+      expect(next.rawFlexSum![finger]).toBeLessThan(sums('full_fist')[finger]);
+    }
+    const reacquired = processor.process(
+      result('full_fist', 'right'),
+      400,
+      'right',
+      false,
+      view,
     );
     for (const finger of FINGERS)
       expect(reacquired.rawFlexSum![finger]).toBeCloseTo(
@@ -227,24 +247,47 @@ describe('upright flexion and label cross-check', () => {
     ]);
     expect(() => jointAngles(line)).toThrow('Degenerate palm plane');
   });
-  it('keeps the configured hand and smoothing on label mismatch; supports mirror correction and legacy mode', () => {
+  it('keeps the configured hand on an unsure label mismatch, drops a confident one, and supports mirror correction and legacy mode', () => {
     const processor = new FrameProcessor();
     const right = result('open', 'right', 0, 'Right');
     processor.process(right, 0, 'right');
     expect(processor.handednessMismatch).toBe(false);
-    const opposite = result('full_fist', 'right', 0, 'Left');
-    const frame = processor.process(opposite, 34, 'right');
+    const unsure = result('full_fist', 'right', 0, 'Left', 0.8);
+    const frame = processor.process(unsure, 34, 'right');
     expect(frame.handedness).toBe('right');
     expect(processor.handednessMismatch).toBe(true);
     expect(frame.rawFlexSum!.index).toBeLessThan(sums('full_fist').index);
-    processor.process(opposite, 68, 'right', true);
+    // A confident opposite label: another hand. Dropped, and Setup sees why.
+    const opposite = result('full_fist', 'right', 0, 'Left');
+    expect(processor.process(opposite, 68, 'right').detected).toBe(false);
+    expect(processor.handednessMismatch).toBe(true);
+    // Label inversion for a camera that mirrors its frames.
+    expect(processor.process(opposite, 102, 'right', true).handedness).toBe(
+      'right',
+    );
     expect(processor.handednessMismatch).toBe(false);
-    processor.process(opposite, 102, 'right', false, 'front_diagonal');
+    // The legacy view drops it too, but reports no label cross-check.
+    expect(
+      processor.process(opposite, 136, 'right', false, 'front_diagonal')
+        .detected,
+    ).toBe(false);
     expect(processor.handednessMismatch).toBeNull();
-    processor.process(result('open', 'right', 0, 'Unknown'), 136, 'right');
+    processor.process(unsure, 170, 'right', false, 'front_diagonal');
     expect(processor.handednessMismatch).toBeNull();
-    processor.missing(170);
+    processor.process(result('open', 'right', 0, 'Unknown'), 204, 'right');
     expect(processor.handednessMismatch).toBeNull();
+    processor.missing(238);
+    expect(processor.handednessMismatch).toBeNull();
+    // Symmetric for a left affected hand.
+    const left = new FrameProcessor();
+    expect(left.process(result('open', 'left'), 0, 'left').handedness).toBe(
+      'left',
+    );
+    expect(left.handednessMismatch).toBe(false);
+    expect(
+      left.process(result('open', 'left', 0, 'Right'), 34, 'left').detected,
+    ).toBe(false);
+    expect(left.handednessMismatch).toBe(true);
   });
   it('never applies a calibration from the other view, including untagged legacy calibrations', () => {
     const processor = new FrameProcessor();

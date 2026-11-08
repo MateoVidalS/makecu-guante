@@ -34,19 +34,34 @@ invalidates its published observation. A 50 ms watchdog invalidates camera stall
 after 100 ms without inference results. Internal presence fades to zero over
 200 ms, but published missing frames always have confidence 0 and null closure,
 as required by `VisionFrame`. Filters reset on a configured hand change or a
-200 ms gap. With one visible hand, its published handedness is always the configured
-affected hand, regardless of MediaPipe's label (including an unknown label).
-The score must still be at least 0.6. With two hands, labels select the configured
-hand. In `front_upright`, a recognized label is also a lone-hand cross-check;
-`source.diagnostics().handednessMismatch` reports disagreement without changing
-the configured hand, geometry or smoothing. Unknown labels and the legacy view
-report `null`. The label inversion preference affects this cross-check and
-multiple-hand selection; it is independent of CSS preview mirroring.
+200 ms gap. Hand identity (`selectHand` in `confidence.ts`) works the same in both
+camera views:
+
+- A hand's top handedness score must be at least 0.6.
+- With two hands, labels select the configured hand.
+- With one hand, it is published as the configured affected hand, unless MediaPipe
+  labels it as the other hand with a score of at least 0.95 (`OTHER_HAND_MIN_SCORE`).
+  That hand is dropped. A missing frame is safer than a bystander's hand or the
+  patient's free hand driving "reached" and assist decisions: missing frames are
+  handled (confidence fades, and the engine's dwell survives gaps up to 200 ms).
+  An unknown label, or a less confident opposite label, keeps the configured hand.
+  The label never flips the configured hand or the geometry. Evidence and limits:
+  [Hand identity](#hand-identity).
+- In `front_upright`, `source.diagnostics().handednessMismatch` is `true` when the
+  lone hand's label disagrees with the configured hand. That covers a published hand
+  with an unsure opposite label and a dropped hand, so the Setup check can say why
+  the hand is missing. Unknown labels and the legacy view report `null`.
+- The label inversion preference is for cameras that deliver mirrored frames. It
+  applies to the drop and to two-hand selection. With the wrong setting, the
+  patient's lone hand is dropped and Setup reports a label mismatch. It is
+  independent of CSS preview mirroring.
+
 [MediaPipe Tasks labels refer to the subject's hands](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker?tab=Web).
 Inference receives the unmirrored video element, without rotation; mirror the
-preview with `CameraOverlay mirrored` to match a laptop selfie view. Flipping a lone
-hand's MediaPipe label does not reset joint smoothing. Loading a saved affected-hand
-calibration also updates an already running camera's configured hand.
+preview with `CameraOverlay mirrored` to match a laptop selfie view. Neither an unsure
+label flip nor a short run of dropped other-hand frames resets joint smoothing.
+Loading a saved affected-hand calibration also updates an already running camera's
+configured hand.
 
 Smoothing: `JointFilter` (`jointFilter.ts`) runs a One Euro filter on every joint
 angle (degrees; `minCutoff 0.3 Hz`, `beta 0.02`, `dCutoff 0.5 Hz`). `rawFlexSum`
@@ -140,6 +155,62 @@ The violet r4 difference is one frame of a search spent on the strap device.
 With the strap device, choose it in Setup: Automatic only finds it while
 searching, and lets go of it when another hand is tracked. With a 0.15 strap
 threshold Automatic found 69 frames on r7, but 2 of the 192 bare hands passed.
+
+## Hand identity
+
+Before this rule, a lone hand was always published as the affected hand. A
+bystander's hand, or the patient's free hand, then drove "reached" and assist
+decisions. The evidence below comes from offline replays of real MediaPipe
+results through `FrameProcessor`, with the app's 640×480 landmarker settings:
+
+- **Device recordings r5–r7:** the team's device on a right hand, with bystanders
+  present. About 240 frames each, sampled at 5 Hz, upright view.
+- **Violet-glove rounds r3/r4:** 60 frames each, legacy palm-down view.
+- **Hand classes:** "true" is the device or glove hand; "other" is a bystander's
+  hand or the free hand, classified by eye.
+
+Published frames, shown as true / other, before → after:
+
+| Recording | VIDEO            | IMAGE           |
+| --------- | ---------------- | --------------- |
+| r5        | 38 / 6 → 38 / 0  | 5 / 3 → 5 / 1   |
+| r6        | 7 / 87 → 7 / 33  | 1 / 47 → 1 / 10 |
+| r7        | 17 / 68 → 17 / 2 | 5 / 23 → 5 / 1  |
+| r3 violet | 60 / 0 → 60 / 0  | 55 / 0 → 55 / 0 |
+| r4 violet | 59 / 0 → 59 / 0  | 54 / 0 → 53 / 0 |
+
+- **Patient's hand:** the one true frame dropped is an isolated IMAGE frame, so
+  no run of dropped frames is longer than one.
+- **Left-handed check:** the same frames, mirrored, with the left hand
+  configured. No true frame was dropped. Other-hand frames fell from 141 to 37
+  (VIDEO) and from 46 to 19 (IMAGE).
+- **Threshold:** a 0.9 threshold would remove 8 more of the 421 other-hand
+  frames, all isolated frames. But on the rendered bench hand, 0.9 hides the
+  right hand in a single-finger pose for up to 7 frames (233 ms at 30 Hz), longer
+  than the engine's 200 ms gap tolerance. At 0.95, the bench loses 4 isolated
+  frames out of 3,247.
+
+Known limits:
+
+- **Same-side bystander hand.** Most of r6's remaining frames show a bystander's
+  right hand pressing the device's fingertips while the device hand itself is
+  not detected. Its label is correct, so the check cannot catch it. Two other
+  cues did not help:
+  - Continuity in position and size with the last published hand: none of these
+    frames had a device hand published in the 2 s before.
+  - A size gate: bystander palms measure 0.21–0.60 of the patient's largest
+    palm, but the patient's own hand measures down to 0.43 when held sideways.
+    The calibration also stores no hand size.
+- **Hands cut off by the frame edge.** 17 of r6's 33 remaining frames are a hand
+  resting at the bottom-left corner, with landmarks outside the image. A "whole
+  hand in frame" rule would catch them, but it changes detection quality rather
+  than identity, so it is not applied here.
+- **Label inversion.** The setting now matters for a lone hand. On a camera that
+  mirrors its frames, if the setting is off, the patient's hand is dropped (r3
+  violet VIDEO: 58 → 10 published). In `front_upright`, Setup then shows the
+  label-mismatch guidance. Only the development preview page exposes the setting.
+- **Frame rate.** The real recordings are 5 Hz samples. How stable the labels
+  are on real hands at 30 Hz has not been measured.
 
 ## Glove colours
 
@@ -316,10 +387,11 @@ missing frame rather than fabricated flexion. The legacy view retains the old
 wrist-to-MCP bone reference, using signed flexion in the same finger plane.
 `jointAngles(points, view, affectedHand)` defaults to the right hand for existing
 callers; `FrameProcessor` always passes the configured hand, independently of
-MediaPipe's label. A wrong configured hand reverses long-finger flexion rather
-than silently taking an absolute value; closure can then stay at zero. Correct
-the affected-hand setting. Thumb direction stays label-independent. A view
-change resets smoothing.
+MediaPipe's label. With a wrong configured hand, a confidently labelled lone hand
+is dropped (see above) and Setup reports a label mismatch. Any frame that still
+gets through has its long-finger flexion reversed rather than silently made
+absolute, so closure can stay at zero. Correct the affected-hand setting. Thumb
+direction stays label-independent. A view change resets smoothing.
 
 A calibration only normalizes closure when its affected hand and camera view
 match the current observation. Missing `camera_view` means `front_diagonal`;

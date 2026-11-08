@@ -157,8 +157,10 @@ describe('signed flexion in the hand flexion planes', () => {
         },
         rng(1),
       );
-      // The configured hand controls geometry even when the detector label disagrees.
+      // The configured hand controls geometry even when the detector label
+      // disagrees (unsurely: a confident opposite label drops the hand).
       result.handedness[0][0].categoryName = hand === 'left' ? 'Right' : 'Left';
+      result.handedness[0][0].score = 0.8;
       const frame = processor.process(result, 0, hand);
       for (const finger of FINGERS) {
         expect(frame.joints![finger].mcp).toBeCloseTo(-5);

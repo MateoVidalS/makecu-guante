@@ -137,6 +137,28 @@ describe('frame exposure and backlight heuristics', () => {
       expect(tracker.stats(50).lighting).toBeNull();
     },
   );
+  it('counts a lone hand dropped as the other hand as a label mismatch, not only as a missed detection', () => {
+    const tracker = new VisionRobustnessTracker();
+    for (let t = 0; t <= 5000; t += 50)
+      tracker.add(missingFrame(t), {
+        lighting: null,
+        handednessMismatch: true,
+      });
+    const stats = tracker.stats(5000);
+    expect(stats).toMatchObject({
+      status: 'poor',
+      detectionRate: 0,
+      handednessMismatchRate: 1,
+    });
+    expect(stats.guidance.join(' ')).toContain('affected-hand setting');
+    tracker.reset();
+    for (let t = 0; t <= 5000; t += 50)
+      tracker.add(missingFrame(t), {
+        lighting: null,
+        handednessMismatch: null,
+      });
+    expect(tracker.stats(5000).handednessMismatchRate).toBeNull();
+  });
   it('does not invent exposure or hand-label measurements for a simulator or unknown label', () => {
     const tracker = new VisionRobustnessTracker();
     for (let t = 0; t <= 5000; t += 50) tracker.add(seen(t));
