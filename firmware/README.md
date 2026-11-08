@@ -170,11 +170,11 @@ of 115200 baud; host lines travel on the other UART direction.
 
 ## Servo profiles and power limits
 
-`include/config.h` defines `SERVO_PROFILES` in wire order: unidentified thumb,
-TowerPro SG92R index, MG90S middle, Smraza S51 ring and pinky. Every nominal
-idle/moving/stall current (mA) and maximum unloaded speed (degrees/second) is a
-**placeholder, to be measured** at 5 V. In particular the thumb's model, housing
-size and torque are unknown. Record measurements in BENCH.md before replacing
+`include/config.h` defines `SERVO_PROFILES` in wire order. All five fingers use the
+Smraza S51 (9 g, SG90 class, ~1.6–1.8 kg·cm). Every nominal idle/moving/stall
+current (mA) and maximum unloaded speed (degrees/second) is a **placeholder, to be
+measured** at 5 V. Keep calibrated ranges within about 10–170° (the S51 accepts
+roughly 500–2400 µs). Record measurements in BENCH.md before replacing
 these estimates. They are descriptive estimates, not measured force or allowed
 motion speeds; normalized ramp caps below remain authoritative.
 

@@ -39,9 +39,10 @@ struct ServoProfile {
 // not motion permissions: V_MAX/V_FOLLOW/V_RELEASE/V_JOG_DEG still govern ramps.
 // One INA219 measures only the total; these estimates must never bypass its limit.
 inline constexpr ServoProfile SERVO_PROFILES[FINGERS] = {
-    {"Unknown thumb (identify on bench)", 20, 250, 650, 300},
-    {"TowerPro SG92R", 20, 300, 800, 600},
-    {"MG90S", 20, 250, 750, 500},
+    // All five fingers use the same 9 g micro servo (SG90 class, ~1.6-1.8 kg*cm).
+    {"Smraza S51", 15, 200, 650, 500},
+    {"Smraza S51", 15, 200, 650, 500},
+    {"Smraza S51", 15, 200, 650, 500},
     {"Smraza S51", 15, 200, 650, 500},
     {"Smraza S51", 15, 200, 650, 500},
 };
