@@ -21,7 +21,7 @@ Libraries: `madhephaestus/ESP32Servo`, `adafruit/Adafruit INA219`, `bblanchon/Ar
 
 ## 2. Pins (from README)
 
-Servos: thumb GPIO25, index GPIO26, middle GPIO27 (LEDC 50 Hz, 500–2500 µs). NeoPixel data GPIO33 (through the level
+Servos: thumb GPIO25, index GPIO26, middle GPIO27, ring GPIO13, pinky GPIO4 (LEDC 50 Hz, 500–2500 µs). NeoPixel data GPIO33 (through the level
 shifter + 330 Ω). INA219: SDA 21, SCL 22 (addr 0x40). STOP: GPIO32 `INPUT_PULLUP`, button to GND. Avoid 0, 2, 5, 12, 14, 15.
 
 ## 3. Control loop (200 Hz, `main.cpp`)
@@ -59,7 +59,8 @@ Serial output never blocks: if `Serial.availableForWrite()` is short, skip that 
 
 ## 5. NeoPixel ring (24 px)
 
-Three 8-pixel segments (thumb, index, middle), each a bar of the commanded position `a` (0 = 0 px, 1 = 8 px).
+Five 4-pixel segments with a 1-pixel gap between them (thumb, index, middle, ring, pinky = 20 px + 4 gaps), each a bar of the
+commanded position `a` (0 = 0 px, 1 = 4 px).
 Color by state (matches the app's semantics, `11-ux-design.md §3.1`): `idle` dim white · `run`+`follow` blue (`#2F6FEB`) ·
 `run`+`target` orange (`#E8890C`, the glove helping) · `calib` amber · `fault` all red, blinking at 2 Hz.
 Brightness 20% (the 5 V supply is shared with the servos).
