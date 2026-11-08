@@ -618,7 +618,10 @@ export class VoiceController {
     if (event.kind === 'session_done') {
       clearInterval(this.liveTimer);
       this.deps.patient?.stop();
-      // Keep the coach's current sentence whole: transcripts finish on its turn end.
+      // Save what is complete now (summary and history read it); keep the coach's current
+      // sentence whole: it is saved when its turn ends or when the coach hangs up.
+      this.finishTranscript('patient');
+      void this.batch?.flush();
       this.ending = true;
       clearTimeout(this.endTimer);
       // Live: hang up after the goodbye turn; never wait more than 15 s.
