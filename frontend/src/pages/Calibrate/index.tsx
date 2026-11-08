@@ -53,8 +53,10 @@ import {
 } from '../../runtime/calibrationValidation';
 
 import { SimulatorCalibrationShortcut } from './SimulatorCalibrationShortcut';
+import { usePracticePreflightGate } from '../../components/common/preflight';
 
 export default function Calibrate() {
+  const { checkPreflight } = usePracticePreflightGate();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const linkedStep = params.get('step');
@@ -452,6 +454,7 @@ export default function Calibrate() {
             disabled={busy}
             onClick={() =>
               void action(async () => {
+                if (!checkPreflight()) return;
                 await runtime.exercise.start(
                   practicePlan(short),
                   DEFAULT_EXERCISE_SETTINGS,

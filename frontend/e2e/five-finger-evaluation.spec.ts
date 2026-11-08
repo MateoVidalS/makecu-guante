@@ -9,7 +9,7 @@ test('a ring/little-finger subset persists four sweeps and opens evaluation deta
   test.setTimeout(90_000);
   const calibration = await calibrateSimulator(page);
   // A fresh, complete synthetic baseline isolates subset selection from the
-  // separately tested empty-glove measurement flow. Never used on hardware.
+  // separately tested unhooked-thread friction flow. Never used on hardware.
   const saved = await page.request.post('/api/calibrations', {
     data: {
       assist_direction: 'open',
@@ -31,7 +31,10 @@ test('a ring/little-finger subset persists four sweeps and opens evaluation deta
     await fingers.getByRole('checkbox', { name, exact: true }).uncheck();
   await expect(fingers.getByRole('checkbox', { checked: true })).toHaveCount(2);
   await page
-    .getByRole('checkbox', { name: 'Hand relaxed in the glove', exact: true })
+    .getByRole('checkbox', {
+      name: 'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      exact: true,
+    })
     .check();
   const stored = page.waitForResponse(
     (response) =>
