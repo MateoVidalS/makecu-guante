@@ -1,6 +1,6 @@
 import type { AttemptResult, EngineEvent } from '../contracts/engine';
 import type { ExerciseView } from '../contracts/runtime';
-import { POSES } from '../contracts/poses';
+import { poseInstruction } from './fallbackCoach';
 import { GLOVE_FINGERS } from '../contracts/glove';
 import { safetyPhrase } from './safetyNet';
 import { fingerName } from './fingerNames';
@@ -9,6 +9,7 @@ export interface Cue {
   text: string;
   speak: boolean;
   present?: boolean;
+  opening?: boolean;
 }
 export function eventCue(
   event: EngineEvent,
@@ -19,7 +20,7 @@ export function eventCue(
     case 'phase':
       if (event.phase === 'PRESENT')
         return {
-          text: `[session] PRESENT: ${event.pose}, rep ${event.rep}. Attempt ${event.index + 1} of ${view.total}. Instruction: ${POSES[event.pose].instruction}`,
+          text: `[session] PRESENT: ${event.pose}, rep ${event.rep}. Attempt ${event.index + 1} of ${view.total}. Instruction: ${poseInstruction(event.pose)}`,
           speak: true,
           present: true,
         };
@@ -30,7 +31,8 @@ export function eventCue(
       if (!targetUnmet(event.active_max, view.pose.closure[event.finger]))
         return null;
       return {
-        text: `[session] ${fingerName(event.finger)} now at ${pct(event.active_max)} (target ${pct(view.pose.closure[event.finger])}).`,
+        opening: view.pose.closure[event.finger] === 0,
+        text: `[session] ${fingerName(event.finger)} closure now at ${pct(event.active_max)} (target ${pct(view.pose.closure[event.finger])}).`,
         speak: true,
       };
     case 'reached':
@@ -47,7 +49,7 @@ export function eventCue(
             const i = GLOVE_FINGERS.indexOf(f);
             return `${fingerName(f)} ${pct(event.from[i])}/${pct(event.to[i])}`;
           })
-          .join('; ')}). The glove is helping now.`,
+          .join('; ')}). The glove is helping open now.`,
         speak: true,
       };
     case 'attempt_done':
@@ -95,9 +97,10 @@ export class CueScheduler {
       this.encouraged = false;
     }
     if (event?.kind === 'progress') {
-      const last = this.progress.get(event.finger) ?? 0;
+      const last = this.progress.get(event.finger) ?? (cue.opening ? 1 : 0);
       if (
-        event.active_max - last < 0.1 - 1e-9 ||
+        (cue.opening ? last - event.active_max : event.active_max - last) <
+          0.1 - 1e-9 ||
         this.now() - this.lastProgress < 3000 ||
         this.encouraged
       )

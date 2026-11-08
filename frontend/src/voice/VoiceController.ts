@@ -1,3 +1,4 @@
+import { poseInstruction } from './fallbackCoach';
 import type {
   EngineEvent,
   AttemptResult,
@@ -217,7 +218,13 @@ export class VoiceController {
             (s) =>
               s.id !== id &&
               s.summary &&
-              (!current || s.is_demo === current.is_demo),
+              (s.assist_direction ?? 'close') ===
+                (current ? (current.assist_direction ?? 'close') : 'open') &&
+              (!current ||
+                (s.is_demo === current.is_demo &&
+                  (s.started_at < current.started_at ||
+                    (s.started_at === current.started_at &&
+                      s.id < current.id)))),
           )?.summary ?? null;
       })
       .catch(() => {});
@@ -273,7 +280,7 @@ export class VoiceController {
       this.update({ status: 'listening' });
       const view = this.runtime.exercise.view();
       transport.sendText(
-        `[session] ${this.greeted || this.failures ? 'Reconnected' : 'Starting'}: ${view.total} attempts. Current pose ${view.pose.name}, rep ${view.rep}, phase ${view.phase}. Instruction: ${view.pose.instruction}. Previous session: ${summaryContext(this.previous)} Active movement (closure/target): ${movementContext(view)}. Recent context: ${this.recent || 'none'}. Greet briefly and give the current instruction if PRESENT.`,
+        `[session] ${this.greeted || this.failures ? 'Reconnected' : 'Starting'}: ${view.total} attempts. Current pose ${view.pose.name}, rep ${view.rep}, phase ${view.phase}. Instruction: ${poseInstruction(view.pose.id)} Previous session: ${summaryContext(this.previous)} Active movement (closure/target): ${movementContext(view)}. Recent context: ${this.recent || 'none'}. Greet briefly and give the current instruction if PRESENT.`,
         true,
       );
       this.greeted = true;

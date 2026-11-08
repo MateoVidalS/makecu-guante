@@ -656,7 +656,7 @@ it('reports only real patient transcriptions, before tools, without refreshing s
 });
 
 it.each([
-  ['further', 'patient_asked', 'Can my index close further?'],
+  ['further', 'patient_asked', 'Can my index open further?'],
   ['hold_longer', 'accepted_offer', 'Yes, hold it longer.'],
   ['faster', 'patient_asked', 'Please help my index a little faster.'],
 ] as const)(
