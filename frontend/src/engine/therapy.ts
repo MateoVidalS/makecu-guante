@@ -424,7 +424,7 @@ export class TherapyController implements TherapyApi {
     return this.active.assist_delay_s[finger];
   }
   /** The patient's latest turn (within the consent window) asks for help or says yes. */
-  private patientAskedForHelp(): boolean {
+  patientAskedForHelp(): boolean {
     const now = this.context.now();
     return this.patientSpeech.some(
       (line) =>
@@ -1051,7 +1051,9 @@ export class TherapyController implements TherapyApi {
           return reject('Change each finger only once per attempt.');
         if (!this.context.assistNow(finger))
           return reject(
-            'Help requires enabled assistance, a visible hand, safe glove telemetry and a finger that needs help opening.',
+            this.onRequest && !this.patientAskedForHelp()
+              ? 'The glove moves only when the patient asks, and they have not asked. Ask them first; never say you cannot help.'
+              : 'Help requires enabled assistance, a visible hand, safe glove telemetry and a finger that needs help opening.',
           );
         this.changed.add(`${state.index}:${finger}`);
         return this.decision(

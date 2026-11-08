@@ -140,6 +140,16 @@ class Exercise implements ExerciseEngine {
         options.onTherapyOutput?.(out);
       },
       assistNow: (finger) => {
+        // The patient's own words asked for help (their transcript, never the coach's
+        // words), and the coach's tool got here before the voice's own request. Live run:
+        // five such calls were refused and the coach told the patient it could not help.
+        if (
+          this.onRequest &&
+          !this.helpRequested &&
+          this.phase === 'ATTEMPT' &&
+          this.therapy.patientAskedForHelp()
+        )
+          options.onTherapyOutput?.(this.requestHelp(this.now, [finger]));
         if (
           // The coach cannot start help on its own: only after the patient asks.
           (this.onRequest && !this.helpRequested) ||
@@ -309,6 +319,15 @@ class Exercise implements ExerciseEngine {
       this.helpRequested = true;
       this.helpScope = fingers?.length ? new Set(fingers) : null;
       this.enter('ASSIST', out);
+    } else if (
+      this.phase === 'ASSIST' &&
+      this.helpRequested &&
+      this.helpScope
+    ) {
+      // Help already started for some fingers (the coach's tool can land first): the
+      // patient's own request widens it to the fingers they named, or to all of them.
+      if (fingers?.length) for (const f of fingers) this.helpScope.add(f);
+      else this.helpScope = null;
     }
     return out;
   }
