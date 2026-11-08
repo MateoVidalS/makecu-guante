@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CURRENT_CAMERA_VIEW,
+  type CameraView,
+} from '../../contracts/calibration';
 import { POSES, type PoseId } from '../../contracts/poses';
 import type { FingerId, Handedness } from '../../contracts/vision';
 import { VirtualHand, type JointMap } from '../../hand3d';
@@ -36,6 +40,7 @@ const labels: Record<FingerState, string> = {
 };
 
 export default function DevHand() {
+  const [view, setView] = useState<CameraView>(CURRENT_CAMERA_VIEW);
   const [pose, setPose] = useState<PoseId>('open');
   const comparisonJoints = useMemo(() => {
     const sample = zero();
@@ -164,6 +169,17 @@ export default function DevHand() {
         title="Virtual hand gallery"
         lead="Ghost outline is the target. The solid hand is you."
       />
+      <Select
+        label="Camera view"
+        aria-label="Camera view"
+        value={view}
+        onChange={(event) => setView(event.target.value as CameraView)}
+      >
+        <option value="front_upright">
+          Upright · palm toward you · mirrored
+        </option>
+        <option value="front_diagonal">Legacy · palm down · diagonal</option>
+      </Select>
       <Inline gap={16}>
         <Checkbox
           label="Grayscale"
@@ -207,6 +223,7 @@ export default function DevHand() {
                 state={() => status}
                 pose={pose}
                 handedness={handedness}
+                view={view}
                 reducedMotion={reducedMotion}
                 keepTargetOnReach
               />
@@ -220,6 +237,7 @@ export default function DevHand() {
         state={(finger) => states[finger]}
         pose={pose}
         handedness={handedness}
+        view={view}
         reducedMotion={reducedMotion}
         onFps={setFps}
       />
@@ -354,6 +372,7 @@ export default function DevHand() {
         <video
           ref={video}
           className="hand-camera"
+          data-mirrored={view === 'front_upright'}
           muted
           autoPlay
           playsInline
