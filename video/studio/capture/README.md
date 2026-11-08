@@ -16,12 +16,14 @@ For a single replacement:
 node capture/capture.mjs --only=session-resist
 ```
 
+Multiple clips can be selected with a comma-separated `--only=session-resist,coach-panel`.
+
 `--probe` captures the first 12 frames to a temporary directory without replacing deliverables. The printed temporary directory also contains server logs. Ports 8100 and 5273 must be free; the runner refuses to attach to an existing app. The runner starts and stops its own stack, uses only `/tmp/memo-video.db`, and resets **demo records in that database** for a full run. It never opens a serial port or activates bench mirroring. For a clean reproduction after a partial/failed run, use the full command.
 
 ## Recording and timing
 
 - Real Vite app, real FastAPI/SQLite, production runtime, production simulator/firmware model, real charts and exports. The existing `e2e/ai-therapist-harness.ts` substitutes the Live audio device and steps the seeded simulator; it does not replace app components, safety rules, traces, or coach tools.
-- Chromium: 1920×1080 CSS viewport, device scale 2, light theme. JPEG screenshots at quality 95, one for every output frame. H.264, 3840×2160, constant 30 fps, CRF 14, yuv420p, fast-start MP4. No WebM recording or upscaling.
+- Chromium: 1920×1080 CSS viewport, device scale 2, light theme. JPEG screenshots at quality 95, one for every output frame. Encoding and decoding use two threads to limit memory on shared hosts. H.264, 3840×2160, constant 30 fps, CRF 14, yuv420p, fast-start MP4. No WebM recording or upscaling.
 - On macOS the runner uses Chromium's Metal renderer. The Playwright clock fixes the browser date and steps UI timers independently of screenshot/rendering speed.
 - `session-main`: simulator time runs at 0.4× output time so the editor has room for ghost, active blue, assist orange and reached green callouts. `session-resist`: 2/3×, with rigidity introduced only after ASSIST begins. The actual engine gates and firmware current/watchdog paths remain unchanged.
 - The harness simulates a patient's request for help when the UI offers it. Coach tool calls in `coach-panel` are scripted, applied by the production therapy runtime and persisted to the isolated database. This clip demonstrates the UI, not an unscripted Gemini conversation.
@@ -44,6 +46,8 @@ The app has no separate “Therapist summary” reveal button: the stored summar
 ## Manifest and editor coordinates
 
 `width`/`height` describe the **encoded recording pixels**, 3840×2160; the source CSS viewport is 1920×1080. All `box` and `point` values are in recording pixels (`getBoundingClientRect()` × 2), matching V5's zoom/callout coordinate space. Full scrollable section boxes may extend past the viewport. Fingertip points are estimates relative to the visible canvas and explicitly labeled `approximate`; they are not measured anatomical landmarks. Each phase repeats the hand, meters and fingertip anchors.
+
+`node capture/contact.mjs` rebuilds all contact sheets from the encoded MP4s; pass clip IDs to rebuild selected sheets. Opening, resistance and coach sheets sample their actual event frames so the reached state, release and Undo remain visible.
 
 Individual `<id>.events.json` files are recovery checkpoints and match their entries in the combined manifest. `check.mjs` compiles the JSON literal against the frozen `RecordingManifest` interface and checks required IDs, media dimensions/codec/pixel format/frame count/CFR, event ordering, visible boxes, coordinate bounds, contact sheets, phase sequence, resistance/release and Undo markers. If 4K assets exceed 150 MiB in total, the runner also produces 1080p `<id>.proxy.mp4` files.
 

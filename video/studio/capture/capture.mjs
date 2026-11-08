@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { createContact } from './contact.mjs';
 import { once } from 'node:events';
 import { createWriteStream } from 'node:fs';
 import { readFile, writeFile, mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
@@ -15,8 +16,8 @@ const evidence = path.join(studio, 'evidence/V1');
 const only = process.argv.find(a => a.startsWith('--only='))?.slice(7);
 const probe = process.argv.includes('--probe');
 const ids = ['session-main', 'session-resist', 'coach-panel', 'doctor-history', 'doctor-replay', 'doctor-summary', 'doctor-export'];
-if (only && !ids.includes(only)) throw new Error(`Unknown clip: ${only}`);
-const selected = only ? [only] : ids;
+const selected = only ? only.split(',') : ids;
+for (const id of selected) if (!ids.includes(id)) throw new Error(`Unknown clip: ${id}`);
 const durations = { 'session-main': 45, 'session-resist': 20, 'coach-panel': 20, 'doctor-history': 15, 'doctor-replay': 12, 'doctor-summary': 15, 'doctor-export': 6 };
 const origin = 'http://127.0.0.1:5273';
 const api = 'http://127.0.0.1:8100';
@@ -27,6 +28,12 @@ await mkdir(evidence, { recursive: true });
 const serverLog = createWriteStream(path.join(temp, 'stack.log'));
 let stack;
 let browser;
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, async () => {
+  await browser?.close();
+  if (stack?.pid) { try { process.kill(-stack.pid, 'SIGTERM'); } catch {} }
+  serverLog.end();
+  process.exit(signal === 'SIGINT' ? 130 : 143);
+});
 async function command(cmd, args, cwd = root, options = {}) {
   const child = spawn(cmd, args, { cwd, env, stdio: 'inherit', ...options });
   const [code] = await once(child, 'exit');
@@ -100,7 +107,18 @@ async function start(page) {
   }
   throw new Error('Scripted coach did not connect');
 }
-function ease(t) { return 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3); }
+function ease(value) {
+  const x = Math.min(1, Math.max(0, value));
+  // Match the brand's cubic-bezier(.2, 0, 0, 1), without overshoot.
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const t = (lo + hi) / 2;
+    const bx = 0.6 * (1 - t) ** 2 * t + t ** 3;
+    if (bx < x) lo = t; else hi = t;
+  }
+  const t = (lo + hi) / 2;
+  return 3 * (1 - t) * t ** 2 + t ** 3;
+}
 async function record(id) {
   console.log(`Preparing ${id}`);
   const { page, context } = await prepare();
@@ -230,9 +248,9 @@ async function record(id) {
   }
   await context.close();
   if (probe) { console.log(`Probe frames: ${framesDir}`); return; }
-  await command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-framerate', '30', '-i', path.join(framesDir, '%05d.jpg'), '-c:v', 'libx264', '-preset', 'fast', '-crf', '14', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path.join(out, `${id}.mp4`)]);
+  await command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-threads', '2', '-filter_threads', '1', '-framerate', '30', '-i', path.join(framesDir, '%05d.jpg'), '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '14', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path.join(out, `${id}.mp4`)]);
   await writeFile(path.join(out, `${id}.events.json`), JSON.stringify(clip, null, 2) + '\n');
-  await command('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', path.join(out, `${id}.mp4`), '-vf', `fps=1/${durations[id] / 6},scale=640:360,tile=3x2`, '-frames:v', '1', path.join(evidence, `${id}.png`)]);
+  await createContact(clip, framesDir);
   await rm(framesDir, { recursive: true });
   console.log(`Finished ${id}`);
 }
