@@ -1,23 +1,25 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CoachToolName } from '../contracts/therapist';
 import type { ExerciseSettings, ExercisePlanItem } from '../contracts/engine';
-import { GLOVE_FINGERS } from '../contracts/glove';
-import {
-  DEFAULT_EXERCISE_SETTINGS,
-  MAX_ASSIST_CLOSURE,
-} from '../contracts/poses';
+import { GLOVE_FINGERS, pullFromClosure } from '../contracts/glove';
+import { DEFAULT_EXERCISE_SETTINGS, MAX_ASSIST_PULL } from '../contracts/poses';
+import { shapePose } from './therapy';
+import { POSES } from '../contracts/poses';
 import { createExerciseEngine } from './exercise';
 import type { GloveCommand, Output } from './types';
 import { calibration, FakeWorld } from './test/fakeWorld';
 
+const held = pullFromClosure(0.8) - 0.08;
+
 function harness(
   settings: Partial<ExerciseSettings> = {},
   plan: ExercisePlanItem[] = [
-    { pose: 'full_fist', reps: 3 },
+    { pose: 'open', reps: 3 },
     { pose: 'hook', reps: 1 },
   ],
 ) {
   const world = new FakeWorld();
+  world.hand = [0.8, 1, 0.8, 0.8, 0.8];
   const outputs: Output[] = [];
   const sentCommands: GloveCommand[] = [];
   const accept = (out: Output) => {
@@ -130,11 +132,11 @@ describe('therapy engine policy and boundaries', () => {
         .result,
     ).toBe('rejected');
     h.call('choose_next_pose', { pose: 'hook', reason: 'Try a hook next.' });
-    expect(h.engine.state().pose).toBe('full_fist');
+    expect(h.engine.state().pose).toBe('open');
     h.until(() => h.engine.state().index === 1);
     expect(h.engine.state()).toMatchObject({ pose: 'hook', total: 4, rep: 2 });
     h.until(() => h.engine.state().index === 2);
-    expect(h.engine.state().pose).toBe('full_fist');
+    expect(h.engine.state().pose).toBe('open');
     h.until(() => h.engine.state().index === 3);
     expect(
       h.call('choose_next_pose', { pose: 'hook', reason: 'Another hook.' })
@@ -311,7 +313,7 @@ describe('therapy engine policy and boundaries', () => {
 
   it('exposes five fingers, best alone, lagging, help, last result and unavailable vision accurately', () => {
     const h = harness();
-    h.world.hand = [0.4, 0.1, 0.4, 0.4, 0.4];
+    h.world.hand = [0.4, 0.8, 0.4, 0.4, 0.4];
     h.until(() => h.engine.state().phase === 'ATTEMPT');
     const state = h.therapy.state()!;
     expect(state.fingers).toHaveLength(5);
@@ -319,8 +321,8 @@ describe('therapy engine policy and boundaries', () => {
       ['index'],
     );
     expect(state.fingers[1]).toMatchObject({
-      now: 0.1,
-      best_alone: 0.1,
+      now: 0.8,
+      best_alone: 0.8,
       glove_helping: false,
     });
     h.until(() => h.engine.state().phase === 'ASSIST');
@@ -398,6 +400,7 @@ describe('therapy engine policy and boundaries', () => {
 describe('approved therapy tools and gentleness policy', () => {
   it('more starts help sooner for one finger while other fingers keep trying alone', () => {
     const h = harness({ attempt_s: 6, assist_max_s: 6 });
+    h.world.hand = [1, 0.8, 0.8, 0.8, 0.8];
     h.call('adjust_help', {
       finger: 'thumb',
       direction: 'more',
@@ -412,7 +415,7 @@ describe('approved therapy tools and gentleness policy', () => {
     expect(h.engine.state().phase).toBe('ATTEMPT');
     expect(h.commands().at(-1)).toMatchObject({
       t: 'target',
-      f: [0.7, 0, 0, 0, 0],
+      f: [0.95, held, held, held, held],
       v: 0.2,
     });
     expect(h.therapy.state()?.fingers.map((f) => f.glove_helping)).toEqual([
@@ -424,12 +427,13 @@ describe('approved therapy tools and gentleness policy', () => {
     ]);
     h.world.hand = [0.5, 0.3, 0.3, 0.3, 0.3];
     h.tick();
-    expect(h.therapy.state()?.fingers[0].best_alone).toBe(0);
+    expect(h.therapy.state()?.fingers[0].best_alone).toBe(1);
     expect(h.therapy.state()?.fingers[1].best_alone).toBe(0.3);
   });
 
   it('less cancels a currently early-assisted finger until its later delay', () => {
     const h = harness({ attempt_s: 6, assist_max_s: 6 });
+    h.world.hand = [1, 0.8, 0.8, 0.8, 0.8];
     h.call('adjust_help', {
       finger: 'thumb',
       direction: 'more',
@@ -512,7 +516,7 @@ describe('approved therapy tools and gentleness policy', () => {
 
   it('does not count a manually assisted finger as alone and gates its vision loss like ASSIST', () => {
     const h = harness({ attempt_s: 6 });
-    h.world.hand = [0.1, 0.1, 0.1, 0.1, 0.1];
+    h.world.hand = [0.8, 0.8, 0.8, 0.8, 0.8];
     h.until(() => h.engine.state().phase === 'ATTEMPT');
     h.call('assist_finger_now', {
       finger: 'index',
@@ -520,7 +524,7 @@ describe('approved therapy tools and gentleness policy', () => {
     });
     h.world.hand = [0.3, 0.9, 0.3, 0.3, 0.3];
     h.tick();
-    expect(h.therapy.state()?.fingers[1].best_alone).toBe(0.1);
+    expect(h.therapy.state()?.fingers[1].best_alone).toBe(0.8);
     expect(h.therapy.state()?.fingers[2].best_alone).toBe(0.3);
     h.world.confidence = 0;
     h.tick();
@@ -545,16 +549,16 @@ describe('approved therapy tools and gentleness policy', () => {
   });
 
   it('shapes targets and joint rendering only at ATTEMPT and clamps scale to half through full range', () => {
-    const h = harness({}, [{ pose: 'full_fist', reps: 8 }]);
+    const h = harness({}, [{ pose: 'open', reps: 8 }]);
     h.call('adjust_target', {
       finger: 'index',
       direction: 'lower',
       reason: 'An easier goal.',
     });
-    expect(h.engine.poseDef().closure.index).toBe(0.95);
+    expect(h.engine.poseDef().closure.index).toBe(0);
     h.until(() => h.engine.state().phase === 'ATTEMPT');
-    expect(h.engine.poseDef().closure.index).toBeCloseTo(0.855);
-    expect(h.engine.poseDef().render.index.pip).toBe(90);
+    expect(h.engine.poseDef().closure.index).toBeCloseTo(0.1);
+    expect(h.engine.poseDef().render.index.pip).toBeCloseTo(10);
     expect(
       h.call('adjust_target', {
         finger: 'index',
@@ -580,7 +584,7 @@ describe('approved therapy tools and gentleness policy', () => {
       () =>
         h.engine.state().index === 6 && h.engine.state().phase === 'ATTEMPT',
     );
-    expect(h.engine.poseDef().closure.index).toBeCloseTo(0.475);
+    expect(h.engine.poseDef().closure.index).toBeCloseTo(0.5);
   });
 
   it('highlights expire after four seconds and clinical notes remain in the audit without motor commands', () => {
@@ -607,7 +611,7 @@ describe('approved therapy tools and gentleness policy', () => {
   });
 
   it('limits repeats to three, undoes queued repeats, and preserves completed repetitions', () => {
-    const h = harness({}, [{ pose: 'full_fist', reps: 1 }]);
+    const h = harness({}, [{ pose: 'open', reps: 1 }]);
     for (let i = 0; i < 3; i++)
       expect(
         h.call('repeat_pose', { reason: 'Practice this again.' }).result,
@@ -658,7 +662,7 @@ describe('approved therapy tools and gentleness policy', () => {
       total: 4,
     });
     expect(h.call('repeat_instruction').applied).toMatchObject({
-      instruction: 'Make a full fist',
+      instruction: 'Open your hand wide',
     });
     h.call('stop_session');
     expect(h.engine.state().phase).toBe('DONE');
@@ -767,21 +771,24 @@ describe('patient-requested intensity and consent boundaries', () => {
 
   it('reaches the calibrated range only for the consented finger, never for raw target arguments', () => {
     const h = harness({ assist_max_s: 6 });
-    h.therapy.notePatientSpeech('Close further please.');
+    h.therapy.notePatientSpeech('Open wider please.');
     h.call('intensify', {
       finger: 'index',
       kind: 'further',
       consent: 'patient_asked',
-      patient_quote: 'Close further please.',
+      patient_quote: 'Open wider please.',
       target: 999,
     });
-    expect(h.engine.poseDef().closure.index).toBe(0.95);
+    expect(h.engine.poseDef().closure.index).toBe(0);
     h.until(() => h.engine.state().phase === 'ATTEMPT');
-    expect(h.engine.poseDef().closure.index).toBe(1);
-    expect(h.engine.poseDef().closure.middle).toBe(0.95);
+    expect(h.engine.poseDef().closure.index).toBe(0);
+    expect(h.engine.poseDef().closure.middle).toBe(0);
     h.until(() => h.engine.state().phase === 'ASSIST');
     const target = h.commands().filter((c) => c.t === 'target')[0];
-    expect(target).toMatchObject({ f: [0, 1, 0, 0, 0], v: 0.2 });
+    expect(target).toMatchObject({
+      f: [held, 1, held, held, held],
+      v: 0.2,
+    });
     expect(
       h
         .commands()
@@ -847,16 +854,18 @@ describe('patient-requested intensity and consent boundaries', () => {
     const h = harness({ assist_max_s: 6 });
     consent(h, 'further');
     h.until(() => h.engine.state().phase === 'ASSIST');
-    expect(h.commands().at(-1)).toMatchObject({ f: [0, 1, 0, 0, 0] });
+    expect(h.commands().at(-1)).toMatchObject({
+      f: [held, 1, held, held, held],
+    });
     h.therapy.recordFeeling({
       pain: 2,
       fatigue: 0,
       note: 'Pain.',
       source: 'ui',
     });
-    expect(h.engine.poseDef().closure.index).toBe(0.95);
+    expect(h.engine.poseDef().closure.index).toBe(0);
     expect(h.commands().at(-1)).toMatchObject({
-      f: [0, 0.95, 0, 0, 0],
+      f: [held, 0.95, held, held, held],
       v: 0.2,
     });
   });
@@ -869,7 +878,7 @@ describe('patient-requested intensity and consent boundaries', () => {
     h.world.apply(h.engine.stop(h.world.now).commands);
     h.world.apply(
       h.engine.start(
-        [{ pose: 'full_fist', reps: 1 }],
+        [{ pose: 'open', reps: 1 }],
         { ...DEFAULT_EXERCISE_SETTINGS, present_s: 100 },
         calibration,
         h.world.now,
@@ -945,9 +954,7 @@ it('property: arbitrary tool sequences cannot bypass position, speed, calibrated
         consent: 'accepted_offer',
         patient_quote: 'Yes, please.',
         seconds: (random() - 0.2) * 150,
-        pose: ['full_fist', 'hook', 'pinch', 'invalid'][
-          Math.floor(random() * 4)
-        ],
+        pose: ['open', 'hook', 'pinch', 'invalid'][Math.floor(random() * 4)],
         pain: Math.floor(random() * 12),
         fatigue: Math.floor(random() * 12),
         note: 'Generated feeling.',
@@ -977,7 +984,7 @@ it('property: arbitrary tool sequences cannot bypass position, speed, calibrated
         expect(command.v).toBeLessThanOrEqual(Math.min(initialCap, 0.2));
         for (const [i, value] of command.f.entries()) {
           expect(value).toBeGreaterThanOrEqual(0);
-          expect(value).toBeLessThanOrEqual(MAX_ASSIST_CLOSURE);
+          expect(value).toBeLessThanOrEqual(MAX_ASSIST_PULL);
           const servo = calibration.servo[i];
           const angle = servo.min_deg + value * (servo.max_deg - servo.min_deg);
           expect(angle).toBeGreaterThanOrEqual(
@@ -1063,7 +1070,7 @@ it('property: consented intensity remains inside calibration, 0.30/s, hold, shap
       plateau_s: 99,
       assist_speed: cap,
     };
-    const plan: ExercisePlanItem[] = [{ pose: 'full_fist', reps: 8 }];
+    const plan: ExercisePlanItem[] = [{ pose: 'open', reps: 8 }];
     const h = harness(settings, plan);
     const original = structuredClone(calibration);
     for (let step = 0; step < 500; step++) {
@@ -1155,7 +1162,7 @@ it('caps early assistance duration even after that finger reaches and other dela
   const h = harness({ attempt_s: 9, assist_max_s: 2 });
   h.until(() => h.engine.state().phase === 'ATTEMPT');
   h.call('assist_finger_now', { finger: 'index', reason: 'Help now.' });
-  h.world.hand = [0, 0.95, 0, 0, 0];
+  h.world.hand = [1, 0.05, 1, 1, 1];
   h.tick(2000);
   expect(h.engine.state().phase).toBe('ASSIST_HOLD');
 });
@@ -1168,7 +1175,7 @@ it('uses an injected consent clock independently of accelerated motor time', () 
   });
   world.apply(
     engine.start(
-      [{ pose: 'full_fist', reps: 1 }],
+      [{ pose: 'open', reps: 1 }],
       { ...DEFAULT_EXERCISE_SETTINGS, present_s: 0 },
       calibration,
       0,
@@ -1205,7 +1212,10 @@ it('an unattributed firmware fault revokes intensity and a mutable UI pose canno
   h.until(() => h.engine.state().phase === 'ATTEMPT');
   h.engine.poseDef().closure.index = 999;
   h.until(() => h.engine.state().phase === 'ASSIST');
-  expect(h.commands().at(-1)).toMatchObject({ f: [0, 0.95, 0, 0, 0], v: 0.3 });
+  expect(h.commands().at(-1)).toMatchObject({
+    f: [held, 0.95, held, held, held],
+    v: 0.3,
+  });
   h.world.tel.st = 'fault';
   h.tick();
   expect(h.engine.state().phase).toBe('PAUSED');
@@ -1214,4 +1224,55 @@ it('an unattributed firmware fault revokes intensity and a mutable UI pose canno
   expect(h.therapy.state()?.last_safety).toMatchObject({
     source: 'firmware_fault',
   });
+});
+
+it.each(['open', 'wider', 'stretch', 'straighten', 'abrir', 'abri', 'estirar'])(
+  'accepts a patient request to %s for further opening',
+  (word) => {
+    const h = harness();
+    h.therapy.notePatientSpeech(word);
+    expect(
+      h.call('intensify', {
+        finger: 'index',
+        kind: 'further',
+        consent: 'patient_asked',
+        patient_quote: word,
+      }).result,
+    ).toBe('applied');
+  },
+);
+it.each(['close', 'closer', 'bend', 'cierra', 'cerrar'])(
+  'refuses closing intent (%s) as consent for further opening',
+  (word) => {
+    const h = harness();
+    h.therapy.notePatientSpeech(word);
+    expect(
+      h.call('intensify', {
+        finger: 'index',
+        kind: 'further',
+        consent: 'patient_asked',
+        patient_quote: word,
+      }).result,
+    ).toBe('rejected');
+  },
+);
+it('refuses further intensity on closing poses and scales them in their existing direction', () => {
+  const h = harness({}, [{ pose: 'full_fist', reps: 1 }]);
+  h.therapy.notePatientSpeech('Yes please');
+  expect(
+    h.call('intensify', {
+      finger: 'index',
+      kind: 'further',
+      consent: 'accepted_offer',
+      patient_quote: 'Yes please',
+    }),
+  ).toMatchObject({
+    result: 'rejected',
+    reason: 'The glove can only help this finger open.',
+  });
+  const scales = { thumb: 0.5, index: 0.5, middle: 0.5, ring: 0.5, pinky: 0.5 };
+  expect(shapePose(POSES.full_fist, scales).closure.index).toBeCloseTo(
+    POSES.full_fist.closure.index! * 0.5,
+  );
+  expect(shapePose(POSES.open, scales).closure.index).toBeCloseTo(0.5);
 });

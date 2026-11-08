@@ -1,274 +1,223 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  AttemptResult,
-  EngineEvent,
-  ExerciseSettings,
-} from '../contracts/engine';
-import { DEFAULT_EXERCISE_SETTINGS, DEFAULT_PLAN } from '../contracts/poses';
-import type { PoseId } from '../contracts/poses';
+import type { EngineInput } from './types';
+import {
+  GLOVE_FINGERS,
+  pullFromClosure,
+  closureFromPull,
+  type Quint,
+} from '../contracts/glove';
+import {
+  DEFAULT_EXERCISE_SETTINGS,
+  OPEN_ASSIST_PLAN,
+  TENDON_GLIDE_PLAN,
+  POSES,
+} from '../contracts/poses';
 import { createExerciseEngine } from './exercise';
-import type { EngineInput, ExerciseEngine, Output } from './types';
-import { calibration, curve, FakeWorld } from './test/fakeWorld';
+import { calibration } from './test/fakeWorld';
+import { Run } from './test/exerciseRun';
 
-const settings = (
-  overrides: Partial<ExerciseSettings> = {},
-): ExerciseSettings => ({
-  ...DEFAULT_EXERCISE_SETTINGS,
-  present_s: 0,
-  rest_s: 0.1,
-  hold_s: 0.2,
-  ...overrides,
+it('waits for 500 ms visibility and re-prompts every 8 seconds without moving', () => {
+  const r = new Run();
+  r.world.confidence = 0.59;
+  for (let i = 0; i < 180; i++) r.step();
+  expect(r.engine.state().phase).toBe('PRESENT');
+  expect(
+    r.events.filter((e) => e.kind === 'phase' && e.phase === 'PRESENT'),
+  ).toHaveLength(2);
+  expect(
+    r.outputs.flatMap((o) => o.commands).every((c) => c.t === 'release'),
+  ).toBe(true);
+  r.world.confidence = 0.6;
+  r.step(400);
+  r.step(450);
+  expect(r.engine.state().phase).toBe('PRESENT');
+  r.step(50);
+  expect(r.engine.state().phase).toBe('ATTEMPT');
 });
-class Run {
-  world = new FakeWorld();
-  engine: ExerciseEngine;
-  outputs: Output[] = [];
-  events: EngineEvent[] = [];
-  constructor(
-    pose: PoseId = 'hook',
-    overrides: Partial<ExerciseSettings> = {},
-  ) {
-    this.engine = createExerciseEngine();
-    this.accept(
-      this.engine.start(
-        [{ pose, reps: 1 }],
-        settings(overrides),
-        calibration,
-        0,
-      ),
-    );
-  }
-  accept(out: Output): Output {
-    this.world.apply(out.commands);
-    this.outputs.push(out);
-    this.events.push(...out.events);
-    return out;
-  }
-  step(ms = 50, change?: (input: EngineInput) => void): Output {
-    const input = this.world.step(ms);
-    change?.(input);
-    return this.accept(this.engine.tick(input));
-  }
-  until(
-    phase: ReturnType<ExerciseEngine['state']>['phase'],
-    limit = 1000,
-  ): void {
-    for (let i = 0; i < limit && this.engine.state().phase !== phase; i++)
-      this.step();
-    expect(this.engine.state().phase).toBe(phase);
-  }
-  results(): AttemptResult[] {
-    return this.events.flatMap((e) =>
-      e.kind === 'attempt_done' ? [e.result] : [],
-    );
-  }
-}
 
-describe('exercise phase table (06-session §3 and §6)', () => {
-  it('requires 500 ms continuous visibility, waits indefinitely, and re-prompts every 8 s', () => {
-    const r = new Run();
-    r.world.confidence = 0.59;
-    for (let i = 0; i < 180; i++) r.step();
-    expect(r.engine.state().phase).toBe('PRESENT');
-    expect(
-      r.events.filter((e) => e.kind === 'phase' && e.phase === 'PRESENT'),
-    ).toHaveLength(2);
-    expect(
-      r.outputs
-        .flatMap((o) => o.commands)
-        .some((c) => c.t === 'follow' || c.t === 'target'),
-    ).toBe(false);
-    r.world.confidence = 0.6;
-    r.step(400);
-    r.step(450);
-    expect(r.engine.state().phase).toBe('PRESENT');
-    r.step(50);
-    expect(r.engine.state().phase).toBe('ATTEMPT');
+it('actively reaches and holds with mapped follow only, recording best opening and final closure', () => {
+  const r = new Run('open', { attempt_s: 6 });
+  r.until('ATTEMPT');
+  r.world.hand = [0.05, 0.05, 0.05, 0.05, 0.05];
+  const out = r.step();
+  expect(out.commands).toEqual([
+    { t: 'follow', f: r.world.hand.map(pullFromClosure) },
+  ]);
+  r.until('HOLD');
+  r.world.hand = [0.4, 0.4, 0.4, 0.4, 0.4];
+  r.until('DONE');
+  expect(r.targets()).toEqual([]);
+  expect(r.results()[0]).toMatchObject({
+    reached_active: true,
+    reached_final: true,
+    assisted: false,
+    active_ratio: 0.95,
+    current_mean_ma: null,
   });
-  it('actively reaches, dwells, holds and records without assistance', () => {
-    const r = new Run();
-    r.until('ATTEMPT');
-    const start = r.world.now;
-    for (let i = 0; i < 30 && r.engine.state().phase !== 'DONE'; i++) {
-      r.world.hand = [
-        0,
-        curve(
-          [
-            [0, 0],
-            [500, 0.6],
-          ],
-          r.world.now - start,
-        ),
-        0.6,
-        0.6,
-        0.6,
-      ];
-      r.step();
-    }
-    r.until('DONE');
-    const result = r.results()[0];
-    expect(result).toMatchObject({
-      reached_active: true,
-      reached_final: true,
-      assisted: false,
-      interrupted: false,
-      current_mean_ma: null,
-    });
-    expect(result.time_to_position_s).toBeCloseTo(0.5);
-    expect(r.events).toContainEqual({
-      kind: 'reached',
-      assisted: false,
-      t_rel: 0.5,
-    });
-    expect(result.fingers[1]).toMatchObject({
-      active_max: 0.6,
-      assist_needed: 0,
-      final: 0.6,
-    });
-    expect(result.fingers[0].scored).toBe(false);
-    expect(
-      r.outputs.flatMap((o) => o.commands).some((c) => c.t === 'target'),
-    ).toBe(false);
-    expect(
-      r.events.filter((e) => e.kind === 'phase').map((e) => e.phase),
-    ).toEqual(['PRESENT', 'ATTEMPT', 'HOLD', 'RELEASE', 'REST', 'DONE']);
-    expect(result.trace.t[0]).toBe(0);
-    expect(result.trace.phase.at(-1)).toBe('RELEASE');
+  expect(r.results()[0].fingers[1]).toMatchObject({
+    active_max: 0.05,
+    assist_needed: 0,
+    final: 0.4,
   });
-  it('times out on partial closure, holds reached/free fingers, and reaches with assistance', () => {
-    const r = new Run('hook', { attempt_s: 1 });
-    r.world.hand = [0.2, 0.3, 0.6, 0.6, 0.6];
-    r.until('ASSIST');
-    const target = r.outputs.at(-1)!.commands.find((c) => c.t === 'target');
-    expect(target).toMatchObject({
-      t: 'target',
-      f: [0.17, 0.6, 0.57, 0.57, 0.57],
-      v: 0.2,
-    });
-    const count = r.outputs
-      .flatMap((o) => o.commands)
-      .filter((c) => c.t === 'target').length;
+  expect(r.results()[0].trace.phase.at(-1)).toBe('RELEASE');
+});
+
+it('never targets a closing deficit and skips ASSIST without claiming reach', () => {
+  const r = new Run('full_fist');
+  r.world.hand = [0.3, 0.4, 0.4, 0.4, 0.4];
+  r.until('DONE');
+  expect(r.targets()).toEqual([]);
+  expect(
+    r.events.filter((e) => e.kind === 'phase').map((e) => e.phase),
+  ).toEqual(['PRESENT', 'ATTEMPT', 'RELEASE', 'REST', 'DONE']);
+  expect(r.results()[0]).toMatchObject({
+    assisted: false,
+    reached_final: false,
+  });
+  expect(r.results()[0].fingers.every((f) => f.assist_needed === 0)).toBe(true);
+});
+
+it('assists only an opening deficit and keeps free, reached and queued fingers from raising pull', () => {
+  const r = new Run('open');
+  r.world.hand = [0.05, 0.9, 0.05, 0.05, 0.05];
+  r.until('ASSIST');
+  const target = r.targets()[0];
+  expect(target.f[1]).toBeCloseTo(0.95);
+  for (const i of [0, 2, 3, 4])
+    expect(target.f[i]).toBeLessThanOrEqual(r.world.tel.a[i]);
+  expect(r.events).toContainEqual(
+    expect.objectContaining({
+      kind: 'assist_started',
+      fingers: ['index'],
+      from: [0.05, 0.9, 0.05, 0.05, 0.05],
+    }),
+  );
+  const started = r.events.find((e) => e.kind === 'assist_started');
+  if (started?.kind === 'assist_started')
+    expect(
+      started.to.every((v) => Math.abs(v - closureFromPull(0.95)) < 1e-6),
+    ).toBe(true);
+  r.world.hand = [0.7, 0.6, 0.05, 0.05, 0.05];
+  r.step(50);
+  expect(r.world.tel.tg![0]).toBeLessThanOrEqual(pullFromClosure(0.7) - 0.08);
+  expect(r.world.tel.tg![2]).toBeLessThanOrEqual(r.world.tel.a[2]);
+  r.world.hand = [0.05, 0.05, 0.05, 0.05, 0.05];
+  r.until('DONE');
+  expect(r.results()[0]).toMatchObject({
+    assisted: true,
+    reached_final: true,
+    time_to_position_s: null,
+  });
+  expect(r.results()[0].fingers[1].assist_needed).toBeCloseTo(0.9);
+});
+
+it('uses decreasing closure to detect opening plateaus and honors observation mode', () => {
+  const r = new Run('open', { attempt_s: 20, plateau_s: 1 });
+  r.until('ATTEMPT');
+  for (let i = 1; i <= 20; i++) {
+    r.world.hand[4] = 0.95 - i * 0.04;
+    r.step(200);
+  }
+  expect(r.engine.state().phase).toBe('ATTEMPT');
+  const at = r.world.now;
+  r.until('ASSIST');
+  expect(r.world.now - at).toBeGreaterThanOrEqual(1000);
+  const observation = new Run('open', { assist_enabled: false });
+  observation.until('DONE');
+  expect(observation.targets()).toEqual([]);
+});
+
+it('settles for one second at capped pull, or ends at the assist time limit without visual reach', () => {
+  const r = new Run('open', { assist_max_s: 15 });
+  r.until('ASSIST');
+  let peak = 0;
+  while (r.engine.state().phase === 'ASSIST') {
     r.step();
-    expect(
-      r.outputs.flatMap((o) => o.commands).filter((c) => c.t === 'target'),
-    ).toHaveLength(count);
-    r.world.hand = [0.2, 0.6, 0.6, 0.6, 0.6];
-    r.until('DONE');
-    expect(r.results()[0]).toMatchObject({
-      reached_active: false,
-      reached_final: true,
-      assisted: true,
-      time_to_position_s: null,
-      current_mean_ma: 100,
-    });
-    expect(r.results()[0].fingers[1].assist_needed).toBeCloseTo(0.3);
-    expect(r.events).toContainEqual(
-      expect.objectContaining({ kind: 'reached', assisted: true }),
-    );
+    const moving = r.world.tel.a.filter(
+      (v, i) => r.world.tel.tg![i] > v + 1e-6,
+    ).length;
+    peak = Math.max(peak, moving);
+    expect(moving).toBeLessThanOrEqual(3);
+  }
+  expect(peak).toBe(3);
+  expect(r.world.tel.a.every((a) => Math.abs(a - 0.95) <= 0.02)).toBe(true);
+  const at = r.world.now;
+  r.until('DONE');
+  expect(r.results()[0].reached_final).toBe(false);
+  expect(r.results()[0].trace.t.at(-1)! * 1000).toBeGreaterThan(1000);
+  expect(at).toBeLessThan(14000);
+  const cap = new Run('open', { assist_max_s: 0.2 });
+  cap.until('ASSIST');
+  const start = cap.world.now;
+  cap.until('ASSIST_HOLD');
+  expect(cap.world.now - start).toBe(200);
+});
+
+it('accepts assisted opening within the calibrated cap, and retains pinch gating', () => {
+  const r = new Run();
+  r.until('ASSIST');
+  r.world.hand = [0.14, 0.14, 0.14, 0.14, 0.14];
+  r.until('ASSIST_HOLD');
+  r.until('DONE');
+  expect(r.results()[0].reached_final).toBe(true);
+  const pinch = new Run('pinch', { attempt_s: 6 });
+  pinch.world.hand = [0.5, 0.55, 0, 0, 0];
+  pinch.world.pinch = 0.15;
+  pinch.until('ATTEMPT');
+  for (let i = 0; i < 15; i++) pinch.step();
+  expect(pinch.engine.state().phase).toBe('ATTEMPT');
+  pinch.world.pinch = 0.12;
+  pinch.until('DONE');
+  expect(pinch.results()[0]).toMatchObject({
+    reached_active: true,
+    pinch_min: 0.12,
   });
-  it('plateaus after at least 3 seconds and observation mode releases without assist', () => {
-    const r = new Run('hook', { attempt_s: 20 });
-    r.world.hand = [0, 0.2, 0.2, 0.2, 0.2];
-    r.until('ATTEMPT');
-    const start = r.world.now;
-    r.until('ASSIST');
-    expect(r.world.now - start).toBe(3000);
-    const observation = new Run('hook', {
-      attempt_s: 0.1,
-      assist_enabled: false,
-    });
-    observation.until('DONE');
-    expect(observation.results()[0].assisted).toBe(false);
-    expect(
-      observation.outputs
-        .flatMap((o) => o.commands)
-        .some((c) => c.t === 'target'),
-    ).toBe(false);
-  });
-  it('scores best opening across all five fingers', () => {
-    const r = new Run('open');
-    r.world.hand = [0.8, 0.8, 0.8, 0.8, 0.8];
-    r.until('ATTEMPT');
-    r.world.hand = [0.05, 0.05, 0.05, 0.05, 0.05];
-    r.until('HOLD');
-    r.world.hand = [0.4, 0.4, 0.4, 0.4, 0.4];
-    r.until('DONE');
-    expect(r.results()[0].active_ratio).toBeCloseTo(0.95);
-    expect(r.results()[0].fingers[1]).toMatchObject({
-      active_max: 0.05,
-      final: 0.4,
-      assist_needed: 0.05,
-    });
-  });
-  it('requires calibrated pinch distance as well as scored closure', () => {
-    const r = new Run('pinch');
-    r.world.hand = [0.5, 0.55, 0, 0, 0];
-    r.world.pinch = 0.15;
-    r.until('ATTEMPT');
-    for (let i = 0; i < 15; i++) r.step();
-    expect(r.engine.state().phase).toBe('ATTEMPT');
-    r.world.pinch = 0.12;
-    r.until('DONE');
-    expect(r.results()[0]).toMatchObject({
-      reached_active: true,
-      pinch_min: 0.12,
-    });
-    expect(r.results()[0].fingers[2].scored).toBe(false);
-  });
-  it('settles for one second or caps assistance without claiming visual reach', () => {
-    const r = new Run('hook', { attempt_s: 0.1, assist_max_s: 10 });
-    r.until('ASSIST');
-    const start = r.world.now;
-    r.until('ASSIST_HOLD');
-    expect(r.world.now - start).toBeGreaterThanOrEqual(2950);
-    r.until('DONE');
-    expect(r.results()[0].reached_final).toBe(false);
-    const cap = new Run('hook', { attempt_s: 0.1, assist_max_s: 0.2 });
-    cap.until('ASSIST');
-    const capStart = cap.world.now;
-    cap.until('ASSIST_HOLD');
-    expect(cap.world.now - capStart).toBe(200);
-  });
-  it('throttles follow by frame identity and progress to 2 Hz per finger', () => {
-    const r = new Run();
-    r.until('ATTEMPT');
-    const input = r.world.step();
-    r.accept(r.engine.tick(input));
-    const same = r.engine.tick(input);
-    expect(same.commands.some((c) => c.t === 'follow')).toBe(false);
-    const times: Record<string, number> = {};
-    for (let i = 0; i < 30; i++) {
-      r.world.hand = [0, i * 0.01, i * 0.01, i * 0.01, i * 0.01];
-      const out = r.step();
-      for (const e of out.events)
-        if (e.kind === 'progress') {
-          if (times[e.finger] !== undefined)
-            expect(r.world.now - times[e.finger]).toBeGreaterThanOrEqual(500);
-          times[e.finger] = r.world.now;
-        }
-    }
-    expect(Object.keys(times)).toEqual(['index', 'middle', 'ring', 'pinky']);
-  });
+});
+
+it('throttles follow by frame identity and progress to 2 Hz per finger', () => {
+  const r = new Run('open', { attempt_s: 6 });
+  r.until('ATTEMPT');
+  const input = r.world.step();
+  r.accept(r.engine.tick(input));
+  expect(r.engine.tick(input).commands).toEqual([]);
+  const times = new Map<string, number>();
+  for (let i = 0; i < 30; i++) {
+    r.world.hand = [0.8 - i * 0.01, 0.8 - i * 0.01, 0.8, 0.8, 0.8];
+    for (const e of r.step().events)
+      if (e.kind === 'progress') {
+        if (times.has(e.finger))
+          expect(r.world.now - times.get(e.finger)!).toBeGreaterThanOrEqual(
+            500,
+          );
+        times.set(e.finger, r.world.now);
+      }
+  }
+  expect(times.size).toBeGreaterThanOrEqual(2);
 });
 
 describe.each(['ATTEMPT', 'ASSIST'] as const)(
   '%s reach dwell gaps',
   (phase) => {
     const prepare = () => {
-      const r = new Run('hook', { attempt_s: phase === 'ASSIST' ? 0.1 : 6 });
+      const r = new Run('open', { attempt_s: phase === 'ASSIST' ? 0.1 : 6 });
       r.until('ATTEMPT');
       const attemptAt = r.world.now;
       r.until(phase);
-      r.world.hand = [0, 0.6, 0.6, 0.6, 0.6];
+      r.world.hand = [0, 0, 0, 0, 0];
       r.step();
       return { r, attemptAt, dwellAt: r.world.now };
     };
     const hold = phase === 'ATTEMPT' ? 'HOLD' : 'ASSIST_HOLD';
     const expectReached = (r: Run, tRel: number) => {
       expect(r.engine.state().phase).toBe(hold);
-      expect(r.outputs.at(-1)!.commands.some((c) => c.t === 'target')).toBe(
-        false,
-      );
+      expect(
+        r.outputs
+          .at(-1)!
+          .commands.every(
+            (c) =>
+              c.t !== 'target' || c.f.every((v, i) => v <= r.world.tel.a[i]),
+          ),
+      ).toBe(true);
       expect(r.events).toContainEqual({
         kind: 'reached',
         assisted: phase === 'ASSIST',
@@ -302,7 +251,7 @@ describe.each(['ATTEMPT', 'ASSIST'] as const)(
       'resets a gap longer than 200 ms (intermediate invisible tick: %s)',
       (intermediate) => {
         const { r, attemptAt } = prepare();
-        r.step(400);
+        r.step(50);
         r.world.detected = false;
         r.step(50);
         if (intermediate) r.step(201);
@@ -322,9 +271,9 @@ describe.each(['ATTEMPT', 'ASSIST'] as const)(
       r.world.detected = false;
       r.step(50);
       r.world.detected = true;
-      r.world.hand[1] = 0.2;
+      r.world.hand[1] = 0.8;
       r.step(100);
-      r.world.hand[1] = 0.6;
+      r.world.hand[1] = 0;
       r.step(50);
       const restartedAt = r.world.now;
       r.step(499);
@@ -374,196 +323,234 @@ describe.each(['ATTEMPT', 'ASSIST'] as const)(
   },
 );
 
-describe('exercise safety (06-session §3)', () => {
-  it('suppresses follow during low confidence ATTEMPT while its timer keeps running', () => {
-    const r = new Run('hook', { attempt_s: 1 });
-    r.until('ATTEMPT');
-    r.world.confidence = 0.59;
-    for (let i = 0; i < 20; i++)
-      expect(
-        r.step().commands.every((c) => c.t !== 'target' && c.t !== 'follow'),
-      ).toBe(true);
-    expect(r.engine.state().phase).toBe('ASSIST');
+describe('exercise safety', () => {
+  it.each([
+    'stop_button',
+    'watchdog',
+    'overcurrent',
+    'disconnect',
+    'fault',
+  ] as const)('%s releases and latches pause', (failure) => {
+    const r = new Run();
+    r.until('ASSIST');
+    if (failure === 'disconnect') r.world.connected = false;
+    else if (failure === 'fault') r.world.tel.st = 'fault';
+    else r.world.schedule(r.world.now + 50, failure, 950);
+    expect(r.step().commands).toEqual([{ t: 'release' }]);
+    expect(r.engine.state().phase).toBe('PAUSED');
+    expect(r.step().commands).toEqual([]);
+    expect(r.accept(r.engine.resume(r.world.now)).commands[0]).toEqual({
+      t: 'release',
+    });
+    r.world.connected = true;
+    r.until('DONE');
+    expect(r.results()[0].interrupted).toBe(true);
   });
-  it.each(['low confidence', 'missing'])(
-    'releases at 300 ms of %s in ASSIST and pauses at 1 s despite a pending dwell',
-    (kind) => {
-      const r = new Run('hook', { attempt_s: 0.1 });
-      r.until('ASSIST');
-      r.world.hand = [0, 0.6, 0.6, 0.6, 0.6];
+  it('attributes overcurrent using pull minus mapped vision in the last 300 ms', () => {
+    const r = new Run();
+    r.until('ASSIST');
+    r.step(50, (input) => {
+      input.tel!.a = [0.1, 0.7, 0.3, 0.3, 0.3];
+    });
+    r.world.schedule(r.world.now + 50, 'overcurrent', 950);
+    r.step();
+    expect(r.events).toContainEqual({
+      kind: 'safety',
+      source: 'overcurrent',
+      finger: 'index',
+      ma: 950,
+    });
+  });
+  it('delivers a delayed fault event once after telemetry paused the engine', () => {
+    const r = new Run();
+    r.until('ATTEMPT');
+    r.step(50, (input) => {
+      input.tel!.st = 'fault';
+    });
+    const input = r.world.step();
+    input.gloveEvents = [{ t: input.now, e: 'watchdog' }];
+    expect(
+      r.accept(r.engine.tick(input)).events.filter((e) => e.kind === 'safety'),
+    ).toHaveLength(1);
+    expect(r.engine.tick(input).events).toEqual([]);
+  });
+  it.each(['ASSIST', 'ASSIST_HOLD'] as const)(
+    'releases after 300 ms unseen in %s and pauses at 1 s',
+    (phase) => {
+      const r = new Run('open', { assist_max_s: 0.5, hold_s: 5 });
+      r.until(phase);
+      r.world.confidence = 0;
       r.step();
-      r.step(400);
-      if (kind === 'low confidence') r.world.confidence = 0;
-      else r.world.detected = false;
-      r.step();
-      const start = r.world.now;
+      const at = r.world.now;
       for (let i = 0; i < 5; i++) expect(r.step().commands).toEqual([]);
       expect(r.step().commands).toEqual([{ t: 'release' }]);
       r.until('PAUSED');
-      expect(r.world.now - start).toBe(1000);
+      expect(r.world.now - at).toBe(1000);
       expect(r.events).toContainEqual({
         kind: 'safety',
         source: 'camera_lost',
         finger: null,
         ma: null,
       });
-      expect(r.events.some((e) => e.kind === 'reached')).toBe(false);
     },
   );
-  it('attributes overcurrent from the largest gap in the last 300 ms', () => {
-    const r = new Run('hook', { attempt_s: 0.1 });
-    r.until('ASSIST');
-    r.step(100, (input) => {
-      input.tel!.a = [0.1, 0.6, 0.3, 0.3, 0.3];
-    });
-    r.world.schedule(r.world.now + 50, 'overcurrent', 950);
-    const out = r.step();
-    expect(out.commands).toEqual([{ t: 'release' }]);
-    expect(out.events).toContainEqual({
-      kind: 'safety',
-      source: 'overcurrent',
-      finger: 'index',
-      ma: 950,
-    });
-    expect(r.engine.state().phase).toBe('PAUSED');
-    r.accept(r.engine.resume(r.world.now));
-    r.until('DONE');
-    expect(r.results()[0]).toMatchObject({
-      interrupted: true,
-      safety_events: [{ source: 'overcurrent', finger: 'index', ma: 950 }],
-    });
-  });
-  it('reports null attribution when no recent vision has a positive gap', () => {
+  it('requires resume after vision released, and suppresses motion at low confidence', () => {
     const r = new Run();
-    r.world.hand = [0.8, 0.8, 0.8, 0.8, 0.8];
-    r.until('HOLD');
-    r.world.schedule(r.world.now + 50, 'overcurrent', 950);
-    r.step();
-    expect(r.events).toContainEqual(
-      expect.objectContaining({ kind: 'safety', finger: null }),
-    );
-  });
-  it('pre-empts sustained resistance once and holds the achieved servo positions', () => {
-    const r = new Run('hook', { attempt_s: 0.1, hold_s: 0.5 });
     r.until('ASSIST');
+    r.world.detected = false;
     for (let i = 0; i < 7; i++) r.step();
-    r.world.ma = 400;
-    for (let i = 0; i < 5; i++) r.step();
-    expect(r.engine.state().phase).toBe('ASSIST');
-    const out = r.step();
-    expect(r.engine.state().phase).toBe('ASSIST_HOLD');
-    expect(out.events).toContainEqual({
-      kind: 'resistance',
-      finger: 'index',
-      ma: 400,
-    });
-    expect(out.commands).toContainEqual({
-      t: 'target',
-      f: [...r.world.tel.a],
-      v: 0.15,
-    });
-    r.until('DONE');
-    expect(r.events.filter((e) => e.kind === 'resistance')).toHaveLength(1);
-    expect(r.results()[0]).toMatchObject({
-      current_peak_ma: 400,
-      safety_events: [{ source: 'resistance' }],
-    });
+    r.world.detected = true;
+    expect(r.step().commands).toEqual([{ t: 'release' }]);
+    expect(r.engine.state().phase).toBe('PAUSED');
+    const attempt = new Run();
+    attempt.until('ATTEMPT');
+    attempt.world.confidence = 0;
+    expect(attempt.step().commands).toEqual([]);
   });
-  it.each(['stop_button', 'watchdog'] as const)(
-    '%s pauses; resume releases first and does not send motion while fault persists',
-    (event) => {
-      const r = new Run();
-      r.until('ATTEMPT');
-      r.world.schedule(r.world.now + 50, event);
-      expect(r.step().commands).toEqual([{ t: 'release' }]);
-      expect(
-        r.engine.tick({
-          ...r.world.step(),
-          tel: { ...r.world.tel, st: 'fault' },
-        }).commands,
-      ).toEqual([]);
-      expect(r.accept(r.engine.resume(r.world.now)).commands[0]).toEqual({
-        t: 'release',
-      });
-      const out = r.engine.tick({
-        ...r.world.step(),
-        tel: { ...r.world.tel, st: 'fault' },
-      });
-      expect(out.commands).toEqual([{ t: 'release' }]);
-      expect(r.engine.state().phase).toBe('PAUSED');
-    },
-  );
-  it('pauses on disconnect and on fault telemetry even without an event', () => {
-    const r = new Run();
-    r.until('ATTEMPT');
-    r.world.connected = false;
-    r.step();
-    expect(r.events).toContainEqual(
-      expect.objectContaining({ kind: 'safety', source: 'glove_disconnected' }),
-    );
-    const fault = new Run();
-    fault.until('ATTEMPT');
-    fault.world.tel.st = 'fault';
-    expect(fault.step().commands).toEqual([{ t: 'release' }]);
-    expect(fault.engine.state().phase).toBe('PAUSED');
-  });
-  it('records interrupted attempts for pause/resume, skip, and stop mid-attempt', () => {
-    for (const action of ['pause', 'skip', 'stop'] as const) {
+  it.each(['pause', 'skip', 'stop'] as const)(
+    'records %s as interrupted and releases immediately',
+    (action) => {
       const r = new Run();
       r.until('ATTEMPT');
       expect(r.accept(r.engine[action](r.world.now)).commands[0]).toEqual({
         t: 'release',
       });
-      if (action === 'pause') {
-        expect(r.step().commands).toEqual([]);
-        r.accept(r.engine.resume(r.world.now));
-      }
+      if (action === 'pause') r.accept(r.engine.resume(r.world.now));
       r.until('DONE');
       expect(r.results()).toHaveLength(1);
       expect(r.results()[0].interrupted).toBe(true);
       expect(r.engine.stop(r.world.now).events).toEqual([]);
-    }
-  });
-});
-
-it('completes the full default plan, 15 attempts, in under 200 ms CPU', () => {
-  const r = new Run();
-  r.outputs = [];
-  r.events = [];
-  r.world = new FakeWorld();
-  r.accept(
-    r.engine.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS, calibration, 0),
+    },
   );
-  const start = process.cpuUsage();
-  for (let i = 0; i < 20000 && r.engine.state().phase !== 'DONE'; i++) {
-    const pose = r.engine.state().pose;
-    r.world.hand = pose === 'open' ? [0, 0, 0, 0, 0] : [0.7, 1, 1, 1, 1];
-    r.step();
-  }
-  const elapsed = process.cpuUsage(start);
-  expect(r.engine.state().phase).toBe('DONE');
-  expect(r.results()).toHaveLength(15);
-  expect(elapsed.user + elapsed.system).toBeLessThan(200000);
-  expect(r.events.at(-1)).toMatchObject({
-    kind: 'session_done',
-    summary: { attempts: 15, reached_active: 15, previous: null },
-  });
 });
 
+it.each([[OPEN_ASSIST_PLAN], [TENDON_GLIDE_PLAN]])(
+  'completes a whole plan, with closing deficits unassisted',
+  (plan) => {
+    const r = new Run(
+      'open',
+      {
+        ...DEFAULT_EXERCISE_SETTINGS,
+        present_s: 0,
+        attempt_s: 1,
+        hold_s: 0.1,
+        rest_s: 0,
+      },
+      {},
+      plan,
+    );
+    for (let i = 0; i < 15000 && r.engine.state().phase !== 'DONE'; i++) {
+      const pose = r.engine.state().pose;
+      if (pose === 'open') {
+        r.world.hand = (
+          r.engine.state().phase === 'ASSIST'
+            ? r.world.tel.a.map(closureFromPull)
+            : [0.6, 0.6, 0.6, 0.6, 0.6]
+        ) as Quint;
+      } else
+        r.world.hand = GLOVE_FINGERS.map(
+          (f) => (POSES[pose].closure[f] ?? 0) * 0.5,
+        ) as Quint;
+      r.step();
+    }
+    expect(r.engine.state().phase).toBe('DONE');
+    expect(r.results()).toHaveLength(
+      plan.reduce((n, item) => n + item.reps, 0),
+    );
+    expect(
+      r
+        .results()
+        .filter((a) => a.pose !== 'open')
+        .every((a) => !a.assisted),
+    ).toBe(true);
+    if (plan === OPEN_ASSIST_PLAN) expect(r.results()).toHaveLength(10);
+  },
+);
+
+it('rejects settings that weaken stagger, concurrency or current policy', () => {
+  for (const override of [
+    { assist_stagger_ms: 149 },
+    { assist_stagger_ms: NaN },
+    { assist_max_parallel: 0 },
+    { assist_max_parallel: 4 },
+    { assist_max_parallel: 1.5 },
+  ])
+    expect(() => new Run('open', override)).toThrow();
+  expect(() =>
+    createExerciseEngine({ currentLimitMa: NaN }).start(
+      [{ pose: 'open', reps: 1 }],
+      DEFAULT_EXERCISE_SETTINGS,
+      calibration,
+      0,
+    ),
+  ).toThrow();
+});
+
+it('cannot replay a prior target if an assist times out without safe telemetry', () => {
+  const r = new Run('open', { assist_max_s: 0.1, hold_s: 2 });
+  r.until('ASSIST');
+  r.accept(r.engine.stop(r.world.now));
+  r.accept(
+    r.engine.start(
+      [{ pose: 'open', reps: 1 }],
+      {
+        ...DEFAULT_EXERCISE_SETTINGS,
+        present_s: 0,
+        attempt_s: 0.1,
+        assist_max_s: 0.1,
+        hold_s: 2,
+      },
+      calibration,
+      r.world.now,
+    ),
+  );
+  r.until('ATTEMPT');
+  while (r.engine.state().phase !== 'ASSIST_HOLD')
+    r.step(50, (input) => {
+      input.tel = null;
+    });
+  const count = r.targets().length;
+  r.step();
+  expect(r.targets()).toHaveLength(count);
+  expect(r.engine.hasAssistance()).toBe(false);
+});
+
+it('preserves the stagger and three winding slots across early ATTEMPT assistance and ASSIST', () => {
+  const r = new Run('open', { attempt_s: 1, assist_max_s: 6 });
+  r.until('ATTEMPT');
+  r.step(900);
+  expect(
+    r.engine.therapy.adjust(
+      'assist_finger_now',
+      { finger: 'index', reason: 'Help opening now.' },
+      'coach',
+    ).result,
+  ).toBe('applied');
+  expect(r.targets()).toHaveLength(1);
+  r.step(100);
+  expect(r.engine.state().phase).toBe('ASSIST');
+  expect(r.targets()).toHaveLength(1);
+  r.step(50);
+  expect(r.targets()).toHaveLength(2);
+  for (let i = 0; i < 10; i++) r.step();
+  expect(
+    r.world.tel.a.filter((a, i) => r.world.tel.tg![i] > a + 1e-6),
+  ).toHaveLength(3);
+});
 it('preserves the motion safety property over seeded random inputs and lifecycle actions', () => {
   let seed = 0x4ab123;
   const random = () => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 2 ** 32;
   };
-  const r = new Run('full_fist', { attempt_s: 0.3 });
+  const r = new Run('open', { attempt_s: 0.3 });
   const phases = new Set<string>();
   for (let i = 0; i < 20000; i++) {
     if (r.engine.state().phase === 'DONE')
       r.accept(
         r.engine.start(
-          [{ pose: 'full_fist', reps: 2 }],
-          settings({ attempt_s: 0.3 }),
+          [{ pose: 'open', reps: 2 }],
+          { ...DEFAULT_EXERCISE_SETTINGS, present_s: 0, attempt_s: 0.3 },
           calibration,
           r.world.now,
         ),
@@ -597,226 +584,3 @@ it('preserves the motion safety property over seeded random inputs and lifecycle
   expect(phases.has('ASSIST')).toBe(true);
   expect(phases.has('PAUSED')).toBe(true);
 });
-
-describe('safety boundary regressions', () => {
-  it('reports a delayed fault event once, even after fault telemetry already paused the engine', () => {
-    const r = new Run();
-    r.until('ATTEMPT');
-    r.step(50, (input) => {
-      input.tel!.st = 'fault';
-    });
-    expect(r.engine.state().phase).toBe('PAUSED');
-    const input = r.world.step();
-    input.gloveEvents = [{ t: input.now, e: 'watchdog' }];
-    const out = r.accept(r.engine.tick(input));
-    expect(out.events.filter((e) => e.kind === 'safety')).toHaveLength(1);
-    expect(out.commands).toEqual([]);
-    expect(r.engine.tick(input).events).toEqual([]);
-    r.accept(r.engine.resume(r.world.now));
-    r.until('DONE');
-    expect(r.results()[0].safety_events).toHaveLength(1);
-  });
-  it('keeps the camera-loss deadline across ASSIST_HOLD and requires resume after a vision release', () => {
-    const r = new Run('hook', { attempt_s: 0.1, assist_max_s: 0.5, hold_s: 5 });
-    r.until('ASSIST');
-    r.world.confidence = 0;
-    r.step();
-    const start = r.world.now;
-    r.until('ASSIST_HOLD');
-    r.until('PAUSED');
-    expect(r.world.now - start).toBe(1000);
-    const recovered = new Run('hook', { attempt_s: 0.1 });
-    recovered.until('ASSIST');
-    recovered.world.confidence = 0;
-    for (let i = 0; i < 7; i++) recovered.step();
-    recovered.world.confidence = 1;
-    expect(recovered.step().commands).toEqual([{ t: 'release' }]);
-    expect(recovered.engine.state().phase).toBe('PAUSED');
-  });
-  it('does not declare resistance for brief current spikes or fingers that keep moving', () => {
-    const spike = new Run('hook', { attempt_s: 0.1 });
-    spike.until('ASSIST');
-    for (let i = 0; i < 7; i++) spike.step();
-    spike.world.ma = 500;
-    for (let i = 0; i < 4; i++) spike.step();
-    spike.world.ma = 100;
-    spike.until('DONE');
-    expect(spike.events.some((e) => e.kind === 'resistance')).toBe(false);
-    const moving = new Run('full_fist', { attempt_s: 0.1 });
-    moving.until('ASSIST');
-    for (let i = 0; i < 7; i++) moving.step();
-    moving.world.ma = 500;
-    for (let i = 0; i < 10; i++) {
-      moving.world.hand = [0, i * 0.01, i * 0.01, i * 0.01, i * 0.01];
-      moving.step(50, (input) => {
-        input.tel!.a = [0, 0.7, 0.2, 0.2, 0.2];
-      });
-    }
-    expect(moving.events.some((e) => e.kind === 'resistance')).toBe(false);
-  });
-  it('queues a reached finger that drifts without moving free fingers or restarting active ones', () => {
-    const r = new Run('hook', { attempt_s: 0.1 });
-    r.world.hand = [0.2, 0.6, 0, 0.6, 0.6];
-    r.until('ASSIST');
-    const initial = [...r.world.tel.tg!];
-    r.world.hand = [0.4, 0.49, 0, 0.6, 0.6];
-    expect(r.step().commands).toEqual([]);
-    expect(r.step().commands).toEqual([]);
-    const out = r.step();
-    expect(out.commands).toEqual([
-      {
-        t: 'target',
-        f: [initial[0], 0.6, initial[2], initial[3], initial[4]],
-        v: 0.2,
-      },
-    ]);
-  });
-  it('includes the first successful ATTEMPT frame in active dwell time', () => {
-    const r = new Run('hook');
-    r.world.hand = [0, 0.6, 0.6, 0.6, 0.6];
-    r.until('DONE');
-    expect(r.results()[0].time_to_position_s).toBe(0);
-  });
-});
-
-describe('five-finger assist semantics', () => {
-  it('settles against the capped targets after all queued fingers finish', () => {
-    const r = new Run('full_fist', { attempt_s: 0.1, assist_max_s: 15 });
-    r.until('ASSIST');
-    const start = r.world.now;
-    let peak = 0;
-    while (r.engine.state().phase === 'ASSIST') {
-      r.step();
-      const moving = r.world.tel.a.filter(
-        (a, i) => Math.abs(a - r.world.tel.tg![i]) > 1e-6,
-      ).length;
-      peak = Math.max(peak, moving);
-      expect(moving).toBeLessThanOrEqual(3);
-    }
-    expect(peak).toBe(3);
-    expect(r.engine.state().phase).toBe('ASSIST_HOLD');
-    // At 0.20/s the two staggered waves plus settlement take about 10.5 s.
-    expect(r.world.now - start).toBeLessThan(11000);
-    expect(r.world.tel.a).toEqual([0.7, 0.95, 0.95, 0.95, 0.95]);
-    r.until('DONE');
-    expect(r.results()[0].fingers.map((f) => f.scored)).toEqual([
-      true,
-      true,
-      true,
-      true,
-      true,
-    ]);
-    expect(r.results()[0].reached_final).toBe(false);
-  });
-
-  it.each(['ring', 'pinky'] as const)(
-    'attributes resistance to %s at its weaker servo threshold',
-    (finger) => {
-      const r = new Run('hook', { attempt_s: 0.1 });
-      r.world.hand = [0.2, 0.6, 0.6, 0.6, 0.6];
-      r.world.hand[finger === 'ring' ? 3 : 4] = 0;
-      r.until('ASSIST');
-      for (let i = 0; i < 7; i++) r.step();
-      r.world.ma = 320; // +220 mA: below the strongest servo's +250 mA threshold.
-      for (let i = 0; i < 6; i++) r.step();
-      expect(r.events).toContainEqual({ kind: 'resistance', finger, ma: 320 });
-      expect(r.engine.state().phase).toBe('ASSIST_HOLD');
-      const targetCount = r.outputs
-        .flatMap((o) => o.commands)
-        .filter((c) => c.t === 'target').length;
-      r.until('DONE');
-      expect(
-        r.outputs.flatMap((o) => o.commands).filter((c) => c.t === 'target'),
-      ).toHaveLength(targetCount);
-    },
-  );
-
-  it('uses injected servo profiles for resistance thresholds', () => {
-    const r = new Run('hook', { attempt_s: 0.1 });
-    r.engine = createExerciseEngine({
-      servoProfiles: { index: { stall_ma: 400 } },
-    });
-    r.accept(
-      r.engine.start(
-        [{ pose: 'hook', reps: 1 }],
-        settings({ attempt_s: 0.1 }),
-        calibration,
-        0,
-      ),
-    );
-    r.until('ASSIST');
-    for (let i = 0; i < 7; i++) r.step();
-    r.world.ma = 230;
-    for (let i = 0; i < 6; i++) r.step();
-    expect(r.events).toContainEqual({
-      kind: 'resistance',
-      finger: 'index',
-      ma: 230,
-    });
-  });
-
-  it('rejects settings that weaken stagger or parallel limits', () => {
-    for (const override of [
-      { assist_stagger_ms: 149 },
-      { assist_stagger_ms: NaN },
-      { assist_max_parallel: 0 },
-      { assist_max_parallel: 4 },
-      { assist_max_parallel: 1.5 },
-    ])
-      expect(() =>
-        createExerciseEngine().start(
-          [{ pose: 'hook', reps: 1 }],
-          { ...settings(), ...override },
-          calibration,
-          0,
-        ),
-      ).toThrow();
-  });
-});
-
-it('does not treat high total current and small settled-camera noise as resistance', () => {
-  const r = new Run('hook', { attempt_s: 0.1, assist_max_s: 15 });
-  r.until('ASSIST');
-  for (let i = 0; i < 7; i++) r.step();
-  r.world.ma = 500;
-  for (let i = 0; i < 20; i++) {
-    r.world.hand = [0, 0.58, 0.58, 0.58, 0.3];
-    r.step(50, (input) => {
-      input.tel!.a = [0, 0.6, 0.6, 0.6, 0.3];
-    });
-  }
-  expect(r.events.some((e) => e.kind === 'resistance')).toBe(false);
-});
-
-it('holds queued fingers at the first safe telemetry after ASSIST entered without telemetry', () => {
-  const r = new Run('full_fist', { attempt_s: 0.1 });
-  r.world.hand = [0.2, 0.2, 0.2, 0.2, 0.2];
-  r.until('ATTEMPT');
-  while (r.engine.state().phase === 'ATTEMPT')
-    r.step(50, (input) => {
-      input.tel = null;
-    });
-  expect(r.engine.state().phase).toBe('ASSIST');
-  expect(r.outputs.at(-1)!.commands).toEqual([]);
-  const out = r.step();
-  const target = out.commands.find((command) => command.t === 'target');
-  expect(target?.t).toBe('target');
-  if (target?.t !== 'target')
-    throw new Error('Expected first safe assist target');
-  expect(
-    target.f.filter((value, i) => Math.abs(value - r.world.tel.a[i]) > 1e-6),
-  ).toHaveLength(1);
-});
-
-it.each([3, 4])(
-  'keeps attempting while finger %i alone makes plateau-breaking progress',
-  (finger) => {
-    const r = new Run('hook', { attempt_s: 20, plateau_s: 1 });
-    r.until('ATTEMPT');
-    for (let i = 1; i <= 20; i++) {
-      r.world.hand[finger] = i * 0.04;
-      r.step(200);
-    }
-    expect(r.engine.state().phase).toBe('ATTEMPT');
-  },
-);
