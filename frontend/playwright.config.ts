@@ -8,7 +8,7 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   // Leave CPU headroom for concurrent 3D scenes and wall-time recovery checks.
-  workers: 3,
+  workers: Number(process.env.REHAB_E2E_WORKERS ?? 3),
   use: { baseURL, trace: 'retain-on-failure', actionTimeout: 10_000 },
   projects: [
     {

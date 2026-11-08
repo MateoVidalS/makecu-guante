@@ -174,6 +174,9 @@ make test
 make e2e
 ```
 
+On a shared host running several coding agents, use
+`REHAB_E2E_WORKERS=1 make e2e` to run the same browser checks sequentially.
+
 Browser checks use an isolated temporary database, fake media, and an accelerated
 simulator; they do not prove physical timing or comfort. The hardware team records
 physical evidence separately. A first-time helper should rehearse the calibration
