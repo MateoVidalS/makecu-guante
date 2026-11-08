@@ -41,6 +41,8 @@ export async function probeRigidFinger(
     createSession: async (value) => ({ ...sessions[0], ...value, id: 1 }),
     addAttempt: async ({ result }) => ({ ...result, id: 1, session_id: 1 }),
     endSession: async ({ summary }) => ({ ...sessions[0], summary, id: 1 }),
+    addCoachDecisions: async () => {},
+    addFeelings: async () => {},
     createEvaluation: async (value) => ({
       ...value,
       id: 1,
