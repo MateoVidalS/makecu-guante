@@ -66,6 +66,14 @@ def sdk(monkeypatch):
     fake.auth_tokens.create.return_value = SimpleNamespace(name="auth_tokens/chat-test")
     monkeypatch.setattr(genai, "Client", factory)
     fake.factory = factory
+
+    # Streaming replays whatever a test set on generate_content, as one chunk or several
+    # (a list of responses), so call-argument assertions keep working for both.
+    def stream(**kwargs):
+        result = fake.models.generate_content(**kwargs)
+        return iter(result if isinstance(result, list) else [result])
+
+    fake.models.generate_content_stream.side_effect = stream
     return fake
 
 

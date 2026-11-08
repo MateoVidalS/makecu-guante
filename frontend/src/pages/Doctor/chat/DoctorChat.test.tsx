@@ -15,6 +15,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { http, HttpResponse } from 'msw';
@@ -211,6 +212,65 @@ describe('Doctor chat', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByRole('textbox')).toHaveFocus();
     expect(JSON.parse(sessionStorage.getItem(CHAT_STORAGE_KEY)!)).toEqual([]);
+  });
+  it('retries the last question once, replacing the failed turn', async () => {
+    const bodies: { messages: { role: string; text: string }[] }[] = [];
+    let calls = 0;
+    server.use(
+      http.post('/api/chat', async ({ request }) => {
+        bodies.push((await request.json()) as (typeof bodies)[number]);
+        calls += 1;
+        return calls === 1
+          ? HttpResponse.json(
+              { error: { code: 'chat_unavailable', message: 'Busy' } },
+              { status: 503 },
+            )
+          : sse([
+              { type: 'delta', text: 'Demo data: recovered.' },
+              { type: 'done', model: 'fixture' },
+            ]);
+      }),
+    );
+    open();
+    send('Why did one session end early?');
+    fireEvent.click(
+      within(await screen.findByRole('alert')).getByRole('button', {
+        name: 'Try again',
+      }),
+    );
+    expect(await screen.findByText('Demo data: recovered.')).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(bodies[1].messages).toEqual([
+      { role: 'user', text: 'Why did one session end early?' },
+    ]);
+    expect(screen.getAllByText('Why did one session end early?')).toHaveLength(
+      1,
+    );
+  });
+  it('shows answer headings and offers to copy a finished answer', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    server.use(
+      http.post('/api/chat', () =>
+        sse([
+          {
+            type: 'delta',
+            text: 'Demo data.\n\nSafety:\nOne brake on Oct 27.',
+          },
+          { type: 'done', model: 'fixture' },
+        ]),
+      ),
+    );
+    open();
+    send('Safety?');
+    expect(await screen.findByText('Safety:')).toHaveClass(
+      'doctor-chat-heading',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    expect(writeText).toHaveBeenCalledWith(
+      'Demo data.\n\nSafety:\nOne brake on Oct 27.',
+    );
+    expect(await screen.findByRole('button', { name: 'Copied' })).toBeVisible();
   });
   it('restores history and sends only the last 20 bounded messages', async () => {
     const saved = Array.from({ length: 24 }, (_, index) => ({

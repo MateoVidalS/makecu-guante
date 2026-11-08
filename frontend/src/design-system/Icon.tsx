@@ -6,6 +6,18 @@ import type { SVGProps } from 'react';
  */
 const paths = {
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  sparkle: (
+    <>
+      <path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9-1.9 5.1-1.9-5.1-5.1-1.9 5.1-1.9z" />
+      <path d="M18.5 16v4M16.5 18h4" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="8.5" y="8.5" width="11" height="11" rx="2" />
+      <path d="M15.5 5.5v-.5A1.5 1.5 0 0 0 14 3.5H5A1.5 1.5 0 0 0 3.5 5v9A1.5 1.5 0 0 0 5 15.5h.5" />
+    </>
+  ),
   x: <path d="M6 6l12 12M18 6L6 18" />,
   plus: <path d="M12 5v14M5 12h14" />,
   minus: <path d="M5 12h14" />,
