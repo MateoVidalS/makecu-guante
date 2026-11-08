@@ -43,9 +43,15 @@ export function SuccessTick({
     if (!next || shownFor.current === index) return;
     shownFor.current = index;
     setKind(next);
+  }, [phase, index, result]);
+  // The hide timer depends only on the tick being shown. (It used to live in the effect
+  // above, whose cleanup cancelled it at the next phase change: RELEASE lasts 0.5 s,
+  // so "Perfect!" stayed on screen forever.)
+  useEffect(() => {
+    if (!kind) return;
     const timer = setTimeout(() => setKind(null), duration);
     return () => clearTimeout(timer);
-  }, [phase, index, result, duration]);
+  }, [kind, duration]);
   if (!kind) return null;
   return (
     <div className={`success-tick success-tick--${kind}`} role="status">
