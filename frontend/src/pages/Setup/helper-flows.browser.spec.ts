@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 import { calibration } from '../../contracts/fixtures.check';
 const usable = {
   ...calibration,
+  assist_direction: 'open' as const,
   camera: {
     ...calibration.camera,
     camera_view: 'front_upright' as const,
@@ -154,4 +155,60 @@ test('upright placement diagram and lighting guide are visible', async ({
   await page
     .locator('.setup-placement')
     .screenshot({ path: '/tmp/v2-upright-placement.png' });
+});
+
+test('opening calibration shows Slack, straight-finger warning and active fist capture', async ({
+  page,
+}) => {
+  await page.route('**/api/calibrations/latest', (route) =>
+    route.fulfill({ json: usable }),
+  );
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/calibrate?step=glove');
+  await expect(
+    page.getByRole('button', { name: 'Set slack', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Set open', exact: true }),
+  ).toHaveAttribute('aria-describedby', 'hyperextension-warning');
+  await expect(page.getByText(/Hyperextension warning/)).toBeVisible();
+  await page.screenshot({
+    path: 'src/pages/Calibrate/screenshots/open-servo-1280.png',
+    fullPage: true,
+  });
+  await page.goto('/calibrate?step=camera');
+  await expect(
+    page.getByRole('button', { name: 'Capture my fist' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Relax. The glove opens all five fingers in stages.'),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Glove opens the hand' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: 'src/pages/Calibrate/screenshots/open-camera-1280.png',
+    fullPage: true,
+  });
+});
+
+test('legacy closing assistance requires completely new glove ranges', async ({
+  page,
+}) => {
+  await page.route('**/api/calibrations/latest', (route) =>
+    route.fulfill({ json: { ...usable, assist_direction: 'close' } }),
+  );
+  await page.goto('/calibrate');
+  await expect(
+    page.getByText('The glove now helps the hand open. Calibrate it again.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Step 1 · Glove range: Thumb' }),
+  ).toBeVisible();
+  await expect(page.getByText('Slack not set', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Next finger' }),
+  ).toBeDisabled();
 });

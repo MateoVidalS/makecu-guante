@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  CURRENT_ASSIST_DIRECTION,
   CURRENT_CAMERA_VIEW,
   CURRENT_FLEX_MODEL,
 } from '../contracts/calibration';
@@ -8,7 +9,10 @@ import { useGlove } from '../glove';
 import { useVision } from '../vision';
 import { GLOVE_FINGERS, type GloveFinger } from '../contracts/glove';
 import { useRuntime } from './RuntimeProvider';
-import type { PatientPreset } from '../glove/sim/patient';
+import {
+  PATIENT_PRESET_OPTIONS,
+  type OpeningPatientPreset,
+} from '../glove/sim/patient';
 import { Button, Checkbox, Select, Stack } from '../design-system';
 import './fallback.css';
 
@@ -25,13 +29,15 @@ export function RuntimeSimulatorControls() {
         label="Patient preset"
         value={world.patient.preset}
         onChange={(event) => {
-          world.controls.setPreset(event.target.value as PatientPreset);
+          world.controls.setPreset(event.target.value as OpeningPatientPreset);
           refresh((value) => value + 1);
         }}
       >
-        <option value="mild">Mild</option>
-        <option value="moderate">Moderate</option>
-        <option value="severe">Severe</option>
+        {PATIENT_PRESET_OPTIONS.map(({ id, label }) => (
+          <option key={id} value={id}>
+            {label}
+          </option>
+        ))}
       </Select>
       {vision.source.kind === 'sim' && (
         <Button size="sm" onClick={() => world.controls.handOutOfFrame(3000)}>
@@ -95,6 +101,7 @@ export function RuntimeSimulatorCalibration() {
           setError('');
           void runtime.calibration
             .save({
+              assist_direction: CURRENT_ASSIST_DIRECTION,
               servo: GLOVE_FINGERS.map((finger) => ({
                 finger,
                 min_deg: 20,

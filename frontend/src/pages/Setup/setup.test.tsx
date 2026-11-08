@@ -129,3 +129,12 @@ it('warns about missing INA219 while retaining access to calibration', async () 
     screen.queryByText(CURRENT_SENSOR_MISSING_MESSAGE),
   ).not.toBeInTheDocument();
 });
+
+it('explains opening help and the normal curled resting hand', () => {
+  mountHelper(<Setup />);
+  expect(
+    screen.getByText(/The glove helps you open your hand/),
+  ).toHaveTextContent(
+    'When the thread is slack, your hand may rest curled. That is normal.',
+  );
+});

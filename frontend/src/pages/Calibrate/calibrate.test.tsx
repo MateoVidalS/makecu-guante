@@ -18,6 +18,7 @@ import {
 function helperRuntime() {
   const runtime = legacyHelperRuntime();
   runtime.calibration.current!.camera.camera_view = 'front_upright';
+  runtime.calibration.current!.assist_direction = 'open';
   runtime.calibration.current!.camera.flex_model = CURRENT_FLEX_MODEL;
   return runtime;
 }
@@ -78,7 +79,7 @@ it('deep-links to the affected glove finger while retaining other saved ranges',
   ).toBeVisible();
   expect(screen.getByRole('button', { name: 'Thumb · Set' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
-  expect(screen.getByText(/Set open and closed first/)).toBeVisible();
+  expect(screen.getByText(/Set slack and open first/)).toBeVisible();
 });
 it('hydrates a late backend reload even without camera frames', () => {
   vi.useFakeTimers();
@@ -119,6 +120,7 @@ it('the single simulator shortcut saves both sources and refreshes Review', asyn
   expect(await screen.findByText('Simulator calibrated.')).toBeVisible();
   expect(save).toHaveBeenCalledWith(
     expect.objectContaining({
+      assist_direction: 'open',
       camera: expect.objectContaining({
         camera_view: 'front_upright',
         flex_model: CURRENT_FLEX_MODEL,
@@ -141,6 +143,7 @@ it('the single simulator shortcut saves both sources and refreshes Review', asyn
 
 it('opens legacy calibration at the camera step with glove ranges retained', () => {
   const runtime = legacyHelperRuntime();
+  runtime.calibration.current!.assist_direction = 'open';
   delete runtime.calibration.current!.camera.camera_view;
   mountHelper(<Calibrate />, runtime);
   expect(
@@ -171,6 +174,7 @@ it('saves the current camera view while preserving the existing friction curves'
   await screen.findByRole('heading', { name: 'Your range is saved' });
   expect(save).toHaveBeenCalledWith(
     expect.objectContaining({
+      assist_direction: 'open',
       camera: expect.objectContaining({
         camera_view: 'front_upright',
         flex_model: CURRENT_FLEX_MODEL,
@@ -193,3 +197,17 @@ it.each([undefined, 1])(
     expect(screen.getAllByText('Not captured')).toHaveLength(2);
   },
 );
+
+it('starts a legacy closing calibration from unset glove ranges', () => {
+  const runtime = helperRuntime();
+  runtime.calibration.current!.assist_direction = 'close';
+  mountHelper(<Calibrate />, runtime);
+  expect(
+    screen.getByRole('heading', { name: 'Step 1 · Glove range: Thumb' }),
+  ).toBeVisible();
+  expect(
+    screen.getByText('The glove now helps the hand open. Calibrate it again.'),
+  ).toBeVisible();
+  expect(screen.getByText('Slack not set')).toBeVisible();
+  expect(screen.getByText('Open not set')).toBeVisible();
+});

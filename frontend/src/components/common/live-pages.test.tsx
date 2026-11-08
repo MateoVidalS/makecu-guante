@@ -539,18 +539,18 @@ describe('Calibration wizard', () => {
       ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Set slack' }));
     fireEvent.click(screen.getByRole('button', { name: 'Set open' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Set closed' }));
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Servo angle'), {
       target: { value: '120' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Set closed/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Set open/ }));
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeEnabled();
     first.unmount();
     mount(<Calibrate />, freshRuntime());
-    expect(screen.getByText('Open at 90°')).toBeVisible();
-    expect(screen.getByText('Closed at 120°')).toBeVisible();
+    expect(screen.getByText('Slack at 90°')).toBeVisible();
+    expect(screen.getByText('Open at 120°')).toBeVisible();
   });
   it('sends five ranges automatically, reviews captures and starts the default plan', async () => {
     const first = mount(<Calibrate />, freshRuntime());
@@ -561,11 +561,11 @@ describe('Calibration wizard', () => {
       fireEvent.change(screen.getByLabelText('Servo angle'), {
         target: { value: '20' },
       });
-      fireEvent.click(screen.getByRole('button', { name: /^Set open/ }));
+      fireEvent.click(screen.getByRole('button', { name: /^Set slack/ }));
       fireEvent.change(screen.getByLabelText('Servo angle'), {
         target: { value: '150' },
       });
-      fireEvent.click(screen.getByRole('button', { name: /^Set closed/ }));
+      fireEvent.click(screen.getByRole('button', { name: /^Set open/ }));
     }
     fireEvent.click(
       screen.getByRole('button', { name: 'Continue to camera range' }),

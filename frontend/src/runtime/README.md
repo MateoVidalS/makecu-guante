@@ -64,7 +64,7 @@ make e2e
 ```
 
 `runtime.test.ts` uses a deterministic moderate SimWorld and mocked API, including
-all 15 default attempts, assist flags, safety/recovery, offline retry, reconnect,
+all ten opening-plan attempts, exact result/summary forwarding, safety/recovery, offline retry, reconnect,
 physical-source locks, simulator recovery and first-use friction. `backend.test.ts` starts a real FastAPI server
 on a free port with temporary SQLite storage and verifies traces, history,
 evaluation and export. It requires the normal `make setup` uv environment.

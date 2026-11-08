@@ -12,9 +12,13 @@ import { SimWorld } from '../glove/sim';
 import { createGloveController } from '../glove/GloveProvider';
 import { createVisionController } from '../vision/VisionProvider';
 import { RehabRuntime } from './runtime';
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+} from '../contracts/calibration';
 import { calibration as fixture } from '../contracts/fixtures.check';
 import {
-  DEFAULT_PLAN,
+  OPEN_ASSIST_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
   DEFAULT_EVAL_SETTINGS,
 } from '../contracts/poses';
@@ -90,9 +94,12 @@ afterAll(async () => {
 });
 it('stores the simulator plan, traces, evaluation, therapy audit and exports in a real temporary SQLite backend', async () => {
   const calibration = await api.createCalibration({
+    assist_direction: 'open',
     servo: fixture.servo,
     camera: {
       ...fixture.camera,
+      camera_view: CURRENT_CAMERA_VIEW,
+      flex_model: CURRENT_FLEX_MODEL,
       closed_flex: {
         thumb: 100,
         index: 270,
@@ -102,22 +109,31 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       },
     },
     friction: {},
-    current_limit_ma: 900,
+    current_limit_ma: 1500,
   });
-  const world = new SimWorld({ autoStart: false, seed: 42 });
+  expect(calibration.assist_direction).toBe('open');
+  const world = new SimWorld({
+    autoStart: false,
+    seed: 42,
+    preset: 'moderate',
+  });
   const glove = createGloveController({ kind: 'sim', world });
   const vision = createVisionController({
     simSource: world.vision,
     initialKind: 'sim',
   });
   const runtime = new RehabRuntime({ glove, vision });
+  const observed: import('../contracts/engine').AttemptResult[] = [];
+  runtime.exercise.onEvent((event) => {
+    if (event.kind === 'attempt_done') observed.push(event.result);
+  });
   try {
     glove.mount();
     await vision.start();
     runtime.mount();
     await runtime.calibration.reload();
     world.advance(200);
-    await runtime.exercise.start(DEFAULT_PLAN, DEFAULT_EXERCISE_SETTINGS);
+    await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
     for (
       let ms = 0;
       ms < 400_000 && runtime.exercise.view().phase !== 'DONE';
@@ -133,17 +149,23 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     expect(sessions).toHaveLength(1);
     expect(sessions[0]).toMatchObject({
       calibration_id: calibration.id,
-      n_attempts: 15,
+      n_attempts: 10,
       is_demo: true,
     });
     const detail = await api.getSession(sessions[0].id);
+    // The engine owns the outcome policy; runtime must store its exact results.
+    expect(detail.summary).toEqual(runtime.exercise.view().summary);
     expect(detail.summary).toMatchObject({
-      attempts: 15,
-      assisted: 9,
-      reached_active: 6,
+      attempts: 10,
+      assisted: 5,
+      reached_active: 5,
     });
-    expect(detail.attempts).toHaveLength(15);
+    expect(detail.attempts).toMatchObject(
+      observed.map(({ trace: _trace, ...result }) => result),
+    );
+    expect(detail.attempts).toHaveLength(10);
     const trace = await api.getAttemptTrace(detail.attempts[3].id);
+    expect(trace).toEqual(observed[3].trace);
     expect(trace.phase).toContain('ASSIST');
     expect(trace.closure.index).toHaveLength(trace.t.length);
     await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
@@ -157,7 +179,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     expect(await api.getEvaluations()).toHaveLength(1);
     expect(await api.getHistoryOverview()).toMatchObject({
       sessions: 1,
-      attempts: 15,
+      attempts: 10,
       evaluations: 1,
     });
     const exported = await api.exportData('json');
@@ -165,7 +187,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
 
     // Exercise A1's durable queue against A3's actual validation and SQLite storage.
     await runtime.exercise.start(
-      [{ pose: 'full_fist', reps: 1 }],
+      [{ pose: 'open', reps: 1 }],
       DEFAULT_EXERCISE_SETTINGS,
     );
     runtime.therapy.notePatientSpeech('Yes, please.');
@@ -233,34 +255,31 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       coach_decisions: CoachDecision[];
       feelings: FeelingEntry[];
     }>(`/sessions/${id}`);
-    expect(audit.coach_decisions.map((d) => d.tool)).toEqual([
-      'intensify',
-      'note_for_therapist',
-      'intensify',
-      'record_feeling',
-      'record_feeling',
-      'adjust_help',
-      'set_attempt_time',
-      'brake',
-      'record_feeling',
-      'get_live_state',
-    ]);
+    // Store all engine decisions, including any rejection or automatic safety undo.
+    const canonicalDecision = (decision: CoachDecision) => ({
+      ...decision,
+      t: Date.parse(decision.t),
+      session_id: id,
+    });
+    expect(audit.coach_decisions.map(canonicalDecision)).toEqual(
+      runtime.therapy.decisions().map(canonicalDecision),
+    );
     expect(audit.coach_decisions.every((d) => d.session_id === id)).toBe(true);
     expect(audit.coach_decisions[0]).toMatchObject({
+      tool: 'intensify',
       requested: { patient_quote: 'Yes, please.' },
     });
     expect(audit.coach_decisions[1]).toMatchObject({
+      tool: 'note_for_therapist',
       applied: { text: 'Reports tingling in the little finger.' },
     });
-    expect(audit.coach_decisions[2]).toMatchObject({
-      result: 'undone',
-      source: 'local_rule',
-      applied: { auto_reverted: true },
-    });
-    expect(audit.coach_decisions[7]).toMatchObject({
-      source: 'local_rule',
-      applied: { safety_source: 'coach_brake' },
-    });
+    expect(audit.coach_decisions).toContainEqual(
+      expect.objectContaining({
+        tool: 'brake',
+        source: 'local_rule',
+        applied: { phase: 'PAUSED', safety_source: 'coach_brake' },
+      }),
+    );
     expect(audit.feelings.map((f) => f.pain)).toEqual([1, 2, 5]);
     expect(audit.feelings.at(-1)).toMatchObject({
       session_id: id,

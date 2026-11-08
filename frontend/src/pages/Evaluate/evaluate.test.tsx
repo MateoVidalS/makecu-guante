@@ -42,6 +42,7 @@ function mount({ fresh = false } = {}) {
     .mockImplementation(async (value) => {
       const saved: Calibration = {
         ...value,
+        assist_direction: 'open',
         id: 99,
         created_at: new Date().toISOString(),
       };

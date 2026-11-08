@@ -9,7 +9,8 @@ export default defineConfig({
   outputDir: '/tmp/rehab-u1-helper-browser',
   webServer: {
     ...(!Array.isArray(base.webServer) ? base.webServer : {}),
-    command: 'make -C .. demo-seed && make -C .. dev-sim',
+    // Helper-page scenarios provide their own calibration and need no demo history.
+    command: 'make -C .. dev-sim',
     cwd: fileURLToPath(new URL('../../../', import.meta.url)),
   },
 });
