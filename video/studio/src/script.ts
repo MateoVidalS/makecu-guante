@@ -1,4 +1,5 @@
 // The voice-over script. Owner: coordinator (copy), V2 (audio files), V5/V3 (timing only).
+// NEVER call the device a glove (owner decision, Nov 8): say memo, the wrist module, the threads.
 // English, brand voice: "Demo, pitch: confident, concrete, still honest". Short sentences, no hype,
 // never "proven", "clinically validated", "cure", "robot".
 //
@@ -28,18 +29,18 @@ export const VO: VoLine[] = [
 
   // reveal (360 f)
   { id: 'reveal-1', scene: 'reveal', at: 36, maxFrames: 54, voice: 'narrator', text: 'This is memo.', direction: 'warm, a small smile' },
-  { id: 'reveal-2', scene: 'reveal', at: 108, maxFrames: 108, voice: 'narrator', text: 'A soft tendon glove, a webcam, and a voice coach.' },
+  { id: 'reveal-2', scene: 'reveal', at: 108, maxFrames: 108, voice: 'narrator', text: 'A small wrist module, a webcam, and a voice coach.' },
   { id: 'reveal-3', scene: 'reveal', at: 228, maxFrames: 126, voice: 'narrator', text: 'It watches. It coaches. It helps you open.' },
 
   // session (1368 f)
   { id: 'session-1', scene: 'session', at: 18, maxFrames: 126, voice: 'narrator', text: 'memo shows the goal. You try first.' },
   { id: 'session-2', scene: 'session', at: 162, maxFrames: 180, voice: 'narrator', text: 'The camera measures how far each finger opens, on its own.' },
-  { id: 'session-3', scene: 'session', at: 378, maxFrames: 198, voice: 'narrator', text: "When a finger can't get there, the glove helps. Only with the rest." },
-  { id: 'session-4', scene: 'session', at: 612, maxFrames: 216, voice: 'narrator', text: 'Blue is you. Orange is the glove. Green means you made it.' },
+  { id: 'session-3', scene: 'session', at: 378, maxFrames: 198, voice: 'narrator', text: "When a finger can't get there, memo helps. Only with the rest." },
+  { id: 'session-4', scene: 'session', at: 612, maxFrames: 216, voice: 'narrator', text: "Blue is you. Orange is memo's help. Green means you made it." },
   { id: 'session-5', scene: 'session', at: 900, maxFrames: 90, voice: 'narrator', text: 'If a finger resists…' },
   // The app's real local safety phrase (frontend/src/voice). Re-voiced with the app's Live voice; caption is verbatim.
   { id: 'session-coach', scene: 'session', at: 1008, maxFrames: 126, voice: 'coach', text: "I feel resistance opening your index, let's stop here." },
-  { id: 'session-6', scene: 'session', at: 1152, maxFrames: 210, voice: 'narrator', text: 'the glove lets go. Safety runs on the board, not in the browser.' },
+  { id: 'session-6', scene: 'session', at: 1152, maxFrames: 210, voice: 'narrator', text: 'memo lets go. Safety runs on the board, not in the browser.' },
 
   // coach (576 f). Frames 144–468 are reserved for the team's real Gemini Live conversation audio.
   { id: 'coach-1', scene: 'coach', at: 12, maxFrames: 126, voice: 'narrator', text: 'The coach runs on Gemini Live. It names the finger and adjusts the session.' },
@@ -63,8 +64,7 @@ export const VO: VoLine[] = [
 // On-screen copy that is not voiced. Scenes import their strings from here so copy review happens in one file.
 export const COPY = {
   hook: {
-    line1: 'Her grandson wants a high-five.',
-    punch: 'Technically a fist bump.',
+    line1: "This is Rosa's hand.",
     note: 'Rosa is a composite character based on published survivor accounts.',
   },
   problem: {
@@ -84,7 +84,7 @@ export const COPY = {
     ghost: 'Ghost = the goal',
     solid: 'Solid = your hand',
     blue: 'Blue = on your own',
-    orange: 'Orange = the glove helped',
+    orange: 'Orange = memo helped',
     green: 'Green = you reached it',
     resist: 'Resist, and it lets go.',
   },
@@ -110,5 +110,5 @@ export const COPY = {
     event: 'Built at MakeCU 2026 · Columbia University · Healthcare track',
     disclaimer: 'Prototype, not a medical device, not yet tested with patients. Estimates, not diagnoses. Rosa is a composite character.',
   },
-  badges: { simulated: 'Simulated glove and camera', demoData: 'Demo data', illustrative: 'Illustrative scene' },
+  badges: { simulated: 'Simulated device and camera', demoData: 'Demo data', illustrative: 'Illustrative scene' },
 } as const;
