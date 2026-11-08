@@ -130,6 +130,45 @@ The full default plan is fifteen attempts; do not run it during this six-minute
 pitch. A single fist demonstrates the core behavior promptly. All deliberate
 resistance/STOP/unplug demonstrations use the simulator or an empty bench fixture.
 
+## AI therapist moment
+
+Allow another minute with **both sources simulated** and Live coach connected.
+Ask for help with one finger: “Please help my index sooner.” Show **Coach
+decisions**: more help means an earlier start, while gentler help slows the pull
+within 0.10–0.20 of the calibrated range per second. A smaller target takes effect
+on the next attempt. Use **Undo** to reverse an adjustment, and **Timeline** to
+show its reason and requested/applied values. When the coach names a finger,
+point out its steady focus contour on the virtual hand.
+
+Let the coach offer a little more intensity, then answer “yes.” This is optional:
+it requires a matching patient utterance within 20 seconds, stays inside the
+calibrated range, and may allow up to 0.30/s, a further reach, or up to two extra
+seconds of hold. Without consent, the request is rejected. In the simulator,
+enable **Rigid index** during assistance to show the automatic return to gentle
+practice; clear rigidity afterward. Never demonstrate resistance on a person.
+
+Say “stop” (or “para”) while the model is silent. The local transcription rule
+releases and pauses before a model answer. A reported pain score of 4 or more
+also releases and pauses; show the **How I feel** buttons as a tap alternative.
+Wait for **Saved**, then open the session replay to show the decisions, consent,
+automatic reversion, and pain/fatigue entries together. These are synthetic demo
+records, not evidence of treatment benefit. With simple voice, demonstrate the
+buttons and audit trail; do not promise autonomous adjustments without Live.
+
+For a deterministic, offline rehearsal of the model's tool calls:
+
+```sh
+cd frontend
+pnpm exec playwright test e2e/ai-therapist.spec.ts --workers=1
+```
+
+These checks mount the production app with a scripted fake Live transport, an
+explicitly stepped simulator, and real temporary SQLite persistence. They use no
+Gemini connection or key. They cover sooner/slower help, immediate finger help,
+target shaping, rest, Undo, finger focus, pain 5, both stop words, consent and
+resistance reversion, and reloading the complete audit in replay. A real Live
+connection still needs a separately rehearsed microphone and network.
+
 ## Recover without a reload
 
 Recovery controls stay in the header during practice and evaluation. Switching a
@@ -151,6 +190,14 @@ stopped. It does not automatically resume an interrupted exercise or sweep.
 make test
 make e2e
 ```
+
+On a shared host running several coding agents, use
+`REHAB_E2E_WORKERS=1 make e2e` to run the same browser checks sequentially.
+For unit tests, `REHAB_TEST_TIMEOUT_MS=30000 VITEST_MAX_FORKS=1 VITEST_MIN_FORKS=1 make test`
+extends runner and asynchronous UI-loading waits. It does not change performance
+assertions or application safety timing.
+The same `REHAB_TEST_TIMEOUT_MS=30000` setting extends Playwright action waits
+when paired with `REHAB_E2E_WORKERS=1 make e2e`.
 
 Browser checks use an isolated temporary database, fake media, and an accelerated
 simulator; they do not prove physical timing or comfort. The hardware team records
