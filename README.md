@@ -15,7 +15,7 @@
 | **Hardware** | Guías y anclajes impresos. Falta imprimir módulo, tapa y carretes (`hardware/definitivas/2_...`), coser, cablear y probar |
 | **Firmware en la placa** | Compila y pasa los tests nativos, pero **nunca se cargó en una ESP32**. Primero el banco de pruebas de [`firmware/BENCH.md`](firmware/BENCH.md) |
 
-> **Five fingers are implemented end to end:** protocol, firmware, simulator, camera, exercise/evaluation, voice and history. Wire order is `[thumb, index, middle, ring, pinky]`, on GPIO25/26/27/13/4. Boards reporting another finger count are rejected. Physical acceptance remains pending in [`firmware/BENCH.md`](firmware/BENCH.md).
+> **Five fingers are implemented end to end:** protocol, firmware, simulator, camera, exercise/evaluation, voice and history. Wire order is `[thumb, index, middle, ring, pinky]`, on GPIO4/13/27/26/25. Boards reporting another finger count are rejected. Physical acceptance remains pending in [`firmware/BENCH.md`](firmware/BENCH.md).
 
 **Requisitos:** Node 20+, pnpm, Python 3.11+, [uv](https://docs.astral.sh/uv/), Chrome o Edge (Web Serial). PlatformIO solo para el firmware.
 

@@ -131,7 +131,7 @@ gives more time to try; glove speed, pull and safety limits never change.” The
 applied**. **Turn it off again** before the next run if the presenter expects the standard targets. Pre-demo check: the
 Doctor view's Adaptive plan switch is in the state you intend.
 
-The five-finger firmware uses GPIO25/26/27/13/4 in thumb-to-little-finger order,
+The five-finger firmware uses GPIO4/13/27/26/25 in thumb-to-little-finger order,
 a 5 V / 2.5 A supply with 470–1000 µF servo-rail capacitance, and two LEDC timers.
 Setup and runtime status report a board brown-out (boot reset reason 9):
 “The glove board restarted because the 5 V supply dipped. Check the 470-1000 uF
