@@ -157,7 +157,7 @@ const buildView = (frame: number, width: number, height: number): View => {
   view = blendView(view, subjectView([electronicsBox], [25, 300, 330], 0.78, width, height), ramp(frame, 192, 12));
   view = blendView(view, subjectView([moduleBox, electronicsBox, harnessBox], [260, 240, 330], 0.82, width, height), ramp(frame, 216, 9));
   view = blendView(view, subjectView([lidBox], orbit, 0.52, width, height), ramp(frame, 234, 9));
-  return blendView(view, subjectView([lidBox, electronicsBox, harnessBox, handBox], [30, 210, 350], 0.82, width, height), ramp(frame, 248, 18));
+  return blendView(view, subjectView([lidBox, electronicsBox, harnessBox, handBox], [30, 120, 380], 0.92, width, height), ramp(frame, 248, 18));
 };
 
 const BuildCamera: React.FC<{ view: View }> = ({ view }) => {
