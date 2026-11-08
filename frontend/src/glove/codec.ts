@@ -41,6 +41,7 @@ const reasons = [
   'state',
 ];
 
+// Wire f/a/tg values are tendon pull. Closure conversion belongs to the caller.
 export function encode(command: SerialCommand): string {
   const line = JSON.stringify(command, (_key, value: unknown) => {
     if (typeof value !== 'number') return value;

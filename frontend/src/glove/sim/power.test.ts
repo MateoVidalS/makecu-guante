@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GLOVE_FINGERS,
+  pullFromClosure,
   type GloveEvent,
   type Quint,
 } from '../../contracts/glove';
@@ -50,13 +51,13 @@ describe('five-servo power model', () => {
     const patient = new SimPatient('severe');
     for (const finger of GLOVE_FINGERS) patient.rigid[finger] = true;
     const position: Quint = [1, 1, 1, 1, 1];
-    const closing = supplyPower(
+    const winding = supplyPower(
       patient.servoCurrents(position, [0.3, 0.3, 0.3, 0.3, 0.3], quiet),
     );
     const releasing = supplyPower(
       patient.servoCurrents(position, [-3, -3, -3, -3, -3], quiet),
     );
-    expect(closing.saturated).toBe(true);
+    expect(winding.saturated).toBe(true);
     expect(releasing.saturated).toBe(false);
     expect(releasing.demandMa).toBeLessThan(1500);
   });
@@ -74,11 +75,123 @@ describe('five-servo power model', () => {
           (ma, j) => ma === SERVO_PROFILES[GLOVE_FINGERS[j]].stall_ma,
         ),
       ).toHaveLength(1);
-      expect(patient.realPosition(positions, quiet)[i]).toBe(0.22);
+      expect(patient.realPosition(positions, quiet)[i]).toBe(0.6);
     },
   );
+  it('five spastic fingers held at pull 0.95 demand 2320 mA without a governor', () => {
+    const patient = new SimPatient('spastic');
+    const power = supplyPower(
+      patient.servoCurrents([0.95, 0.95, 0.95, 0.95, 0.95], zeros, quiet),
+    );
+    for (let i = 0; i < 5; i++)
+      expect(power.perServoMa[i]).toBeCloseTo([460, 460, 460, 455, 455][i]);
+    expect(power.demandMa).toBeCloseTo(2320);
+    expect(power.totalMa).toBeGreaterThan(2200);
+    expect(power.saturated).toBe(false);
+  });
+  it('the same held opening on demo draws 120 mA, below 1500 mA', () => {
+    const patient = new SimPatient('demo');
+    const power = supplyPower(
+      patient.servoCurrents([0.95, 0.95, 0.95, 0.95, 0.95], zeros, quiet),
+    );
+    expect(power.totalMa).toBe(120);
+    expect(power.totalMa).toBeLessThan(1500);
+  });
+  it('spastic opening without a governor trips the firmware 2200 mA cut and releases to slack', async () => {
+    const world = new SimWorld({ autoStart: false, preset: 'spastic' });
+    await world.glove.connect();
+    for (const i of [0, 1, 2, 3, 4] as const) world.glove.calib(i, 20, 150);
+    world.glove.limit(2200);
+    const events: GloveEvent[] = [];
+    world.glove.onEvent((e) => events.push(e));
+    world.glove.target([0.95, 0.95, 0.95, 0.95, 0.95], 0.2);
+    world.advance(6000);
+    expect(events).toContainEqual(
+      expect.objectContaining({ e: 'overcurrent' }),
+    );
+    expect(world.firmware.state).toBe('fault');
+    expect(world.firmware.position).toEqual(zeros);
+    expect(world.servoPosition).toEqual(zeros);
+    expect(world.power.totalMa).toBe(30);
+  });
+  it('a fast fist while following pays out without stall or overcurrent', async () => {
+    const world = new SimWorld({ autoStart: false, preset: 'spastic' });
+    await world.glove.connect();
+    for (const i of [0, 1, 2, 3, 4] as const) world.glove.calib(i, 20, 150);
+    world.glove.limit(900);
+    world.glove.follow([0.98, 0.98, 0.98, 0.98, 0.98]);
+    world.firmware.position = [0.9, 0.9, 0.9, 0.9, 0.9];
+    world.servoPosition = [...world.firmware.position];
+    world.patient.position = [0.1, 0.1, 0.1, 0.1, 0.1];
+    // A strong voluntary fist closes at 2/s, faster than the 1.5/s winding cap.
+    // Feed its measured closure every 20 ms, as the follow caller would.
+    for (let step = 1; step <= 20; step++) {
+      const closure = 0.1 + step * 0.04;
+      world.patient.position.fill(closure);
+      world.glove.follow(Array(5).fill(pullFromClosure(closure)) as Quint);
+      world.advance(20);
+      expect(world.firmware.state).toBe('run');
+      for (let i = 0; i < 5; i++)
+        expect(world.power.perServoMa[i]).toBeLessThan(
+          SERVO_PROFILES[GLOVE_FINGERS[i]].stall_ma,
+        );
+      expect(world.power.totalMa).toBeLessThan(900);
+      expect(world.firmware.position[1]).toBeLessThanOrEqual(
+        pullFromClosure(closure),
+      );
+    }
+  });
+  it('a rigid floor stops the physical shaft while commanded pull continues', async () => {
+    const world = new SimWorld({ autoStart: false, preset: 'rigid_index' });
+    await world.glove.connect();
+    for (const i of [0, 1, 2, 3, 4] as const) world.glove.calib(i, 20, 150);
+    world.glove.limit(2200);
+    world.glove.target([0, 0.8, 0, 0, 0], 0.2);
+    world.advance(4000);
+    expect(world.firmware.position[1]).toBeCloseTo(0.8);
+    expect(world.servoPosition[1]).toBeCloseTo(pullFromClosure(0.6));
+    expect(world.power.perServoMa[1]).toBe(SERVO_PROFILES.index.stall_ma);
+    world.glove.release();
+    world.advance(1000);
+    expect(world.servoPosition).toEqual(zeros);
+    expect(world.power.totalMa).toBe(30);
+  });
+  it.each(['target', 'follow'] as const)(
+    '%s unwinding cannot wind a shaft that is behind commanded pull',
+    async (mode) => {
+      const world = new SimWorld({ autoStart: false });
+      await world.glove.connect();
+      for (const i of [0, 1, 2, 3, 4] as const) world.glove.calib(i, 20, 150);
+      world.glove.target([0.9, 0, 0, 0, 0], 0.2);
+      // The shaft lagged during an earlier stall. Dropping the pull goal must
+      // not make it catch up in the opening direction as the load disappears.
+      world.firmware.position[0] = 0.9;
+      world.servoPosition[0] = 0.4;
+      if (mode === 'target') world.glove.target([0.1, 0, 0, 0, 0], 0.2);
+      else world.glove.follow([0.18, 0, 0, 0, 0]);
+      let before = world.servoPosition[0];
+      for (let i = 0; i < 60; i++) {
+        world.advance(5);
+        expect(world.servoPosition[0]).toBeLessThanOrEqual(before);
+        before = world.servoPosition[0];
+      }
+      expect(world.servoPosition[0]).toBeCloseTo(0.1);
+    },
+  );
+  it('a servo with insufficient torque stalls even without a rigid floor', async () => {
+    const world = new SimWorld({ autoStart: false, preset: 'spastic' });
+    await world.glove.connect();
+    for (const i of [0, 1, 2, 3, 4] as const) world.glove.calib(i, 20, 150);
+    world.glove.target([0.95, 0, 0, 0, 0], 1);
+    // Observe during the fast ramp; the velocity catch vanishes once it stops.
+    world.advance(900);
+    expect(world.patient.rigid.thumb).toBe(false);
+    expect(world.power.perServoMa[0]).toBe(SERVO_PROFILES.thumb.stall_ma);
+    expect(world.servoPosition[0]).toBeLessThan(world.firmware.position[0]);
+    expect(world.firmware.state).toBe('run');
+  });
   it('physical shafts respect per-servo mechanical speed while telemetry keeps the firmware ramp', async () => {
-    const world = new SimWorld({ autoStart: false });
+    const world = new SimWorld({ autoStart: false, preset: 'demo' });
     await world.glove.connect();
     for (const i of [0, 1, 2, 3, 4] as const) world.glove.calib(i, 5, 175);
     world.glove.target([1, 1, 1, 1, 1], 1);
@@ -92,7 +205,7 @@ describe('five-servo power model', () => {
     expect(world.servoPosition[1]).toBeCloseTo(0.7);
     expect(world.servoPosition[0]).toBeGreaterThan(world.firmware.position[0]);
   });
-  it('supply saturation stalls physical closure and still trips the independent 100 ms firmware rule', async () => {
+  it('supply saturation stalls physical winding and still trips the independent 100 ms firmware rule', async () => {
     const world = new SimWorld({ autoStart: false });
     await world.glove.connect();
     for (const i of [0, 1, 2, 3, 4] as const) {
@@ -133,7 +246,7 @@ describe('five-servo power model', () => {
     ]);
     expect(world.power.demandMa).toBe(ELECTRONICS_IDLE_MA);
   });
-  it.each(['mild', 'moderate', 'severe'] as const)(
+  it.each(['demo', 'mild', 'moderate'] as const)(
     '%s normal five-finger assist never saturates the supply',
     async (preset) => {
       const world = new SimWorld({ autoStart: false, preset });

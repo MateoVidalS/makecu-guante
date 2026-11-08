@@ -4,7 +4,8 @@ import {
 } from '../../contracts/calibration';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SimWorld } from './simWorld';
-import { PATIENT_PRESETS, SimPatient } from './patient';
+import { PATIENT_PRESETS } from './patient';
+import { pullFromClosure } from '../../contracts/glove';
 import type { VisionFrame } from '../../contracts/vision';
 import type { CameraCalibration } from '../../contracts/calibration';
 
@@ -22,16 +23,19 @@ afterEach(() => vi.useRealTimers());
 
 describe('SimWorld patient and camera', () => {
   it.each(['mild', 'moderate', 'severe'] as const)(
-    '%s patient reacts after 0.4 s, reaches the active range, then opens on RELEASE',
+    '%s patient reacts after 0.4 s, reaches the active range, then relaxes on RELEASE',
     async (preset) => {
       const world = new SimWorld({ preset, autoStart: false });
       world.setIntent('full_fist', 'PRESENT');
       world.advance(395);
-      expect(world.patient.position).toEqual([0, 0, 0, 0, 0]);
+      expect(world.patient.position).toEqual(PATIENT_PRESETS[preset].rest);
       world.advance(2000);
       for (let i = 0; i < 5; i++)
         expect(world.patient.position[i]).toBeCloseTo(
-          Math.min([0.7, 1, 1, 1, 1][i], PATIENT_PRESETS[preset].active_max[i]),
+          Math.max(
+            [0.7, 0.95, 0.95, 0.95, 0.95][i],
+            PATIENT_PRESETS[preset].active_min[i],
+          ),
           1,
         );
       world.setIntent('full_fist', 'ASSIST');
@@ -39,19 +43,9 @@ describe('SimWorld patient and camera', () => {
       expect(world.patient.position[1]).toBeGreaterThan(0.1);
       world.setIntent('open', 'RELEASE');
       world.advance(2000);
-      expect(world.patient.position).toEqual([0, 0, 0, 0, 0]);
+      expect(world.patient.position).toEqual(PATIENT_PRESETS[preset].rest);
     },
   );
-  it('stiffness adds velocity-dependent current beyond active_max', () => {
-    const patient = new SimPatient('moderate');
-    const quiet = () => 0.5;
-    const below = patient.current([0.1, 0, 0, 0, 0], [0.2, 0, 0, 0, 0], quiet);
-    const slow = patient.current([1, 0, 0, 0, 0], [0.2, 0, 0, 0, 0], quiet);
-    const fast = patient.current([1, 0, 0, 0, 0], [1, 0, 0, 0, 0], quiet);
-    expect(below).toBeGreaterThan(30);
-    expect(slow - below).toBeCloseTo((130 + 100 * 0.2) * 0.5);
-    expect(fast).toBeGreaterThan(slow);
-  });
   it('seeded runs reproduce current, tremor and vision with independent world instances', async () => {
     const run = async (seed: number) => {
       const world = new SimWorld({ seed, autoStart: false });
@@ -91,13 +85,14 @@ describe('SimWorld patient and camera', () => {
     expect(frames.at(-1)?.joints?.thumb.dip).toBe(0);
     const frame = frames.at(-1)!;
     expect(frame.rawFlexSum!.index).toBeCloseTo(frame.closure!.index * 270);
-    expect(frame.pinch).toBeGreaterThanOrEqual(0.1);
+    expect(frame.pinch).toBeGreaterThanOrEqual(0.1 - 1e-9);
     expect(world.vision.videoElement()).toBeNull();
   });
   it('camera measures five independent world positions, including ring and pinky', async () => {
     const world = new SimWorld({ autoStart: false });
     await world.vision.start({ affectedHand: 'right' });
     world.vision.setCalibration(calibration);
+    world.patient.position = [1, 1, 1, 1, 1];
     // A settled passive hand gives every finger a distinct closure.
     world.servoPosition = [0.1, 0.3, 0.5, 0.7, 0.9];
     world.firmware.position = [...world.servoPosition];
@@ -113,22 +108,13 @@ describe('SimWorld patient and camera', () => {
       'pinky',
     ].entries()) {
       expect(frame.closure![finger as keyof typeof zeros]).toBeCloseTo(
-        0.1 + i * 0.2,
+        0.9 - i * 0.2,
         1,
       );
     }
-    expect(frame.joints!.ring.pip).toBeGreaterThan(frame.joints!.middle.pip);
-    expect(frame.rawFlexSum!.pinky).toBeGreaterThan(frame.rawFlexSum!.ring);
+    expect(frame.joints!.ring.pip).toBeLessThan(frame.joints!.middle.pip);
+    expect(frame.rawFlexSum!.pinky).toBeLessThan(frame.rawFlexSum!.ring);
   });
-  it.each(['mild', 'moderate', 'severe'] as const)(
-    '%s presets give ring and pinky less active range than the middle finger',
-    (preset) => {
-      const ranges = PATIENT_PRESETS[preset].active_max;
-      expect(ranges).toHaveLength(5);
-      expect(ranges[3]).toBeLessThan(ranges[2]);
-      expect(ranges[4]).toBeLessThan(ranges[3]);
-    },
-  );
   it('uncalibrated frames retain raw flex and joints; closure is null', async () => {
     const world = new SimWorld({ autoStart: false });
     await world.vision.start({ affectedHand: 'right' });
@@ -171,10 +157,10 @@ describe('SimWorld patient and camera', () => {
     world.glove.onTelemetry((tel) => {
       const closure = world.vision.latest()?.closure;
       if (closure && tel.st === 'run')
-        peakGap = Math.max(peakGap, tel.a[1] - closure.index);
+        peakGap = Math.max(peakGap, tel.a[1] - pullFromClosure(closure.index));
     });
     world.glove.target([1, 1, 1, 1, 1], 0.3);
-    world.advance(1000);
+    world.advance(2000);
     expect(peakGap).toBeGreaterThan(0.05);
   });
   it('STOP controls latch, releaseStop emits stop_released and setPreset changes the model', async () => {

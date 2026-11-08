@@ -7,6 +7,9 @@
 #include "config.h"
 
 namespace rehab {
+// Every Quint on the wire (target.f, follow.f, tel.a, tel.tg) is tendon PULL per finger:
+// 0 = slack (calibrated min, the safe state), 1 = full calibrated pull (max, fingers straight).
+// The glove helps the hand open (docs/plan/15-open-assist.md); the firmware is anatomy-agnostic.
 using Quint = std::array<float, config::FINGERS>;
 enum class State { Boot, Idle, Run, Calib, Fault };
 enum class Mode { None, Follow, Target, Jog };
