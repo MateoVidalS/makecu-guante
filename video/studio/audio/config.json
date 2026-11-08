@@ -9,7 +9,8 @@
   "replacementGroups": {
     "reveal": ["reveal-2"],
     "session": ["session-3", "session-4", "session-6"],
-    "gemini": ["ai-1", "ai-2", "ai-3", "ai-4"]
+    "gemini": ["ai-1", "ai-2", "ai-3", "ai-4"],
+    "judging": ["session-1", "bench-1"]
   },
   "keyFile": "/Users/mateovidal/orca/workspaces/makecu-guante/rehab-hub/backend/.env"
 }

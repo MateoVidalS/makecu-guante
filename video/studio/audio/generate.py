@@ -104,7 +104,12 @@ def tts(selected, voice, label, output, model=None):
              'Read each paragraph verbatim. Leave exactly 0.8 seconds of silence '
              'between paragraphs so the editor can split them. Never speak labels. '
              'Pronounce memo as mem-oh. ')
-    if label == 'replacement-gemini':
+    if label == 'replacement-judging':
+        style += ('Use the same warm Sulafat voice, at a clear 195 words per minute. '
+                  'Keep the first paragraph under 4.3 seconds and the second under 3.9 seconds. '
+                  'Keep sentence pauses short. Pronounce memo like the everyday English word '
+                  'memo, MEH-moh, first vowel like memory, never MEE-moh. Recite exactly. ')
+    elif label == 'replacement-gemini':
         style += ('Warm, confident technical explanation, with the same Sulafat character. '
                   'Use a brisk 210 words per minute, no dramatic pauses inside each paragraph. '
                   'The third paragraph, "None of them moves a motor.", must finish in 1.7 seconds; '

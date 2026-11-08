@@ -4,21 +4,20 @@
     "ai-2",
     "ai-3",
     "ai-4",
+    "bench-1",
     "reveal-2",
+    "session-1",
     "session-3",
     "session-4",
     "session-6"
   ],
-  "removedIds": [
-    "coach-2"
-  ],
+  "removedIds": [],
   "unchangedWavSha256": {
     "problem-1": "8cb9fb46f25ce3bc88301603c4055666ee4d880943d11812eb225102618a0690",
     "problem-2": "0f0f5a801612c52cc5cdd4adbfb3bb15d07e06a5eaabcbb914626f9151a74994",
     "problem-3": "fce0f37dc5e433fc17b4ce0fe75ca96d30a6be9ba48b555504983b703a523e3c",
     "reveal-1": "579af2008bb7085ae074f2ad5300761f114eb5eecca62f2d242ddcbb6189e483",
     "reveal-3": "fc15fff10ba29764847c6eef0efba89fd46bb9c6f4e1b595f9fd7d869bcf830a",
-    "session-1": "a5b9996050ce9addf413911d7a2dc19a6dc9519a54fbcbcb072f181e53acf07b",
     "session-2": "72007eededa163dcefc2d4a423da1f854a8b3cb21c74cf83395ab0ed251c0409",
     "session-5": "94d61ca933a0b91c760667ea682f0846f793b7e938e225254e79f0fbb1ce5f55",
     "session-coach": "dbaafa49edeee00a720568345d5a795aed7a4e11dc66ad2371402f94941ce00a",
@@ -33,5 +32,5 @@
     "hood-2": "0f353bac78bb46d03ae36a4fb0c152a60a1444fc2606561c997b2982c411a8f6"
   },
   "narrator": "Sulafat",
-  "requests": 3
+  "requests": 4
 }

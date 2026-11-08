@@ -9,16 +9,16 @@
   "edits": [
     {
       "fromSeconds": 7.2,
-      "toSeconds": 26.4,
+      "toSeconds": 24.0,
       "sourceSeconds": 6.164943
     },
     {
-      "fromSeconds": 26.4,
-      "toSeconds": 139.2,
+      "fromSeconds": 24.0,
+      "toSeconds": 134.4,
       "sourceSeconds": 82.8
     },
     {
-      "fromSeconds": 139.2,
+      "fromSeconds": 134.4,
       "toSeconds": 148.8,
       "sourceSeconds": 236.4
     },
@@ -41,5 +41,6 @@
   "crossfadeSeconds": 0.12,
   "percussionSeed": 100,
   "silentOpeningSeconds": 7.2,
-  "pianoEntersAtFrame": 216
+  "pianoEntersAtFrame": 216,
+  "benchGain": 0.35
 }

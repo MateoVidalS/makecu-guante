@@ -112,5 +112,11 @@
     "model": "gemini-3.8-flash-lite-tts",
     "status": 200,
     "cache": "replacement-gemini-45522fc82b32cb65.json"
+  },
+  {
+    "label": "replacement-judging",
+    "model": "gemini-3.8-flash-lite-tts",
+    "status": 200,
+    "cache": "replacement-judging-4fe9e33334512aca.json"
   }
 ]

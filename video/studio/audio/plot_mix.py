@@ -38,7 +38,7 @@ def main():
     fig, axes = plt.subplots(3, 1, figsize=(19.2, 10.8), sharex=True,
                              gridspec_kw={'height_ratios': [2, 2, 1]})
     fig.patch.set_facecolor('#F7F8FA')
-    fig.suptitle('memo · V2 audio review', x=.07, ha='left', fontsize=28, weight='semibold')
+    fig.suptitle('memo · V2 audio review', x=.07, y=.92, ha='left', fontsize=28, weight='semibold')
     axes[0].fill_between(seconds, -peaks, peaks, color='#2155CD', linewidth=0)
     axes[0].set_ylabel('Bed waveform\n48 kHz stereo')
     axes[0].set_ylim(-1, 1)
@@ -64,7 +64,7 @@ def main():
         axis.grid(axis='x', alpha=.12)
     fig.text(.07, .035, f'100 BPM · {cut["frames"] / cut["fps"]} s · {len(manifest["lines"])} VO lines · −10 dB ducking · 200 ms ramps\n'
              f'Founders: silent bed until piano at {starts["hook"]:.1f} s. Resistance: {starts["session"] + 30:.1f} s / release: {starts["session"] + 38.4:.1f} s. Target: −14 LUFS, ≤ −1 dBTP.', fontsize=14)
-    fig.subplots_adjust(left=.09, right=.97, top=.88, bottom=.15, hspace=.28)
+    fig.subplots_adjust(left=.09, right=.97, top=.84, bottom=.15, hspace=.28)
     destination = ROOT / 'evidence/V2/mix-map.png'
     destination.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(destination, dpi=100, facecolor=fig.get_facecolor())

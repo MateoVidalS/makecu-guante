@@ -19,7 +19,7 @@
     "start": 4.1227,
     "end": 5.7617,
     "durationFrames": 50,
-    "maxFrames": 84
+    "maxFrames": 54
   },
   {
     "id": "problem-3",
@@ -30,7 +30,7 @@
     "start": 6.0693,
     "end": 8.6433,
     "durationFrames": 78,
-    "maxFrames": 102
+    "maxFrames": 96
   },
   {
     "id": "reveal-1",
@@ -67,14 +67,19 @@
   },
   {
     "id": "session-1",
-    "text": "memo shows the goal. You try first.",
-    "source": "audio/cache/scene-session.wav",
-    "retrySource": "audio/cache/retry-session-1.wav",
-    "pauseEdits": [],
-    "start": 0.3017,
-    "end": 3.6067,
-    "durationFrames": 100,
-    "maxFrames": 126
+    "text": "Passive devices move your hand for you. memo lets you try first.",
+    "source": "audio/cache/replacement-judging.wav",
+    "retrySource": null,
+    "pauseEdits": [
+      {
+        "from": 2.706729,
+        "to": 3.061813
+      }
+    ],
+    "start": 0.2466,
+    "end": 4.9024,
+    "durationFrames": 130,
+    "maxFrames": 132
   },
   {
     "id": "session-2",
@@ -140,7 +145,7 @@
     "start": 10.0954,
     "end": 14.3331,
     "durationFrames": 128,
-    "maxFrames": 210
+    "maxFrames": 138
   },
   {
     "id": "coach-1",
@@ -289,6 +294,17 @@
     "end": 7.29,
     "durationFrames": 211,
     "maxFrames": 252
+  },
+  {
+    "id": "bench-1",
+    "text": "And this is the real thing, on the bench.",
+    "source": "audio/cache/replacement-judging.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 5.6269,
+    "end": 8.1781,
+    "durationFrames": 77,
+    "maxFrames": 120
   },
   {
     "id": "hood-1",

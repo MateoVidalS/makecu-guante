@@ -1,7 +1,7 @@
 """Apply only owner revisions/additions, retaining every other WAV unchanged.
 
 From backend/: uv run --with faster-whisper python ../video/studio/audio/replace_vo.py
-Generate the three cached replacement takes first with generate.py replace.
+Generate the four cached replacement takes first with generate.py replace.
 """
 import hashlib
 import json

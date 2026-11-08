@@ -77,6 +77,9 @@ assert.ok(cueGain(SCENE_START.session + 900, music.cues) < .05, 'Resistance drop
 assert.ok(cueGain(SCENE_START.session + 1152, music.cues) > .6, 'Release return');
 assert.ok(cueGain(SCENE_START.build, music.cues) > cueGain(SCENE_START.build - 12, music.cues), 'Build lift');
 assert.ok(cueGain(SCENE_START.underHood, music.cues) > cueGain(SCENE_START.underHood - 12, music.cues), 'Board lift');
+for (let frame = SCENE_START.bench; frame < SCENE_START.underHood; frame++) {
+  close(cueGain(frame, music.cues), .35);
+}
 assert.equal(cueGain(TOTAL_FRAMES - 1, music.cues), 0, 'Fade to silence');
 assert.ok(sfx.sounds.length <= 6);
 for (const sound of sfx.sounds) {

@@ -41,13 +41,15 @@ def pulse():
         at = beat * 0.6
         if RESIST <= at < RELEASE:
             continue
+        if STARTS['bench'] <= at < STARTS['underHood']:
+            continue  # Keep the real servos audible during the entire bench shot.
         t = np.arange(round(0.18 * RATE)) / RATE
         # A rounded kick, with no hard attack or cinematic transient.
         kick = np.sin(2 * np.pi * (48 * t + 2.2 * (1 - np.exp(-t * 30))))
         kick *= (1 - np.exp(-t * 180)) * np.exp(-t * 28) * (0.047 if at >= STARTS['underHood'] else 0.038)
         i = round(at * RATE)
         bus[i:i + len(t)] += kick[:, None]
-        mechanical = STARTS['build'] <= at < STARTS['underHood']
+        mechanical = STARTS['build'] <= at < STARTS['bench']
         for off in ([0, .15, .3, .45] if mechanical else [0, .3]):
             j = round((at + off) * RATE)
             t = np.arange(round(0.07 * RATE)) / RATE
@@ -115,7 +117,8 @@ def main():
             (f['reveal'] - 18, .52), (f['reveal'], .78), (f['session'], .68),
             (resist - 18, .68), (resist, .035), (resist + 75, .035),
             (release - 12, .12), (release, .68), (f['build'] - 6, .68), (f['build'], .72),
-            (f['underHood'] - 6, .72), (f['underHood'], .82),
+            (f['bench'] - 1, .72), (f['bench'], .35),
+            (f['underHood'] - 1, .35), (f['underHood'], .82),
             (f['next'] - 12, .82), (f['next'], .34),
             (f['close'] - 12, .34), (f['close'], .72),
             (TIMELINE['frames'] - 72, .6), (TIMELINE['frames'] - 1, 0)]
@@ -135,6 +138,7 @@ def main():
         'crossfadeSeconds': .12, 'percussionSeed': 100,
         'silentOpeningSeconds': STARTS['hook'],
         'pianoEntersAtFrame': f['hook'],
+        'benchGain': .35,
     }, indent=2) + '\n')
 
     sounds = []

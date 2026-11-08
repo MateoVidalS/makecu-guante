@@ -18,48 +18,56 @@
       "gain": 0.52
     },
     {
-      "frame": 774,
+      "frame": 702,
       "gain": 0.52
     },
     {
-      "frame": 792,
+      "frame": 720,
       "gain": 0.78
     },
     {
-      "frame": 1152,
+      "frame": 1080,
       "gain": 0.68
     },
     {
-      "frame": 2034,
+      "frame": 1962,
       "gain": 0.68
     },
     {
-      "frame": 2052,
+      "frame": 1980,
       "gain": 0.035
     },
     {
-      "frame": 2127,
+      "frame": 2055,
       "gain": 0.035
     },
     {
-      "frame": 2292,
+      "frame": 2220,
       "gain": 0.12
     },
     {
-      "frame": 2304,
+      "frame": 2232,
       "gain": 0.68
     },
     {
-      "frame": 4170,
+      "frame": 4026,
       "gain": 0.68
     },
     {
-      "frame": 4176,
+      "frame": 4032,
       "gain": 0.72
     },
     {
-      "frame": 4458,
+      "frame": 4319,
       "gain": 0.72
+    },
+    {
+      "frame": 4320,
+      "gain": 0.35
+    },
+    {
+      "frame": 4463,
+      "gain": 0.35
     },
     {
       "frame": 4464,
