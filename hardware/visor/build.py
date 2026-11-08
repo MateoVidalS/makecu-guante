@@ -1,6 +1,6 @@
-"""Embebe los STL (solo posiciones, float32) en el visor HTML.
+"""Embed the STLs (positions only, float32) into the HTML viewer.
 
-Uso: python3 -I build.py <carpeta_stl> <template.html> <salida.html>
+Usage: python3 -I build.py <stl_dir> <template.html> <output.html>
 """
 import base64
 import json
@@ -15,7 +15,7 @@ for f in sorted(p for p in stl_dir.glob("*.stl") if not p.stem.startswith("placa
     (n,) = struct.unpack_from("<I", b, 80)
     pos = bytearray()
     for i in range(n):
-        off = 84 + 50 * i + 12  # saltar la normal
+        off = 84 + 50 * i + 12  # skip the normal
         pos += b[off:off + 36]
     parts[f.stem] = base64.b64encode(bytes(pos)).decode()
 html = template.read_text().replace("/*__PARTS__*/null", json.dumps(parts))

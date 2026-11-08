@@ -9,7 +9,7 @@
 Before this, every session started from scratch. The coach adapted *within* a session (docs/plan/13), and history
 recorded everything, but nothing fed the records back into the next session. Rehabilitation depends on progression:
 the right challenge today, and less help as the patient improves. Constant help also builds dependence, which is
-why README §5 lists "feedback que se retira" (fading feedback). This is the first, deliberately conservative step toward it.
+why README §5 lists "Fading feedback". This is the first, deliberately conservative step toward it.
 
 ## 2. What it does
 

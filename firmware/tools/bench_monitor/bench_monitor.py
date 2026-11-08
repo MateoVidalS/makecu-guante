@@ -5,7 +5,7 @@ every non-telemetry line (info/evt/err), a telemetry summary every 5 s and warni
 idle current) to <dir>/bench.log. Exits on its own if the USB is unplugged.
 
 Commands are JSON lines appended to <dir>/cmd.jsonl. Raw firmware lines are forwarded as-is;
-macros: __test_finger, __scan, __burnin, __sweep, __quit (see hardware/BANCO-3.md).
+macros: __test_finger, __scan, __burnin, __sweep, __quit (see hardware/BENCH-3.md).
 
 Usage (pyserial via uv):
     uv run --no-project --with pyserial python bench_monitor.py COM3 <dir>
