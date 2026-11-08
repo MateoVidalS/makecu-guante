@@ -69,7 +69,8 @@ export default function Home() {
   }
   const blocker =
     calibrationStatus.state === 'invalid'
-      ? `${calibrationStatus.issues[0].message} Start opens calibration first.`
+      ? // The CalibrationIssueBanner below already names the problem.
+        'Start opens calibration first.'
       : calibrationStatus.state === 'missing'
         ? 'Calibration needed. Start opens calibration first.'
         : !connected
