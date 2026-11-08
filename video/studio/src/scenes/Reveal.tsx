@@ -3,7 +3,7 @@ import { useCurrentFrame } from 'remotion';
 import { c, radius, safe, space } from '../brand/tokens';
 import { Fill, Lockup, Mark, T } from '../components/brand';
 import { Hand } from '../components/story/Hand';
-import { HardwareTurntable } from '../components/story/HardwarePlaceholder';
+import { HardwareTurntable } from '../components/hardware/Hardware';
 import { progress } from '../components/story/motion';
 import { Landmarks, Waveform } from '../components/story/Signals';
 import { Wordmark } from '../components/story/Wordmark';
