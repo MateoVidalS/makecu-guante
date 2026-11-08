@@ -8,12 +8,14 @@ from pathlib import Path
 import subprocess
 import urllib.request
 import wave
+from generate import timeline
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 RATE = 48000
-SECONDS = 172.8
+TIMELINE = timeline()
+SECONDS = TIMELINE['frames'] / TIMELINE['fps']
 N = round(RATE * SECONDS)
 CACHE = ROOT / 'audio/cache'
 URL = 'https://www.scottbuckley.com.au/library/wp-content/uploads/2022/10/AKindOfHope.mp3'
@@ -32,17 +34,18 @@ def write(path, samples):
 def pulse():
     bus = np.zeros((N, 2), dtype=np.float32)
     rng = np.random.default_rng(100)
-    for beat in range(48, 256):
+    for beat in range(48, round(158.4 / .6)):
         at = beat * 0.6
         if 70.8 <= at < 79.2:
             continue
         t = np.arange(round(0.18 * RATE)) / RATE
         # A rounded kick, with no hard attack or cinematic transient.
         kick = np.sin(2 * np.pi * (48 * t + 2.2 * (1 - np.exp(-t * 30))))
-        kick *= (1 - np.exp(-t * 180)) * np.exp(-t * 28) * 0.038
+        kick *= (1 - np.exp(-t * 180)) * np.exp(-t * 28) * (0.047 if at >= 144 else 0.038)
         i = round(at * RATE)
         bus[i:i + len(t)] += kick[:, None]
-        for off in [0, 0.3]:
+        mechanical = 134.4 <= at < 144
+        for off in ([0, .15, .3, .45] if mechanical else [0, .3]):
             j = round((at + off) * RATE)
             t = np.arange(round(0.07 * RATE)) / RATE
             noise = rng.normal(0, 1, len(t))
@@ -50,6 +53,10 @@ def pulse():
             shaker = noise * (1 - np.exp(-t * 400)) * np.exp(-t * 65) * 0.0025
             bus[j:j + len(t), 0] += shaker * 0.8
             bus[j:j + len(t), 1] += shaker
+            if mechanical and off in [0, .3]:
+                knock = np.sin(2 * np.pi * 760 * t) * np.exp(-t * 110)
+                knock *= .014 * np.minimum(t / .003, 1)
+                bus[j:j + len(t)] += knock[:, None]
     return bus
 
 
@@ -63,9 +70,9 @@ def main():
         '-f', 'f32le', '-ar', str(RATE), '-ac', '2', '-'])
     original = np.frombuffer(data, dtype='<f4').reshape(-1, 2)
     # Bar-length segments; 120 ms overlaps centered on each edit preserve the
-    # exact 5184-frame timeline. The ending uses the recording's own cadence.
-    edits = [(0, 28.8, 6.0), (28.8, 139.2, 82.8), (139.2, 153.6, 250.8),
-             (153.6, 163.2, 25.2), (163.2, 172.8, 328.2)]
+    # exact timeline duration. The ending uses the recording's own cadence.
+    edits = [(0, 28.8, 6.0), (28.8, 134.4, 82.8), (134.4, 144, 236.4),
+             (144, 158.4, 250.8), (158.4, 168, 25.2), (168, SECONDS, 328.2)]
     bed = np.zeros((N, 2), dtype=np.float32)
     half = round(0.06 * RATE)
     for index, (start, end, offset) in enumerate(edits):
@@ -87,7 +94,7 @@ def main():
         write(temp, mix)
         normalized = CACHE / f'music-{candidate}-normalized.wav'
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(temp), '-af',
-            'highpass=f=35,loudnorm=I=-18:TP=-3:LRA=11,afade=t=in:d=0.3,afade=t=out:st=171:d=1.8',
+            f'highpass=f=35,loudnorm=I=-18:TP=-3:LRA=11,afade=t=in:d=0.3,afade=t=out:st={SECONDS - 1.8}:d=1.8',
             '-ar', str(RATE), '-c:a', 'pcm_s16le', str(normalized)], check=True)
         # A 48 s audition includes the sparse opening and the reveal's lift.
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(normalized), '-t', '48',
@@ -96,9 +103,9 @@ def main():
             (ROOT / 'public/audio/music/bed.wav').write_bytes(normalized.read_bytes())
     cues = [(0, .52), (210, .52), (216, .3), (498, .3), (504, .52),
             (846, .52), (864, .78), (1224, .68), (2106, .68), (2124, .035),
-            (2199, .035), (2364, .12), (2376, .68), (4176, .82),
-            (4596, .82), (4608, .34), (4884, .34), (4896, .72),
-            (5112, .6), (5183, 0)]
+            (2199, .035), (2364, .12), (2376, .68), (4026, .68), (4032, .72),
+            (4314, .72), (4320, .82), (4740, .82), (4752, .34),
+            (5028, .34), (5040, .72), (5256, .6), (TIMELINE['frames'] - 1, 0)]
     manifest = {'version': 1, 'file': 'audio/music/bed.wav', 'bpm': 100,
         'source': 'A Kind Of Hope by Scott Buckley (2022), CC BY 4.0. '
                   'https://www.scottbuckley.com.au/library/a-kind-of-hope/ '
@@ -130,7 +137,7 @@ def main():
                        'source': 'Original mathematical synthesis by the memo team, CC0 1.0. '
                                  'https://creativecommons.org/publicdomain/zero/1.0/'})
     (ROOT / 'public/audio/sfx/manifest.json').write_text(json.dumps({'version': 1, 'sounds': sounds}, indent=2) + '\n')
-    print('Music: 2 candidates, chosen bed 172.8 s / 100 BPM. SFX: 3 original CC0 sounds.')
+    print(f'Music: 2 candidates, chosen bed {SECONDS} s / 100 BPM. SFX: 3 original CC0 sounds.')
 
 
 if __name__ == '__main__':

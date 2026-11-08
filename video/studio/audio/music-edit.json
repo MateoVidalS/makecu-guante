@@ -5,7 +5,7 @@
   "chosenCandidate": 2,
   "candidateExcerptSeconds": 48,
   "sampleRate": 48000,
-  "samples": 8294400,
+  "samples": 8524800,
   "edits": [
     {
       "fromSeconds": 0,
@@ -14,22 +14,27 @@
     },
     {
       "fromSeconds": 28.8,
-      "toSeconds": 139.2,
+      "toSeconds": 134.4,
       "sourceSeconds": 82.8
     },
     {
-      "fromSeconds": 139.2,
-      "toSeconds": 153.6,
+      "fromSeconds": 134.4,
+      "toSeconds": 144,
+      "sourceSeconds": 236.4
+    },
+    {
+      "fromSeconds": 144,
+      "toSeconds": 158.4,
       "sourceSeconds": 250.8
     },
     {
-      "fromSeconds": 153.6,
-      "toSeconds": 163.2,
+      "fromSeconds": 158.4,
+      "toSeconds": 168,
       "sourceSeconds": 25.2
     },
     {
-      "fromSeconds": 163.2,
-      "toSeconds": 172.8,
+      "fromSeconds": 168,
+      "toSeconds": 177.6,
       "sourceSeconds": 328.2
     }
   ],
