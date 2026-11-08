@@ -16,3 +16,5 @@ export {
   RuntimeSimulatorControls,
   RuntimeSimulatorCalibration,
 } from './SimulatorControls';
+
+export type { TherapyRuntime as Runtime } from './therapy';

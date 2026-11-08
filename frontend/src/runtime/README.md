@@ -108,3 +108,60 @@ friction abort behavior and the repeated 20-minute soak runner are documented in
 Boot `reset_reason: 9` is preserved by the serial codec and displayed in Setup
 and runtime status with capacitor/supply guidance. The optional field is additive;
 legacy boot messages remain valid, and a later normal boot clears the warning.
+
+AI therapy controls are always available on `RehabRuntime.therapy` and the UI-only
+`ScriptedRuntime.therapy`. The owned runtime module exports a `Runtime` type with
+required `therapy`; removing the optional marker in the shared runtime contract
+remains a coordinator change. The coordinator-owned therapist contract is used unchanged.
+
+The exercise engine owns the bounded policy. More/less help changes each finger's
+wait before help starts, within 1–9 seconds; more waits for the next ATTEMPT and
+less can defer current help immediately. Gentler lowers assist speed by 0.05/s,
+within 0.10–0.20/s, immediately. A lower initial baseline stays lower during ordinary
+practice. `assist_finger_now` is accepted only during ATTEMPT with enabled assistance,
+visible finite vision and safe telemetry/current, and uses the same 150 ms stagger
+and three-motor cap. Other fingers retain their measured position while queued.
+A finger's movement after help starts is excluded from its best-alone measurement.
+
+Target shaping scales a pose target by 0.5–1.0 at the next ATTEMPT, including its
+rendered joint angles. Attempt duration also waits for ATTEMPT, rest for REST, and
+next-pose selection for PRESENT. `repeat_pose` inserts at most three extra repetitions
+after the current attempt; only this tool changes plan length. Highlights expire
+four seconds after the request. Clinical notes are `note_for_therapist` audit records,
+so the existing replay and summary storage can retain their exact text.
+
+Only `intensify` may exceed the gentle defaults. It requires a quoted, matching
+patient request or affirmative response from the latest patient turn, reported by
+`notePatientSpeech` within 20 seconds. A2 should report every patient line; omit the
+optional timestamp or use `performance.now()` milliseconds, never UTC milliseconds.
+Consent, cooldown and highlight timing use this wall-time monotonic clock even in a
+3× simulator; deterministic tests can inject `RuntimeOptions.now`. Future/stale timestamps, unrelated quotes and explicit negative
+responses cannot grant consent. Pending intensity expires if consent becomes stale
+before the next ATTEMPT. A new patient turn supersedes the previous one.
+
+With consent, `further` permits that finger's target up to 1.0 of its calibrated range,
+`faster` permits at most 0.30/s independently of baseline gentleness, and `hold_longer`
+adds at most two seconds to the hold. The current limit and calibration are never
+writable through therapy tools. Pain at least 2 or resistance on the finger within
+60 seconds blocks intensity. New pain, resistance, a safety stop or consent withdrawal
+reverts intensity; speed/target reductions are immediate, and no Undo can resurrect
+an automatically revoked permission. Recent pain/resistance blocks survive session
+restart. A resistance event also lowers the affected finger's gentle speed ceiling.
+
+Undo acts at the affected boundary and never resumes a paused session. An immediate
+help request can be canceled at the next boundary, without retrospectively erasing
+its assisted metrics. Consumed rest/repetitions cannot be undone or refunded into
+fresh budgets. A brake releases synchronously before audit observers or storage.
+Pain at least 4 applies that release/pause policy even with malformed remaining
+feeling fields. Braking evaluation or friction never restores a higher current limit.
+`coach_brake` is recorded in attempt safety events and decisions; adding it to the
+shared engine event source union remains a coordinator change.
+
+Live state includes five-finger targets/best-alone/help/lag, glove state/current/source,
+last safety event, highlighted finger, intensity flags and latest feeling. Decisions
+and feelings enter the durable queue before session end, receive the eventual real
+session ID, and post to A3's endpoints. A pending local feeling uses session_id 0 until
+creation succeeds; that placeholder is never posted. Distinct feeling reports have
+strictly increasing timestamps to preserve A3's retry identity. Unavailable endpoints
+leave the queue Offline and retry normally. Broken audit/UI observers cannot stop
+release or engine safety actions; records remain in the session's local audit log.

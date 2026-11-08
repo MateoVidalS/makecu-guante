@@ -6,7 +6,8 @@ in array order and deliver events to subscribers. `phaseElapsed`, `t_rel`, trace
 times and `time_to_position_s` are seconds. Attempt indexes start at zero; reps
 start at one. The plan runs each item's repetitions before the next item.
 
-The engine does not read a clock. Supply a fixed monotonic-to-UTC mapping for
+Motion and safety timing use the injected clock. Audit IDs and timestamps use wall time.
+Supply a fixed monotonic-to-UTC mapping for
 persisted timestamps, captured by the runtime outside the engine, for example:
 
 ```ts
@@ -63,7 +64,8 @@ measured servo position. Vision drift can queue a newly unreached finger; it
 cannot bypass the stagger or restart the other motors. A slot remains occupied
 until telemetry confirms arrival at its command. Settling requires the queue
 and moving set to be empty for one second. Assisted destinations and assisted
-reach checks use the 0.95 calibrated-range cap.
+reach checks normally use the 0.95 calibrated-range cap. Only the patient-consented
+`intensify(further)` override can use 1.0 on the approved finger.
 
 Resistance uses per-finger provisional stall-current profiles matching F1/F2
 (thumb/index/middle/ring/pinky: 650/800/750/650/650 mA). The extra-current
@@ -72,8 +74,9 @@ threshold is `min(250, stall_ma * 250 / 800)`. Bench values can be injected via
 setpoint (`tel.a`) minus vision gap in the last 300 ms, across all five fingers.
 Resistance requires a current gap above 0.05 in addition to sustained excess
 current and stalled vision: ordinary camera noise around a settled finger must
-not stop a different finger's staggered movement. A resistance stop freezes all
-servo commands and cancels further queued starts. These checks supplement the
+not stop a different finger's staggered movement. A resistance stop reverts intensity, freezes or safely lowers achieved
+servo commands, and cancels further queued starts. It also lowers that finger's
+gentle assist speed for the remainder of the session. These checks supplement the
 independent firmware limits.
 
 Evaluation still reports per-sweep closure in `progress`; its local state also
@@ -82,3 +85,25 @@ progress display. The default selection runs ten slow/fast sweeps over all five
 fingers. A subset retains selection order and removes duplicates. Friction is
 looked up independently for each finger and speed. The runtime can expose the
 additional settings and progress fields when the shared contracts are updated.
+
+The AI therapist policy lives in `therapy.ts`. Ordinary assist stays at or below
+0.20/s; only `intensify` with recent patient consent can use 0.30/s, full calibrated
+closure, or two extra hold seconds. Phase entry consumes staged overrides before
+actions run. Each full-vector command uses the minimum speed cap of its moving
+fingers, so a gentle neighbor can conservatively slow a consented faster finger.
+No tool changes calibration or current limits.
+
+Per-finger delay or `assist_finger_now` can start assistance during ATTEMPT. The
+same scheduler persists across ATTEMPT → ASSIST, preserving the 150 ms stagger and
+three moving motors. Assisted fingers stop contributing to best-alone metrics;
+unassisted fingers continue to be measured. Vision loss and resistance protections
+also apply to this early assistance. The assist-duration cap counts from the first
+actual help, including any early assistance, rather than being extended by a phase
+transition. Waiting for a later delay does not consume the movement-time budget.
+
+`EngineOptions.onTherapyOutput` executes immediate release/reduction commands in the
+runtime. Pose copies supplied to the UI are separate from motor goals and cached
+until targets change. Test fixtures capture immediate output through the same fake
+world as normal ticks. Generated sequences cover both unconsented calls and valid
+patient-requested intensity, checking speed, positions, hold/repetition limits,
+calibrated angle bounds, and that calibration/current policy stays unchanged.
