@@ -48,11 +48,13 @@ import {
 import './exercise.css';
 import { CoachDecisions } from './CoachDecisions';
 import type { Runtime } from '../../contracts/runtime';
+import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
 const Hand = memo(function Hand() {
   const runtime = useRuntime(),
     vision = useVision();
+  const highlighted = useHighlightedFinger((runtime as Runtime).therapy);
   const pose = useExerciseView((v) => v.pose);
   const container = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(42.5);
@@ -110,8 +112,8 @@ const Hand = memo(function Hand() {
       role="img"
       aria-label={`Target pose: ${pose.name}`}
     >
-      {/* TODO(U2): Pass therapy.state()?.highlighted_finger via highlight once VirtualHand exposes that prop. */}
       <VirtualHand
+        highlight={highlighted}
         target={pose.render}
         actual={actual}
         state={state}

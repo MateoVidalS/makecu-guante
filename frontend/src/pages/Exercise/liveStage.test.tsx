@@ -29,7 +29,9 @@ import { FakeTherapy } from '../../components/therapy/testing/FakeTherapy';
 import Exercise, { LiveStage } from './index';
 
 vi.mock('../../hand3d/VirtualHand', () => ({
-  VirtualHand: () => <div>Hand preview</div>,
+  VirtualHand: ({ highlight }: { highlight?: string | null }) => (
+    <div data-highlighted={highlight ?? undefined}>Hand preview</div>
+  ),
 }));
 beforeAll(() => {
   vi.stubGlobal(
@@ -172,6 +174,10 @@ describe('live stage', () => {
       expect.stringContaining('coach focus'),
     );
     expect(screen.getByText('Coach decisions · Focus: Index')).toBeVisible();
+    expect(screen.getByText('Hand preview')).toHaveAttribute(
+      'data-highlighted',
+      'index',
+    );
     expect(
       document.querySelectorAll('.mx-gauge[data-highlighted]'),
     ).toHaveLength(1);
@@ -180,6 +186,9 @@ describe('live stage', () => {
       therapy.emit('get_live_state', {});
     });
     expect(meter.closest('.mx-gauge')).not.toHaveAttribute('data-highlighted');
+    expect(screen.getByText('Hand preview')).not.toHaveAttribute(
+      'data-highlighted',
+    );
   });
   it('shows a tall gauge per glove finger with the goal band and a legend', async () => {
     const runtime = new ScriptedRuntime({ persist: false });
