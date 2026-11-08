@@ -1,5 +1,6 @@
 import type {
   GloveClient,
+  GloveEvent,
   GloveInfo,
   SerialCommand,
   Quint,
@@ -12,6 +13,8 @@ export class SimGlove extends ClientBase implements GloveClient {
   readonly kind = 'sim' as const;
   private lastSent = 0;
   private booted = false;
+  /** Bench mirror (glove/benchMirror.ts): also sends each command to a real board. */
+  private mirror: ((cmd: SerialCommand) => void) | null = null;
   constructor(readonly world: SimWorld) {
     super();
     world.ticks.subscribe((now) => {
@@ -60,6 +63,15 @@ export class SimGlove extends ClientBase implements GloveClient {
     if (this.status !== 'connected') return;
     this.lastSent = this.world.now;
     this.world.firmware.handle(cmd, this.world.now);
+    if (this.mirror && cmd.t !== 'ping' && cmd.t !== 'hello') this.mirror(cmd);
+  }
+  setMirror(mirror: ((cmd: SerialCommand) => void) | null) {
+    this.mirror = mirror;
+  }
+  /** A real board's safety event, delivered to the session like a simulated one. */
+  reportEvent(event: Omit<GloveEvent, 't'>) {
+    if (this.status === 'connected')
+      this.events.emit({ ...event, t: this.world.timestamp() } as GloveEvent);
   }
   target(f: Quint, v: number) {
     this.send({ t: 'target', f, v });
