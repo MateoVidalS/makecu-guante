@@ -23,7 +23,12 @@ export interface VisionFrame {
 export interface VisionSource {
   // implemented by CameraVision (WP3) and SimVision (WP2)
   readonly kind: 'camera' | 'sim';
-  start(opts: { deviceId?: string; affectedHand: Handedness }): Promise<void>;
+  start(opts: {
+    deviceId?: string;
+    affectedHand: Handedness;
+    /** Defaults to the current setup, front_upright (docs/plan/14). */
+    view?: import('./calibration').CameraView;
+  }): Promise<void>;
   stop(): void;
   setCalibration(c: CameraCalibration | null): void;
   onFrame(cb: (f: VisionFrame) => void): Unsubscribe;

@@ -35,7 +35,7 @@ A1+A2+A3+A4 merged ──┬─ U3 believable demo data + data-view layout ─�
 |---|---|---|---|---|
 | U1 | `handoffs/ux/U1-helper-flows.md` | now | high | `orca worktree create … --agent codex` |
 | U2 | `handoffs/ux/U2-virtual-hand.md` | now | high | `orca worktree create … --agent codex` |
-| U3 | `handoffs/ux/U3-data-views.md` | A3 + A4 merged | high | `orca worktree create … --agent codex` |
+| U3 | `handoffs/ux/U3-data-views.md` | A3 + A4 + #58 (demo seed) merged | high | `orca worktree create … --agent codex` |
 | U4 | `handoffs/ux/U4-live-screen.md` | A1, A2, A4, U1, U2 merged | **xhigh** | custom launcher (`10-orchestration.md §4` step 2) |
 
 A5 (therapist e2e) may run in parallel with U3/U4. Merge order in wave 2: **A5 → U3 → U4**; U4 updates any e2e selectors it breaks
