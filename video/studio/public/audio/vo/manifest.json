@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "voice": {
+    "narrator": "Sulafat",
+    "coach": "Puck",
+    "model": "gemini-3.8-flash-tts; coach-1, session-1, reveal-1, build-1: gemini-3.8-flash-lite-tts; owner replacements: gemini-3.8-flash-lite-tts"
+  },
+  "lines": [
+    {
+      "id": "problem-1",
+      "file": "audio/vo/problem-1.wav",
+      "durationFrames": 102
+    },
+    {
+      "id": "problem-2",
+      "file": "audio/vo/problem-2.wav",
+      "durationFrames": 50
+    },
+    {
+      "id": "problem-3",
+      "file": "audio/vo/problem-3.wav",
+      "durationFrames": 78
+    },
+    {
+      "id": "reveal-1",
+      "file": "audio/vo/reveal-1.wav",
+      "durationFrames": 27
+    },
+    {
+      "id": "reveal-2",
+      "file": "audio/vo/reveal-2.wav",
+      "durationFrames": 106
+    },
+    {
+      "id": "reveal-3",
+      "file": "audio/vo/reveal-3.wav",
+      "durationFrames": 107
+    },
+    {
+      "id": "session-1",
+      "file": "audio/vo/session-1.wav",
+      "durationFrames": 130
+    },
+    {
+      "id": "session-2",
+      "file": "audio/vo/session-2.wav",
+      "durationFrames": 95
+    },
+    {
+      "id": "session-3",
+      "file": "audio/vo/session-3.wav",
+      "durationFrames": 125
+    },
+    {
+      "id": "session-4",
+      "file": "audio/vo/session-4.wav",
+      "durationFrames": 123
+    },
+    {
+      "id": "session-5",
+      "file": "audio/vo/session-5.wav",
+      "durationFrames": 48
+    },
+    {
+      "id": "session-coach",
+      "file": "audio/vo/session-coach.wav",
+      "durationFrames": 86
+    },
+    {
+      "id": "session-6",
+      "file": "audio/vo/session-6.wav",
+      "durationFrames": 128
+    },
+    {
+      "id": "coach-1",
+      "file": "audio/vo/coach-1.wav",
+      "durationFrames": 122
+    },
+    {
+      "id": "ai-1",
+      "file": "audio/vo/ai-1.wav",
+      "durationFrames": 118
+    },
+    {
+      "id": "ai-2",
+      "file": "audio/vo/ai-2.wav",
+      "durationFrames": 110
+    },
+    {
+      "id": "ai-3",
+      "file": "audio/vo/ai-3.wav",
+      "durationFrames": 46
+    },
+    {
+      "id": "ai-4",
+      "file": "audio/vo/ai-4.wav",
+      "durationFrames": 107
+    },
+    {
+      "id": "doctor-1",
+      "file": "audio/vo/doctor-1.wav",
+      "durationFrames": 39
+    },
+    {
+      "id": "doctor-2",
+      "file": "audio/vo/doctor-2.wav",
+      "durationFrames": 121
+    },
+    {
+      "id": "doctor-3",
+      "file": "audio/vo/doctor-3.wav",
+      "durationFrames": 39
+    },
+    {
+      "id": "doctor-4",
+      "file": "audio/vo/doctor-4.wav",
+      "durationFrames": 82
+    },
+    {
+      "id": "doctor-5",
+      "file": "audio/vo/doctor-5.wav",
+      "durationFrames": 59
+    },
+    {
+      "id": "build-1",
+      "file": "audio/vo/build-1.wav",
+      "durationFrames": 211
+    },
+    {
+      "id": "bench-1",
+      "file": "audio/vo/bench-1.wav",
+      "durationFrames": 77
+    },
+    {
+      "id": "hood-1",
+      "file": "audio/vo/hood-1.wav",
+      "durationFrames": 68
+    },
+    {
+      "id": "hood-2",
+      "file": "audio/vo/hood-2.wav",
+      "durationFrames": 159
+    }
+  ]
+}

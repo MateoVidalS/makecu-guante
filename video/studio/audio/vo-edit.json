@@ -1,0 +1,331 @@
+[
+  {
+    "id": "problem-1",
+    "text": "After a stroke, many people can still close their hand.",
+    "source": "public/audio/auditions/vo-sulafat.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 0.3012,
+    "end": 3.6786,
+    "durationFrames": 102,
+    "maxFrames": 120
+  },
+  {
+    "id": "problem-2",
+    "text": "Opening it is the hard part.",
+    "source": "public/audio/auditions/vo-sulafat.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 4.1227,
+    "end": 5.7617,
+    "durationFrames": 50,
+    "maxFrames": 54
+  },
+  {
+    "id": "problem-3",
+    "text": "And most practice happens at home, alone.",
+    "source": "public/audio/auditions/vo-sulafat.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 6.0693,
+    "end": 8.6433,
+    "durationFrames": 78,
+    "maxFrames": 96
+  },
+  {
+    "id": "reveal-1",
+    "text": "This is memo.",
+    "source": "audio/cache/scene-reveal.wav",
+    "retrySource": "audio/cache/retry-reveal-1.wav",
+    "pauseEdits": [],
+    "start": 0.2634,
+    "end": 1.1474,
+    "durationFrames": 27,
+    "maxFrames": 54
+  },
+  {
+    "id": "reveal-2",
+    "text": "A small wrist module, a webcam, and a voice coach.",
+    "source": "audio/cache/replacement-reveal.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 0.1905,
+    "end": 3.717,
+    "durationFrames": 106,
+    "maxFrames": 108
+  },
+  {
+    "id": "reveal-3",
+    "text": "It watches. It coaches. It helps you open.",
+    "source": "audio/cache/scene-reveal.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 6.5414,
+    "end": 10.085,
+    "durationFrames": 107,
+    "maxFrames": 126
+  },
+  {
+    "id": "session-1",
+    "text": "Passive devices move your hand for you. memo lets you try first.",
+    "source": "audio/cache/replacement-judging.wav",
+    "retrySource": null,
+    "pauseEdits": [
+      {
+        "from": 2.706729,
+        "to": 3.061813
+      }
+    ],
+    "start": 0.2466,
+    "end": 4.9024,
+    "durationFrames": 130,
+    "maxFrames": 132
+  },
+  {
+    "id": "session-2",
+    "text": "The camera measures how far each finger opens, on its own.",
+    "source": "audio/cache/scene-session.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 3.6383,
+    "end": 6.7779,
+    "durationFrames": 95,
+    "maxFrames": 180
+  },
+  {
+    "id": "session-3",
+    "text": "When a finger can't get there, memo helps. Only with the rest.",
+    "source": "audio/cache/replacement-session.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 0.2021,
+    "end": 4.3363,
+    "durationFrames": 125,
+    "maxFrames": 198
+  },
+  {
+    "id": "session-4",
+    "text": "Blue is you. Orange is memo's help. Green means you made it.",
+    "source": "audio/cache/replacement-session.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 5.1204,
+    "end": 9.212,
+    "durationFrames": 123,
+    "maxFrames": 216
+  },
+  {
+    "id": "session-5",
+    "text": "If a finger resists\u2026",
+    "source": "audio/cache/scene-session.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 17.7074,
+    "end": 19.3071,
+    "durationFrames": 48,
+    "maxFrames": 90
+  },
+  {
+    "id": "session-coach",
+    "text": "I feel resistance opening your index, let's stop here.",
+    "source": "audio/cache/scene-session-coach.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 0.1906,
+    "end": 3.0279,
+    "durationFrames": 86,
+    "maxFrames": 126
+  },
+  {
+    "id": "session-6",
+    "text": "memo lets go. Safety runs on the board, not in the browser.",
+    "source": "audio/cache/replacement-session.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 10.0954,
+    "end": 14.3331,
+    "durationFrames": 128,
+    "maxFrames": 138
+  },
+  {
+    "id": "coach-1",
+    "text": "The coach runs on Gemini Live. It names the finger and adjusts the session.",
+    "source": "audio/cache/scene-coach.wav",
+    "retrySource": "audio/cache/retry-coach-1.wav",
+    "pauseEdits": [
+      {
+        "from": 2.103292,
+        "to": 2.292271
+      },
+      {
+        "from": 3.3810420000000003,
+        "to": 3.596917
+      }
+    ],
+    "start": 0.2987,
+    "end": 4.7671,
+    "durationFrames": 122,
+    "maxFrames": 126
+  },
+  {
+    "id": "ai-1",
+    "text": "Under the hood, the coach is Gemini Live, with function calling.",
+    "source": "audio/cache/replacement-gemini.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 0.2201,
+    "end": 4.1389,
+    "durationFrames": 118,
+    "maxFrames": 120
+  },
+  {
+    "id": "ai-2",
+    "text": "Twenty tools. Every call is clamped, logged, and undoable.",
+    "source": "audio/cache/replacement-gemini.wav",
+    "retrySource": null,
+    "pauseEdits": [
+      {
+        "from": 5.528125,
+        "to": 5.913125
+      },
+      {
+        "from": 7.2308330000000005,
+        "to": 7.444563
+      }
+    ],
+    "start": 4.6125,
+    "end": 8.866,
+    "durationFrames": 110,
+    "maxFrames": 114
+  },
+  {
+    "id": "ai-3",
+    "text": "None of them moves a motor.",
+    "source": "audio/cache/replacement-gemini.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 9.6006,
+    "end": 11.124,
+    "durationFrames": 46,
+    "maxFrames": 54
+  },
+  {
+    "id": "ai-4",
+    "text": "Gemini also writes the summaries, and voiced this video.",
+    "source": "audio/cache/replacement-gemini.wav",
+    "retrySource": null,
+    "pauseEdits": [
+      {
+        "from": 11.939853999999999,
+        "to": 12.019604000000001
+      },
+      {
+        "from": 14.135187,
+        "to": 14.18725
+      }
+    ],
+    "start": 11.7129,
+    "end": 15.3877,
+    "durationFrames": 107,
+    "maxFrames": 108
+  },
+  {
+    "id": "doctor-1",
+    "text": "Every attempt is saved.",
+    "source": "audio/cache/scene-doctor.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 0.2661,
+    "end": 1.5606,
+    "durationFrames": 39,
+    "maxFrames": 60
+  },
+  {
+    "id": "doctor-2",
+    "text": "Therapists see every finger, on its own and with help, over weeks.",
+    "source": "audio/cache/scene-doctor.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 1.9644,
+    "end": 5.9931,
+    "durationFrames": 121,
+    "maxFrames": 132
+  },
+  {
+    "id": "doctor-3",
+    "text": "They can replay any attempt,",
+    "source": "audio/cache/scene-doctor.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 6.3644,
+    "end": 7.6471,
+    "durationFrames": 39,
+    "maxFrames": 60
+  },
+  {
+    "id": "doctor-4",
+    "text": "and get a summary from Gemini in one click.",
+    "source": "audio/cache/scene-doctor.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 7.6471,
+    "end": 10.3622,
+    "durationFrames": 82,
+    "maxFrames": 120
+  },
+  {
+    "id": "doctor-5",
+    "text": "Honest numbers for the people who guide you.",
+    "source": "audio/cache/scene-doctor.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 10.9408,
+    "end": 12.8764,
+    "durationFrames": 59,
+    "maxFrames": 108
+  },
+  {
+    "id": "build-1",
+    "text": "Five micro servos wind thin threads over the back of each finger. A current sensor feels every pull.",
+    "source": "audio/cache/scene-build.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 0.268,
+    "end": 7.29,
+    "durationFrames": 211,
+    "maxFrames": 252
+  },
+  {
+    "id": "bench-1",
+    "text": "And this is the real thing, on the bench.",
+    "source": "audio/cache/replacement-judging.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 5.6269,
+    "end": 8.1781,
+    "durationFrames": 77,
+    "maxFrames": 120
+  },
+  {
+    "id": "hood-1",
+    "text": "The board decides, not the browser.",
+    "source": "audio/cache/scene-underHood.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 0.1812,
+    "end": 2.4367,
+    "durationFrames": 68,
+    "maxFrames": 84
+  },
+  {
+    "id": "hood-2",
+    "text": "A current cut-off, a stop button, a watchdog, and a release that always goes slack.",
+    "source": "audio/cache/scene-underHood.wav",
+    "retrySource": null,
+    "pauseEdits": [],
+    "start": 2.7457,
+    "end": 8.0231,
+    "durationFrames": 159,
+    "maxFrames": 180
+  }
+]

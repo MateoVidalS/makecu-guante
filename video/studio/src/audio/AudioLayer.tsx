@@ -1,10 +1,14 @@
 // Owner: V2. Coordinator wrote this first version; V2 refines the mix (ducking curve, SFX, levels).
 import React from 'react';
-import { Audio, interpolate, Sequence, staticFile } from 'remotion';
-import type { MusicManifest, SfxManifest, VoManifest } from '../contracts';
+import { Audio, Sequence, staticFile } from 'remotion';
+import type { MusicManifest, VoManifest } from '../contracts';
 import { useJson } from '../components/useJson';
+import { hasStatic } from '../components/media';
 import { VO } from '../script';
 import { SCENE_START, TOTAL_FRAMES } from '../timeline';
+import { musicGain, type SpeechInterval } from './mix';
+
+export { Sfx } from './Sfx';
 
 export const useVoDurations = (): Record<string, number> => {
   const vo = useJson<VoManifest>('audio/vo/manifest.json');
@@ -12,7 +16,7 @@ export const useVoDurations = (): Record<string, number> => {
 };
 
 // VO intervals in absolute frames, for ducking.
-const voIntervals = (durations: Record<string, number>) =>
+const voIntervals = (durations: Record<string, number>): SpeechInterval[] =>
   VO.map((l) => {
     const from = SCENE_START[l.scene] + l.at;
     return [from, from + (durations[l.id] ?? l.maxFrames)] as const;
@@ -21,20 +25,16 @@ const voIntervals = (durations: Record<string, number>) =>
 export const AudioLayer: React.FC = () => {
   const vo = useJson<VoManifest>('audio/vo/manifest.json');
   const music = useJson<MusicManifest>('audio/music/manifest.json');
-  useJson<SfxManifest>('audio/sfx/manifest.json');
   const durations = Object.fromEntries((vo?.lines ?? []).map((l) => [l.id, l.durationFrames]));
   const intervals = voIntervals(durations);
-  const musicGain = (f: number) => {
-    const base = music?.cues?.length
-      ? interpolate(f, music.cues.map((q) => q.frame), music.cues.map((q) => q.gain), { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })
-      : 0.5;
-    // Duck to 35% under VO with 8-frame ramps.
-    const duck = intervals.reduce((d, [a, b]) => Math.min(d, interpolate(f, [a - 8, a, b, b + 8], [1, 0.35, 0.35, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' })), 1);
-    return base * duck;
-  };
+  // Real footage carries its own dialogue; reserve the same headroom when it
+  // arrives. Placeholders have no audio and do not trigger these extra ducks.
+  if (hasStatic('footage/team-intro.mp4')) intervals.push([SCENE_START.team, SCENE_START.hook]);
+  if (hasStatic('footage/team-next.mp4')) intervals.push([SCENE_START.next, SCENE_START.close]);
+  if (hasStatic('footage/coach-talk.mp4')) intervals.push([SCENE_START.coach + 144, SCENE_START.coach + 468]);
   return (
     <>
-      {music ? <Audio src={staticFile(music.file)} volume={musicGain} endAt={TOTAL_FRAMES} /> : null}
+      {music ? <Audio src={staticFile(music.file)} volume={(frame) => musicGain(frame, music.cues, intervals)} endAt={TOTAL_FRAMES} /> : null}
       {(vo?.lines ?? []).map((l) => {
         const line = VO.find((x) => x.id === l.id);
         if (!line) return null;
