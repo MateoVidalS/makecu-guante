@@ -113,10 +113,13 @@ export class RehabRuntime implements TherapyRuntime {
   private beforeRelease: GloveTelemetry | null = null;
   private readonly clock: () => number;
   constructor(private readonly options: RuntimeOptions) {
+    // The engine compares its clock with camera frame times. A real camera stamps frames with
+    // performance.now(); the simulator's clock only advances in a 5 ms timer, which falls behind
+    // while hand tracking blocks the main thread, so real frames would look "from the future"
+    // and never count as visible (practice stuck at "Make a fist"). Follow the camera's clock.
     this.clock =
       options.now ??
       (() =>
-        options.glove.client.kind === 'sim' ||
         options.vision.source.kind === 'sim'
           ? options.glove.world.timestamp()
           : performance.now());
