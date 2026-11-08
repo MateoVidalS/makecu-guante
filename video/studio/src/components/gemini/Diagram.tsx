@@ -4,6 +4,14 @@ import { T } from '../brand';
 import { COPY } from '../../script';
 import { Card, enter, Icon, type IconName, Line, mono, ToolGrid, Waveform } from './primitives';
 
+// All 20 function declarations from backend/app/voice/tools.py. COPY lists a subset.
+const coachTools = [
+  'add_rest', 'adjust_help', 'adjust_target', 'assist_finger_now', 'brake',
+  'choose_next_pose', 'get_live_state', 'get_progress', 'highlight_finger', 'intensify',
+  'note_for_therapist', 'pause_session', 'record_feeling', 'repeat_instruction', 'repeat_pose',
+  'resume_session', 'set_attempt_time', 'skip_pose', 'stop_session', 'undo_last_adjustment',
+] as const;
+
 const nodes = [
   { x: 96, width: 304, icon: 'voice' },
   { x: 448, width: 300, icon: 'voice' },
@@ -82,7 +90,7 @@ export const BoundedCall: React.FC<{ frame: number }> = ({ frame }) => {
       <T size="h3" style={{ position: 'absolute', left: safe.x, top: 624, opacity: enter(frame, 150) }}>
         {COPY.gemini.toolCount}
       </T>
-      <ToolGrid tools={COPY.gemini.tools} frame={frame} start={156} style={{ left: safe.x, right: safe.x, top: 692 }} />
+      <ToolGrid tools={coachTools} frame={frame} start={156} style={{ left: safe.x, right: safe.x, top: 692 }} />
     </>
   );
 };
@@ -92,20 +100,22 @@ export const MotorBoundary: React.FC<{ frame: number }> = ({ frame }) => {
   return (
     <>
       <T size="h3" style={{ position: 'absolute', left: safe.x, top: 304 }}>{COPY.gemini.toolCount}</T>
-      <ToolGrid tools={COPY.gemini.tools} frame={frame} start={240} columns={3}
-        style={{ left: safe.x, width: 1008, top: 400 }} />
-      <Line path={`M 1104 512 L ${1298 - 34 * cut} 512`} progress={1} />
-      <Line path={`M ${1298 + 34 * cut} 512 L 1492 512`} progress={1} />
-      <div style={{ position: 'absolute', left: 1266, top: 480, width: 64, height: 64, background: c.bg,
+      <ToolGrid tools={coachTools} frame={frame} start={222}
+        style={{ left: safe.x, right: safe.x, top: 400 }} />
+      <Line path={`M 960 592 L 960 672 L ${1298 - 34 * cut} 672`} progress={1} />
+      <Line path={`M ${1298 + 34 * cut} 672 L 1492 672`} progress={1} />
+      <div style={{ position: 'absolute', left: 1266, top: 640, width: 64, height: 64, background: c.bg,
         display: 'grid', placeItems: 'center', opacity: cut }}><Icon name="lock" /></div>
-      <T size="small" w={400} color={c.muted} style={{ position: 'absolute', left: 1120, top: 584, width: 356, textAlign: 'center', opacity: cut }}>
+      <T size="small" w={400} color={c.muted} style={{ position: 'absolute', left: 1120, top: 704, width: 356, textAlign: 'center', opacity: cut }}>
         No direct motor access
       </T>
-      <Card style={{ left: 1492, top: 400, width: 332, height: 224, padding: space.s32,
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: space.s16 }}>
-        <Icon name="engine" />
-        <T size="body" style={{ whiteSpace: 'nowrap' }}>5 micro servos</T>
-        <T size="caption" w={400} color={c.muted}>Beyond the session engine</T>
+      <Card style={{ left: 1492, top: 616, width: 332, height: 112, padding: space.s16,
+        display: 'flex', alignItems: 'center', gap: space.s16 }}>
+        <Icon name="engine" size={32} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: space.s8 }}>
+          <T size="body" style={{ whiteSpace: 'nowrap' }}>5 micro servos</T>
+          <T size="caption" w={400} color={c.muted}>Beyond the session engine</T>
+        </div>
       </Card>
       <Card style={{ left: safe.x, right: safe.x, top: 752, height: 128, padding: space.s32,
         display: 'flex', gap: space.s32, alignItems: 'center', opacity: enter(frame, 258) }}>

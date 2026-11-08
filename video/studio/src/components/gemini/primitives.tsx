@@ -1,7 +1,7 @@
 import React from 'react';
 import { evolvePath } from '@remotion/paths';
 import { interpolate } from 'remotion';
-import { c, ease, radius, space, type } from '../../brand/tokens';
+import { c, ease, radius, space } from '../../brand/tokens';
 import { T } from '../brand';
 
 export const enter = (frame: number, start: number, duration = 12) => interpolate(frame, [start, start + duration], [0, 1], {
@@ -32,7 +32,7 @@ export type IconName = 'voice' | 'tools' | 'clamp' | 'engine' | 'lock' | 'text' 
 const iconPaths: Record<IconName, React.ReactNode> = {
   voice: <><rect x={9} y={3} width={6} height={11} rx={3} /><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v3M8 21h8" /></>,
   tools: <><path d="m8 5-6 7 6 7M16 5l6 7-6 7M14 3l-4 18" /></>,
-  clamp: <><path d="M8 3H3v18h5M16 3h5v18h-5M8 8v8M16 8v8M8 12h8" /></>,
+  clamp: <><path d="M4 7v10M20 7v10M4 12h16" /><circle cx={12} cy={12} r={2} fill={c.text} stroke="none" /></>,
   engine: <><rect x={5} y={5} width={14} height={14} rx={2} /><rect x={9} y={9} width={6} height={6} rx={1} /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></>,
   lock: <><rect x={5} y={10} width={14} height={11} rx={2} /><path d="M8 10V6a4 4 0 0 1 8 0v4M12 14v3" /></>,
   text: <><path d="M14 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9ZM14 2v7h7M7 13h10M7 17h7" /></>,
@@ -60,16 +60,16 @@ export const Waveform: React.FC<{ frame: number }> = ({ frame }) => (
   </svg>
 );
 
-export const ToolGrid: React.FC<{ tools: readonly string[]; frame: number; start: number; columns?: number; style?: React.CSSProperties }> = ({
-  tools, frame, start, columns = 5, style,
+export const ToolGrid: React.FC<{ tools: readonly string[]; frame: number; start: number; style?: React.CSSProperties }> = ({
+  tools, frame, start, style,
 }) => (
-  <div style={{ position: 'absolute', display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: space.s16, ...style }}>
+  <div style={{ position: 'absolute', display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: space.s8, ...style }}>
     {tools.map((tool, i) => (
       <div key={tool} style={{
         background: c.surface2, border: `1px solid ${c.border}`, borderRadius: radius.input,
-        padding: `${space.s16}px ${space.s16}px`, opacity: enter(frame, start + Math.floor(i / columns) * 6),
+        padding: `${space.s8}px ${space.s16}px`, opacity: enter(frame, start + Math.floor(i / 5) * 6),
       }}>
-        <T size="small" w={400} style={{ fontFamily: mono, fontSize: type.small, whiteSpace: 'nowrap' }}>{tool}</T>
+        <T size="caption" w={400} style={{ fontFamily: mono, whiteSpace: 'nowrap' }}>{tool}</T>
       </div>
     ))}
   </div>
