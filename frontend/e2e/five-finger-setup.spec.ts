@@ -20,10 +20,10 @@ test('all five manual servo ranges must be set and acknowledged', async ({
     await fingers
       .getByRole('button', { name: new RegExp(`^${finger} ·`) })
       .click();
-    await page.getByRole('button', { name: 'Set open', exact: true }).click();
+    await page.getByRole('button', { name: 'Set slack', exact: true }).click();
     for (let step = 0; step < 4; step++)
       await page.getByRole('button', { name: '+5°', exact: true }).click();
-    await page.getByRole('button', { name: 'Set closed', exact: true }).click();
+    await page.getByRole('button', { name: 'Set open', exact: true }).click();
     if (finger !== 'Pinky') {
       await fingers.getByRole('button', { name: /^Pinky ·/ }).click();
       await expect(send).toBeDisabled();

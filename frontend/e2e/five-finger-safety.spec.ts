@@ -1,14 +1,26 @@
 import { test, expect } from '@playwright/test';
 import { GLOVE_FINGERS } from '../src/contracts/glove';
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+} from '../src/contracts/calibration';
 import { calibration as fixture } from '../src/contracts/fixtures.check';
 import type { probeRigidFinger } from './f9-rigid-harness';
 
 test.describe('five-finger rigid safety with clean simulator calibration', () => {
   for (const finger of GLOVE_FINGERS) {
-    test(`${finger} stops in every full-fist repetition, including a preloaded baseline`, async ({
+    test(`${finger} stops in every opening repetition, including a preloaded baseline`, async ({
       page,
     }) => {
-      const calibration = structuredClone(fixture);
+      const calibration = {
+        ...structuredClone(fixture),
+        assist_direction: 'open',
+        camera: {
+          ...fixture.camera,
+          camera_view: CURRENT_CAMERA_VIEW,
+          flex_model: CURRENT_FLEX_MODEL,
+        },
+      };
       calibration.servo = GLOVE_FINGERS.map((finger) => ({
         finger,
         min_deg: 20,
@@ -61,7 +73,15 @@ test.describe('five-finger rigid safety with clean simulator calibration', () =>
 test('five-finger assist staggers starts and caps moving motors and supply demand', async ({
   page,
 }) => {
-  const calibration = structuredClone(fixture);
+  const calibration = {
+    ...structuredClone(fixture),
+    assist_direction: 'open',
+    camera: {
+      ...fixture.camera,
+      camera_view: CURRENT_CAMERA_VIEW,
+      flex_model: CURRENT_FLEX_MODEL,
+    },
+  };
   calibration.camera.closed_flex = {
     thumb: 100,
     index: 270,

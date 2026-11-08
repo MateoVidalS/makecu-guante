@@ -9,7 +9,7 @@ test('the header simulator menu produces and saves a ring resistance stop', asyn
   await silenceCoach(page);
   await calibrateSimulator(page);
   await page
-    .getByRole('button', { name: 'Fist only, 1 rep', exact: true })
+    .getByRole('button', { name: 'Open only, 1 rep', exact: true })
     .click();
   await page.getByText('Demo tools', { exact: true }).click();
   await page.getByLabel('Patient preset', { exact: true }).selectOption('mild');
@@ -48,5 +48,5 @@ test('the header simulator menu produces and saves a ring resistance stop', asyn
         (window as unknown as { __spoken: string[] }).__spoken.join('\n'),
       ),
     )
-    .toContain('Stopping. I felt resistance in your ring');
+    .toContain('I feel resistance opening your ring');
 });

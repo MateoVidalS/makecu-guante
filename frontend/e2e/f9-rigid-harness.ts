@@ -41,6 +41,8 @@ export async function probeRigidFinger(
     createSession: async (value) => ({ ...sessions[0], ...value, id: 1 }),
     addAttempt: async ({ result }) => ({ ...result, id: 1, session_id: 1 }),
     endSession: async ({ summary }) => ({ ...sessions[0], summary, id: 1 }),
+    addCoachDecisions: async () => {},
+    addFeelings: async () => {},
     createEvaluation: async (value) => ({
       ...value,
       id: 1,
@@ -54,14 +56,16 @@ export async function probeRigidFinger(
     now: world.timestamp,
   });
   world.ticks.subscribe(() => {
-    if (runtime.exercise.view().phase !== 'ASSIST') return;
+    peakMa = Math.max(peakMa, world.power.demandMa);
+    // A phase can enter ASSIST before the first target; follow pays out independently.
+    // Enforce the winding concurrency cap whenever the motors actually run target.
+    if (world.firmware.mode !== 'target') return;
     peakMoving = Math.max(
       peakMoving,
       world.firmware.position.filter(
-        (v, i) => Math.abs(v - world.firmware.goal[i]) > 1e-6,
+        (v, i) => world.firmware.goal[i] > v + 1e-6,
       ).length,
     );
-    peakMa = Math.max(peakMa, world.power.demandMa);
   });
   glove.mount();
   await vision.start();
@@ -73,7 +77,7 @@ export async function probeRigidFinger(
   runtime.exercise.onEvent((event) => events.push(event));
   try {
     await runtime.exercise.start(
-      [{ pose: 'full_fist', reps: finger ? 3 : 1 }],
+      [{ pose: 'open', reps: finger ? 3 : 1 }],
       DEFAULT_EXERCISE_SETTINGS,
     );
     let rigid = false;

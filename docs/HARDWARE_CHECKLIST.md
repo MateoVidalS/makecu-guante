@@ -9,7 +9,7 @@ supplies the pitch's resistance demonstration.
 
 [firmware/BENCH.md](../firmware/BENCH.md) is the authoritative procedure and evidence
 sheet. Its steps **1–7 must pass on the real board and be recorded before anyone
-connects a person's hand**. Complete the remaining bench checks too; any failed
+connects a person's hand**. The ordered **Opening glove gate** at the end of BENCH must also pass; its permitted fixture/volunteer stages are authoritative. Complete the remaining bench checks too; any failed
 check blocks use with a person. Do not treat passing host tests as board evidence.
 
 Read [Matias' first bench session, 7 Nov 2026](../hardware/BANCO.md) before
@@ -31,6 +31,13 @@ is the supply on the bench.
 | BENCH steps 8–13 results and limitations | Pending |
 | STOP / release / watchdog evidence | Pending |
 | Upright wrist-module decision: strap fit / weight / thread exit / gravity | Pending — blocks hand mounting |
+| Dorsal winding opens all five fingers / routing evidence | Pending — opening gate 1 |
+| Slack/open endpoints / neutral straight limit, no hyperextension | Pending — opening gate 2 |
+| Extension strength / single-finger 2 s hold / measured current | Pending — opening gate 3 |
+| Five-finger sustained hold / total current below approved limit | Pending — opening gate 4 |
+| STOP while held open → slack <0.5 s (fixture) | Pending — opening gate 5 |
+| Fast fist during follow / no overcurrent | Pending — opening gate 6 |
+| Remaining opening fault/recovery checks | Pending — opening gate 7 |
 | Decision: fixture only or helper-hand calibration | Pending |
 
 - [ ] Servo power off: check common ground, signal pins and STOP wiring. Keep
@@ -55,6 +62,13 @@ is the supply on the bench.
   replace the glove's dedicated servo-rail capacitor.
 - [ ] Inspect tendons, anchors, guides, spools, strain relief and quick removal.
   No sharp edges, loose connections, crossed threads or trapped fingers.
+  Confirm **dorsal routing**: winding must straighten every finger on an empty
+  fixture. If it closes a finger, stop and reroute before calibration.
+- [ ] Complete BENCH opening gates in order. Extension strength must open one
+  moderately resisted fixture finger and hold 2 s under the limit; record current.
+  If it fails, revise servo/spool/lever hardware and repeat the gate. Record the
+  five-finger hold current, fixture STOP-to-slack <0.5 s and fast follow payout.
+  Keep all independent firmware safety limits active.
 - [ ] **Open hardware question — team decision required:** the wrist module was
   designed to rest on the table with the palm down. With the hand upright it hangs
   from the forearm. Do both straps prevent slipping without tightening excessively?
@@ -106,8 +120,11 @@ not the mechanical limits of this mounting.
 - [ ] Connect the correct USB port; check the firmware identity and sensor status.
   Board reset forgets calibration; reconnect must restore the approved ranges.
 - [ ] Calibrate → **Glove range**. Keep the hand relaxed, use small jog increments,
-  capture comfortable open and closed positions for all five actuated fingers. Do not
-  chase full closure or copy example degrees. Release before saving each range.
+  capture **Slack** with a relaxed fist and the dorsal tendon just taut, then
+  **Open** at a straight, neutral finger, never bent back. Require ≥20° separation
+  within 5–175°. Pull 0 at `min` must release to slack; pull 1 at `max` opens.
+  Never swap endpoints to invert routing, and never copy example degrees.
+  Release before saving each range. Legacy closing calibrations must be redone.
 - [ ] **Posture**: sit facing the laptop, raise the affected hand upright beside
   the face, palm toward the screen, and open/close toward the camera. Keep the
   forearm vertical and the elbow supported on the table with comfortable padding;
@@ -120,14 +137,16 @@ not the mechanical limits of this mounting.
   palm and fingers before capturing calibration.
 - [ ] **Day-1 glove detection check**: with the actual light, thin light glove,
   thin light threads and upright posture, observe Setup’s detected fraction over
-  five seconds while opening and closing. The camera now sees palm-side threads,
-  guides and anchors; record the percentage, lighting and any joint occlusions.
+  five seconds while opening and closing. The camera sees the palm; check whether dorsal routing leaves
+  guides or anchors visible; record the percentage, lighting and any joint occlusions.
   Low detection blocks the physical-camera demo; adjust light/framing or have the
   team assess exposed fingertips/bare-hand vision. Repeat for the configured
   affected hand; that setting remains authoritative, with selfie handedness as a
   cross-check. Repeat the check at the event if conditions change.
 - [ ] **Camera range**. Confirm affected hand, lighting, full-hand visibility and
-  fingertip clearance; capture open, relaxed glove-closed, and pinch references.
+  fingertip clearance. **Closed** is always the patient's own fist. For **Open**,
+  relax while the physical glove opens all five fingers in stages; with a simulated
+  glove, capture the patient's own open hand. Capture pinch separately.
   Capture in the upright posture; old palm-down/diagonal camera calibration must
   be replaced. Repeat a capture if movement/tracking makes it unreliable.
 - [ ] **Review** every servo range and camera capture, then save calibration.
@@ -146,7 +165,7 @@ not the mechanical limits of this mounting.
 
 - [ ] Follow [DEMO.md](DEMO.md) preflight: seed, volume, camera, permissions,
   optional Gemini access, and both simulator fallbacks rehearsed.
-- [ ] Start with one comfortable pose and one repetition. Check open/release,
+- [ ] Start with an active fist and an assisted opening. Check slack release,
   visual target, camera tracking, assistance labels and voice/captions.
 - [ ] Keep the elbow supported throughout. Ask about fatigue from holding the
   hand up; use short sets and rests, and pause/release if the posture tires the

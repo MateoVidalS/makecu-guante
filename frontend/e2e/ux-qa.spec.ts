@@ -92,7 +92,7 @@ for (const size of [
       const evaluations = (await (
         await page.request.get('/api/evaluations')
       ).json()) as { id: number; is_demo: boolean }[];
-      const session = sessions.find((s) => s.is_demo && s.n_attempts === 15)!;
+      const session = sessions.find((s) => s.is_demo && s.n_attempts === 10)!;
       const evaluation = evaluations.find((e) => e.is_demo)!;
       expect(
         session,
@@ -121,7 +121,7 @@ for (const size of [
         .click();
       await expect(page.locator('.focus')).toBeVisible();
       await inspect(page, 'exercise-live', testInfo);
-      await expect(page.getByRole('meter')).toHaveCount(5);
+      await expect(page.locator('.mx-gauge [role=meter]')).toHaveCount(5);
       expect(
         await page.evaluate(
           () => document.documentElement.scrollHeight <= innerHeight,
@@ -193,7 +193,10 @@ for (const size of [
       await expect(page.locator('.focus')).toBeVisible();
       await inspect(page, 'evaluation-live', testInfo);
       await expect(
-        page.getByRole('heading', { name: 'Your evaluation', exact: true }),
+        page.getByRole('heading', {
+          name: 'Resistance to opening (flexor tone)',
+          exact: true,
+        }),
       ).toBeVisible({ timeout: 45_000 });
       await inspect(page, 'evaluation-results', testInfo);
       await page.goto('/doctor');

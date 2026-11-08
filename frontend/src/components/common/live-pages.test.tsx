@@ -169,7 +169,7 @@ describe('Home and Setup', () => {
     fireEvent.click(
       screen.getByRole('button', { name: "Start today's practice" }),
     );
-    await waitFor(() => expect(runtime.exercise.view().total).toBe(5));
+    await waitFor(() => expect(runtime.exercise.view().total).toBe(10));
   });
   it('opens Customize plan after an earlier session has finished', () => {
     const runtime = new ScriptedRuntime({ persist: false });
@@ -608,7 +608,10 @@ describe('Calibration wizard', () => {
     const start = vi.spyOn(runtime.exercise, 'start');
     fireEvent.click(screen.getByRole('button', { name: 'Start practice' }));
     expect(start).toHaveBeenCalledWith(
-      expect.arrayContaining([{ pose: 'full_fist', reps: 3 }]),
+      expect.arrayContaining([
+        { pose: 'full_fist', reps: 1 },
+        { pose: 'open', reps: 1 },
+      ]),
       DEFAULT_EXERCISE_SETTINGS,
     );
     expect(runtime.calibration.current!.friction).toEqual({});
