@@ -84,6 +84,8 @@ export class VoiceController {
   private checkedAttempts = new Set<number>();
   private awaitingPainUntil = 0;
   private patientBraked = false;
+  /** After an on-screen Brake, the coach stays quiet until the patient speaks. */
+  private quietUntilPatient = false;
   private brakeLatched = false;
   private failures = 0;
   private greeted = false;
@@ -191,6 +193,7 @@ export class VoiceController {
     this.awaitingPainUntil = 0;
     this.brakeLatched = false;
     this.patientBraked = false;
+    this.quietUntilPatient = false;
     this.liveTimer = setInterval(() => {
       if (!this.active || !this.connected || this.state.mode !== 'live') return;
       const state = this.runtime.therapy?.state();
@@ -334,7 +337,11 @@ export class VoiceController {
         this.retry();
         break;
       case 'audio':
-        if (!this.safetySpeaking && performance.now() >= this.safetyUntil) {
+        if (
+          !this.quietUntilPatient &&
+          !this.safetySpeaking &&
+          performance.now() >= this.safetyUntil
+        ) {
           this.deps.audio.play(event.data);
           this.scheduler.noteCoachSpeech();
           this.update({ status: 'speaking' });
@@ -350,9 +357,13 @@ export class VoiceController {
       case 'transcript':
         if (
           event.role === 'coach' &&
-          (this.safetySpeaking || performance.now() < this.safetyUntil)
+          (this.quietUntilPatient ||
+            this.safetySpeaking ||
+            performance.now() < this.safetyUntil)
         )
           break;
+        if (event.role === 'patient' && event.text.trim())
+          this.quietUntilPatient = false;
         if (event.role === 'coach') clearTimeout(this.captionTimer);
         this.partial[event.role] += event.text;
         if (event.role === 'patient') {
@@ -362,7 +373,7 @@ export class VoiceController {
         }
         this.update(
           event.role === 'coach'
-            ? { lastCoachLine: this.partial.coach }
+            ? { lastCoachLine: cleanCoachText(this.partial.coach) }
             : { lastPatientLine: this.partial.patient },
         );
         if (event.finished) this.finishTranscript(event.role);
@@ -455,8 +466,9 @@ export class VoiceController {
     if (batch && batch !== this.batch) void batch.flush();
   }
   private finishTranscript(role: 'coach' | 'patient') {
-    const text = this.partial[role];
+    const raw = this.partial[role];
     this.partial[role] = '';
+    const text = role === 'coach' ? cleanCoachText(raw) : raw;
     if (!text) return;
     if (role === 'coach') {
       this.caption(text);
@@ -475,6 +487,22 @@ export class VoiceController {
         this.brakeLatched = false;
       this.patientBraked = false;
     }
+  }
+  /** The patient pressed Brake on screen: silence the coach, say so locally and tell the model. */
+  brake(reason = 'You pressed Brake.') {
+    this.brakeLatched = true;
+    this.patientBraked = true;
+    this.quietUntilPatient = true;
+    this.scheduler.clear();
+    this.deps.audio.flush();
+    this.partial.coach = '';
+    this.safety.announce(
+      'Stopped. The glove has released. Tell me how you feel.',
+    );
+    this.transport?.sendText(
+      `[safety] ${reason} The patient pressed Brake on screen. Released and paused; already announced. Stop giving instructions and never resume without the patient's request.`,
+      false,
+    );
   }
   private checkPatientSafety(text: string) {
     const awaitingPain = performance.now() < this.awaitingPainUntil;
@@ -502,6 +530,7 @@ export class VoiceController {
       if (!this.active || this.state.mode !== 'simple' || this.state.muted)
         return;
       this.partial.patient = text;
+      if (text.trim()) this.quietUntilPatient = false;
       this.checkPatientSafety(text);
       this.runtime.therapy?.notePatientSpeech?.(text);
       this.update({ lastPatientLine: text });
@@ -530,8 +559,10 @@ export class VoiceController {
       this.update({ status: this.safetySpeaking ? 'speaking' : 'paused' });
       return;
     }
-    if (event.kind === 'phase' && event.phase !== 'PAUSED')
+    if (event.kind === 'phase' && event.phase !== 'PAUSED') {
       this.brakeLatched = false;
+      this.quietUntilPatient = false;
+    }
     if ((view.paused || this.safetySpeaking) && event.kind !== 'session_done')
       return;
     if (event.kind === 'phase' && event.phase === 'ATTEMPT')
@@ -636,3 +667,12 @@ export const browserVoiceDependencies = {
   local: () => new BrowserLocalVoice(),
   patient: () => new BrowserPatientTranscriber(),
 };
+
+/** Gemini Live marks silent turns with tags such as "<no speech>"; never show or store them. */
+export function cleanCoachText(text: string): string {
+  return text
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/<[^>]*$/, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

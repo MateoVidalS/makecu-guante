@@ -95,6 +95,7 @@ test('valid saved calibration opens Review and offers one simulator shortcut', a
   ).toHaveCount(0);
   await page.getByRole('button', { name: 'Redo glove ranges' }).click();
   await expect(page.locator('main .ds-button--primary')).toHaveCount(1);
+  await page.getByText(/Adjust each motor/).click();
   await expect(
     page
       .getByRole('button', { name: 'Release glove now' })
@@ -134,7 +135,8 @@ test('legacy camera capture routes to upright recapture while keeping glove rang
   await expect(
     page.getByRole('button', { name: 'Continue to review' }),
   ).toBeDisabled();
-  await page.getByRole('button', { name: /Glove range/ }).click();
+  await page.getByRole('button', { name: /Motors/ }).click();
+  await page.getByText(/Adjust each motor/).click();
   for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
     await expect(
       page.getByRole('button', { name: `${finger} · Set` }),
@@ -168,6 +170,7 @@ test('opening calibration shows Slack, straight-finger warning and active fist c
   );
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/calibrate?step=glove');
+  await page.getByText(/Adjust each motor/).click();
   await expect(
     page.getByRole('button', { name: 'Set slack', exact: true }),
   ).toBeVisible();
@@ -208,8 +211,9 @@ test('legacy closing assistance requires completely new glove ranges', async ({
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Step 1 · Glove range: Thumb' }),
+    page.getByRole('heading', { name: 'Step 1 · Motors' }),
   ).toBeVisible();
+  await page.getByText(/Adjust each motor/).click();
   await expect(page.getByText('Slack not set', { exact: true })).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Next finger' }),

@@ -152,16 +152,19 @@ const Hand = memo(function Hand() {
   );
 });
 const CAMERA_KEY = 'rehab-hub.exercise.camera';
-function readCameraPreference() {
+/** A saved choice wins; otherwise a real webcam is shown (what the app sees), the simulator is not. */
+function readCameraPreference(realCamera: boolean) {
   try {
-    return window.localStorage.getItem(CAMERA_KEY) === 'shown';
+    const saved = window.localStorage.getItem(CAMERA_KEY);
+    return saved ? saved === 'shown' : realCamera;
   } catch {
-    return false;
+    return realCamera;
   }
 }
 /** The virtual hand stays prominent next to an optional small camera panel: the virtual hand against its target, and what the camera sees. */
 export function LiveStage() {
-  const [camera, setCamera] = useState(readCameraPreference);
+  const realCamera = useVision().source.kind === 'camera';
+  const [camera, setCamera] = useState(() => readCameraPreference(realCamera));
   const toggle = (on: boolean) => {
     setCamera(on);
     try {
@@ -291,6 +294,8 @@ export default function Exercise() {
     } catch {
       // Audit failures must not prevent the patient from braking.
     }
+    // The coach goes quiet, says "Stopped" locally and the model is told.
+    voice.brake('You pressed Brake.');
   };
   const { start: startVoice, stop: stopVoice, setMode: setVoiceMode } = voice;
   const voiceMode = useRef(voice.mode);

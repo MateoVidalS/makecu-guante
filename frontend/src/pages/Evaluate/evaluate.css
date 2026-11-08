@@ -48,3 +48,30 @@
 .eval-live .ds-page-header {
   margin-block-end: 0;
 }
+
+/* The evaluation needs the camera: show what it sees. */
+.eval-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-24);
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .eval-stage {
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  }
+}
+.eval-camera {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-inline-size: 0;
+}
+.eval-camera__title {
+  margin: 0;
+  font-size: var(--h3);
+}
+.eval-camera--check {
+  margin-block-start: var(--space-16);
+  max-inline-size: 28rem;
+}

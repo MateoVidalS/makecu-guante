@@ -18,6 +18,7 @@ test('manual slack/open and camera calibration leads to ten moderate fist/open a
     .poll(() => page.evaluate(() => window.aiTherapist.ready()))
     .toBe(true);
   await page.evaluate(() => window.aiTherapist.calibrationClock(true));
+  await page.getByText(/Adjust each motor/).click();
   const fingers = page.getByRole('group', { name: 'Finger to calibrate' });
   for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky']) {
     await fingers

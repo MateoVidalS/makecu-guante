@@ -72,8 +72,15 @@ export function GloveMotors() {
     <section className="glove-motors" aria-label="Glove opening help">
       <header className="glove-motors__head">
         <h2 className="glove-motors__title">Glove opening help</h2>
-        {simulated && <span className="glove-motors__tag">Simulated</span>}
+        {simulated && (
+          <span className="glove-motors__tag">Test mode · no motors</span>
+        )}
       </header>
+      {simulated && (
+        <p className="glove-motors__note">
+          What the glove motors would do with your hand right now.
+        </p>
+      )}
       <ul className="glove-motors__row">
         {motors.map((m) => (
           <li key={m.finger} className="glove-motor" data-state={m.state}>
