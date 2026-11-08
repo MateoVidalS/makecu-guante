@@ -229,7 +229,7 @@ describe('Home and Setup', () => {
       mount(<Setup />);
       fireEvent.click(screen.getByRole('button', { name: 'Reconnect glove' }));
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        'This glove reports 3 fingers. Rehab Hub requires 5-finger firmware.',
+        'This glove reports 3 fingers. memo requires 5-finger firmware.',
       );
       expect(
         screen.queryByRole('heading', { name: 'Glove ready' }),

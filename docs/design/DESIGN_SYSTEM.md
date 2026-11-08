@@ -1,4 +1,6 @@
-# Rehab Hub design system
+# memo design system
+
+Brand (name, logo, voice): [`docs/brand/BRAND.md`](../brand/BRAND.md). The logo components are `Logo`, `LogoMark` and `Wordmark`.
 
 The design system turns `docs/plan/11-ux-design.md` (the UX spec) into code. The spec explains **why**. This file explains **how**:
 which token or component to use, and when.
@@ -14,7 +16,7 @@ which token or component to use, and when.
 
 ## 0. Visual direction (design cleanup, Nov 2026)
 
-Rehab Hub should feel like a calm, clinical, premium product: think Linear, Stripe Dashboard, Apple Health, Notion.
+memo should feel like a calm, clinical, premium product: think Linear, Stripe Dashboard, Apple Health, Notion.
 **Restraint over decoration.** Light is the default and primary experience; dark stays available from the theme toggle.
 
 - **Light by default, whatever the OS says.** `Theme.tsx` stores nothing for light; "Dark" and "Match system" are explicit,

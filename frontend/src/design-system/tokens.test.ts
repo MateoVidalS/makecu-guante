@@ -70,6 +70,7 @@ describe('tokens', () => {
         [t.onAccent, t.accentHover],
         [t.onDanger, t.danger],
         [t.onChrome, t.chrome],
+        [t.onBrand, t.brand],
         [t.text, t.surface3],
       ];
       for (const [fg, bg] of pairs)

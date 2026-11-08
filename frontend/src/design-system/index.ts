@@ -1,8 +1,15 @@
-// Rehab Hub design system. Import from here only: `import { Button, Card } from '../../design-system'`.
+// memo design system. Import from here only: `import { Button, Card } from '../../design-system'`.
 // Usage rules, patterns and the migration guide: docs/design/DESIGN_SYSTEM.md. Living gallery: /_dev/design.
 import './ds.css';
 
 export { Icon, iconNames, type IconName, type IconProps } from './Icon';
+export {
+  Logo,
+  LogoMark,
+  Wordmark,
+  type LogoMarkProps,
+  type WordmarkProps,
+} from './Logo';
 export {
   Button,
   ButtonLink,

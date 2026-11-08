@@ -1,5 +1,5 @@
 /*
- * Rehab Hub design tokens. Source of truth for colors, type, space, shape, depth and motion.
+ * memo design tokens. Source of truth for colors, type, space, shape, depth and motion.
  * Keep in sync with tokens.ts (canvas / three.js) — tokens.test.ts checks sync and contrast on the TS copy.
  *
  * Direction (see docs/design/DESIGN_SYSTEM.md): calm, clinical, light. Near-white page, white surfaces,
@@ -70,6 +70,10 @@
   /* ---- Color: chrome (doctor shell bar) ---- */
   --chrome: #2f3a47;
   --on-chrome: #ffffff;
+
+  /* ---- Color: brand (the memo mark only; same in both themes) ---- */
+  --brand: #2f5b9a;
+  --on-brand: #ffffff;
 
   /* ---- Type ---- */
   --root: 17px;
@@ -193,6 +197,8 @@
   --hand: #bfb3a6;
   --chrome: #262f3a;
   --on-chrome: #eceef0;
+  --brand: #2f5b9a;
+  --on-brand: #ffffff;
   --elevation-card: none;
   --elevation-overlay: 0 12px 32px rgb(0 0 0 / 0.45);
   color-scheme: dark;
@@ -248,6 +254,8 @@
     --hand: #bfb3a6;
     --chrome: #262f3a;
     --on-chrome: #eceef0;
+    --brand: #2f5b9a;
+    --on-brand: #ffffff;
     --elevation-card: none;
     --elevation-overlay: 0 12px 32px rgb(0 0 0 / 0.45);
     color-scheme: dark;

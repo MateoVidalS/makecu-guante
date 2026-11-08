@@ -31,6 +31,7 @@ import {
   ButtonLink,
   EmptyState,
   Icon,
+  Logo,
   PageErrorBoundary,
   ToastProvider,
 } from './design-system';
@@ -72,9 +73,8 @@ const NAV: [to: string, label: string][] = [
 
 function Brand() {
   return (
-    <Link className="app-brand" to="/" aria-label="Rehab Hub, home">
-      <Icon name="logo" size={20} />
-      <span>Rehab Hub</span>
+    <Link className="app-brand" to="/" aria-label="memo, home">
+      <Logo size={24} />
     </Link>
   );
 }

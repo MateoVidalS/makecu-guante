@@ -1,5 +1,7 @@
 # MakeCU — Guante robótico para rehabilitación de la mano
 
+> **Nombre del producto: memo.** Marca, logo y voz en [`docs/brand/BRAND.md`](docs/brand/BRAND.md). "Rehab Hub" queda como nombre interno del repo y del plan.
+
 **Track:** Healthcare
 **Challenges que se suman:** MLH Gemini API, Trace (PCB custom), Zelos, Notability (opcional)
 

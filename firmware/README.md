@@ -1,4 +1,4 @@
-# Rehab Hub firmware
+# memo firmware
 
 ESP32-WROOM-32, Arduino-ESP32, PlatformIO. The board owns every motion limit,
 fault latch and watchdog. The browser is not a safety layer. No board was flashed

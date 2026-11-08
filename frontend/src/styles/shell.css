@@ -57,9 +57,6 @@
   letter-spacing: var(--tracking-tight);
   text-decoration: none;
 }
-.app-brand .ds-icon {
-  color: var(--accent);
-}
 
 /* Nav: quiet text links; the current page gets text color + a 2 px underline on the header's bottom edge. */
 .app-header .app-nav {
@@ -194,8 +191,7 @@
   background: var(--chrome);
   color: var(--on-chrome);
 }
-.shell--doctor .app-brand,
-.shell--doctor .app-brand .ds-icon {
+.shell--doctor .app-brand {
   color: var(--on-chrome);
 }
 .doctor-label {
