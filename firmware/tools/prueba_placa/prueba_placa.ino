@@ -1,7 +1,7 @@
 // Prueba de la placa: ESP32 comun (DevKit) + 1 servo + boton STOP.
 //
 // Conexiones:
-//   Servo naranja (senal) -> GPIO 26   | rojo -> +5 V de la fuente | marron -> GND
+//   Servo naranja (senal) -> GPIO 13   | rojo -> +5 V de la fuente | marron -> GND
 //   Boton STOP: un lado a GPIO 32, el otro a GND
 //   GND de la ESP32 unido al GND de la fuente. La ESP32 se alimenta SOLO por USB.
 //
@@ -13,7 +13,7 @@
 
 #include <ESP32Servo.h>
 
-const int PIN_SERVO = 26;  // servo del indice (mapa de pines del README)
+const int PIN_SERVO = 13;  // servo del indice (mapa de pines del README)
 const int PIN_STOP = 32;   // boton a GND, INPUT_PULLUP
 const int PIN_LED = 2;     // LED azul de la placa (algunas placas no lo tienen)
 

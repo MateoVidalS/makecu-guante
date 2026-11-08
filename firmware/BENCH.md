@@ -26,11 +26,11 @@ and driving them into their internal end stop makes them buzz and draw stall cur
 
 | Index | Finger | Signal | Servo |
 | --- | --- | --- | --- |
-| 0 | Thumb | GPIO25 | Smraza S51 |
-| 1 | Index | GPIO26 | Smraza S51 |
+| 0 | Thumb | GPIO4 | Smraza S51 |
+| 1 | Index | GPIO13 | Smraza S51 |
 | 2 | Middle | GPIO27 | Smraza S51 |
-| 3 | Ring | GPIO13 | Smraza S51 |
-| 4 | Pinky | GPIO4 | Smraza S51 |
+| 3 | Ring | GPIO26 | Smraza S51 |
+| 4 | Pinky | GPIO25 | Smraza S51 |
 
 Other pins: INA219 SDA21/SCL22 (0x40), STOP32 to GND with internal pull-up,
 NeoPixel33 through a level shifter and 330 ohm resistor. GPIO4 is **not** a free

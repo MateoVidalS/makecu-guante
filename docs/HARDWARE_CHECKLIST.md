@@ -116,8 +116,8 @@ is the supply on the bench.
   quickly. Mount to a mannequin first; a helper's hand is allowed only after the
   recorded bench gate. Never start on a patient.
 - [ ] Confirm comfortable alignment and intended finger/channel mapping
-  **all five actuated fingers**: thumb GPIO25, index GPIO26, middle GPIO27,
-  ring GPIO13, little finger GPIO4 (wire indices 0–4).
+  **all five actuated fingers**: thumb GPIO4, index GPIO13, middle GPIO27,
+  ring GPIO26, little finger GPIO25 (wire indices 0–4).
 - [ ] Stop immediately for pain, tightness, numbness, unexpected travel, heat,
   sound, sensor mismatch, or failure to unwind. Power off and return to the bench.
 - [ ] Keep the helper next to STOP throughout any person-mounted movement.

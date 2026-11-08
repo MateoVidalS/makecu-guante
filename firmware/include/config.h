@@ -55,7 +55,8 @@ inline constexpr uint32_t DETACH_MS = 500;
 inline constexpr uint32_t STOP_DEBOUNCE_MS = 20;
 inline constexpr std::size_t MAX_LINE_BYTES = 200;
 inline constexpr std::size_t LINE_BUFFER_BYTES = 256;
-inline constexpr int SERVO_PINS[FINGERS] = {25, 26, 27, 13, 4};
+// Wire order [thumb, index, middle, ring, pinky]. Rewired on Nov 8 2026.
+inline constexpr int SERVO_PINS[FINGERS] = {4, 13, 27, 26, 25};
 inline constexpr int RING_PIN = 33;
 inline constexpr int INA_SDA = 21;
 inline constexpr int INA_SCL = 22;
@@ -67,7 +68,7 @@ inline constexpr uint32_t BAUD = 115200;
 }  // namespace rehab::config
 
 #ifdef REHAB_TIMING_PIN
-// Free output pins on this WROOM-32 pin map. In particular, GPIO4 is now pinky.
+// Free output pins on this WROOM-32 pin map. In particular, GPIO4 is now the thumb.
 static_assert(REHAB_TIMING_PIN == 16 || REHAB_TIMING_PIN == 17 || REHAB_TIMING_PIN == 18 ||
                   REHAB_TIMING_PIN == 19 || REHAB_TIMING_PIN == 23,
               "Timing probe must use an unused output pin (16/17/18/19/23)");

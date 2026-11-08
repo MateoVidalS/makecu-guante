@@ -69,11 +69,11 @@ the ESP32 build, and the hardware checklist, particularly the allocation audit.
 
 | Function | ESP32 pin | Connection |
 | --- | --- | --- |
-| Thumb servo signal | GPIO25 | 50 Hz PWM, 500–2500 us pulse mapping |
-| Index servo signal | GPIO26 | Same |
+| Thumb servo signal | GPIO4 | 50 Hz PWM, 500–2500 us pulse mapping; remains detached at boot |
+| Index servo signal | GPIO13 | Same; remains detached at boot |
 | Middle servo signal | GPIO27 | Same |
-| Ring servo signal | GPIO13 | Same; remains detached at boot |
-| Pinky servo signal | GPIO4 | Same; remains detached at boot |
+| Ring servo signal | GPIO26 | Same |
+| Pinky servo signal | GPIO25 | Same |
 | NeoPixel ring data | GPIO33 | 3.3 V to 5 V level shifter, then 330 ohm resistor |
 | INA219 SDA | GPIO21 | I2C address 0x40, 400 kHz |
 | INA219 SCL | GPIO22 | I2C |
@@ -95,7 +95,7 @@ attaches PWM. GPIO4 and GPIO13 follow the same detached boot path as the other
 three signals. This code inspection cannot certify ROM/reset-time electrical
 behavior: the team must scope both pins across power-on, reset, brown-out and
 STOP-held boot, with servo power present, and confirm no pulse or twitch using
-BENCH.md. Do not use GPIO4 as a timing probe: it now commands the pinky.
+BENCH.md. Do not use GPIO4 as a timing probe: it now commands the thumb.
 Optional timing instrumentation is compile-time restricted to unused WROOM-32
 outputs 16/17/18/19/23; GPIO18 is the documented probe pin.
 
