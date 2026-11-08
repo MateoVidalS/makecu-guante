@@ -298,6 +298,7 @@ Errors: `{ "error": { "code": "...", "message": "..." } }`. Pydantic models mirr
 |---|---|---|
 | `GET /api/health` | – | `{ ok, version, gemini: bool }` |
 | `GET /api/profile` · `PUT /api/profile` | `Profile` | `Profile` |
+| `GET /api/progression/settings` · `PUT /api/progression/settings` | `ProgressionSettingsIn` | `ProgressionSettings` (§4.2; off by default) |
 | `GET /api/calibrations/latest` | – | `Calibration \| null` |
 | `GET /api/calibrations` | – | `Calibration[]` newest first |
 | `POST /api/calibrations` | `CalibrationIn` (Calibration without id/created_at) | `Calibration` |
@@ -360,6 +361,24 @@ interface ChatToolResult { name: ChatToolName; result: Record<string, unknown> }
 interface ChatVoiceToken { token: string; expires_at: string; model: string; voice: string; context: string | null }
 ```
 
+### 4.2 Adaptive progression (Nov 8)
+
+The therapist's switch for **today's plan** ([17-progression.md](17-progression.md)). The plan itself is computed in the
+browser from recent sessions (`frontend/src/progression/plan.ts`); only the switch is stored. Types live in
+`frontend/src/contracts/progression.ts` and `backend/app/contracts/progression.py`; fixture
+`contracts/fixtures/progression_settings.json`.
+
+```ts
+type ProgressionChallenge = "gentle" | "standard"
+interface ProgressionSettings { enabled: boolean; challenge: ProgressionChallenge; updated_at: string | null }  // default { false, "standard", null }
+type ProgressionSettingsIn = Omit<ProgressionSettings, "updated_at">
+```
+
+Engine-local (not stored in `Session.settings`): `PowerAwareExerciseSettings.progression?: ProgressionStart`
+(`frontend/src/engine/types.ts`), the per-finger `target_scale` (≤ 1) and `attempt_s` the therapy controller starts from,
+clamped to `THERAPY_LIMITS`. The applied plan is audited as a `CoachDecision` with `tool: "progression_plan"`,
+`source: "local_rule"`; `Session.settings.attempt_s` records the trying time used.
+
 ---
 
 ## 5. SQLite schema (`backend/data/rehab.db`)
@@ -377,6 +396,7 @@ evaluation(id PK, started_at, ended_at, calibration_id FK, settings_json, sweeps
 evaluation_finger(id PK, evaluation_id FK, finger, resistance_slow_ma NULL, resistance_fast_ma NULL, velocity_dependence_ma NULL, peak_excess_ma NULL, aborted)
 transcript_line(id PK, session_id FK, t, role, text)
 summary(id PK, kind, created_at, session_id NULL, days NULL, model, text)
+progression_settings(id PK CHECK(id=1), enabled BOOL DEFAULT 0, challenge CHECK IN ('gentle','standard'), updated_at NULL)
 ```
 Cascade deletes from `session` and `evaluation`. WAL mode. Indexes on the foreign keys and `started_at`.
 
