@@ -22,3 +22,8 @@ export type { VisionRobustnessStats } from './robustness';
 
 export { recordLandmarks, downloadLandmarks } from './recorder';
 export type { LandmarkCapture, LandmarkRecording } from './recorder';
+
+export { LIGHTING_THRESHOLDS, measureLighting } from './lighting';
+export type { LightingStats, VisionDiagnostics } from './lighting';
+
+export { SimVision } from './SimVision';

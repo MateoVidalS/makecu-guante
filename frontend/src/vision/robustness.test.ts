@@ -44,7 +44,7 @@ describe('five-second glove robustness', () => {
       meanConfidence: expect.closeTo(0.475),
       perFingerVisibility: fingerMap(() => 0.5),
     });
-    expect(tracker.stats(5000).guidance.join(' ')).toContain('30–40 cm');
+    expect(tracker.stats(5000).guidance.join(' ')).toContain('40–60 cm');
     expect(tracker.stats(5000).guidance.join(' ')).toContain(
       'light, thin glove',
     );
