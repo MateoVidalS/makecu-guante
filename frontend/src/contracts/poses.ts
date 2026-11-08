@@ -398,11 +398,11 @@ export const DEFAULT_PLAN: ExercisePlanItem[] = (
 ).map((pose) => ({ pose, reps: 1 }));
 export const PINCH_PLAN: ExercisePlanItem[] = [{ pose: 'pinch', reps: 3 }];
 export const DEFAULT_EXERCISE_SETTINGS: ExerciseSettings = {
-  present_s: 3,
+  present_s: 5, // time to hear and see the next pose before trying
   attempt_s: 6,
   hold_s: 2,
   assist_max_s: 6,
-  rest_s: 3,
+  rest_s: 5, // a real pause between poses
   tolerance: 0.15, // a little forgiving for a first demo
   reach_dwell_s: 0.5,
   assist_speed: 0.3,

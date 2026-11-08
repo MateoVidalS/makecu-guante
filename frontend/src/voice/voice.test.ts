@@ -821,7 +821,9 @@ it('asks once to see the hand instead of repeating the pose every 8 s', async ()
   } as const;
   s.emit(present);
   await vi.advanceTimersByTimeAsync(20000);
-  const first = t.texts.filter((m) => m.text.includes('[session] PRESENT:')).length;
+  const first = t.texts.filter((m) =>
+    m.text.includes('[session] PRESENT:'),
+  ).length;
   expect(first).toBe(1);
   // Re-prompts for the same attempt: one short "raise your hand", then silence.
   s.emit(present);
@@ -830,13 +832,50 @@ it('asks once to see the hand instead of repeating the pose every 8 s', async ()
   await vi.advanceTimersByTimeAsync(20000);
   s.emit(present);
   await vi.advanceTimersByTimeAsync(20000);
-  expect(t.texts.filter((m) => m.text.includes('[session] PRESENT:'))).toHaveLength(1);
+  expect(
+    t.texts.filter((m) => m.text.includes('[session] PRESENT:')),
+  ).toHaveLength(1);
   expect(
     t.texts.filter((m) => m.text.includes("Still can't see the hand")),
   ).toHaveLength(1);
   // A new attempt gets its own invitation.
   s.emit({ ...present, index: 2 });
   await vi.advanceTimersByTimeAsync(20000);
-  expect(t.texts.filter((m) => m.text.includes('[session] PRESENT:'))).toHaveLength(2);
+  expect(
+    t.texts.filter((m) => m.text.includes('[session] PRESENT:')),
+  ).toHaveLength(2);
+  s.controller.dispose();
+});
+
+it('gives one spoken turn per transition: the result rides with the next pose', async () => {
+  const s = setup();
+  await s.controller.start(8);
+  const t = s.transports[0];
+  const result = JSON.parse(
+    readFileSync('../contracts/fixtures/session_detail.json', 'utf8'),
+  ).attempts[0];
+  const view = s.runtime.exercise.view();
+  // The result alone is context, not a separate speech turn...
+  const done = eventCue(
+    { kind: 'attempt_done', result: { ...result, index: 0 } },
+    view,
+  );
+  expect(done?.speak).toBe(false);
+  // ...the next pose's cue carries it, so the coach reacts and invites in one turn.
+  const next = eventCue(
+    { kind: 'phase', phase: 'PRESENT', pose: 'open', rep: 1, index: 1 },
+    view,
+    { ...result, index: 0 },
+  );
+  expect(next?.speak).toBe(true);
+  expect(next?.text).toContain('Previous attempt:');
+  expect(next?.text).toContain('In ONE short turn');
+  // A check-in after the third attempt is still spoken.
+  s.emit({
+    kind: 'attempt_done',
+    result: { ...result, index: 2, interrupted: false },
+  });
+  await vi.advanceTimersByTimeAsync(20000);
+  expect(t.texts.some((m) => m.text.includes('[check-in]'))).toBe(true);
   s.controller.dispose();
 });

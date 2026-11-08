@@ -619,9 +619,15 @@ export class VoiceController {
     if (checkIn) {
       this.checkedAttempts.add(event.result.index);
       this.awaitingPainUntil = performance.now() + 30000;
-      if (cue)
+      if (cue) {
+        cue.text = cue.text.replace(
+          ' Do not speak yet; you will react with the next pose.',
+          '',
+        );
         cue.text +=
           ' [check-in] Ask for pain, then fatigue, each from 0 to 10. Record both reported ratings with record_feeling; ask for missing values.';
+        cue.speak = true;
+      }
     }
     if (event.kind === 'attempt_done') this.lastAttempt = event.result;
     if (cue) this.recent = cue.text;
