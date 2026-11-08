@@ -4,6 +4,7 @@ import { Build } from './Build';
 import { Close } from './Close';
 import { Coach } from './Coach';
 import { Doctor } from './Doctor';
+import { Gemini } from './Gemini';
 import { Hook } from './Hook';
 import { Next } from './Next';
 import { Problem } from './Problem';
@@ -19,6 +20,7 @@ export const SCENE_COMPONENTS: Record<SceneId, React.FC> = {
   reveal: Reveal,
   session: Session,
   coach: Coach,
+  gemini: Gemini,
   doctor: Doctor,
   build: Build,
   underHood: UnderHood,
