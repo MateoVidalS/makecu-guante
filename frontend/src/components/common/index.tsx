@@ -223,6 +223,7 @@ const safetyCopy: Record<Safety['source'], string> = {
   watchdog: 'The glove stopped. Check the connection.',
   camera_lost: "I can't see your hand. Move it into the frame.",
   glove_disconnected: 'The glove disconnected. Reconnect it in Setup.',
+  coach_brake: 'Glove released. Practice paused.',
 };
 export function SafetyBanner() {
   const runtime = useRuntime(),

@@ -38,6 +38,9 @@ export interface Attempt extends Omit<AttemptResult, 'trace'> {
 export interface SessionDetail extends Session {
   attempts: Attempt[];
   transcript: TranscriptLine[];
+  /** AI therapist audit (docs/plan/13 §4); absent or empty for older sessions. */
+  coach_decisions?: import('./therapist').CoachDecision[];
+  feelings?: import('./therapist').FeelingEntry[];
 }
 export interface Evaluation extends EvaluationResult {
   id: number;
