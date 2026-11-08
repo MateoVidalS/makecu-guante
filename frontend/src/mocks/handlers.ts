@@ -33,6 +33,8 @@ const unavailable = (code: string) =>
   );
 const nextId = (items: { id: number }[]) =>
   Math.max(0, ...items.map((x) => x.id)) + 1;
+const calibrationDirection = (id: number) =>
+  mockState.calibrations.find((c) => c.id === id)?.assist_direction ?? 'close';
 const orderedSessions = () =>
   [...mockState.sessions].sort((a, b) =>
     a.started_at.localeCompare(b.started_at),
@@ -64,6 +66,7 @@ export function historyRom(
               pose,
               active_max_mean: mean(values),
               is_demo: s.is_demo,
+              assist_direction: s.assist_direction ?? 'close',
             },
           ]
         : [];
@@ -90,6 +93,7 @@ export function historyAssist() {
               assist_needed_mean: mean(values.map((m) => m.need)),
               assisted_rate: mean(values.map((m) => m.helped)),
               is_demo: s.is_demo,
+              assist_direction: s.assist_direction ?? 'close',
             },
           ]
         : [];
@@ -136,6 +140,7 @@ export const handlers = [
     const s: Session = {
       ...value,
       is_demo: value.is_demo ?? false,
+      assist_direction: calibrationDirection(value.calibration_id),
       id: nextId(mockState.sessions),
       started_at: now(),
       ended_at: null,
@@ -179,7 +184,32 @@ export const handlers = [
       s = mockState.sessions.find((x) => x.id === id);
     if (!s) return missing();
     const { summary } = (await request.json()) as { summary: SessionSummary };
-    s.summary = summary;
+    const previous = mockState.sessions
+      .filter(
+        (p) =>
+          p.id !== s.id &&
+          p.summary &&
+          (p.assist_direction ?? 'close') === (s.assist_direction ?? 'close') &&
+          (p.started_at < s.started_at ||
+            (p.started_at === s.started_at && p.id < s.id)),
+      )
+      .sort(
+        (a, b) =>
+          Number(a.is_demo) - Number(b.is_demo) ||
+          b.started_at.localeCompare(a.started_at) ||
+          b.id - a.id,
+      )[0];
+    s.summary = {
+      ...summary,
+      previous: previous?.summary
+        ? {
+            active_ratio_mean: previous.summary.active_ratio_mean,
+            per_finger: previous.summary.per_finger.map(
+              ({ finger, active_max_mean }) => ({ finger, active_max_mean }),
+            ),
+          }
+        : null,
+    };
     s.ended_at = now();
     Object.assign(mockState.details[id], s);
     return HttpResponse.json(s);
@@ -243,6 +273,7 @@ export const handlers = [
       ...value,
       id: nextId(mockState.evaluations),
       is_demo: value.is_demo ?? false,
+      assist_direction: calibrationDirection(value.calibration_id),
     };
     mockState.evaluations.unshift(e);
     return HttpResponse.json(e);
@@ -251,8 +282,11 @@ export const handlers = [
     const sorted = [...mockState.sessions].sort((a, b) =>
       a.started_at.localeCompare(b.started_at),
     );
-    const rom = historyRom(),
-      assist = historyAssist();
+    const direction = sorted.some((s) => s.assist_direction === 'open')
+      ? 'open'
+      : 'close';
+    const rom = historyRom().filter((p) => p.assist_direction === direction),
+      assist = historyAssist().filter((p) => p.assist_direction === direction);
     const today = new Date().toISOString().slice(0, 10);
     const cutoff = new Date(Date.now() - 6 * 86400000)
       .toISOString()
@@ -302,6 +336,7 @@ export const handlers = [
             fast: f.resistance_fast_ma,
             dependence: f.velocity_dependence_ma,
             is_demo: e.is_demo,
+            assist_direction: e.assist_direction ?? 'close',
           })),
         ),
     ),

@@ -113,6 +113,7 @@ def test_hand_computed_history(client, db, session_body, attempt_body, payload, 
             expected.append(
                 c.ResistancePoint(
                     evaluation_id=id,
+                    assist_direction=calibration.assist_direction,
                     started_at=evaluation["started_at"],
                     is_demo=evaluation["is_demo"],
                     finger=finger["finger"],

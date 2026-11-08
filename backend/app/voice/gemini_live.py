@@ -31,7 +31,14 @@ def read_context(db: DbSession, session_id: int | None) -> tuple[Profile | None,
                 for s in sessions
                 if s.id != session_id
                 and s.summary is not None
-                and (current is None or s.is_demo == current.is_demo)
+                and s.assist_direction == (current.assist_direction if current else "open")
+                and (
+                    current is None
+                    or (
+                        s.is_demo == current.is_demo
+                        and (s.started_at, s.id) < (current.started_at, session_id)
+                    )
+                )
             ),
             None,
         )

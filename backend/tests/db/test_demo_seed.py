@@ -1,4 +1,4 @@
-"""The demo must exercise real engines, retain traces and preserve real records."""
+"""Synthetic demo history must tell an opening story, retain traces and preserve real records."""
 
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -13,7 +13,7 @@ from app.db.session import make_engine
 from tools import seed_demo as seeder
 
 END = datetime(2026, 11, 6, 10, tzinfo=timezone.utc)
-TRACES = 9 * 15 + 5 * 5  # nine tendon-glide sessions and five short sessions
+TRACES = 9 * 10 + 5 * 4  # nine full sessions and five short sessions
 
 
 @pytest.fixture(scope="module")
@@ -49,23 +49,26 @@ def _active(session, finger):
         f["active_max"]
         for a in session["attempts"]
         for f in a["fingers"]
-        if f["finger"] == finger and f["scored"]
+        if f["finger"] == finger and f["scored"] and a["pose"] == "open"
     ]
     return sum(values) / len(values)
 
 
 def test_story_is_deterministic(generated):
     again = seeder.generate(END)
-    assert again["sessions"][5]["summary"] == generated["sessions"][5]["summary"]
-    assert again["evaluations"][-1]["fingers"] == generated["evaluations"][-1]["fingers"]
+    assert again == generated
 
 
 def test_story_reads_like_a_real_patient(generated):
     sessions = generated["sessions"]
+    assert [s["assist_direction"] for s in sessions] == ["close"] * 2 + ["open"] * 12
+    assert generated["calibration"]["assist_direction"] == "open"
+    assert generated["legacy_calibration"].get("assist_direction") is None
+    sessions = sessions[2:]
     first, last = sessions[0], sessions[-1]
     # Irregular home practice with mixed plan lengths, never in the future.
     lengths = {len(s["attempts"]) for s in sessions}
-    assert lengths == {5, 15}
+    assert lengths == {4, 10}
     days = sorted({s["started_at"][:10] for s in sessions})
     gaps = {
         (datetime.fromisoformat(b) - datetime.fromisoformat(a)).days
@@ -74,13 +77,13 @@ def test_story_reads_like_a_real_patient(generated):
     assert len(gaps) >= 2
     assert all(s["ended_at"] < END.isoformat() for s in sessions)
     # Fingers improve at different rates: index most, thumb slowly, little finger least.
-    gain = {f: _active(last, f) - _active(first, f) for f in repo.FINGERS}
+    gain = {f: _active(first, f) - _active(last, f) for f in repo.FINGERS}
     assert len({round(g, 2) for g in gain.values()}) == len(repo.FINGERS)
     assert max(gain, key=gain.get) == "index"
     assert gain["thumb"] < gain["middle"] and gain["pinky"] < gain["ring"]
     # The ring finger dips in the tired week, then recovers.
-    ring = [_active(s, "ring") for s in sessions if len(s["attempts"]) == 15]
-    assert min(ring[4:]) < max(ring[:4]) < ring[-1]
+    ring = [_active(s, "ring") for s in sessions if len(s["attempts"]) == 10]
+    assert max(ring[4:]) > min(ring[:4]) > ring[-1]
     # Safety events are rare: one rigid-index stop in the whole history.
     safety = [e for s in sessions for a in s["attempts"] for e in a["safety_events"]]
     assert [e["finger"] for e in safety] == ["index"]
@@ -99,21 +102,26 @@ def test_story_reads_like_a_real_patient(generated):
     assert generated["profile"]["affected_hand"] == "right"
 
 
-def test_real_engine_seed_reset_and_provenance(tmp_path, generated, monkeypatch):
+def test_seed_reset_and_provenance(tmp_path, generated, monkeypatch):
     monkeypatch.setattr(seeder, "generate", lambda _: generated)
     engine = make_engine(str(tmp_path / "demo.db"))
     assert seeder.seed_demo(engine, end=END) == (14, 4)
     with Session(engine) as db:
         sessions = repo.list_sessions(db)
         assert len(sessions) == 14
-        assert all(s.is_demo and s.n_attempts in (5, 15) and s.summary for s in sessions)
+        assert all(s.is_demo and s.n_attempts in (4, 10) and s.summary for s in sessions)
         assert sessions[-1].started_at.startswith("2026-10-10")
         assert sessions[0].started_at.startswith("2026-11-05")
         assert repo.get_profile(db).pseudonym == "M.R. (demo patient)"
         latest = repo.get_session(db, sessions[0].id)
         assert latest.coach_decisions and latest.feelings
         assert all(f.session_id == latest.id for f in latest.feelings)
-        assert sessions[0].summary.active_ratio_mean > sessions[-1].summary.active_ratio_mean
+        opening = [s for s in sessions if s.assist_direction == "open"]
+        legacy = [s for s in sessions if s.assist_direction == "close"]
+        assert len(opening) == 12 and len(legacy) == 2
+        assert opening[0].summary.active_ratio_mean > opening[-1].summary.active_ratio_mean
+        assert opening[-1].summary.previous is None  # Never compare with legacy closing.
+        assert legacy[0].summary.previous is not None
         detail = repo.get_session(db, sessions[0].id)
         trace = repo.get_trace(db, detail.attempts[-1].id)
         assert trace.hz == 20 and len(trace.t) > 100
@@ -143,7 +151,7 @@ def test_real_engine_seed_reset_and_provenance(tmp_path, generated, monkeypatch)
     with Session(engine) as db:
         assert len(repo.list_sessions(db)) == 15
         assert repo.get_session(db, real_id).is_demo is False
-        assert len(db.exec(select(m.Calibration)).all()) == 1
+        assert len(db.exec(select(m.Calibration)).all()) == 2
         assert len(db.exec(select(m.AttemptTrace)).all()) == TRACES
     engine.dispose()
 
@@ -235,3 +243,37 @@ def test_a_real_profile_is_never_replaced(tmp_path, generated, monkeypatch):
     with Session(engine) as db:
         assert repo.get_profile(db) == real
     engine.dispose()
+
+
+def test_opening_attempts_help_open_and_fists_are_independent(generated):
+    for session in generated["sessions"][2:]:
+        for attempt in session["attempts"]:
+            trace = attempt["trace"]
+            assert trace["hz"] == 20
+            assert all(abs(b - a - 0.05) < 1e-8 for a, b in zip(trace["t"], trace["t"][1:]))
+            assert all(values[-1] == 0 for values in trace["servo"].values())
+            assert max(trace["ma"]) < 1500
+            if attempt["pose"] == "full_fist":
+                assert not attempt["assisted"] and attempt["reached_active"]
+                assert not any(p.startswith("ASSIST") for p in trace["phase"])
+                assert all(f["assist_needed"] == 0 for f in attempt["fingers"])
+            else:
+                assert attempt["pose"] == "open" and attempt["assisted"]
+                assert all(f["target"] == 0 and f["assist_needed"] > 0 for f in attempt["fingers"])
+                if not attempt["interrupted"]:
+                    assert "ASSIST" in trace["phase"] and "ASSIST_HOLD" in trace["phase"]
+                    start = trace["phase"].index("ASSIST")
+                    held = trace["phase"].index("ASSIST_HOLD")
+                    for finger in repo.FINGERS:
+                        assert trace["closure"][finger][held] < trace["closure"][finger][start]
+                        assert trace["servo"][finger][held] > trace["servo"][finger][start]
+                        assert max(trace["servo"][finger]) <= 0.95
+    for evaluation in generated["evaluations"]:
+        assert evaluation["friction_used"]
+        for result in evaluation["fingers"]:
+            assert result["resistance_fast_ma"] > result["resistance_slow_ma"] > 0
+            assert result["velocity_dependence_ma"] > 0
+        for sweep in evaluation["sweeps"]:
+            assert sweep["points"][0]["pos"] == 0
+            assert sweep["points"][-1]["pos"] == 0.95
+            assert sweep["points"][-1]["ma"] > sweep["points"][0]["ma"]

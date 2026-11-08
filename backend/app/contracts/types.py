@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 FingerId = Literal["thumb", "index", "middle", "ring", "pinky"]
 GloveFinger = FingerId
 Handedness = Literal["left", "right"]
+AssistDirection = Literal["close", "open"]
+CURRENT_ASSIST_DIRECTION: AssistDirection = "open"
 PoseId = Literal["open", "hook", "full_fist", "tabletop", "straight_fist", "pinch"]
 ExercisePhase = Literal[
     "PRESENT", "ATTEMPT", "HOLD", "ASSIST", "ASSIST_HOLD", "RELEASE", "PAUSED", "REST", "DONE"
@@ -26,8 +28,8 @@ class Profile(ContractModel):
 
 class ServoCalibration(ContractModel):
     finger: GloveFinger
-    min_deg: float
-    max_deg: float
+    min_deg: float  # Slack with a relaxed fist.
+    max_deg: float  # Fingers straight, never hyperextended.
 
 
 class CameraCalibration(ContractModel):
@@ -36,8 +38,8 @@ class CameraCalibration(ContractModel):
     camera_view: Literal["front_upright", "front_diagonal"] | None = None
     # Absent or null = 1, the unsigned math before P1.
     flex_model: int | None = None
-    open_flex: dict[FingerId, float]
-    closed_flex: dict[FingerId, float]
+    open_flex: dict[FingerId, float]  # Glove-opened relaxed hand.
+    closed_flex: dict[FingerId, float]  # The patient's own fist.
     pinch_closed: float
     pinch_open: float
 
@@ -53,6 +55,7 @@ class FrictionCurve(ContractModel):
 
 
 class CalibrationIn(ContractModel):
+    assist_direction: AssistDirection | None = None  # None = legacy closing assist.
     servo: list[ServoCalibration]
     camera: CameraCalibration
     friction: dict[GloveFinger, list[FrictionCurve]]
@@ -187,6 +190,7 @@ class SessionIn(ContractModel):
 
 
 class Session(SessionIn):
+    assist_direction: AssistDirection | None = None  # Derived from calibration.
     id: int
     started_at: str
     ended_at: str | None
@@ -248,6 +252,7 @@ class EvaluationIn(EvaluationResult):
 
 
 class Evaluation(EvaluationIn):
+    assist_direction: AssistDirection | None = None  # Derived from calibration.
     id: int
 
 
@@ -301,6 +306,7 @@ class HistoryOverview(ContractModel):
 
 
 class RomPoint(ContractModel):
+    assist_direction: AssistDirection | None = None  # Derived from calibration.
     session_id: int
     started_at: str
     finger: GloveFinger
@@ -310,6 +316,7 @@ class RomPoint(ContractModel):
 
 
 class AssistPoint(ContractModel):
+    assist_direction: AssistDirection | None = None  # Derived from calibration.
     session_id: int
     started_at: str
     finger: GloveFinger
@@ -319,6 +326,7 @@ class AssistPoint(ContractModel):
 
 
 class ResistancePoint(ContractModel):
+    assist_direction: AssistDirection | None = None  # Derived from calibration.
     evaluation_id: int
     started_at: str
     finger: GloveFinger

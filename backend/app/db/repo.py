@@ -90,6 +90,7 @@ def _calibration(row) -> c.Calibration:
         camera=json.loads(row.camera_json),
         friction=json.loads(row.friction_json),
         current_limit_ma=row.current_limit_ma,
+        assist_direction=row.assist_direction,
     )
 
 
@@ -119,6 +120,7 @@ def create_calibration(db: DbSession, body: c.CalibrationIn) -> c.Calibration:
         camera_json=_json(data["camera"]),
         friction_json=_json(data["friction"]),
         current_limit_ma=body.current_limit_ma,
+        assist_direction=body.assist_direction,
     )
     db.add(row)
     db.commit()
@@ -126,13 +128,22 @@ def create_calibration(db: DbSession, body: c.CalibrationIn) -> c.Calibration:
     return _calibration(row)
 
 
-def _session(row, n_attempts=0) -> c.Session:
+def _direction(db, calibration_id) -> c.AssistDirection:
+    return _required(db, m.Calibration, calibration_id).assist_direction or "close"
+
+
+def _direction_column():
+    return func.coalesce(m.Calibration.assist_direction, "close")
+
+
+def _session(db, row, n_attempts=0) -> c.Session:
     return c.Session(
         **_values(row, exclude={"plan_json", "settings_json", "summary_json"}),
         plan=json.loads(row.plan_json),
         settings=json.loads(row.settings_json),
         summary=_summary(json.loads(row.summary_json)) if row.summary_json else None,
         n_attempts=n_attempts,
+        assist_direction=_direction(db, row.calibration_id),
     )
 
 
@@ -152,7 +163,7 @@ def create_session(db: DbSession, body: c.SessionIn, *, started_at: str | None =
     db.add(row)
     db.commit()
     db.refresh(row)
-    return _session(row)
+    return _session(db, row)
 
 
 def list_sessions(
@@ -162,7 +173,7 @@ def list_sessions(
     if mode:
         query = query.where(m.Session.mode == mode)
     return [
-        _session(row, n)
+        _session(db, row, n)
         for row, n in db.exec(
             query.order_by(m.Session.started_at.desc(), m.Session.id.desc())
             .limit(limit)
@@ -208,7 +219,7 @@ def get_session(db: DbSession, id: int) -> therapy.SessionDetail:
         .order_by(m.TranscriptLine.t, m.TranscriptLine.id)
     ).all()
     return therapy.SessionDetail(
-        **_session(row, len(attempts)).model_dump(),
+        **_session(db, row, len(attempts)).model_dump(),
         attempts=[_attempt(a, by_attempt.get(a.id, [])) for a in attempts],
         transcript=[_values(r, exclude={"id", "session_id"}) for r in transcript],
         coach_decisions=list_coach_decisions(db, {id}),
@@ -228,7 +239,9 @@ def session_summary_with_previous(
     # A previous session must precede this one; prefer real data, even if a demo is newer.
     query = (
         select(m.Session)
+        .join(m.Calibration)
         .where(
+            _direction_column() == _direction(db, current.calibration_id),
             m.Session.summary_json.is_not(None),
             m.Session.id != session_id,
             or_(
@@ -261,7 +274,7 @@ def end_session(
     row.ended_at = row.ended_at or ended_at or now()
     db.add(row)
     db.commit()
-    return _session(row, _session_count(db, id))
+    return _session(db, row, _session_count(db, id))
 
 
 def create_attempt(db: DbSession, id: int, body: c.AttemptResult) -> c.Attempt:
@@ -397,6 +410,7 @@ def _evaluation(db, row) -> c.Evaluation:
         .order_by(m.EvaluationFinger.id)
     ).all()
     return c.Evaluation(
+        assist_direction=_direction(db, row.calibration_id),
         **_values(row, exclude={"settings_json", "sweeps_blob"}),
         settings=json.loads(row.settings_json),
         sweeps=json.loads(gzip.decompress(row.sweeps_blob)),
@@ -443,7 +457,9 @@ def history_rom(
             m.AttemptFinger.finger,
             func.avg(m.AttemptFinger.active_max),
             m.Session.is_demo,
+            _direction_column(),
         )
+        .join(m.Calibration, m.Calibration.id == m.Session.calibration_id)
         .join(m.Attempt, m.Attempt.session_id == m.Session.id)
         .join(m.AttemptFinger)
         .where(
@@ -461,9 +477,15 @@ def history_rom(
     )
     return [
         c.RomPoint(
-            session_id=id, started_at=t, finger=f, pose=pose, active_max_mean=mean, is_demo=demo
+            session_id=id,
+            started_at=t,
+            finger=f,
+            pose=pose,
+            active_max_mean=mean,
+            is_demo=demo,
+            assist_direction=direction,
         )
-        for id, t, f, mean, demo in db.exec(query)
+        for id, t, f, mean, demo, direction in db.exec(query)
     ]
 
 
@@ -478,7 +500,9 @@ def history_assist(db: DbSession) -> list[c.AssistPoint]:
                 case((m.Attempt.assisted & (m.AttemptFinger.assist_needed > 0), 1.0), else_=0.0)
             ),
             m.Session.is_demo,
+            _direction_column(),
         )
+        .join(m.Calibration, m.Calibration.id == m.Session.calibration_id)
         .join(m.Attempt, m.Attempt.session_id == m.Session.id)
         .join(m.AttemptFinger)
         .where(
@@ -498,8 +522,9 @@ def history_assist(db: DbSession) -> list[c.AssistPoint]:
             assist_needed_mean=mean,
             assisted_rate=rate,
             is_demo=demo,
+            assist_direction=direction,
         )
-        for id, t, f, mean, rate, demo in db.exec(query)
+        for id, t, f, mean, rate, demo, direction in db.exec(query)
     ]
 
 
@@ -514,18 +539,22 @@ def history_resistance(db: DbSession) -> list[c.ResistancePoint]:
             m.EvaluationFinger.resistance_slow_ma,
             m.EvaluationFinger.resistance_fast_ma,
             m.EvaluationFinger.velocity_dependence_ma,
+            _direction_column(),
         )
+        .join(m.Calibration, m.Calibration.id == m.Evaluation.calibration_id)
         .outerjoin(m.EvaluationFinger)
         .order_by(m.Evaluation.started_at, m.Evaluation.id, m.EvaluationFinger.id)
     )
     evaluations = {}
-    for id, t, demo, f, slow, fast, dep in db.exec(query):
-        rows = evaluations.setdefault((id, t, demo), [])
+    for id, t, demo, f, slow, fast, dep, direction in db.exec(query):
+        rows = evaluations.setdefault((id, t, demo, direction), [])
         if f is not None:
             rows.append({"finger": f, "slow": slow, "fast": fast, "dependence": dep})
     return [
-        c.ResistancePoint(evaluation_id=id, started_at=t, is_demo=demo, **row)
-        for (id, t, demo), rows in evaluations.items()
+        c.ResistancePoint(
+            evaluation_id=id, started_at=t, is_demo=demo, assist_direction=direction, **row
+        )
+        for (id, t, demo, direction), rows in evaluations.items()
         for row in _finger_rows(
             rows,
             slow=None,
@@ -536,20 +565,52 @@ def history_resistance(db: DbSession) -> list[c.ResistancePoint]:
 
 
 def history_overview(db: DbSession) -> c.HistoryOverview:
-    rom = history_rom(db)
-    assist = history_assist(db)
-    per_finger = []
-    for finger in FINGERS:
-        points = [p for p in rom if p.finger == finger]
-        assistance = [p for p in assist if p.finger == finger]
-        per_finger.append(
-            c.OverviewFinger(
-                finger=finger,
-                active_max_first=points[0].active_max_mean if points else None,
-                active_max_last=points[-1].active_max_mean if points else None,
-                assist_needed_last=assistance[-1].assist_needed_mean if assistance else None,
-            )
+    # Select the comparison cohort globally, including when opening data lacks a finger.
+    has_open = (
+        db.exec(
+            select(m.Calibration.id)
+            .join(m.Session)
+            .where(m.Calibration.assist_direction == "open")
+            .limit(1)
+        ).first()
+        is not None
+    )
+    direction = "open" if has_open else "close"
+    # Compute both measures in one pass, without building every public trend point.
+    # Group by session first: first/last are session means, never attempt means across days.
+    query = (
+        select(
+            m.AttemptFinger.finger,
+            func.avg(m.AttemptFinger.active_max),
+            func.avg(m.AttemptFinger.assist_needed),
         )
+        .select_from(m.Session)
+        .join(m.Calibration, m.Calibration.id == m.Session.calibration_id)
+        .join(m.Attempt, m.Attempt.session_id == m.Session.id)
+        .join(m.AttemptFinger)
+        .where(
+            _direction_column() == direction,
+            m.AttemptFinger.scored,
+            m.AttemptFinger.finger.in_(FINGERS),
+        )
+        .group_by(m.Session.id, m.AttemptFinger.finger)
+        .order_by(m.Session.started_at, m.Session.id, m.AttemptFinger.finger)
+    )
+    by_finger = {
+        f: c.OverviewFinger(
+            finger=f, active_max_first=None, active_max_last=None, assist_needed_last=None
+        )
+        for f in FINGERS
+    }
+    for finger, active, assistance in db.exec(query):
+        point = by_finger[finger]
+        if active is not None:
+            if point.active_max_first is None:
+                point.active_max_first = active
+            point.active_max_last = active
+        if assistance is not None:
+            point.assist_needed_last = assistance
+    per_finger = list(by_finger.values())
     cutoff = (datetime.now(timezone.utc) - timedelta(days=6)).date().isoformat()
     today = datetime.now(timezone.utc).date().isoformat()
     days = db.exec(
@@ -606,7 +667,15 @@ def therapist_digest(db: DbSession, days: int) -> dict:
             "days_practiced": len({s.started_at[:10] for s in sessions}),
             "evaluations": len(evaluation_ids),
         },
+        "sessions": [
+            {"id": s.id, "assist_direction": _direction(db, s.calibration_id)} for s in sessions
+        ],
         "active_range": rom,
+        "active_opening": [
+            p.model_dump()
+            for p in history_rom(db, pose="open")
+            if p.session_id in ids and p.assist_direction == "open"
+        ],
         "assistance": assist,
         "resistance": resistance,
         "safety_events": [
@@ -626,11 +695,26 @@ def create_summary(db: DbSession, body: c.SessionSummaryIn | c.TherapistSummaryI
         session = get_session(db, body.session_id)
         context = {
             "summary": session.summary.model_dump() if session.summary else None,
+            "assist_direction": session.assist_direction,
+            "opening_attempts": [
+                {
+                    "index": a.index,
+                    "fingers": [f.model_dump() for f in a.fingers],
+                    "assisted": a.assisted,
+                    "interrupted": a.interrupted,
+                }
+                for a in session.attempts
+                if a.pose == "open"
+            ]
+            if session.assist_direction == "open"
+            else [],
             "is_demo": session.is_demo,
             "coach_decisions": [d.model_dump() for d in session.coach_decisions],
             "feelings": [f.model_dump() for f in session.feelings],
             "evaluation_trend": [
-                p.model_dump() for p in history_resistance(db) if p.is_demo == session.is_demo
+                p.model_dump()
+                for p in history_resistance(db)
+                if p.is_demo == session.is_demo and p.assist_direction == session.assist_direction
             ],
         }
         if session.summary is None:
@@ -698,6 +782,7 @@ def export_data(db: DbSession, format: str = "json") -> str:
         "session_started_at",
         "session_ended_at",
         "calibration_id",
+        "assist_direction",
         "is_demo",
         "plan",
         "settings",
