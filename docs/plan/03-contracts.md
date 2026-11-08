@@ -164,7 +164,7 @@ interface CameraCalibration {
   pinch_closed: number;                        // pinch ratio when thumb and index touch
   pinch_open: number;
 }
-interface FrictionCurve { v: number; points: { pos: number; ma: number }[] }   // empty glove, per finger and speed
+interface FrictionCurve { v: number; points: { pos: number; ma: number }[] }   // threads unhooked from the fingertip anchors (docs/plan/16), per finger and speed
 interface Calibration {
   id: number; created_at: string;
   servo: ServoCalibration[];                   // 5

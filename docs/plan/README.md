@@ -23,5 +23,6 @@ progress.
 | [14-ux-fixes.md](14-ux-fixes.md) | **UX fixes from the Nov 7 design review**: findings, U1–U4 waves around the AI-therapist wave |
 | [15-open-assist.md](15-open-assist.md) | **Pivot: the glove helps the hand OPEN** (tendon pull on the wire, asymmetric ramps, open-only assist, load governor, O0–O7) |
 | [12-five-finger-update.md](12-five-finger-update.md) | **Hardware changes analysis + plan to move to 5 fingers** (contract v2, power-aware assist, palm-down view, glove vision check) |
+| [16-bare-hand.md](16-bare-hand.md) | **Nov 8: bare hand with BLACK dorsal guides and YELLOW fingertip anchors**, skin checks, recalibration, unhooked thread friction, vision evidence; supersedes H10/glove detection and C6 |
 | [`/handoffs/`](../../handoffs/) | One self-contained brief per work package (WP0–WP11) + `STATUS.md` |
 | [`/AGENTS.md`](../../AGENTS.md) | Rules every coding agent follows |
