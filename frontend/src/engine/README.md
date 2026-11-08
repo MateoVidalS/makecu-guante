@@ -68,8 +68,9 @@ attempt's `safety_events`. It is not an `EngineEvent` and does not pause or
 claim a hardware fault. This is a reactive governor with a 200 ms observation
 window, not a hard current clamp; firmware current protection remains necessary.
 The deterministic flexor-load test verifies recovery below the ceiling while
-staying below the firmware limit. The O2 opening simulator was not merged at
-O3 start, so these tests use the existing fake firmware and scripted load.
+staying below the firmware limit. Exact deadlines use the fake firmware and scripted load. Integration tests
+also run the complete opening plan against O2's mild, moderate and spastic
+patient models, and resistance tests exercise its rigid-floor model.
 
 Resistance profiles remain provisional (thumb/index/middle/ring/pinky:
 650/800/750/650/650 mA); inject bench values with `EngineOptions.servoProfiles`.

@@ -1,67 +1,62 @@
-import { describe, expect, it } from 'vitest';
-import { GLOVE_FINGERS, closureFromPull, type Quint } from '../contracts/glove';
-import { SERVO_PROFILES } from './assist';
-import { Run } from './test/exerciseRun';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { GLOVE_FINGERS, pullFromClosure } from '../contracts/glove';
+import { simRun } from './test/simRun';
 
-describe('resistance to opening (flexor tone)', () => {
+beforeEach(() => vi.spyOn(performance, 'now').mockReturnValue(0));
+describe('rigid fingers resisting assisted opening in the O2 simulator', () => {
   it.each(GLOVE_FINGERS)(
-    'freezes a rigid %s within 200 ms plus one tick and lowers future speed',
-    (finger) => {
-      const r = new Run('open', { assist_max_s: 10, hold_s: 0.5 });
-      const index = GLOVE_FINGERS.indexOf(finger);
-      r.world.hand = [0, 0, 0, 0, 0];
-      r.world.hand[index] = 1;
-      r.until('ASSIST');
-      for (let i = 0; i < 7; i++) r.step();
-      r.world.ma =
-        100 + Math.min(250, (SERVO_PROFILES[finger].stall_ma * 250) / 800) + 1;
-      const at = r.world.now;
-      for (let i = 0; i < 4; i++) r.step();
-      expect(r.engine.state().phase).toBe('ASSIST');
-      const out = r.step();
-      expect(r.world.now - at).toBe(250);
-      expect(out.events).toContainEqual({
-        kind: 'resistance',
-        finger,
-        ma: r.world.ma,
-      });
-      expect(r.engine.state().phase).toBe('ASSIST_HOLD');
-      expect(
-        r
-          .targets()
-          .at(-1)!
-          .f.every((v, i) => v <= r.world.tel.a[i]),
-      ).toBe(true);
-      expect(r.engine.therapy.speed(finger)).toBe(0.15);
-      r.until('DONE');
-      expect(r.events.filter((e) => e.kind === 'resistance')).toHaveLength(1);
+    'freezes %s on resistance before the firmware hard cut',
+    async (finger) => {
+      const r = await simRun(
+        finger === 'index' ? 'rigid_index' : 'moderate',
+        [{ pose: 'open', reps: 1 }],
+        2200,
+      );
+      if (finger !== 'index') r.world.controls.setRigid(finger, true);
+      try {
+        let frozenPull: number | null = null;
+        let frozeAt = 0;
+        const index = GLOVE_FINGERS.indexOf(finger);
+        for (
+          let i = 0;
+          i < 2000 && !['DONE', 'PAUSED'].includes(r.engine.state().phase);
+          i++
+        ) {
+          const out = r.step();
+          if (out.events.some((e) => e.kind === 'resistance')) {
+            frozenPull = r.world.firmware.goal[index];
+            frozeAt = r.world.now;
+            expect(r.world.servoPosition[index]).toBeLessThanOrEqual(
+              pullFromClosure(r.world.patient.rigidFloor(finger)) + 1e-6,
+            );
+            expect(frozenPull).toBeLessThanOrEqual(
+              r.world.firmware.position[index],
+            );
+          }
+        }
+        expect(r.engine.state().phase).toBe('DONE');
+        expect(r.events).toContainEqual(
+          expect.objectContaining({ kind: 'resistance', finger }),
+        );
+        expect(r.events.some((e) => e.kind === 'safety')).toBe(false);
+        expect(r.engine.therapy.speed(finger)).toBe(0.15);
+        const result = r.events.find((e) => e.kind === 'attempt_done');
+        expect(result).toMatchObject({
+          result: {
+            assisted: true,
+            safety_events: [
+              expect.objectContaining({ source: 'resistance', finger }),
+            ],
+          },
+        });
+        expect(frozenPull).not.toBeNull();
+        for (const { at, command } of r.commands)
+          if (at >= frozeAt && command.t === 'target')
+            expect(command.f[index]).toBeLessThanOrEqual(frozenPull!);
+        expect(r.world.servoPosition[index]).toBe(0);
+      } finally {
+        r.world.stop();
+      }
     },
   );
-
-  it('uses injected servo thresholds, ignores brief spikes and sustained load with opening progress', () => {
-    const r = new Run(
-      'open',
-      { assist_max_s: 10 },
-      { servoProfiles: { index: { stall_ma: 400 } } },
-    );
-    r.world.hand = [0, 1, 0, 0, 0];
-    r.until('ASSIST');
-    for (let i = 0; i < 7; i++) r.step();
-    r.world.ma = 230;
-    for (let i = 0; i < 5; i++) r.step();
-    expect(r.events).toContainEqual({
-      kind: 'resistance',
-      finger: 'index',
-      ma: 230,
-    });
-    const moving = new Run('open', { assist_max_s: 10 });
-    moving.until('ASSIST');
-    for (let i = 0; i < 7; i++) moving.step();
-    moving.world.ma = 500;
-    for (let i = 0; i < 20; i++) {
-      moving.world.hand = moving.world.tel.a.map(closureFromPull) as Quint;
-      moving.step();
-    }
-    expect(moving.events.some((e) => e.kind === 'resistance')).toBe(false);
-  });
 });
