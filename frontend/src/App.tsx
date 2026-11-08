@@ -34,6 +34,12 @@ import {
   PageErrorBoundary,
   ToastProvider,
 } from './design-system';
+import {
+  SessionProgressProvider,
+  useSessionProgress,
+  exerciseProgress,
+  evaluationProgress,
+} from './components/common/SessionProgress';
 import Home from './pages/Home';
 import Setup from './pages/Setup';
 import Calibrate from './pages/Calibrate';
@@ -73,14 +79,14 @@ function Brand() {
   );
 }
 
-function Shell() {
+export function Shell() {
   const location = useLocation(),
     phase = useExerciseView((v) => v.phase),
     stage = useEvaluationView((v) => v.stage);
   const index = useExerciseView((v) => v.index),
-    total = useExerciseView((v) => v.total),
     rep = useExerciseView((v) => v.rep);
   const runtime = useRuntime();
+  const progress = useSessionProgress();
   const evaluation = useEvaluationView();
   const focus =
     (location.pathname === '/exercise' && phase !== 'DONE') ||
@@ -113,10 +119,13 @@ function Shell() {
                 </Button>
                 <span className="app-progress">
                   {location.pathname === '/evaluate'
-                    ? evaluation.finger
-                      ? `${evaluation.finger} · ${evaluation.speed ?? evaluation.stage}`
-                      : `Evaluation · ${evaluation.stage}`
-                    : `Pose ${index + 1} of ${total} · Rep ${rep}`}
+                    ? evaluationProgress(
+                        progress?.fingers ?? [],
+                        evaluation.finger,
+                        evaluation.speed,
+                        evaluation.stage,
+                      )
+                    : exerciseProgress(progress?.plan ?? [], index, rep)}
                 </span>
               </>
             ) : doctor ? (
@@ -142,10 +151,10 @@ function Shell() {
               </>
             )}
             <div className="statuses">
-              <RuntimeStatus />
+              <RuntimeStatus focus={focus} />
               <GloveChip />
               <CameraChip />
-              <RuntimeFallbackControls />
+              <RuntimeFallbackControls live={focus} />
             </div>
             {!focus && !doctor && (
               <div className="app-tools">
@@ -234,7 +243,9 @@ export default function App() {
           <RuntimeProvider>
             <VoiceProvider>
               <BrowserRouter>
-                <Shell />
+                <SessionProgressProvider>
+                  <Shell />
+                </SessionProgressProvider>
               </BrowserRouter>
             </VoiceProvider>
           </RuntimeProvider>

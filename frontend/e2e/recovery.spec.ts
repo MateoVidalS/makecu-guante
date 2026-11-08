@@ -17,7 +17,11 @@ test('focus-shell recovery readies each simulator and simple voice within five s
       .getByRole('button', { name: 'Start practice', exact: true })
       .click();
     await expect(page.locator('.focus')).toBeVisible();
-    await page.getByText('Demo tools', { exact: true }).click();
+    await page.locator('.runtime-fallback').evaluate((menu) => {
+      // Expose simulator fault injection only inside this test.
+      (menu as HTMLElement).hidden = false;
+      menu.querySelector('summary')!.click();
+    });
     const started = Date.now();
     await page
       .getByRole('button', { name: `Restart simulated ${source}`, exact: true })
@@ -41,7 +45,11 @@ test('focus-shell recovery readies each simulator and simple voice within five s
         () => (window as unknown as { __recoveryPage: string }).__recoveryPage,
       ),
     ).toBe('same-document');
-    await page.getByText('Demo tools', { exact: true }).click();
+    await page.locator('.runtime-fallback').evaluate((menu) => {
+      // Expose simulator fault injection only inside this test.
+      (menu as HTMLElement).hidden = false;
+      menu.querySelector('summary')!.click();
+    });
     await page
       .getByRole('button', { name: 'Practice again', exact: true })
       .click();
@@ -52,7 +60,11 @@ test('focus-shell recovery readies each simulator and simple voice within five s
   await page.getByText('Coach controls', { exact: true }).click();
   await page.getByLabel('Voice mode').selectOption('off');
   await page.getByText('Coach controls', { exact: true }).click();
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   const started = Date.now();
   await page
     .getByRole('button', { name: 'Use simple voice', exact: true })
@@ -65,7 +77,7 @@ test('focus-shell recovery readies each simulator and simple voice within five s
   await expect(page.locator('.focus')).toBeVisible();
   await expect(
     page.locator('.coach-compact').getByRole('switch', { name: 'Microphone' }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   await testInfo.attach('recovery-wall-time-ms.json', {
     body: JSON.stringify(timings),
     contentType: 'application/json',
@@ -83,7 +95,11 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
     .getByRole('button', { name: 'Start practice', exact: true })
     .click();
   const safety = page.locator('#safety-banner-slot [role=alert]');
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   await page
     .getByRole('button', { name: 'Press simulated STOP', exact: true })
     .click();
@@ -91,14 +107,26 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
   await expect(
     safety.getByRole('button', { name: 'Resume', exact: true }),
   ).toBeFocused();
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   await page
     .getByRole('button', { name: 'Release simulated STOP', exact: true })
     .click();
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   await safety.getByRole('button', { name: 'Resume', exact: true }).click();
   await expect(safety).not.toBeVisible();
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   await page
     .getByRole('button', { name: 'Unplug simulated glove', exact: true })
     .click();
@@ -106,14 +134,22 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
   await expect(
     safety.getByRole('button', { name: 'Resume', exact: true }),
   ).toBeFocused();
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   await page
     .getByRole('button', { name: 'Use simulated glove', exact: true })
     .click();
   await expect(
     page.getByRole('heading', { name: 'Session complete', exact: true }),
   ).toBeVisible();
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   await page
     .getByRole('button', { name: 'Practice again', exact: true })
     .click();
@@ -129,7 +165,11 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
       .locator('.phase-ring')
       .getByText('The glove is helping', { exact: true }),
   ).toBeVisible({ timeout: 20_000 });
-  await page.getByText('Demo tools', { exact: true }).click();
+  await page.locator('.runtime-fallback').evaluate((menu) => {
+    // Expose simulator fault injection only inside this test.
+    (menu as HTMLElement).hidden = false;
+    menu.querySelector('summary')!.click();
+  });
   await page
     .getByRole('button', {
       name: 'Hide simulated hand for 3 seconds',

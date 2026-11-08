@@ -9,6 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   // Leave CPU headroom for concurrent 3D scenes and wall-time recovery checks.
   workers: Number(process.env.REHAB_E2E_WORKERS ?? 3),
+  retries: Number(process.env.REHAB_E2E_RETRIES ?? 0),
   use: {
     baseURL,
     trace: 'retain-on-failure',
@@ -37,6 +38,7 @@ export default defineConfig({
         : 'make -C .. demo-seed && make -C .. dev-sim',
     env: {
       REHAB_FRONTEND_PORT: frontendPort,
+      REHAB_VITE_CACHE_DIR: join(tmpdir(), `rehab-vite-e2e-${process.pid}`),
       REHAB_PORT: apiPort,
       REHAB_DB_PATH: join(tmpdir(), `rehab-e2e-${process.pid}.db`),
       GEMINI_API_KEY: '',

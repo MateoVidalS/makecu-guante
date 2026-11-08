@@ -305,3 +305,19 @@ main {
     overflow-x: auto;
   }
 }
+
+/* Live content shares the remaining height with the full safety banner. */
+.shell--focus:has(.exercise-live) main {
+  max-width: none;
+  padding: var(--space-16) var(--space-24);
+}
+.shell--focus .runtime-fallback[hidden] {
+  display: none;
+}
+.shell--focus #safety-banner-slot .ds-banner {
+  padding-block: var(--space-8);
+}
+.shell--focus #safety-banner-slot details[open] {
+  max-height: calc(var(--control-lg) * 2);
+  overflow: auto;
+}

@@ -138,6 +138,38 @@ describe('live stage', () => {
     // The old picture-in-picture camera is gone from the side column.
     expect(document.querySelector('.live-details .camera-overlay')).toBeNull();
   });
+  it('keeps movement controls visible but unavailable while safety owns recovery', async () => {
+    const slot = document.createElement('div');
+    slot.id = 'safety-banner-slot';
+    document.body.appendChild(slot);
+    const runtime = new ScriptedRuntime({ persist: false });
+    await runtime.exercise.start(
+      [{ pose: 'full_fist', reps: 1 }],
+      DEFAULT_EXERCISE_SETTINGS,
+    );
+    runtime.exercise.pause();
+    runtime.dispose();
+    mount(<Exercise />, runtime);
+    const resume = screen.getByRole('button', { name: 'Resume' });
+    const skip = screen.getByRole('button', { name: 'Skip pose' });
+    try {
+      expect(resume).toBeEnabled();
+      const alert = document.createElement('div');
+      alert.setAttribute('role', 'alert');
+      act(() => slot.appendChild(alert));
+      await waitFor(() => expect(resume).toBeDisabled());
+      expect(resume).toBeVisible();
+      expect(skip).toBeVisible();
+      expect(skip).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Brake' })).toBeEnabled();
+      act(() => slot.replaceChildren());
+      await waitFor(() => expect(resume).toBeEnabled());
+      expect(skip).toBeEnabled();
+    } finally {
+      cleanup();
+      slot.remove();
+    }
+  });
   it.each(['throws', 'rejects'] as const)(
     'releases and pauses when the Brake audit %s',
     async (failure) => {

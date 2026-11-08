@@ -7,7 +7,6 @@ import {
   PageHeader,
   Pill,
   Switch,
-  VisuallyHidden,
 } from '../../design-system';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -47,6 +46,10 @@ import {
 } from '../../components/common/practice';
 import './exercise.css';
 import { CoachDecisions } from './CoachDecisions';
+import { useProgressPlan } from '../../components/common/SessionProgress';
+import { useSafetyBannerVisible } from '../../components/common/safetyPresence';
+import { CalibrationIssueBanner } from '../../components/calibration';
+import { useCalibrationStatus } from '../../runtime/calibrationValidation';
 import type { Runtime } from '../../contracts/runtime';
 import type { LiveTherapyState } from '../../contracts/therapist';
 import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
@@ -146,49 +149,6 @@ const Hand = memo(function Hand() {
     </div>
   );
 });
-const CoachArea = memo(function CoachArea() {
-  const voice = useVoice();
-  return (
-    <>
-      <div className="coach-compact">
-        <p className="coach-caption">
-          {voice.lastCoachLine ??
-            (voice.mode === 'off' ? 'Voice off' : 'Your coach is here.')}
-        </p>
-        <div className="actions coach-quick-controls">
-          {voice.mode === 'live' && (
-            <Switch
-              label="Microphone"
-              checked={voice.mode === 'live' && !voice.muted}
-              disabled={voice.mode !== 'live'}
-              onCheckedChange={(on) => voice.setMuted(!on)}
-            />
-          )}
-          <details
-            data-safety-popover
-            data-voice-mode={voice.mode}
-            onToggle={(event) => {
-              if (document.querySelector('#safety-banner-slot [role="alert"]'))
-                event.currentTarget.open = false;
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                e.currentTarget.open = false;
-                e.currentTarget.querySelector('summary')?.focus();
-              }
-            }}
-          >
-            <summary>Coach controls</summary>
-            <div className="coach-popover">
-              <CoachPanel />
-            </div>
-          </details>
-        </div>
-      </div>
-    </>
-  );
-});
 const CAMERA_KEY = 'rehab-hub.exercise.camera';
 function readCameraPreference() {
   try {
@@ -213,14 +173,12 @@ export function LiveStage() {
       <section className="live-panel" aria-label="Target and your hand">
         <header className="live-panel__head">
           <h2 className="live-panel__title">Target &amp; your hand</h2>
-          {!camera && (
-            <Switch
-              className="live-camera-toggle"
-              label="Show camera"
-              checked={camera}
-              onCheckedChange={toggle}
-            />
-          )}
+          <Switch
+            className="live-camera-toggle"
+            label="Show camera"
+            checked={camera}
+            onCheckedChange={toggle}
+          />
         </header>
         <Hand />
       </section>
@@ -228,12 +186,6 @@ export function LiveStage() {
         <section className="live-panel live-panel--camera" aria-label="Camera">
           <header className="live-panel__head">
             <h2 className="live-panel__title">Camera</h2>
-            <Switch
-              className="live-camera-toggle"
-              label={<VisuallyHidden>Show camera</VisuallyHidden>}
-              checked={camera}
-              onCheckedChange={toggle}
-            />
           </header>
           <div className="live-panel__body live-panel__body--camera">
             <CameraOverlay bare mirrored />
@@ -243,7 +195,8 @@ export function LiveStage() {
     </div>
   );
 }
-function LiveDetails() {
+function LiveDetails({ onBrake }: { onBrake: () => void }) {
+  const runtime = useRuntime();
   const view = useExerciseView();
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
   return (
@@ -263,7 +216,12 @@ function LiveDetails() {
       />
       <GloveMotors />
       <div className="live-tools">
-        <CoachArea />
+        <CoachPanel compact />
+        <CoachDecisions
+          therapy={(runtime as Runtime).therapy}
+          sessionId={view.sessionId}
+          onBrake={onBrake}
+        />
       </div>
     </aside>
   );
@@ -348,6 +306,9 @@ export default function Exercise() {
       () => new URLSearchParams(location.search).get('customize') === '1',
     ),
     [preset, setPreset] = useState(short ? 'short' : 'glides');
+  const safetyVisible = useSafetyBannerVisible();
+  useProgressPlan(plan);
+  const calibrationStatus = useCalibrationStatus();
   const live = phase !== 'DONE';
   const attempts = useSessionAttempts();
   const index = useExerciseView((v) => v.index);
@@ -489,7 +450,8 @@ export default function Exercise() {
               .join(' · ')}
           </p>
         </Card>
-        {!runtime.calibration.current && (
+        <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
+        {calibrationStatus.state === 'missing' && (
           <p>
             Find your comfortable range first.{' '}
             <Link to="/calibrate">Calibrate</Link>
@@ -499,30 +461,46 @@ export default function Exercise() {
           <Link to="/setup">Connect your glove</Link>
         )}
         {error && <p role="alert">{error}</p>}
-        <Button
-          size="lg"
-          variant="primary"
-          disabled={
-            busy ||
-            !runtime.calibration.current ||
-            (settings.assist_enabled && !connected) ||
-            !plan.length ||
-            plan.some(
-              (p) => !Number.isInteger(p.reps) || p.reps < 1 || p.reps > 10,
-            ) ||
-            Object.values(settings).some(
-              (v) => typeof v === 'number' && (!Number.isFinite(v) || v <= 0),
-            )
-          }
-          onClick={() => void start()}
-        >
-          Start practice
-        </Button>
+        <Inline>
+          <Button
+            size="lg"
+            variant="primary"
+            disabled={
+              busy ||
+              calibrationStatus.state !== 'ok' ||
+              (settings.assist_enabled && !connected) ||
+              !plan.length ||
+              plan.some(
+                (p) => !Number.isInteger(p.reps) || p.reps < 1 || p.reps > 10,
+              ) ||
+              Object.values(settings).some(
+                (v) => typeof v === 'number' && (!Number.isFinite(v) || v <= 0),
+              )
+            }
+            aria-describedby={
+              calibrationStatus.state !== 'ok' || !connected
+                ? 'practice-start-hint'
+                : undefined
+            }
+            onClick={() => void start()}
+          >
+            Start practice
+          </Button>
+          {(calibrationStatus.state !== 'ok' || !connected) && (
+            <p id="practice-start-hint" className="muted">
+              {calibrationStatus.issues[0]?.message ??
+                (calibrationStatus.state === 'missing'
+                  ? 'Calibrate your comfortable range first.'
+                  : 'Connect your glove in Setup first.')}
+            </p>
+          )}
+        </Inline>
       </Stack>
     );
   return (
     <section
       className={`exercise-live ${paused ? 'practice-paused' : ''}`}
+      data-phase={phase}
       key={location.key}
     >
       <div className="live-layout">
@@ -539,6 +517,7 @@ export default function Exercise() {
           <Inline justify="center" gap={12} className="practice-actions">
             <Button
               size="lg"
+              disabled={safetyVisible}
               icon={paused ? 'play' : 'pause'}
               variant={paused ? 'primary' : 'secondary'}
               onClick={() =>
@@ -559,6 +538,7 @@ export default function Exercise() {
               size="lg"
               variant="quiet"
               iconAfter="arrow-right"
+              disabled={safetyVisible}
               onClick={runtime.exercise.skip}
             >
               Skip pose
@@ -567,13 +547,8 @@ export default function Exercise() {
           {/* After the actions in DOM (tab order), above them on screen. */}
           <LiveStage />
         </div>
-        <LiveDetails />
+        <LiveDetails onBrake={brake} />
       </div>
-      <CoachDecisions
-        therapy={therapy}
-        sessionId={voiceSessionId}
-        onBrake={brake}
-      />
       <AttemptResultToast />
       {confirm && (
         <ConfirmDialog
