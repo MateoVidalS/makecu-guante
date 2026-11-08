@@ -10,7 +10,7 @@ being made. **No tendons and no glove**: this does not pass any step of
 
 The same as the second bench session (branch `bench/hil-segunda-sesion`), with **all 5
 fingers on Smraza S51**. The diagram is in the report
-[docs/qa/informe-qa-memo.html](../docs/qa/informe-qa-memo.html), section
+[docs/qa/memo-qa-report.html](../docs/qa/memo-qa-report.html), section
 *Armado del banco para retomar* (bench setup to resume from).
 
 | Part | Connection |
