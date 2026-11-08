@@ -272,10 +272,12 @@ describe('scripted runtime', () => {
     expect(runtime.exercise.view()).toEqual(snapshot);
     runtime.exercise.resume();
     expect(runtime.exercise.view().phase).toBe('RELEASE');
-    vi.advanceTimersByTime(4000);
+    // Release (0.5 s) then the default rest before the next pose.
+    const restMs = (DEFAULT_EXERCISE_SETTINGS.rest_s + 1) * 1000;
+    vi.advanceTimersByTime(restMs);
     expect(runtime.exercise.view().index).toBe(1);
     runtime.exercise.skip();
-    vi.advanceTimersByTime(4000);
+    vi.advanceTimersByTime(restMs);
     expect(runtime.exercise.view().index).toBe(2);
     await runtime.exercise.stop();
     expect(runtime.exercise.view().phase).toBe('DONE');

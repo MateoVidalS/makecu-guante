@@ -331,6 +331,11 @@ export default function Exercise() {
   const attempts = useSessionAttempts();
   const index = useExerciseView((v) => v.index);
   const lastResult = useExerciseView((v) => v.lastResult);
+  const restLeft = useExerciseView((v) =>
+    v.phase === 'REST' && v.phaseDuration != null
+      ? Math.max(0, Math.ceil(v.phaseDuration - v.phaseElapsed))
+      : 0,
+  );
   const status = attemptStatus(phase, lastResult, index);
   const next = plan.flatMap((p) =>
     Array.from({ length: Math.min(10, Math.max(0, p.reps)) }, () => p.pose),
@@ -558,6 +563,7 @@ export default function Exercise() {
             {(phase === 'REST' || phase === 'RELEASE') && (
               <p className="pose-next">
                 Next: {next ? POSES[next].name.toLowerCase() : 'session recap'}
+                {phase === 'REST' && restLeft > 0 && ` · in ${restLeft} s`}
               </p>
             )}
           </div>

@@ -104,7 +104,9 @@ test('manual slack/open and camera calibration leads to the default plan (fist, 
     expect(c.f!.every((p) => p <= MAX_ASSIST_PULL)).toBe(true);
     GLOVE_FINGERS.forEach((finger, i) => {
       if (!opensFinger(pose, finger) && pose.closure[finger] !== null)
-        expect(c.f![i]).toBeLessThan(0.15);
+        // A closed finger is only followed (thread slack behind the finger), never
+        // pulled open: its pull stays near the closed target's (0.8 closure = 0.2 pull).
+        expect(c.f![i]).toBeLessThan(0.25);
     });
   }
   expect(completed.firmware.position).toEqual([0, 0, 0, 0, 0]);
