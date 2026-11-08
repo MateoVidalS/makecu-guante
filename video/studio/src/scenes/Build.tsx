@@ -3,15 +3,16 @@ import { useCurrentFrame } from 'remotion';
 import { c, safe } from '../brand/tokens';
 import { Fill, T } from '../components/brand';
 import { BuildAssembly } from '../components/hardware/BuildAssembly';
+import { buildTiming } from '../components/hardware/buildMotion';
 
 const steps = [
   { at: 0, label: 'The wrist module.' },
-  { at: 18, label: 'Five micro servos.' },
-  { at: 108, label: 'A spool on every horn.' },
-  { at: 198, label: 'ESP32 · current sensor · stop button.' },
-  { at: 216, label: 'Power, ground, signal.' },
-  { at: 234, label: 'Lid on.' },
-  { at: 252, label: 'Thin threads over the back of each finger.' },
+  { at: buildTiming.servos, label: 'Five micro servos.' },
+  { at: buildTiming.spools, label: 'A spool on every horn.' },
+  { at: buildTiming.esp32, label: 'ESP32 · current sensor · stop button.' },
+  { at: buildTiming.wiring, label: 'Power, ground, signal.' },
+  { at: buildTiming.lid, label: 'Lid on.' },
+  { at: buildTiming.hand, label: 'Thin threads over the back of each finger.' },
 ];
 
 export const Build: React.FC = () => {
