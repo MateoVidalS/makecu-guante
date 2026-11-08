@@ -445,14 +445,14 @@ class Exercise implements ExerciseEngine {
           this.scheduleAssist(out);
           this.collectBaseline();
           if (this.detectResistance(out)) break;
-          if (
-            this.assistAt !== null &&
-            this.now - this.assistAt >= this.settings.assist_max_s * 1000
-          ) {
-            this.enter('ASSIST_HOLD', out);
-            break;
-          }
         } else if (!this.metrics?.assisted) this.follow(out);
+        if (
+          this.assistAt !== null &&
+          this.now - this.assistAt >= this.settings.assist_max_s * 1000
+        ) {
+          this.enter('ASSIST_HOLD', out);
+          break;
+        }
         this.reportProgress(out);
         if (this.reachedDwell()) {
           this.metrics!.reachedActive = !this.metrics!.assisted;
@@ -882,11 +882,7 @@ class Exercise implements ExerciseEngine {
         t: 'target',
         f: [...this.target],
         // The wire has one speed: take the minimum cap of every moving servo.
-        v: Math.min(
-          this.settings.assist_speed,
-          0.3,
-          ...capped.map((finger) => this.therapy.speed(finger)),
-        ),
+        v: Math.min(0.3, ...capped.map((finger) => this.therapy.speed(finger))),
       });
       this.targetSent = true;
     }

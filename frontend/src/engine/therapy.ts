@@ -139,10 +139,7 @@ export class TherapyController implements TherapyApi {
     );
     for (const finger of GLOVE_FINGERS)
       this.desired.assist_speed[finger] = this.speedCap;
-    this.intensitySpeedCap = Math.min(
-      settings.assist_speed,
-      this.bounds.intensify_speed_max,
-    );
+    this.intensitySpeedCap = this.bounds.intensify_speed_max;
     this.raised.clear();
     this.activeRaised.clear();
     this.beforeIntensity.clear();

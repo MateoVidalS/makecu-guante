@@ -758,11 +758,11 @@ describe('patient-requested intensity and consent boundaries', () => {
     expect(h.commands().every((c) => c.t !== 'limit')).toBe(true);
   });
 
-  it('respects an explicitly lower selected speed even with patient consent', () => {
+  it('allows the approved patient-requested cap independently of baseline gentleness', () => {
     const h = harness({ assist_speed: 0.15 });
-    expect(consent(h, 'faster').result).toBe('clamped');
+    expect(consent(h, 'faster').result).toBe('applied');
     h.until(() => h.engine.state().phase === 'ATTEMPT');
-    expect(h.therapy.current().assist_speed.index).toBe(0.15);
+    expect(h.therapy.current().assist_speed.index).toBe(0.3);
   });
 
   it('reaches the calibrated range only for the consented finger, never for raw target arguments', () => {
@@ -1117,7 +1117,7 @@ it('property: consented intensity remains inside calibration, 0.30/s, hold, shap
       const adjustments = h.therapy.state()!.adjustments;
       expect(
         Math.max(...Object.values(adjustments.assist_speed)),
-      ).toBeLessThanOrEqual(Math.min(cap, 0.3));
+      ).toBeLessThanOrEqual(0.3);
       expect(
         Math.min(...Object.values(adjustments.target_scale)),
       ).toBeGreaterThanOrEqual(0.5);
@@ -1130,7 +1130,7 @@ it('property: consented intensity remains inside calibration, 0.30/s, hold, shap
     for (const command of h.commands()) {
       expect(command.t).not.toBe('limit');
       if (command.t === 'target') {
-        expect(command.v).toBeLessThanOrEqual(Math.min(cap, 0.3));
+        expect(command.v).toBeLessThanOrEqual(0.3);
         expect(command.v).toBeGreaterThan(0);
         for (const [i, position] of command.f.entries()) {
           expect(position).toBeGreaterThanOrEqual(0);

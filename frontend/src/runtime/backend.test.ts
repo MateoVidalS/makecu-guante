@@ -168,6 +168,22 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       [{ pose: 'full_fist', reps: 1 }],
       DEFAULT_EXERCISE_SETTINGS,
     );
+    runtime.therapy.notePatientSpeech('Yes, please.');
+    runtime.therapy.adjust(
+      'intensify',
+      {
+        finger: 'index',
+        kind: 'further',
+        consent: 'accepted_offer',
+        patient_quote: 'Yes, please.',
+      },
+      'coach',
+    );
+    runtime.therapy.adjust(
+      'note_for_therapist',
+      { text: 'Reports tingling in the little finger.' },
+      'coach',
+    );
     for (
       let ms = 0;
       ms < 20_000 && runtime.exercise.view().phase !== 'ASSIST';
@@ -189,7 +205,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     });
     runtime.therapy.adjust(
       'adjust_help',
-      { finger: 'index', direction: 'less', reason: 'Gentler help.' },
+      { finger: 'middle', direction: 'gentler', reason: 'Gentler help.' },
       'coach',
     );
     runtime.therapy.adjust(
@@ -218,6 +234,9 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       feelings: FeelingEntry[];
     }>(`/sessions/${id}`);
     expect(audit.coach_decisions.map((d) => d.tool)).toEqual([
+      'intensify',
+      'note_for_therapist',
+      'intensify',
       'record_feeling',
       'record_feeling',
       'adjust_help',
@@ -227,7 +246,18 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       'get_live_state',
     ]);
     expect(audit.coach_decisions.every((d) => d.session_id === id)).toBe(true);
-    expect(audit.coach_decisions[4]).toMatchObject({
+    expect(audit.coach_decisions[0]).toMatchObject({
+      requested: { patient_quote: 'Yes, please.' },
+    });
+    expect(audit.coach_decisions[1]).toMatchObject({
+      applied: { text: 'Reports tingling in the little finger.' },
+    });
+    expect(audit.coach_decisions[2]).toMatchObject({
+      result: 'undone',
+      source: 'local_rule',
+      applied: { auto_reverted: true },
+    });
+    expect(audit.coach_decisions[7]).toMatchObject({
       source: 'local_rule',
       applied: { safety_source: 'coach_brake' },
     });
