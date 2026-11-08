@@ -1,0 +1,166 @@
+.doctor-chat {
+  --chat-control: calc(var(--space-32) + var(--space-4));
+  --chat-width: calc(var(--content-max) * 0.35);
+  color: var(--text);
+  font-size: var(--small);
+}
+.doctor-chat button {
+  min-height: var(--chat-control);
+  padding: var(--space-4) var(--space-12);
+  border: var(--control-border) solid var(--border-strong);
+  border-radius: var(--radius-input);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.doctor-chat button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+.doctor-chat button:focus-visible,
+.doctor-chat textarea:focus-visible,
+.doctor-chat input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+.doctor-chat-launcher {
+  position: fixed;
+  inset-block-end: var(--space-24);
+  inset-inline-end: var(--space-24);
+  z-index: var(--z-toast);
+  box-shadow: var(--elevation-overlay);
+}
+.doctor-chat-launcher[hidden] {
+  display: none;
+}
+.doctor-chat-panel {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: var(--z-dialog);
+  width: min(100%, var(--chat-width));
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-inline-start: var(--control-border) solid var(--border);
+  box-shadow: var(--elevation-overlay);
+}
+.doctor-chat-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-16);
+  border-block-end: var(--control-border) solid var(--border);
+}
+.doctor-chat-header h2 {
+  margin: 0;
+  font-size: var(--h3);
+}
+.doctor-chat-header p,
+.doctor-chat-status,
+.doctor-chat-role {
+  margin: var(--space-4) 0 0;
+  font-size: var(--caption);
+  color: var(--muted);
+}
+.doctor-chat-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-16);
+}
+.doctor-chat-message {
+  padding: var(--space-12);
+  margin-block-end: var(--space-12);
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+.doctor-chat-message-user {
+  margin-inline-start: var(--space-24);
+  background: var(--accent-soft);
+}
+.doctor-chat-message-model {
+  margin-inline-end: var(--space-24);
+}
+.doctor-chat-message p {
+  margin: var(--space-4) 0 0;
+  white-space: pre-wrap;
+}
+.doctor-chat-suggestions {
+  display: grid;
+  gap: var(--space-8);
+}
+.doctor-chat-suggestions button {
+  text-align: start;
+  font-size: var(--small);
+}
+.doctor-chat-error {
+  margin: 0;
+  padding: var(--space-12) var(--space-16);
+  color: var(--caution-text);
+  background: var(--caution-soft);
+}
+.doctor-chat-composer {
+  display: grid;
+  gap: var(--space-8);
+  padding: var(--space-16);
+  border-block-start: var(--control-border) solid var(--border);
+}
+.doctor-chat-composer > label {
+  font-size: var(--caption);
+}
+.doctor-chat-composer textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  max-height: 30dvh;
+  padding: var(--space-8);
+  border: var(--control-border) solid var(--border-strong);
+  border-radius: var(--radius-input);
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+}
+.doctor-chat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+.doctor-chat button.doctor-chat-send {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+.doctor-chat button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.doctor-chat-read-aloud {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--chat-control);
+}
+.doctor-chat-read-aloud input {
+  accent-color: var(--accent);
+}
+.doctor-chat-highlight {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+/* Media query boundaries cannot reference CSS custom properties. */
+@media (max-width: 40rem) {
+  .doctor-chat-panel {
+    width: 100%;
+  }
+}
+@media print {
+  .doctor-chat.no-print {
+    display: none;
+  }
+}
