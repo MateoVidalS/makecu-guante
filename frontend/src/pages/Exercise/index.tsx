@@ -44,6 +44,7 @@ import { liveFingerState } from './fingerState';
 import { LiveFingerMeters } from './LiveFingerMeters';
 import { GloveMotors } from './GloveMotors';
 import { attemptStatus } from './attemptStatus';
+import { SuccessTick } from './SuccessTick';
 import { SessionRecap, useSessionAttempts } from './SessionRecap';
 import {
   practicePlan,
@@ -331,6 +332,11 @@ export default function Exercise() {
   const attempts = useSessionAttempts();
   const index = useExerciseView((v) => v.index);
   const lastResult = useExerciseView((v) => v.lastResult);
+  const restLeft = useExerciseView((v) =>
+    v.phase === 'REST' && v.phaseDuration != null
+      ? Math.max(0, Math.ceil(v.phaseDuration - v.phaseElapsed))
+      : 0,
+  );
   const status = attemptStatus(phase, lastResult, index);
   const next = plan.flatMap((p) =>
     Array.from({ length: Math.min(10, Math.max(0, p.reps)) }, () => p.pose),
@@ -538,6 +544,7 @@ export default function Exercise() {
     >
       <div className="live-layout">
         <div className="live-hero">
+          <SuccessTick phase={phase} index={index} result={lastResult} />
           <div className="live-heading">
             <h1
               className={`instruction${status ? ` instruction--${status.tone}` : ''}`}
@@ -558,6 +565,7 @@ export default function Exercise() {
             {(phase === 'REST' || phase === 'RELEASE') && (
               <p className="pose-next">
                 Next: {next ? POSES[next].name.toLowerCase() : 'session recap'}
+                {phase === 'REST' && restLeft > 0 && ` · in ${restLeft} s`}
               </p>
             )}
           </div>

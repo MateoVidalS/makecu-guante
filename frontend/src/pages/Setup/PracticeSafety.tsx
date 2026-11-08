@@ -14,6 +14,7 @@ import {
   useShortPractice,
 } from '../../components/common/practice';
 import { useRuntime } from '../../runtime';
+import { useOneMotorAtATime } from '../../runtime/power';
 import {
   calibrationReadiness,
   useCalibrationStatus,
@@ -71,6 +72,7 @@ export function PracticeSafety({
   const calibrationStatus = useCalibrationStatus();
   const readiness = calibrationReadiness(calibrationStatus);
   const [short] = useShortPractice();
+  const [oneMotor, setOneMotor] = useOneMotorAtATime();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const blocker =
@@ -172,6 +174,13 @@ export function PracticeSafety({
           onChange={(e) =>
             updatePracticePreflight({ skinNormal: e.target.checked })
           }
+        />
+        <Checkbox
+          label="One motor at a time (low-power supply)"
+          hint="For a small bench supply: the glove helps one finger at a time, so help takes longer. Turn off with a 5 V / 2.5 A supply."
+          checked={oneMotor}
+          disabled={busy}
+          onChange={(e) => setOneMotor(e.target.checked)}
         />
         <Button
           variant="primary"
