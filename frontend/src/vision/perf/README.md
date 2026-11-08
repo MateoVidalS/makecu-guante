@@ -28,6 +28,7 @@ REHAB_BENCH_QUICK=1 pnpm --dir frontend bench:vision   # ~1 min smoke run
 | `accuracy.test.ts`                                                 | Static accuracy: bias, jitter, p95 error per pose/finger/view/patient; size, tilt, depth-flattening, linearity, calibration success                                                                     |
 | `acknowledgment.test.ts`                                           | Hit rate and latency for every pose × view × hand × patient; psychometric curve; false acknowledgments; confusion matrix; known gaps                                                                    |
 | `timing.test.ts`                                                   | Tracking lag and settling, frame rate (30/20/15 fps), detection dropouts, occlusion, per-frame CPU cost                                                                                                 |
+| `calibrationCapture.test.ts`                                       | Calibration capture as the Calibrate page takes it: still hands (with dropouts) accepted, moving hands refused                                                                                          |
 | `mediapipe-bench.html`, `mediapipeBench.ts`, `mediapipe-bench.mjs` | Real-MediaPipe bench page and its Playwright driver (starts its own Vite server on a free port)                                                                                                         |
 | `mediapipe-bench.result.json`                                      | Last full bench run (evidence)                                                                                                                                                                          |
 
@@ -101,6 +102,26 @@ the left thumb calibrates normally and the (now shadowed) right thumb fails the 
 way. Since the thumb IP is measured as a bend magnitude, a reversed IP no longer turns
 a bent thumb negative, but a thumb in shadow is still the least reliable reading.
 
+### Calibration capture: the page's hold-still rule
+
+The Calibrate page used to refuse a capture on any missed frame and on any finger
+varying more than 12° peak to peak, a stricter rule than `captureStats`. At 2× noise
+it accepted almost no still hand. Both now use one rule, `captureStats`
+(`CAPTURE_RULE` in `vision/calibration.ts`):
+
+- detection gaps shorter than 200 ms are tolerated (the same tolerance as the reach dwell;
+  a longer gap resets the filters), with at least 10 measured frames per second;
+- per-finger std ≤ 8° (noise; unchanged);
+- the hand must end where it started: per finger, the medians of the first and last
+  third of the hold may differ by at most 14° (thumb 8°; pinch ratio 0.08).
+
+`calibrationCapture.test.ts` (10 seeds): still hands accepted 100% at 1× and 100% / 70–100%
+(full range / flexor tone) at 2× with 0–10% dropouts, and 0–10% at 3.5×. Whole-hand or
+one-long-finger movement during the hold (1× and 2× pooled) is accepted 18–25% of the time
+at 0.1 of the range, ≤ 3% at 0.15 and never at 0.2 or more.
+Known gap (`it.fails`): the flexor-tone thumb (45° range) drifting by 0.2 of its range
+(9°) is accepted about 40% of the time, because that is close to the open-hand thumb noise at 2×.
+
 The sections below are the original #62 measurements that motivated the fixes.
 
 ## Baseline results (#62, `bench` noise unless stated)
@@ -149,7 +170,9 @@ The sections below are the original #62 measurements that motivated the fixes.
 7. **Shape is not checked** (documented in `06-session.md §2`): a hook is
    accepted as a tabletop and any fuller pose satisfies a lighter one.
 8. **Calibration capture** succeeds at 1× and 2× noise (≥ 90%) and refuses
-   at 3.5× ("Too much movement"), which is the intended behavior.
+   at 3.5× ("Too much movement"), which is the intended behavior. (This measured
+   `captureStats` only; the page's own stricter rule was aligned with it later, see
+   "Calibration capture: the page's hold-still rule".)
 
 Re-measured after V1 (#61, palm-plane MCP in the upright view): findings 1–5
 are unchanged (V1 keeps `Math.abs`, so near-zero angles still rectify), and two

@@ -380,33 +380,87 @@ describe('frame processing and calibration capture', () => {
       expect(() => captureStats(moving, 2)).toThrow('movement');
     }
   });
-  it('rejects short, sparse, missing, non-finite and out-of-order windows', () => {
+  it('rejects short, sparse, lost, non-finite and out-of-order windows', () => {
     expect(() => captureStats(held().slice(0, 20), 2)).toThrow();
     expect(() => captureStats([], 2)).toThrow();
     expect(() => captureStats(held(), 0)).toThrow();
     for (const corrupt of [
-      (f: VisionFrame[]) => {
-        f[30].detected = false;
-      },
-      (f: VisionFrame[]) => {
-        f[30].pinch = NaN;
-      },
-      (f: VisionFrame[]) => {
-        f[30].confidence = NaN;
-      },
       (f: VisionFrame[]) => {
         f[30].handedness = 'left';
       },
       (f: VisionFrame[]) => {
         f[30].t = f[29].t;
       },
+      // A 200 ms hole: the filters reset and movement could go unseen.
       (f: VisionFrame[]) => {
-        f.splice(20, 4);
+        f.splice(20, 5);
+      },
+      (f: VisionFrame[]) => {
+        for (let i = 20; i < 26; i++) f[i].detected = false;
+      },
+      (f: VisionFrame[]) => {
+        for (let i = 20; i < 26; i++) f[i].pinch = NaN;
+      },
+      (f: VisionFrame[]) => {
+        for (let i = 20; i < 26; i++) f[i].confidence = NaN;
+      },
+      // Too few measurements, even with short gaps.
+      (f: VisionFrame[]) => {
+        f.forEach((frame, i) => (frame.detected = i % 4 === 0));
       },
     ]) {
       const frames = held();
       corrupt(frames);
       expect(() => captureStats(frames, 2)).toThrow();
     }
+  });
+  it('tolerates short detection gaps and never measures a missed or non-finite frame', () => {
+    const expected = captureStats(held(), 2);
+    for (const corrupt of [
+      (f: VisionFrame[]) => {
+        f[30].detected = false;
+        f[30].rawFlexSum = null;
+      },
+      // Four missed 30 Hz frames: a 167 ms gap.
+      (f: VisionFrame[]) => {
+        for (let i = 20; i < 24; i++) f[i].detected = false;
+      },
+      (f: VisionFrame[]) => {
+        f.splice(20, 4);
+      },
+      (f: VisionFrame[]) => {
+        f[30].pinch = NaN;
+        f[31].confidence = NaN;
+        f[32].rawFlexSum!.thumb = Infinity;
+      },
+    ]) {
+      const frames = held();
+      corrupt(frames);
+      const result = captureStats(frames, 2);
+      expect(result.rawFlexSum).toEqual(expected.rawFlexSum);
+      expect(result.pinch).toBeCloseTo(expected.pinch);
+    }
+  });
+  it('refuses a drift or a finger closing during the hold, not a brief twitch', () => {
+    const shifted = (finger: 'thumb' | 'index', by: number) => {
+      const frames = held();
+      frames.forEach((f, i) => {
+        if (i >= 40) f.rawFlexSum![finger] += by;
+      });
+      return frames;
+    };
+    expect(() => captureStats(shifted('index', 16), 2)).toThrow('movement');
+    expect(() => captureStats(shifted('thumb', 10), 2)).toThrow('movement');
+    // Within the limit: accepted, and the median stays on the held values.
+    expect(captureStats(shifted('index', 12), 2).rawFlexSum.index).toBe(52);
+    const drift = held();
+    drift.forEach((f, i) => (f.rawFlexSum!.middle += (i / 60) * 24));
+    expect(() => captureStats(drift, 2)).toThrow('movement');
+    const pinching = held();
+    pinching.forEach((f, i) => (f.pinch! -= i >= 40 ? 0.1 : 0));
+    expect(() => captureStats(pinching, 2)).toThrow('movement');
+    const twitch = held();
+    for (let i = 25; i < 32; i++) twitch[i].rawFlexSum!.ring += 20;
+    expect(captureStats(twitch, 2).rawFlexSum.ring).toBe(51);
   });
 });

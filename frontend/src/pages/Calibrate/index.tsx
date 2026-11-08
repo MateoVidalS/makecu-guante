@@ -35,7 +35,11 @@ import {
   type CameraCalibration,
   type ServoCalibration,
 } from '../../contracts/calibration';
-import type { VisionFrame } from '../../contracts/vision';
+import {
+  VISION_LOW_CONFIDENCE,
+  type VisionFrame,
+} from '../../contracts/vision';
+import { CAPTURE_RULE } from '../../vision/calibration';
 import { Section, Stepper, title } from '../../components/common';
 import { PoseIllustration } from './PoseIllustration';
 import { RangeBar } from './RangeBar';
@@ -312,9 +316,15 @@ export default function Calibrate() {
     let resistanceSince: number | null = null;
     let previousRaw = vision.latest?.rawFlexSum ?? null;
     let resistanceCheckAt = started;
+    // Short detection gaps are tolerated (as by the engine's reach dwell); the
+    // capture rule leaves missed frames out. A longer loss cancels and releases.
+    let handSeen = true;
+    let lastSeenAt = started;
     const unsubscribe = vision.source.onFrame((frame) => {
       lastFrameAt = performance.now();
-      if (!frame.detected || frame.confidence < 0.6) {
+      handSeen = frame.detected && frame.confidence >= VISION_LOW_CONFIDENCE;
+      if (handSeen) lastSeenAt = frame.t;
+      else if (frame.t - lastSeenAt >= CAPTURE_RULE.maxGapMs) {
         cancel.current();
         setError('Keep your hand in view. Try again.');
         return;
@@ -345,8 +355,9 @@ export default function Calibrate() {
         setError('Glove stopped. Check the glove before continuing.');
         return;
       }
-      // Stop a loaded stretch that is no longer opening the fingers.
-      if (opening && reading && now - resistanceCheckAt >= 300) {
+      // Stop a loaded stretch that is no longer opening the fingers. Progress
+      // needs the hand in view: during a short gap the check waits.
+      if (opening && reading && handSeen && now - resistanceCheckAt >= 300) {
         const raw = vision.latest?.rawFlexSum;
         const stalled =
           raw &&
@@ -370,7 +381,8 @@ export default function Calibrate() {
       }
       const position = reading?.a;
       if (opening && holdStarted === null && position) {
-        if (opening.advance(now, position))
+        // Never start another finger while the hand is not seen.
+        if (handSeen && opening.advance(now, position))
           client.target([...opening.target], 0.3);
         if (opening.settled(position)) holdStarted = now;
       }
@@ -385,7 +397,7 @@ export default function Calibrate() {
       cleanup();
       try {
         const value = stableCapture(frames);
-        if (frames.some((f) => f.handedness !== draft.hand))
+        if (frames.some((f) => f.detected && f.handedness !== draft.hand))
           throw new Error('Show the selected hand and try again.');
         if (
           kind === 'open' &&

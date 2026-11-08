@@ -1,4 +1,4 @@
-import { captureStats } from '../../vision/calibration';
+import { CaptureError, captureStats } from '../../vision/calibration';
 import type { CalibrationIn } from '../../contracts/api';
 import type { FingerId, VisionFrame } from '../../contracts/vision';
 import {
@@ -123,32 +123,21 @@ export function validRange(range: Partial<ServoCalibration> | undefined) {
     Math.abs(range.max_deg! - range.min_deg!) >= 20
   );
 }
+/**
+ * The page's 2 s capture: the shared hold-still rule (vision/calibration.ts), with the
+ * page's wording. Short detection gaps are tolerated; movement and noise are refused.
+ */
 export function stableCapture(frames: VisionFrame[]): Capture {
-  const valid = frames.filter(
-    (f) => f.detected && f.confidence >= 0.6 && f.rawFlexSum && f.pinch != null,
-  );
-  if (
-    valid.length < 20 ||
-    valid.length !== frames.length ||
-    valid.at(-1)!.t - valid[0].t < 1800
-  )
-    throw new Error('Keep your hand in view. Try again.');
-  for (const finger of fingers) {
-    const values = valid.map((f) => f.rawFlexSum![finger]);
-    if (
-      values.some((v) => !Number.isFinite(v)) ||
-      Math.max(...values) - Math.min(...values) > 12
-    )
-      throw new Error("Too much movement — let's try again.");
+  try {
+    const measured = captureStats(frames, 2);
+    return { raw: measured.rawFlexSum, pinch: measured.pinch };
+  } catch (error) {
+    throw new Error(
+      error instanceof CaptureError && error.reason === 'movement'
+        ? "Too much movement — let's try again."
+        : 'Keep your hand in view. Try again.',
+    );
   }
-  const pinches = valid.map((f) => f.pinch!);
-  if (
-    pinches.some((v) => !Number.isFinite(v) || v < 0) ||
-    Math.max(...pinches) - Math.min(...pinches) > 0.08
-  )
-    throw new Error("Too much movement — let's try again.");
-  const measured = captureStats(frames, 2);
-  return { raw: measured.rawFlexSum, pinch: measured.pinch };
 }
 
 /** Saved values are a complete starting point for review or a focused redo. */

@@ -44,19 +44,53 @@ describe('safe calibration validation', () => {
       pinch: expect.closeTo(0.4),
     });
   });
-  it('rejects brief, missing, moving and low-confidence captures', () => {
+  it('rejects brief, lost, moving and low-confidence captures', () => {
     expect(() => stableCapture(frames().slice(0, 20))).toThrow(/view/);
+    const lost = (patch: Partial<VisionFrame>) => {
+      const values = frames();
+      // Seven 30 Hz frames: a 233 ms loss.
+      for (let i = 27; i < 34; i++) values[i] = { ...values[i], ...patch };
+      return values;
+    };
     for (const patch of [
       { detected: false },
       { confidence: 0.3 },
       { rawFlexSum: null },
-      { rawFlexSum: { thumb: 60, index: 60, middle: 60, ring: 60, pinky: 60 } },
-      { pinch: 0.6 },
-    ]) {
-      const values = frames();
-      values[30] = { ...values[30], ...patch };
-      expect(() => stableCapture(values)).toThrow();
-    }
+    ])
+      expect(() => stableCapture(lost(patch))).toThrow(/view/);
+    const moving = (patch: (f: VisionFrame) => Partial<VisionFrame>) =>
+      frames().map((f, i) => (i >= 40 ? { ...f, ...patch(f) } : f));
+    for (const values of [
+      moving(() => ({
+        rawFlexSum: { thumb: 60, index: 60, middle: 60, ring: 60, pinky: 60 },
+      })),
+      moving((f) => ({ rawFlexSum: { ...f.rawFlexSum!, index: 56 } })),
+      moving((f) => ({ rawFlexSum: { ...f.rawFlexSum!, thumb: 50 } })),
+      moving(() => ({ pinch: 0.5 })),
+    ])
+      expect(() => stableCapture(values)).toThrow(/movement/);
+    const values = frames();
+    values[30] = { ...values[30], handedness: 'left' };
+    expect(() => stableCapture(values)).toThrow(/view/);
+  });
+  it('accepts a still hand through a short detection gap and one noisy frame', () => {
+    const values = frames();
+    for (let i = 20; i < 24; i++)
+      values[i] = {
+        ...values[i],
+        detected: false,
+        confidence: 0,
+        rawFlexSum: null,
+      };
+    values[30] = {
+      ...values[30],
+      rawFlexSum: { thumb: 60, index: 60, middle: 60, ring: 60, pinky: 60 },
+      pinch: 0.6,
+    };
+    expect(stableCapture(values)).toEqual({
+      raw: { thumb: 40, index: 40, middle: 40, ring: 40, pinky: 40 },
+      pinch: expect.closeTo(0.4),
+    });
   });
 });
 

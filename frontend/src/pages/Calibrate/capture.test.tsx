@@ -244,3 +244,59 @@ it('shows Slack then Open, warns about hyperextension, and releases before calib
     'calib',
   ]);
 });
+/** Like advance, with the frame at each 50 ms tick chosen by elapsed time. */
+function advanceWith(
+  ms: number,
+  at: (elapsed: number) => Partial<VisionFrame>,
+) {
+  for (let elapsed = 0; elapsed < ms; elapsed += 50)
+    act(() => {
+      vi.advanceTimersByTime(50);
+      frameListener?.({ ...frame, ...at(elapsed), t: performance.now() });
+    });
+}
+const alertText = () => screen.queryByRole('alert')?.textContent ?? '';
+const missed = {
+  detected: false,
+  confidence: 0,
+  handedness: null,
+  rawFlexSum: null,
+  pinch: null,
+} as const;
+it('keeps a capture through a short detection gap', () => {
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Capture my fist' }));
+  advanceWith(2300, (t) => (t >= 900 && t < 1000 ? missed : {}));
+  expect(alertText()).toBe('');
+  expect(
+    screen.getByRole('button', { name: 'Glove opens the hand' }),
+  ).toBeEnabled();
+});
+it('cancels and releases when the hand is lost for 200 ms', () => {
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Capture my fist' }));
+  advanceWith(2300, (t) => (t >= 900 && t < 1200 ? missed : {}));
+  expect(screen.getByRole('alert')).toHaveTextContent('Keep your hand in view');
+  expect(calls.at(-1)).toBe('release');
+});
+it('refuses a hand that keeps closing during the hold', () => {
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Capture my fist' }));
+  advanceWith(2300, (t) => ({
+    rawFlexSum: { thumb: 0, index: t / 50, middle: 0, ring: 0, pinky: 0 },
+  }));
+  expect(screen.getByRole('alert')).toHaveTextContent('Too much movement');
+});
+it('starts no finger while the hand is not seen during the glove opening', () => {
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Glove opens the hand' }));
+  advance(200);
+  const before = target.mock.calls.length;
+  advanceWith(150, () => missed);
+  expect(target).toHaveBeenCalledTimes(before);
+  expect(alertText()).toBe('');
+  advance(3300);
+  expect(target).toHaveBeenCalledTimes(5);
+  expect(calls.at(-1)).toBe('release');
+  expect(alertText()).toBe('');
+});
