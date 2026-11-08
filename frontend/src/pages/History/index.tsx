@@ -22,6 +22,11 @@ import {
   handFromOverview,
   percentage,
 } from '../../components/charts';
+import {
+  directionLabel,
+  directionOf,
+  LEGACY_GLOVE,
+} from '../../components/charts/direction';
 import { firstAndLast, useAllSessions } from './data';
 import './history.css';
 
@@ -32,7 +37,7 @@ export default function History() {
     tabs.find((t) => t.toLowerCase() === params.get('tab')) ?? 'Overview';
   const overview = useHistoryOverview(),
     sessions = useAllSessions();
-  const allRom = useHistoryRom(),
+  const allRom = useHistoryRom({ pose: 'open' }),
     assist = useHistoryAssist();
   const demoSessions = !!sessions.data?.some((s) => s.is_demo);
   return (
@@ -41,6 +46,10 @@ export default function History() {
         title="History"
         lead="What you did on your own over time, estimated from the camera."
       />
+      <p className="footnote">
+        Opening-assist glove · {LEGACY_GLOVE} records are marked and kept
+        separate.
+      </p>
       <Tabs
         label="History views"
         value={selected}
@@ -65,7 +74,7 @@ export default function History() {
               </KpiRow>
               <DataSection
                 title="First and latest sessions"
-                description="How far each glove finger closed on its own: your first session next to the latest."
+                description="Your opening range, comparing sessions with the same glove direction."
                 demo={demoSessions}
                 demoNote="Demo data is drawn hollow"
               >
@@ -78,7 +87,11 @@ export default function History() {
                   <>
                     <HandRangeMap
                       loading={sessions.isPending}
-                      {...handFromOverview(overview.data, sessions.data)}
+                      {...handFromOverview(
+                        overview.data,
+                        sessions.data,
+                        allRom.data,
+                      )}
                       {...firstAndLast(sessions.data)}
                     />
                     <div className="viz-grid-2">
@@ -171,7 +184,10 @@ export function EvaluationList() {
               </thead>
               <tbody>
                 {evaluations.data.map((e) => (
-                  <tr key={e.id}>
+                  <tr
+                    key={e.id}
+                    data-legacy={directionOf(e) === 'close' || undefined}
+                  >
                     <th scope="row">
                       <Link to={`/history/evaluations/${e.id}`}>
                         {formatDate(e.started_at)}
@@ -183,7 +199,8 @@ export function EvaluationList() {
                         : 'Complete'}
                     </td>
                     <td className="muted">
-                      {e.is_demo ? 'Demo data' : 'Recorded'}
+                      {e.is_demo ? 'Demo data' : 'Recorded'} ·{' '}
+                      {directionLabel(e)}
                     </td>
                   </tr>
                 ))}
@@ -206,7 +223,7 @@ function SessionRows({ sessions }: { sessions: Session[] }) {
   return (
     <tbody>
       {sessions.map((s, i) => (
-        <tr key={s.id}>
+        <tr key={s.id} data-legacy={directionOf(s) === 'close' || undefined}>
           <th scope="row">
             <Link to={`/history/sessions/${s.id}`}>
               {formatDate(s.started_at)}
@@ -228,7 +245,9 @@ function SessionRows({ sessions }: { sessions: Session[] }) {
                   )
                 : '—'}
           </td>
-          <td className="muted">{s.is_demo ? 'Demo data' : 'Recorded'}</td>
+          <td className="muted">
+            {s.is_demo ? 'Demo data' : 'Recorded'} · {directionLabel(s)}
+          </td>
         </tr>
       ))}
     </tbody>

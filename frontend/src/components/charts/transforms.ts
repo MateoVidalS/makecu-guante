@@ -4,6 +4,8 @@ import type {
   RomPoint,
 } from '../../contracts/api';
 import type { AttemptTrace, ExercisePhase } from '../../contracts/engine';
+import type { AssistDirection } from '../../contracts/calibration';
+import { directionOf } from './direction';
 import type { EvalSweep } from '../../contracts/evaluation';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
 
@@ -11,6 +13,7 @@ export interface TimelineEntry {
   id: number;
   started_at: string;
   is_demo: boolean;
+  assist_direction?: AssistDirection;
 }
 export interface ChartRow {
   x: number;
@@ -18,11 +21,35 @@ export interface ChartRow {
   demo: boolean;
   [key: string]: number | string | boolean | null | undefined;
 }
+/** Distinct keys keep tooltip values and line paths separate across glove directions. */
+export function splitDirectionRows(
+  rows: ChartRow[],
+  keys: string[],
+): ChartRow[] {
+  return rows.map((row) => ({
+    ...row,
+    ...Object.fromEntries(
+      keys.flatMap((key) =>
+        (['open', 'close'] as const).map((direction) => [
+          `${key}_${direction}`,
+          row.direction === direction ? row[key] : null,
+        ]),
+      ),
+    ),
+  }));
+}
+
 const percent = (value: number | null | undefined) =>
   value == null ? null : value * 100;
 
 // Align every finger to the same recorded sessions so missing measurements stay gaps.
-function align<T extends { started_at: string; is_demo: boolean }>(
+function align<
+  T extends {
+    started_at: string;
+    is_demo: boolean;
+    assist_direction?: AssistDirection;
+  },
+>(
   points: T[],
   timeline: TimelineEntry[],
   id: (point: T) => number,
@@ -34,6 +61,7 @@ function align<T extends { started_at: string; is_demo: boolean }>(
       id: id(p),
       started_at: p.started_at,
       is_demo: p.is_demo,
+      assist_direction: p.assist_direction,
     }),
   );
   const byId = new Map(points.map((p) => [id(p), p]));
@@ -46,6 +74,7 @@ function align<T extends { started_at: string; is_demo: boolean }>(
       x: Date.parse(s.started_at),
       date: s.started_at,
       demo: s.is_demo,
+      direction: directionOf(byId.get(s.id) ?? s),
       ...values(byId.get(s.id)),
     }));
 }
@@ -61,6 +90,7 @@ export function toFingerSeries(
         id: p.session_id,
         started_at: p.started_at,
         is_demo: p.is_demo,
+        assist_direction: p.assist_direction,
       })),
       ...timeline,
     ],
@@ -80,6 +110,7 @@ export function assistSeries(
         id: p.session_id,
         started_at: p.started_at,
         is_demo: p.is_demo,
+        assist_direction: p.assist_direction,
       })),
       ...timeline,
     ],
@@ -102,6 +133,7 @@ export function resistanceSeries(
         id: p.evaluation_id,
         started_at: p.started_at,
         is_demo: p.is_demo,
+        assist_direction: p.assist_direction,
       })),
       ...timeline,
     ],
