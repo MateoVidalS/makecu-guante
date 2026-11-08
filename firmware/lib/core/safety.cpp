@@ -110,8 +110,12 @@ ErrorCode SafetyController::handle(const Command& c, uint32_t now) {
       for (std::size_t i = 0; i < config::FINGERS; ++i) {
         goals_[i] =
             calib::clampClosure(c.f[i] - (mode_ == Mode::Follow ? config::FOLLOW_SLACK : 0));
+        // Power only servos that pull. An unpowered spool is as slack as pull 0 and draws
+        // nothing, so a weak supply only feeds the fingers being helped. A powered servo
+        // stays powered and unwinds by its ramp; release still detaches everything.
+        if (attached_[i] || goals_[i] <= 0) continue;
         // A detached actuator has no feedback; the first commanded position is slack.
-        if (!attached_[i]) angles_[i] = calib::toAngle(0, calibration_[i]);
+        angles_[i] = calib::toAngle(0, calibration_[i]);
         attached_[i] = true;
       }
       return ErrorCode::None;

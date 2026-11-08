@@ -299,3 +299,12 @@ record the actual maximum under traffic, faults and ring updates in BENCH.md.
 For logic-analyzer timing, compile with `-DREHAB_TIMING_PIN=18` added to the
 ESP32 build flags; a high pulse brackets the entire control tick. Keep GPIO18
 unconnected except to the analyzer, and retain all existing build flags.
+
+## Powering only the fingers that pull
+
+`target` and `follow` power (attach) only servos whose goal is above 0. An unpowered spool
+is as slack as pull 0, the safe state, and draws no current, so a small supply only feeds
+the fingers being helped. A servo that is already powered stays powered and unwinds by its
+ramp when its goal returns to 0; `release`, faults and the watchdog still detach all five.
+On the bench this matters: with a ~0.8 A MB102 supply and all five powered, only the
+strongest servo visibly moved. Pair it with the app's "One motor at a time" setting.
