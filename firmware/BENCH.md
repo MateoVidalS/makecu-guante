@@ -20,13 +20,15 @@ differs from expectations. Do not copy example angles into patient calibration.
 | Spool radius / fixture or empty glove | Pending |
 | Serial host / keepalive interval | Pending / 300 ms |
 
-Finger indices and wiring are fixed:
+Finger indices and wiring are fixed. All five fingers use the Smraza S51 (9 g, SG90 class).
+Keep each calibrated range within about 10–170°: these servos accept roughly 500–2400 µs,
+and driving them into their internal end stop makes them buzz and draw stall current.
 
 | Index | Finger | Signal | Servo |
 | --- | --- | --- | --- |
-| 0 | Thumb | GPIO25 | Unknown; identify and measure housing/torque |
-| 1 | Index | GPIO26 | TowerPro SG92R |
-| 2 | Middle | GPIO27 | MG90S |
+| 0 | Thumb | GPIO25 | Smraza S51 |
+| 1 | Index | GPIO26 | Smraza S51 |
+| 2 | Middle | GPIO27 | Smraza S51 |
 | 3 | Ring | GPIO13 | Smraza S51 |
 | 4 | Pinky | GPIO4 | Smraza S51 |
 
@@ -52,9 +54,9 @@ with the observed lower bound and let the hardware team characterize separately.
 
 | Finger / model / unit ID | Idle mA | Moving mean / peak mA | Stall mA / duration | Max unloaded deg/s | Voltage / range / evidence |
 | --- | --- | --- | --- | --- | --- |
-| Thumb / unknown / Pending | To be measured | To be measured | To be measured | To be measured | Pending |
-| Index / SG92R / Pending | To be measured | To be measured | To be measured | To be measured | Pending |
-| Middle / MG90S / Pending | To be measured | To be measured | To be measured | To be measured | Pending |
+| Thumb / S51 / Pending | To be measured | To be measured | To be measured | To be measured | Pending |
+| Index / S51 / Pending | To be measured | To be measured | To be measured | To be measured | Pending |
+| Middle / S51 / Pending | To be measured | To be measured | To be measured | To be measured | Pending |
 | Ring / S51 / Pending | To be measured | To be measured | To be measured | To be measured | Pending |
 | Pinky / S51 / Pending | To be measured | To be measured | To be measured | To be measured | Pending |
 

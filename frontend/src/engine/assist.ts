@@ -19,8 +19,8 @@ export const heldPull = (position: number, vision: number): number =>
 /** Provisional values; hardware bench measurements must replace these estimates. */
 export const SERVO_PROFILES: Record<GloveFinger, { stall_ma: number }> = {
   thumb: { stall_ma: 650 },
-  index: { stall_ma: 800 },
-  middle: { stall_ma: 750 },
+  index: { stall_ma: 650 },
+  middle: { stall_ma: 650 },
   ring: { stall_ma: 650 },
   pinky: { stall_ma: 650 },
 };
