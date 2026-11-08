@@ -5,6 +5,7 @@ import { c } from './brand/tokens';
 import { SceneCaptions } from './components/media';
 import { useVoDurations } from './audio/AudioLayer';
 import { Main } from './Main';
+import { Thumbnail } from './Thumbnail';
 import { SCENE_COMPONENTS } from './scenes';
 import { FPS, HEIGHT, SCENES, sceneFrames, TOTAL_FRAMES, WIDTH, type SceneId } from './timeline';
 
@@ -22,6 +23,7 @@ const SceneAlone: React.FC<{ id: SceneId }> = ({ id }) => {
 
 export const Root: React.FC = () => (
   <>
+    <Composition id="Thumbnail" component={Thumbnail} durationInFrames={1} fps={FPS} width={1280} height={720} />
     <Composition id="Main" component={Main} durationInFrames={TOTAL_FRAMES} fps={FPS} width={WIDTH} height={HEIGHT} />
     <Folder name="Scenes">
       {SCENES.map((s) => (
