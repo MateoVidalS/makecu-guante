@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SimFirmware } from './simFirmware';
+import { FW, SimFirmware } from './simFirmware';
 import { SimWorld } from './simWorld';
 import type { GloveError, GloveEvent, Quint } from '../../contracts/glove';
 
@@ -35,24 +35,85 @@ describe('04-firmware §4 safety conformance', () => {
     expect(fw.angles.every((a) => a >= 5 && a <= 175)).toBe(true);
   });
   it('Target speed is capped at V_MAX; v ≤ 0 is bad_args', () => {
-    const { fw, calibrate, errors } = controller();
+    const { fw, calibrate, errors, tick } = controller();
     calibrate();
     for (const v of [0, -1, NaN, Infinity])
       fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v }, 0);
     expect(errors.map((e) => e.why)).toEqual(Array(4).fill('bad_args'));
     fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 5 }, 0);
-    fw.tick(500);
-    expect(fw.position).toEqual([0.5, 0.5, 0.5, 0.5, 0.5]);
+    tick(5, 500);
+    for (const pull of fw.position) expect(pull).toBeCloseTo(0.5);
   });
-  it('Follow replaces target and takes up slack at V_FOLLOW', () => {
-    const { fw, calibrate } = controller();
+  it('Follow replaces target and takes up 0.08 slack at V_FOLLOW', () => {
+    const { fw, calibrate, tick } = controller();
     calibrate();
     fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 0.3 }, 0);
     fw.handle({ t: 'follow', f: [0.5, 0.02, 1.5, 1.5, 1.5] }, 0);
-    fw.tick(100);
+    tick(5, 100);
     expect(fw.mode).toBe('follow');
-    expect(fw.goal).toEqual([0.45, 0, 1, 1, 1]);
+    expect(fw.goal).toEqual([0.42, 0, 1, 1, 1]);
     expect(fw.position[0]).toBeCloseTo(0.15);
+  });
+  it.each(['follow', 'target'] as const)(
+    '%s unwinds each finger at 3/s while winding uses the mode speed',
+    (mode) => {
+      const { fw, calibrate, tick } = controller();
+      calibrate();
+      fw.position = [0.9, 0.2, 0.9, 0.2, 0.9];
+      fw.handle(
+        mode === 'follow'
+          ? { t: 'follow', f: [0.28, 0.98, 0.28, 0.98, 0.28] }
+          : { t: 'target', f: [0.2, 0.9, 0.2, 0.9, 0.2], v: 0.2 },
+        0,
+      );
+      tick(5, 100);
+      for (const i of [0, 2, 4]) expect(fw.position[i]).toBeCloseTo(0.6);
+      for (const i of [1, 3])
+        expect(fw.position[i]).toBeCloseTo(mode === 'follow' ? 0.35 : 0.22);
+      tick(105, 400);
+      for (const i of [0, 2, 4]) expect(fw.position[i]).toBeCloseTo(0.2);
+    },
+  );
+  it('follow → target → follow → release changes goals without jumping pull', () => {
+    const { fw, calibrate, tick } = controller();
+    calibrate();
+    fw.handle({ t: 'follow', f: [0.98, 0.98, 0.98, 0.98, 0.98] }, 0);
+    tick(5, 200);
+    for (const cmd of [
+      { t: 'target', f: [0.9, 0.9, 0.9, 0.9, 0.9] as Quint, v: 0.2 } as const,
+      { t: 'follow', f: [0.28, 0.28, 0.28, 0.28, 0.28] as Quint } as const,
+      { t: 'release' } as const,
+    ]) {
+      const before = [...fw.position];
+      fw.handle(cmd, 200);
+      expect(fw.position).toEqual(before);
+    }
+    fw.tick(205);
+    expect(fw.position[0]).toBeCloseTo(0.3 - FW.V_RELEASE * 0.005);
+  });
+  it('missed deadlines advance at most one control period', () => {
+    const { fw, calibrate } = controller();
+    calibrate();
+    fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
+    fw.tick(500);
+    expect(fw.position).toEqual([0.005, 0.005, 0.005, 0.005, 0.005]);
+  });
+  it('a fast fist pays out at V_RELEASE without overshooting falling follow goals', () => {
+    const { fw, calibrate } = controller();
+    calibrate();
+    fw.position = [0.9, 0.9, 0.9, 0.9, 0.9];
+    let now = 0;
+    for (let step = 1; step <= 15; step++) {
+      const goal = Math.max(0, 0.9 - step * 0.06);
+      fw.handle({ t: 'follow', f: Array(5).fill(goal + 0.08) as Quint }, now);
+      for (let tick = 0; tick < 4; tick++) {
+        const before = fw.position[0];
+        fw.tick((now += 5));
+        expect(before - fw.position[0]).toBeLessThanOrEqual(0.015 + 1e-9);
+        expect(fw.position[0]).toBeGreaterThanOrEqual(goal - 1e-9);
+      }
+      expect(fw.position[0]).toBeCloseTo(goal);
+    }
   });
   it('Overcurrent releases and latches fault only after 100 ms continuously above limit', () => {
     const { fw, calibrate, events } = controller();
@@ -139,11 +200,11 @@ describe('04-firmware §4 safety conformance', () => {
     expect(fw.state).toBe('fault');
   });
   it('Calib only in idle; jog only in idle/calib; jog absolute angle limits and V_JOG_DEG', () => {
-    const { fw, calibrate, errors } = controller();
+    const { fw, calibrate, errors, tick } = controller();
     calibrate();
     fw.handle({ t: 'jog', i: 0, deg: 175 }, 0);
-    fw.tick(500);
-    expect(fw.angles[0]).toBe(120);
+    tick(5, 500);
+    expect(fw.angles[0]).toBeCloseTo(120);
     fw.handle({ t: 'calib', i: 0, min: 20, max: 150 }, 500);
     expect(errors.at(-1)?.why).toBe('state');
     fw.handle({ t: 'jog', i: 0, deg: 180 }, 500);
@@ -207,20 +268,21 @@ describe('04-firmware §4 safety conformance', () => {
     expect(fw.state).toBe('idle');
   });
   it('Release ramps at V_RELEASE and detaches 500 ms after completing', () => {
-    const { fw, calibrate } = controller();
+    const { fw, calibrate, tick } = controller();
     calibrate();
     fw.handle({ t: 'target', f: [1, 1, 1, 1, 1], v: 1 }, 0);
-    fw.tick(1000);
+    tick(5, 1000);
     fw.handle({ t: 'release' }, 1000);
-    fw.tick(1100);
+    tick(1005, 1100);
     expect(fw.position[0]).toBeCloseTo(0.7);
-    fw.tick(1400);
+    let complete = 1100;
+    while (fw.position.some((p) => p > 0)) fw.tick((complete += 5));
     expect(fw.position).toEqual([0, 0, 0, 0, 0]);
-    fw.tick(1899);
+    fw.tick(complete + 499);
     expect(fw.attached).toEqual([true, true, true, true, true]);
-    fw.tick(1900);
+    fw.tick(complete + 500);
     expect(fw.attached).toEqual([false, false, false, false, false]);
-    fw.handle({ t: 'follow', f: [0.2, 0.2, 0.2, 0.2, 0.2] }, 1900);
+    fw.handle({ t: 'follow', f: [0.2, 0.2, 0.2, 0.2, 0.2] }, complete + 500);
     expect(fw.attached).toEqual([true, true, true, true, true]);
   });
   it('Limit is clamped to [100, LIMIT_MAX_MA] and hello returns current config', () => {
@@ -253,7 +315,7 @@ describe('SimGlove acceptance and timing', () => {
     expect(peak).toBeLessThan(1500);
     expect(world.firmware.state).toBe('run');
   });
-  it('Rigid index faults with the evaluation current limit between position 0.25 and 0.4', async () => {
+  it('Rigid index faults beyond its 0.4 pull ceiling with the evaluation current limit', async () => {
     const world = new SimWorld({ autoStart: false });
     await world.glove.connect();
     calibrateWorld(world);
@@ -265,8 +327,8 @@ describe('SimGlove acceptance and timing', () => {
     });
     world.glove.target([0, 1, 0, 0, 0], 0.3);
     world.advance(2000);
-    expect(position).toBeGreaterThanOrEqual(0.25);
-    expect(position).toBeLessThanOrEqual(0.4);
+    expect(position).toBeGreaterThanOrEqual(0.4);
+    expect(position).toBeLessThanOrEqual(0.6);
     expect(world.firmware.state).toBe('fault');
   });
   it('Mild follow and release remain usable with a saved 900 mA calibration', async () => {
