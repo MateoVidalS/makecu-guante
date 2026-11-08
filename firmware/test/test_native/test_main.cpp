@@ -1120,6 +1120,15 @@ void servo_timers_cover_every_finger() {
   TEST_ASSERT_EQUAL_UINT(2, pwm::SERVO_TIMERS);
   TEST_ASSERT_GREATER_OR_EQUAL(config::FINGERS, pwm::SERVO_TIMERS * pwm::CHANNELS_PER_TIMER);
 }
+void servo_timers_start_at_the_attach_width() {
+  // ESP32Servo 1.2.1 attaches at 10 bits whatever setTimerWidth() said. Starting the
+  // timers at any other width delays the first pulse after boot by 1.28 s (pwm_plan.h).
+  TEST_ASSERT_EQUAL_UINT(50, pwm::SERVO_HZ);
+  TEST_ASSERT_EQUAL_UINT(10, pwm::SERVO_TIMER_BITS);
+  // One LEDC step stays below 2 degrees of the 500-2500 us / 180 degree mapping.
+  const float stepUs = 1e6F / pwm::SERVO_HZ / (1U << pwm::SERVO_TIMER_BITS);
+  TEST_ASSERT_LESS_THAN_FLOAT(2.0F, stepUs * 180.0F / 2000.0F);
+}
 void shared_serial_fixtures_match_expected() {
   std::ifstream lines("../contracts/fixtures/serial_lines.txt");
   std::ifstream expectedFile("../contracts/fixtures/serial_lines.expected.json");
@@ -1221,6 +1230,7 @@ int main() {
   RUN_TEST(assistance_waits_for_out_of_range_jog_to_unwind);
   RUN_TEST(decimal_writer_never_overruns_and_parser_survives_noise);
   RUN_TEST(servo_timers_cover_every_finger);
+  RUN_TEST(servo_timers_start_at_the_attach_width);
   RUN_TEST(app_practice_sequence_is_accepted_end_to_end);
   RUN_TEST(target_powers_only_the_fingers_that_pull);
   RUN_TEST(app_calibration_wizard_sequence_is_accepted);
