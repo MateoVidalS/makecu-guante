@@ -250,6 +250,23 @@ describe('camera overlay', () => {
     view.unmount();
     expect(source.listeners.size).toBe(0);
   });
+  it('shows the camera stream as soon as it exists, before the first hand-tracking frame', () => {
+    vi.useFakeTimers();
+    const source = new TestSource('camera');
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    const view = render(<CameraOverlay source={source} />);
+    expect(screen.getByText('Camera preview')).toBeDefined();
+    // The stream starts while the hand model is still loading: no frame is emitted yet.
+    source.video = document.createElement('video');
+    act(() => vi.advanceTimersByTime(300));
+    expect(source.video.parentElement?.classList).toContain(
+      'camera-overlay__preview',
+    );
+    expect(screen.queryByText('Camera preview')).toBeNull();
+    view.unmount();
+    expect(source.video.parentElement).toBeNull();
+    vi.useRealTimers();
+  });
   it('attaches the actual camera video, supports display mirroring, and removes the video on cleanup', () => {
     const source = new TestSource('camera');
     source.video = document.createElement('video');

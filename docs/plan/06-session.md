@@ -9,7 +9,7 @@ The runtime (WP10) feeds it and executes the commands. Types: `03-contracts.md Â
 ```ts
 interface EngineInput { now: number; vision: VisionFrame | null; tel: GloveTelemetry | null;
                         gloveEvents: GloveEvent[]; gloveConnected: boolean }
-type GloveCommand = { t: "target"; f: Triple; v: number } | { t: "follow"; f: Triple } | { t: "release" } | { t: "limit"; ma: number };
+type GloveCommand = { t: "target"; f: Quint; v: number } | { t: "follow"; f: Quint } | { t: "release" } | { t: "limit"; ma: number };
 interface ExerciseEngine {
   start(plan: ExercisePlanItem[], settings: ExerciseSettings, calibration: Calibration, now: number): Output;
   tick(input: EngineInput): Output;

@@ -73,7 +73,7 @@ All names that existed in WP0 still exist; new names are additive.
 | Caution | `--caution` | `--caution-text` | `--caution-soft` | Heads-up that is **not** safety: coach unavailable, old calibration, "aborted at 30%", the relax-your-hand strip | The glove helping (that's assist) |
 | Demo | `--demo` | `--demo-text` | `--demo-soft` | Demo data, simulator | Anything real |
 | Target | `--target` | – | – | The ghost hand, target notches | Text |
-| Fingers | `--finger-thumb/-index/-middle` | – | – | Chart series per finger | States |
+| Fingers | `--finger-thumb/-index/-middle/-ring/-pinky` | – | – | Chart series per finger | States |
 
 Rules:
 - Use the plain state color for **fills**. For **words and icons** use the `-text` variant. The plain `--assist` and `--reached` are

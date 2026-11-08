@@ -366,10 +366,22 @@ export default function Exercise() {
     window.addEventListener('keydown', keyboard);
     return () => window.removeEventListener('keydown', keyboard);
   }, [live, runtime]);
+  // Remember only our own automatic downgrade, so a helper's explicit "Simple voice" choice stays.
+  const autoSimple = useRef(false);
   useEffect(() => {
     if (!live || health.isPending) return;
-    if (health.data?.gemini === false && voiceMode.current === 'live')
+    if (health.data?.gemini === false && voiceMode.current === 'live') {
+      autoSimple.current = true;
       setVoiceMode('simple');
+    } else if (
+      health.data?.gemini === true &&
+      autoSimple.current &&
+      voiceMode.current === 'simple'
+    ) {
+      // Gemini became available (e.g. the key was added after this tab loaded): go back to Live.
+      autoSimple.current = false;
+      setVoiceMode('live');
+    }
     void startVoice(voiceSessionId).catch((e) =>
       setError((e as Error).message),
     );

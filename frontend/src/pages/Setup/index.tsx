@@ -6,6 +6,9 @@ import {
   Select,
   Checkbox,
   StatusDot,
+  StatusChip,
+  Card,
+  Inline,
   type StatusTone,
 } from '../../design-system';
 import { useStore } from 'zustand';
@@ -13,7 +16,7 @@ import { useGlove, useGloveTelemetry } from '../../glove';
 import { useVision, useVisionFrame } from '../../vision';
 import { GLOVE_FINGERS } from '../../contracts/glove';
 import { CameraPlacement, GloveDetectionCheck } from './CameraPlacement';
-import { CameraOverlay } from '../../vision/CameraOverlay';
+import { SetupCameraPreview } from './SetupCameraPreview';
 import {
   useRuntime,
   RuntimeDiagnostics,
@@ -22,7 +25,6 @@ import {
 import {
   BrowserSupportBanner,
   Readouts,
-  Section,
   percent,
   title,
 } from '../../components/common';
@@ -47,7 +49,9 @@ export default function Setup() {
     [deviceId, setDevice] = useState(''),
     [mirror, setMirror] = useState(true),
     [busy, setBusy] = useState(false),
-    [simulating, setSimulating] = useState(false);
+    [cameraBusy, setCameraBusy] = useState(false),
+    [simulating, setSimulating] = useState(false),
+    [rawPreviewReady, setRawPreviewReady] = useState(false);
   const [samples, setSamples] = useState<number[]>([]);
   useEffect(() => {
     let last = 0;
@@ -58,10 +62,14 @@ export default function Setup() {
       }
     });
   }, [glove.client]);
-  async function action(fn: () => Promise<unknown>) {
+  async function action(
+    fn: () => Promise<unknown>,
+    target: 'glove' | 'camera' = 'glove',
+  ) {
+    const setActionBusy = target === 'camera' ? setCameraBusy : setBusy;
     setError('');
-    setInfo(null);
-    setBusy(true);
+    if (target === 'glove') setInfo(null);
+    setActionBusy(true);
     try {
       await fn();
     } catch (e) {
@@ -78,7 +86,7 @@ export default function Setup() {
               : message,
       );
     } finally {
-      setBusy(false);
+      setActionBusy(false);
     }
   }
   /** Drop a pending or stuck USB attempt; the serial client rejects it as cancelled. */
@@ -107,17 +115,16 @@ export default function Setup() {
     }
   }
   async function camera() {
-    await vision.setKind('camera');
+    await vision.setKind('camera', {
+      deviceId: deviceId || undefined,
+      affectedHand:
+        runtime.calibration.current?.camera.affected_hand ?? 'right',
+    });
     try {
       await runtime.sources.setVision('camera');
     } catch (e) {
       if (!/comes in WP3/.test((e as Error).message)) throw e;
     }
-    await vision.start({
-      deviceId: deviceId || undefined,
-      affectedHand:
-        runtime.calibration.current?.camera.affected_hand ?? 'right',
-    });
     setDevices(await navigator.mediaDevices.enumerateDevices());
   }
   const connected = connection === 'connected';
@@ -129,7 +136,8 @@ export default function Setup() {
       : connection === 'connecting'
         ? 'neutral'
         : 'off';
-  const cameraTone: StatusTone = !cameraRunning
+  const cameraAvailable = cameraRunning || rawPreviewReady;
+  const cameraTone: StatusTone = !cameraAvailable
     ? 'off'
     : seen
       ? 'reached'
@@ -138,7 +146,7 @@ export default function Setup() {
     info?.limit ?? runtime.calibration.current?.current_limit_ma ?? 1500;
   const simulated = glove.client.kind === 'sim';
   return (
-    <div className="hp-page">
+    <div className="hp-page setup-page">
       <PageHeader
         title="Connect glove and camera"
         lead="Both need to be ready before calibration and practice."
@@ -150,9 +158,33 @@ export default function Setup() {
           {error || connectionError}
         </p>
       )}
-      <div className="hp-columns">
-        <Section
-          labelledBy="setup-glove"
+      <div className="setup-readiness" aria-label="Setup readiness">
+        <Inline>
+          <StatusChip
+            label="Glove"
+            value={fault ? 'Stopped' : connected ? 'Ready' : 'Not connected'}
+            tone={gloveTone}
+          />
+          <StatusChip
+            label="Camera"
+            value={seen ? 'Sees the hand' : "Can't see the hand"}
+            tone={cameraTone}
+          />
+        </Inline>
+        <ButtonLink
+          variant="primary"
+          to="/calibrate"
+          aria-disabled={!connected || !seen || fault}
+          onClick={(e) => {
+            if (!connected || !seen || fault) e.preventDefault();
+          }}
+        >
+          Continue to calibration
+        </ButtonLink>
+      </div>
+      <div className="setup-cards">
+        <Card
+          aria-label="Glove connection"
           title={
             <>
               <StatusDot tone={gloveTone} />
@@ -170,7 +202,9 @@ export default function Setup() {
               ? fault
                 ? 'Release the glove and check it before continuing.'
                 : simulated
-                  ? 'Simulated glove: no motors move. The camera tracks your real hand and the practice screen shows which motor would help.'
+                  ? vision.source.kind === 'sim'
+                    ? 'Simulated glove and camera. No motors move.'
+                    : 'Simulated glove. No motors move. Your camera tracks your hand.'
                   : 'Connected over USB.'
               : connection === 'connecting'
                 ? 'Waiting for the glove to answer.'
@@ -212,13 +246,13 @@ export default function Setup() {
               Release glove
             </Button>
           </div>
-        </Section>
-        <Section
-          labelledBy="setup-camera"
+        </Card>
+        <Card
+          aria-label="Camera connection"
           title={
             <>
               <StatusDot tone={cameraTone} />
-              {!cameraRunning
+              {!cameraAvailable
                 ? 'Camera off'
                 : seen
                   ? 'Camera sees the hand'
@@ -226,7 +260,7 @@ export default function Setup() {
             </>
           }
           description={
-            cameraRunning
+            cameraAvailable
               ? 'Keep the whole hand inside the frame.'
               : 'Choose a camera, then connect it.'
           }
@@ -245,7 +279,6 @@ export default function Setup() {
               },
             ]}
           />
-          <CameraPlacement />
           <Select
             label="Camera device"
             value={deviceId}
@@ -260,15 +293,23 @@ export default function Setup() {
                 </option>
               ))}
           </Select>
-          <CameraOverlay mirrored={mirror} />
-          <GloveDetectionCheck />
+          <SetupCameraPreview
+            mirrored={mirror}
+            onVideoReady={setRawPreviewReady}
+          />
+          {rawPreviewReady && !cameraRunning && (
+            <p role="status">Camera ready. Hand tracking is loading.</p>
+          )}
           <div className="hp-actions hp-actions--between">
-            {cameraRunning ? (
+            {cameraAvailable ? (
               <Button variant="quiet" onClick={() => vision.stop()}>
                 Stop camera
               </Button>
             ) : (
-              <Button disabled={busy} onClick={() => void action(camera)}>
+              <Button
+                disabled={cameraBusy}
+                onClick={() => void action(camera, 'camera')}
+              >
                 Connect camera
               </Button>
             )}
@@ -278,8 +319,17 @@ export default function Setup() {
               onChange={(e) => setMirror(e.target.checked)}
             />
           </div>
-        </Section>
+        </Card>
       </div>
+      <GloveDetectionCheck />
+      <details
+        className="hp-disclosure"
+        open={seen ? undefined : true}
+        key={seen ? 'seen' : 'unseen'}
+      >
+        <summary>How to place the camera</summary>
+        <CameraPlacement />
+      </details>
       <details className="hp-disclosure">
         <summary>Advanced</summary>
         <Readouts
@@ -370,18 +420,6 @@ export default function Setup() {
         <h2>System diagnostics</h2>
         <RuntimeDiagnostics />
       </details>
-      <div className="hp-actions hp-actions--end">
-        <ButtonLink
-          variant="primary"
-          to="/calibrate"
-          aria-disabled={!connected || !seen || fault}
-          onClick={(e) => {
-            if (!connected || !seen || fault) e.preventDefault();
-          }}
-        >
-          Continue to calibration
-        </ButtonLink>
-      </div>
     </div>
   );
 }
