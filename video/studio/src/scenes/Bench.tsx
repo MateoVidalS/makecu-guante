@@ -11,7 +11,7 @@ const Label: React.FC = () => {
   const t = interpolate(f, [6, 18], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: ease });
   return (
     <div style={{ position: 'absolute', right: 96, top: 72, opacity: t, background: c.surface, borderRadius: radius.card, padding: '12px 20px' }}>
-      <T size="small">Real hardware · app → ESP32 → 5 servos · no person attached</T>
+      <T size="small">Real hardware · app → ESP32 → 5 servos</T>
     </div>
   );
 };
@@ -24,8 +24,8 @@ export const Bench: React.FC = () => (
       durationS={(3 * BAR) / FPS}
       notes={[
         'One continuous shot, phone on a tripod: laptop with the app on the left, the board and the 5 servos on the right.',
-        'Someone opens and closes their hand at the webcam; the threads wind and pay out on a hand-shaped fixture. Then press Brake: everything releases.',
-        'Never attached to a person. Keep the servo sound. Landscape, 30 fps, 7 s.',
+        'A hand opens at the webcam and the threads wind and pay out over the back of the fingers. Then press Brake: everything releases.',
+        'Keep the servo sound. Landscape, 30 fps, 7 s.',
       ]}
     />
     <Label />
