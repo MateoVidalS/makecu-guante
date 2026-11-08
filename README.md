@@ -1,43 +1,43 @@
-# MakeCU — Guante robótico para rehabilitación de la mano
+# MakeCU — Robotic glove for hand rehabilitation
 
-> **Nombre del producto: memo.** Marca, logo y voz en [`docs/brand/BRAND.md`](docs/brand/BRAND.md). "Rehab Hub" queda como nombre interno del repo y del plan.
+> **Product name: memo.** Brand, logo and voice in [`docs/brand/BRAND.md`](docs/brand/BRAND.md). "Rehab Hub" remains the internal name of the repo and the plan.
 
 **Track:** Healthcare
-**Challenges que se suman:** MLH Gemini API, Trace (PCB custom), Zelos, Notability (opcional)
+**Challenges we're entering:** MLH Gemini API, Trace (custom PCB), Zelos, Notability (optional)
 
 ---
 
-## Estado y cómo correrlo
+## Status and how to run it
 
-| Parte | Estado |
+| Part | Status |
 |---|---|
-| **Software** (app web, backend, firmware) | Construido y mergeado: WP0–WP12 en [`handoffs/STATUS.md`](handoffs/STATUS.md). Funciona entero con el **simulador**, sin hardware |
-| **Hardware** | Guías y anclajes impresos. Falta imprimir módulo, tapa y carretes (`hardware/definitivas/2_...`), coser, cablear y probar |
-| **Firmware en la placa** | Compila y pasa los tests nativos, pero **nunca se cargó en una ESP32**. Primero el banco de pruebas de [`firmware/BENCH.md`](firmware/BENCH.md) |
+| **Software** (web app, backend, firmware) | Built and merged: WP0–WP12 in [`handoffs/STATUS.md`](handoffs/STATUS.md). Runs end to end with the **simulator**, no hardware needed |
+| **Hardware** | Guides and anchors printed. The module, lid and spools (`hardware/definitivas/2_...`) still need printing, then sewing, wiring and testing |
+| **Firmware on the board** | Builds and passes the native tests. Bench sessions on a real ESP32 are logged in [`hardware/BENCH-1.md`](hardware/BENCH-1.md) and [`hardware/BENCH-3.md`](hardware/BENCH-3.md); the acceptance steps in [`firmware/BENCH.md`](firmware/BENCH.md) are still pending |
 
 > **Five fingers are implemented end to end:** protocol, firmware, simulator, camera, exercise/evaluation, voice and history. Wire order is `[thumb, index, middle, ring, pinky]`, on GPIO4/13/27/26/25. Boards reporting another finger count are rejected. Physical acceptance remains pending in [`firmware/BENCH.md`](firmware/BENCH.md).
 
-**Requisitos:** Node 20+, pnpm, Python 3.11+, [uv](https://docs.astral.sh/uv/), Chrome o Edge (Web Serial). PlatformIO solo para el firmware.
+**Requirements:** Node 20+, pnpm, Python 3.11+, [uv](https://docs.astral.sh/uv/), Chrome or Edge (Web Serial). PlatformIO only for the firmware.
 
 ```sh
-make setup        # instala backend y frontend
+make setup        # install backend and frontend
 make demo-seed    # optional: 25 demo sessions (3 legacy), 5 opening evaluations, coach and voice records
-make dev-sim      # API en :8000 + app en http://127.0.0.1:5173, guante simulado + cámara real (webcam)
-make dev-sim-all  # guante y cámara simulados (sin webcam)
+make dev-sim      # API on :8000 + app on http://127.0.0.1:5173, simulated glove + real camera (webcam)
+make dev-sim-all  # simulated glove and camera (no webcam)
 ```
 
-| Comando | Para qué |
+| Command | Purpose |
 |---|---|
-| `make dev` | Igual que `dev-sim`, pero con el guante real por USB |
-| `make dev-mock` | Solo el frontend, con la API simulada en el navegador |
-| `make dev-camera` | Alias de `dev-sim` (webcam real + guante simulado) |
-| `make test` / `make e2e` | pytest, vitest, TypeScript, Ruff, ESLint (+ tests nativos del firmware si hay `pio`) / Playwright |
-| `make demo` | Compila el frontend y lo sirve desde el backend en http://127.0.0.1:8000 |
-| `make fw-build` / `make fw-flash` | Compilar / cargar el firmware (**solo después del banco de pruebas**) |
+| `make dev` | Same as `dev-sim`, but with the real glove over USB |
+| `make dev-mock` | Frontend only, with the API mocked in the browser |
+| `make dev-camera` | Alias of `dev-sim` (real webcam + simulated glove) |
+| `make test` / `make e2e` | pytest, vitest, TypeScript, Ruff, ESLint (+ native firmware tests if `pio` is installed) / Playwright |
+| `make demo` | Builds the frontend and serves it from the backend at http://127.0.0.1:8000 |
+| `make fw-build` / `make fw-flash` | Build / flash the firmware (**only after the bench tests**) |
 
-- **Gemini:** copiar `backend/.env.example` a `backend/.env` y poner `GEMINI_API_KEY` (Google AI Studio). Es la única API key. Modelos: voz `gemini-3.8-live` (`gemini-3.8-live-extended-thinking` habla pero nunca llama a las herramientas del coach, así que el backend lo reemplaza; `uv run python -m tools.coach_check` lo verifica en vivo); resúmenes `gemini-4-argon` (requiere facturación), con caída automática a `gemini-3.8-flash`, `gemini-3.5-flash` y `gemini-3.5-flash-lite` si hay falta de cuota, saturación o lentitud (cada modelo tiene ~20 s; el plan gratuito de AI Studio da solo 20 pedidos por día por modelo, así que para una demo conviene una key con facturación). `cd backend && uv run python -m tools.summary_check` prueba los resúmenes en vivo contra la historia demo. Sin key, la app funciona igual con voz simple (frases fijas del navegador) y sin resúmenes.
-- La app está **en inglés**. Este README es el concepto; el plan técnico detallado está en [`docs/plan/`](docs/plan/README.md) y el contrato (fuente de verdad) en [`docs/plan/03-contracts.md`](docs/plan/03-contracts.md).
-- Más detalle: [`docs/DEV.md`](docs/DEV.md) (desarrollo), [`docs/DEMO.md`](docs/DEMO.md) (guion de demo de 6 min y cómo recuperarse de fallas), [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md) (antes de ponerle el guante a alguien).
+- **Gemini:** copy `backend/.env.example` to `backend/.env` and set `GEMINI_API_KEY` (Google AI Studio). It is the only API key. Models: voice `gemini-3.8-live` (`gemini-3.8-live-extended-thinking` talks but never calls the coach tools, so the backend replaces it; `uv run python -m tools.coach_check` verifies this live); summaries `gemini-4-argon` (requires billing), with automatic fallback to `gemini-3.8-flash`, `gemini-3.5-flash` and `gemini-3.5-flash-lite` on quota errors, overload or slowness (each model gets ~20 s; the AI Studio free tier allows only 20 requests per day per model, so use a key with billing for a demo). `cd backend && uv run python -m tools.summary_check` tests summaries live against the demo history. Without a key the app still works, with simple voice (fixed browser phrases) and no summaries.
+- The app is **in English**. This README is the concept; the detailed technical plan is in [`docs/plan/`](docs/plan/README.md) and the contract (source of truth) in [`docs/plan/03-contracts.md`](docs/plan/03-contracts.md).
+- More detail: [`docs/DEV.md`](docs/DEV.md) (development), [`docs/DEMO.md`](docs/DEMO.md) (6-minute demo script and how to recover from failures), [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md) (before putting the glove on anyone).
 
 ---
 
@@ -69,36 +69,34 @@ by clinical practice, not validated clinical measurements.
 A calibration from the earlier closing glove (direction absent or `close`) must
 be replaced. Its endpoints are unsuitable for dorsal routing.
 
-## 3. Hardware: mano descubierta y asistencia de apertura
+## 3. Hardware: bare hand and opening assist
 
-**Decisión del 8 de noviembre:** no hay guante de tela. Las guías son puntos
-pequeños **NEGROS** en el dorso de las falanges proximales y medias; los anclajes
-son puntos **AMARILLOS** en el dorso de cada punta de dedo. Se fijan directamente
-a la piel con cinta apta para la piel; el equipo de hardware debe confirmar el
-método de fijación, las posiciones y los tamaños exactos. Los hilos recorren el
-dorso y abren la mano, según [15-open-assist.md](docs/plan/15-open-assist.md).
-La app conserva el nombre **glove** para el dispositivo.
+**Decision of November 8:** there is no fabric glove. The guides are small
+**BLACK** dots on the back of the proximal and middle phalanges; the anchors are
+**YELLOW** dots on the back of each fingertip. They are attached directly to the
+skin with skin-safe tape; the hardware team must confirm the attachment method,
+positions and exact sizes. The threads run along the back of the hand and open it,
+per [15-open-assist.md](docs/plan/15-open-assist.md). The app keeps the name
+**glove** for the device.
 
-La cámara ve la palma descubierta, el mejor caso de MediaPipe. Los puntos y la
-cinta no deben cubrir los pliegues articulares del lado de la palma. Usar buena
-luz frontal, manga levantada, sin anillos ni reloj. El primer día, comprobar la
-detección en Setup y guardar una grabación real de landmarks con
-`frontend/src/vision/recorder.ts` que cubra `bare-hand-points`; registrar evidencia
-en la sección **points** del banco (su incorporación corresponde al equipo).
+The camera sees the bare palm, the best case for MediaPipe. The dots and tape must
+not cover the joint creases on the palm side. Use good front lighting, sleeve rolled
+up, no rings or watch. On day one, check detection in Setup and save a real landmark
+recording with `frontend/src/vision/recorder.ts` covering `bare-hand-points`; log the
+evidence in the **points** section of the bench checklist (adding it is up to the team).
 
-**Seguridad:** probar primero en un soporte con forma de mano, antes de fijar
-cualquier pieza a una persona. Revisar la piel antes y después de cada sesión:
-enrojecimiento, marcas o dolor; una persona tras un ictus puede no sentir el roce.
-Si se vuelve a fijar una guía o un anclaje, repetir la calibración de servos
-antes de practicar: la tracción máxima se fija con los dedos rectos y un anclaje
-movido puede extender un dedo demasiado.
+**Safety:** test on a hand-shaped fixture first, before attaching any part to a
+person. Check the skin before and after every session: redness, marks or pain; a
+person after a stroke may not feel rubbing. If a guide or anchor is re-attached,
+redo the servo calibration before practicing: maximum pull is set with the fingers
+straight, and a moved anchor can over-extend a finger.
 
-Para evaluar, medir **Thread friction (unhooked)** con cada hilo desenganchado de
-su anclaje amarillo y la mano relajada; alternativa: un soporte con forma de mano
-con las guías fijadas del mismo modo. Volver a enganchar antes de evaluar.
-Ver [16-bare-hand.md](docs/plan/16-bare-hand.md) para la decisión y sus pendientes.
-Las referencias anteriores a fricción del guante vacío en las secciones 1 y 4
-quedan superseded por este procedimiento de hilos desenganchados.
+To evaluate, measure **Thread friction (unhooked)** with each thread unhooked from
+its yellow anchor and the hand relaxed; alternatively, use a hand-shaped fixture
+with the guides attached the same way. Re-hook before evaluating.
+See [16-bare-hand.md](docs/plan/16-bare-hand.md) for the decision and its open items.
+Earlier references to empty-glove friction in sections 1 and 4 are superseded by
+this unhooked-thread procedure.
 
 Existing CAD and wrist module: `hardware/`. The upright mounting, thread exits,
 friction, usable travel and extension strength still require team validation.
@@ -136,199 +134,200 @@ actual opening travel and force on the dorsal fixture. Greater radius increases
 travel and reduces force. Micro-servo torque and the estimated 2–2.7× friction
 loss do not prove the mechanism can open a spastic hand.
 
-### Servos (los que tenemos)
+### Servos (the ones we have)
 
-| Dedo | Servo | Torque aprox. (4,8 V) | Por qué |
+| Finger | Servo | Approx. torque (4.8 V) | Why |
 |---|---|---|---|
-| Los 5 dedos | Smraza S51 (micro servo 9 g, tipo SG90) | ~1,6–1,8 kg·cm | El mismo servo en todos: un solo tamaño de alojamiento y el mismo perfil de corriente |
+| All 5 fingers | Smraza S51 (9 g micro servo, SG90 type) | ~1.6–1.8 kg·cm | The same servo everywhere: a single housing size and the same current profile |
 
-- Rango de pulso ~500–2400 µs: calibrar cada dedo dentro de ~10–170° para no forzar el tope interno.
-- 5 servos trabados pueden pedir ~650 mA cada uno: usar una fuente de 5 V de al menos 2 A.
+- Pulse range ~500–2400 µs: calibrate each finger within ~10–170° so the internal end stop isn't forced.
+- 5 stalled servos can draw ~650 mA each: use a 5 V supply of at least 2 A.
 
-- Torques de fichas de tiendas y fabricantes; varían entre fuentes.
-- **Alojamientos universales:** hueco de 23,6 × 13,2 mm (los cuerpos miden 22,2–23 × 11,8–12,6) y agujeros alargados (±0,8 mm), porque la distancia entre agujeros cambia entre marcas.
-- **Micro servos a propósito:** un servo grande (p. ej. 20 kg·cm) podría lastimar si el software falla o el dedo se traba. Con un micro servo, en el peor caso, el servo se frena.
-- La altura del eje cambia 1–2 mm entre modelos: las salidas del frente tienen margen para eso.
+- Torques come from store and manufacturer datasheets; they vary between sources.
+- **Universal housings:** 23.6 × 13.2 mm pocket (bodies measure 22.2–23 × 11.8–12.6) and slotted holes (±0.8 mm), because hole spacing varies between brands.
+- **Micro servos on purpose:** a large servo (e.g. 20 kg·cm) could injure someone if the software fails or the finger jams. With a micro servo, the worst case is that the servo stalls.
+- Shaft height varies 1–2 mm between models: the front exits leave room for that.
 
-### Electrónica
+### Electronics
 
 ```
-  Fuente 5 V (límite 2,5 A) ──> [INA219] ──> (+) 5 servos
-                                   │ I2C              ▲ PWM
-                                   ▼                  │
-  Botón STOP ───────────────────> [ESP32-WROOM-32] ───┘
-                                   │        └──> level shifter ──> NeoPixel Ring
-                                   └── USB ──> laptop (cámara, mano virtual, voz, dashboard)
+  5 V supply (2.5 A limit) ──> [INA219] ──> (+) 5 servos
+                                  │ I2C              ▲ PWM
+                                  ▼                  │
+  STOP button ───────────────────> [ESP32-WROOM-32] ──┘
+                                  │        └──> level shifter ──> NeoPixel Ring
+                                  └── USB ──> laptop (camera, virtual hand, voice, dashboard)
 ```
 
 **The ESP32-WROOM-32 drives all five servos** with hardware PWM (LEDC, 50 Hz, 500–2500 µs pulses) through `ESP32Servo`. Firmware allocates **two LEDC timers** so the fifth servo can attach while the other four remain attached (PR #39). Verify all five together on the empty bench fixture; see `firmware/BENCH.md` step 4.
 
-| Función | Pin ESP32 | Notas |
+| Function | ESP32 pin | Notes |
 |---|---|---|
-| Servo pulgar | GPIO 25 | |
-| Servo índice | GPIO 26 | |
-| Servo medio | GPIO 27 | |
-| Servo anular | GPIO 13 | |
-| Servo meñique | GPIO 4 | |
-| NeoPixel (datos) | GPIO 33 | Level shifter (3,3 → 5 V) + resistencia de ~330 Ω |
+| Thumb servo | GPIO 4 | |
+| Index servo | GPIO 13 | |
+| Middle servo | GPIO 27 | |
+| Ring servo | GPIO 26 | |
+| Pinky servo | GPIO 25 | |
+| NeoPixel (data) | GPIO 33 | Level shifter (3.3 → 5 V) + ~330 Ω resistor |
 | INA219 SDA / SCL | GPIO 21 / 22 | I2C |
-| Botón STOP | GPIO 32 | `INPUT_PULLUP`, el botón va a GND |
+| STOP button | GPIO 32 | `INPUT_PULLUP`, the button goes to GND |
 
-- **Pines evitados:** 0, 2, 5, 12 y 15 (definen cómo arranca la placa) y 14 (saca pulsos al arrancar y haría saltar un servo).
-- **Comunicación con la laptop por USB** (Web Serial desde Chrome).
-- La ESP32, el INA219 y el level shifter van en la breadboard, **sobre la mesa** detrás del módulo. Los cables de los servos salen por la ranura de atrás del módulo.
+- **Pins avoided:** 0, 2, 5, 12 and 15 (they set how the board boots) and 14 (it pulses at boot and would make a servo jump).
+- **Communication with the laptop over USB** (Web Serial from Chrome).
+- The ESP32, the INA219 and the level shifter sit on the breadboard, **on the table** behind the module. The servo cables leave through the slot at the back of the module.
 
-### Alimentación
+### Power
 
-- **Fuente de laboratorio Facmogu en 5 V con límite de 2,5 A** (5 servos). Los servos **no** se alimentan desde la ESP32.
-- **Capacitor de 470–1000 µF** entre 5 V y GND en la línea de los servos: amortigua el pico cuando arrancan varios a la vez, que si no puede resetear la ESP32.
+- **Facmogu bench supply at 5 V with a 2.5 A limit** (5 servos). The servos are **not** powered from the ESP32.
+- **470–1000 µF capacitor** between 5 V and GND on the servo line: it absorbs the spike when several start at once, which could otherwise reset the ESP32.
 - Firmware releases on total filtered current above the limit for 100 ms: **1500 mA default, 2200 mA maximum**, below the 2.5 A supply limit. Measure each actual servo and thread friction with fingertip anchors unhooked on the bench; provisional profiles are not measured force limits.
-- El límite de corriente es un **corte físico**: aunque el software falle, la fuente no deja pasar más.
-- **GND común** entre la fuente, los servos y la ESP32.
-- Verificar los 5 V con el multímetro **antes** de conectar los servos.
+- The current limit is a **physical cutoff**: even if the software fails, the supply won't let more through.
+- **Common GND** between the supply, the servos and the ESP32.
+- Check the 5 V with the multimeter **before** connecting the servos.
 
-### Seguridad
+### Safety
 
-- Recorrido de cada servo **limitado por software** al rango cómodo de cada dedo, calibrado por persona.
-- **Corte por corriente:** si el INA219 mide más que un umbral, los servos aflojan. Si la mano se resiste, el guante para en vez de forzar.
-- **Botón STOP:** afloja todos los servos al instante.
-- **Límite de corriente de la fuente** como última barrera.
+- Each servo's travel is **limited in software** to each finger's comfortable range, calibrated per person.
+- **Overcurrent cutoff:** if the INA219 reads above a threshold, the servos release. If the hand resists, the glove stops instead of forcing.
+- **STOP button:** releases all servos instantly.
+- **Supply current limit** as the last barrier.
 - Extension assist: winding opens; releasing leaves the tendons slack.
 
-### Puesta en la mesa
+### Table setup
 
-- **Laptop delante del paciente; cámara = webcam frontal de la laptop.** Levantar la mano afectada junto a la cara, vertical, con la **palma hacia la pantalla**, como al saludar en una videollamada. Abrir y cerrar los dedos hacia la cámara.
-- **Codo apoyado en la mesa**, con una toalla o almohadilla cómoda; antebrazo vertical. Mantener la muñeca, la mano completa y las cinco puntas dentro del encuadre, a unos **40–60 cm de la laptop**. Ajustar la pantalla para encuadrar sin levantar el codo.
-- **Luz difusa de frente o de costado, sin ventana detrás del paciente.** Comprobar en la vista de cámara que la palma y los dedos se vean iluminados, sin contraluz.
-- **Palma descubierta con puntos negros y amarillos:** comprobar la detección en Setup durante cinco segundos al abrir y cerrar con la luz del lugar; registrar el porcentaje, las oclusiones y una grabación real de landmarks. Si falla, ajustar luz/encuadre y pedir revisión al equipo antes de usarlo.
-- **Calibración nueva en esta postura:** no reutilizar las capturas con la palma hacia abajo y cámara diagonal. Hacer series cortas, descansar y pausar si sostener la mano levantada cansa.
+- **Laptop in front of the patient; camera = the laptop's front webcam.** Raise the affected hand next to the face, upright, with the **palm facing the screen**, like waving on a video call. Open and close the fingers toward the camera.
+- **Elbow resting on the table**, on a towel or comfortable pad; forearm vertical. Keep the wrist, the whole hand and all five fingertips in frame, about **40–60 cm from the laptop**. Tilt the screen to frame the hand without lifting the elbow.
+- **Diffuse light from the front or side, no window behind the patient.** Check in the camera view that the palm and fingers are lit, not backlit.
+- **Bare palm with black and yellow dots:** check detection in Setup for five seconds while opening and closing under the room's lighting; record the percentage, occlusions and a real landmark recording. If it fails, adjust lighting/framing and ask the team to review before using it.
+- **New calibration in this posture:** don't reuse captures taken palm-down with a diagonal camera. Do short sets, rest, and pause if holding the hand up gets tiring.
 
-**Hallazgos del banco real — leer [`hardware/BANCO.md`](hardware/BANCO.md) antes de conectar:** la primera sesión de Matias fue sin tendones ni guante y no reemplaza la aceptación de [`firmware/BENCH.md`](firmware/BENCH.md).
+**Findings from the real bench — read [`hardware/BENCH-1.md`](hardware/BENCH-1.md) before connecting anything:** Matias's first session was without tendons or glove and does not replace the acceptance in [`firmware/BENCH.md`](firmware/BENCH.md).
 
-- **INA219 conectado antes de cualquier práctica física.** Sin el sensor, el firmware rechaza la asistencia (`target`/`follow`), aunque permite `jog`; que el servo se mueva y marque 0 mA sin sensor no demuestra seguridad.
-- **La Facmogu real no tiene límite de corriente.** La descripción de una fuente limitada más arriba no corresponde a este adaptador: para la demo, usar un fusible elegido por el equipo o una fuente con límite. Para el guante, alimentar el riel a **5,0 V directamente a través del INA219**, sin pasar por el MB102, y con su propio capacitor de **470–1000 µF**. En un soporte vacío, probar el corte según BENCH con `limit 800` (JSON: `{"t":"limit","ma":800}`); registrar corriente, evento y liberación. Es un umbral de firmware de 800 mA para esa prueba, no un límite físico de la fuente ni un ajuste aprobado para una persona.
-- **MB102 (~0,8 A): solo pruebas de un servo por vez en banco**, nunca práctica con el guante completo. Poner ambos jumpers en **5V**, medir la salida y mantener la Facmogu a **9 V o menos** al alimentar el MB102: su capacitor es de 10 V.
-- **Verificar la polaridad de los rieles con multímetro antes de conectar servos.** No asumir el orden de las filas: un servo con rojo/marrón invertidos se calentó en segundos durante la prueba.
-- **Banco manual con el firmware del repo:** enviar `ping` cada **~300 ms** durante el `jog` (JSON: `{"t":"ping"}`, terminado en salto de línea). Sin mensajes válidos durante más de 1 s, el watchdog afloja y entra en falla; no desactivarlo para probar.
+- **INA219 connected before any physical practice.** Without the sensor the firmware rejects assistance (`target`/`follow`), though it allows `jog`; a servo moving and reading 0 mA without the sensor proves nothing about safety.
+- **The actual Facmogu has no current limit.** The limited supply described above does not match this adapter: for the demo, use a fuse chosen by the team or a supply with a limit. For the glove, feed the rail at **5.0 V directly through the INA219**, bypassing the MB102, with its own **470–1000 µF** capacitor. On an empty fixture, test the cutoff per BENCH with `limit 800` (JSON: `{"t":"limit","ma":800}`); record current, event and release. It is an 800 mA firmware threshold for that test, not a physical supply limit nor a setting approved for a person.
+- **MB102 (~0.8 A): bench tests with one servo at a time only**, never practice with the full glove. Set both jumpers to **5V**, measure the output and keep the Facmogu at **9 V or less** when feeding the MB102: its capacitor is rated 10 V.
+- **Check rail polarity with a multimeter before connecting servos.** Don't assume the row order: a servo with red/brown swapped got hot within seconds during testing.
+- **Manual bench with the repo firmware:** send `ping` every **~300 ms** during `jog` (JSON: `{"t":"ping"}`, newline-terminated). With no valid messages for more than 1 s, the watchdog releases and enters fault; don't disable it for testing.
 
-**Pregunta pendiente para el equipo de hardware — resolver antes de usar el guante en una persona:** el módulo de muñeca se diseñó para descansar en la mesa con la palma hacia abajo. Con la mano vertical queda colgado del antebrazo. Las dos correas lo sostienen sin deslizarse ni apretar, su peso resulta cómodo y does the dorsal thread exit allow opening and slack release without rubbing or snagging? Comprobar también cómo cambia la acción de los elásticos y la tracción de los servos con la gravedad. Registrar la decisión y la evidencia en [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), primero en un soporte vacío; no asumir que el montaje anterior ya está validado.
+**Open question for the hardware team — resolve before using the glove on a person:** the wrist module was designed to rest on the table with the palm down. With the hand upright it hangs from the forearm. Do the two straps hold it without slipping or squeezing, is its weight comfortable, and does the dorsal thread exit allow opening and slack release without rubbing or snagging? Also check how gravity changes the action of the elastics and the servo pull. Record the decision and the evidence in [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), on an empty fixture first; don't assume the previous mounting is already validated.
 
-### Piezas impresas
+### Printed parts
 
-| Pieza | Estado | Medidas | Cant. |
+| Part | Status | Size | Qty |
 |---|---|---|---|
-| Guía de tendón | **Definitiva, ya impresa** (`hardware/definitivas/1_...`) | 12 × 9 × 5,6 mm, base cóncava | 13 (+3) |
-| Anclaje de punta | **Definitiva** | 12 × 9 × 5,8 mm | 5 (+1) |
-| Módulo de muñeca | Primera prueba | 80,5 × 80 × 41 mm | 1 |
-| Tapa (cóncava, con orejas para correas) | Primera prueba | 80,5 × 102 × 6 mm | 1 |
-| Carrete | Radio a confirmar | Ø 22 × 8,2 mm | 5 |
+| Tendon guide | **Final, already printed** (`hardware/definitivas/1_...`) | 12 × 9 × 5.6 mm, concave base | 13 (+3) |
+| Fingertip anchor | **Final** | 12 × 9 × 5.8 mm | 5 (+1) |
+| Wrist module | First test | 80.5 × 80 × 41 mm | 1 |
+| Lid (concave, with strap ears) | First test | 80.5 × 102 × 6 mm | 1 |
+| Spool | Radius to be confirmed | Ø 22 × 8.2 mm | 5 |
 
-- Todo sale de `hardware/cad/piezas.py` (FreeCAD, paramétrico): `freecadcmd hardware/cad/piezas.py` regenera los STL en `hardware/stl/`.
-- Para la mano izquierda: espejar módulo y tapa en el slicer.
-- **Antes de imprimir el módulo:** comprobar que los 5 S51 entran en sus alojamientos.
+- Everything comes from `hardware/cad/piezas.py` (FreeCAD, parametric): `freecadcmd hardware/cad/piezas.py` regenerates the STLs in `hardware/stl/`.
+- For the left hand: mirror the module and lid in the slicer.
+- **Before printing the module:** check that all 5 S51s fit in their housings.
+- Print settings and sewing: [`hardware/PRINTING.md`](hardware/PRINTING.md).
 
 ---
 
 ## 4. Software
 
-> Lo que está construido. El detalle de cada parte (tipos, constantes, endpoints, umbrales) está en [`docs/plan/`](docs/plan/README.md); el contrato que comparten todas las partes es [`docs/plan/03-contracts.md`](docs/plan/03-contracts.md).
+> What is built. The detail of each part (types, constants, endpoints, thresholds) is in [`docs/plan/`](docs/plan/README.md); the contract shared by all parts is [`docs/plan/03-contracts.md`](docs/plan/03-contracts.md).
 
-### 4.1 Qué hace
+### 4.1 What it does
 
-Una app web local (**Rehab Hub**) que corre en la laptop:
-1. Le muestra al paciente una **mano virtual** con la posición objetivo (fantasma) y su mano real (sólida) superpuestas.
-2. Mide con la **webcam** cuánto cierra cada dedo.
+A local web app (**Rehab Hub**) running on the laptop:
+1. Shows the patient a **virtual hand** with the target pose (ghost) and their real hand (solid) overlaid.
+2. Measures with the **webcam** how far each finger closes.
 3. Commands the **glove** (ESP32 over USB) to supply missing opening only; closing is active practice.
-4. Registra cada intento, lo muestra en un **historial** con gráficos y genera resúmenes con **Gemini**.
-5. Un **coach de voz** (Gemini Live) guía la sesión. Los avisos de seguridad son locales e inmediatos.
+4. Records every attempt, shows it in a **history** with charts and generates summaries with **Gemini**.
+5. A **voice coach** (Gemini Live) guides the session. Safety alerts are local and immediate.
 
-### 4.2 Arquitectura
+### 4.2 Architecture
 
 ```
  Chrome / Edge (React + Vite)
-   webcam ─> Visión (MediaPipe) ──┐                ┌─> Mano virtual (three.js)
-                                  ▼                │
-                 Runtime ─tick─> Motor de ejercicio / evaluación (TS puro)
-                   │  ▲                │ comandos
-                   │  └─ telemetría ───┴──> Web Serial ──USB──> ESP32 (o guante simulado)
-                   ├─> Voz: red de seguridad local + coach Gemini Live
-                   └─> API REST ──> FastAPI + SQLite (localhost:8000)
-                                     sesiones, intentos, trazas, calibraciones,
-                                     evaluaciones, historial, exportación, Gemini
+   webcam ─> Vision (MediaPipe) ───┐                ┌─> Virtual hand (three.js)
+                                   ▼                │
+                 Runtime ─tick─> Exercise / evaluation engine (pure TS)
+                   │  ▲                │ commands
+                   │  └─ telemetry ────┴──> Web Serial ──USB──> ESP32 (or simulated glove)
+                   ├─> Voice: local safety net + Gemini Live coach
+                   └─> REST API ──> FastAPI + SQLite (localhost:8000)
+                                     sessions, attempts, traces, calibrations,
+                                     evaluations, history, export, Gemini
 ```
 
-- **Toda la lógica en tiempo real corre en el navegador.** El backend solo guarda datos, agrega el historial y habla con Gemini (así la API key no llega al navegador).
-- **La seguridad no depende del navegador.** El firmware aplica límites, rampas, corte por corriente, STOP y watchdog por su cuenta; el navegador es una segunda capa (pausa si pierde la cámara, se anticipa a la resistencia).
-- **Simulador (`SimWorld`):** un guante simulado que se comporta como el firmware, un modelo de paciente (severo, moderado, leve, con "índice rígido") y una cámara simulada. Permite desarrollar, testear y hacer la demo sin hardware.
+- **All real-time logic runs in the browser.** The backend only stores data, aggregates the history and talks to Gemini (so the API key never reaches the browser).
+- **Safety does not depend on the browser.** The firmware enforces limits, ramps, overcurrent cutoff, STOP and watchdog on its own; the browser is a second layer (it pauses if it loses the camera and anticipates resistance).
+- **Simulator (`SimWorld`):** a simulated glove that behaves like the firmware, a patient model (severe, moderate, mild, with a "rigid index") and a simulated camera. It lets us develop, test and demo without hardware.
 
-| Carpeta | Qué hay |
+| Folder | Contents |
 |---|---|
-| `frontend/` | React 18 + TypeScript + Vite, three.js (`@react-three/fiber`), MediaPipe Tasks Vision, Recharts, `@google/genai`. Tests con Vitest y Playwright |
-| `backend/` | FastAPI + SQLModel + SQLite (WAL). Sirve también el frontend compilado. `tools/seed_demo.py` genera los datos de ejemplo |
-| `firmware/` | PlatformIO, Arduino-ESP32. Lógica de seguridad en C++ puro con tests nativos (Unity) |
-| `contracts/fixtures/` | Ejemplos de mensajes serie y REST que verifican las tres partes |
-| `docs/plan/` | Plan técnico: producto, arquitectura, contratos, firmware, visión, sesión, voz, frontend, tests, UX |
-| `handoffs/` | Encargos (WP0–WP12) con los que agentes de código construyeron cada parte, y su estado |
-| `hardware/` | CAD, STL y visor 3D (sección 3) |
+| `frontend/` | React 18 + TypeScript + Vite, three.js (`@react-three/fiber`), MediaPipe Tasks Vision, Recharts, `@google/genai`. Tests with Vitest and Playwright |
+| `backend/` | FastAPI + SQLModel + SQLite (WAL). Also serves the built frontend. `tools/seed_demo.py` generates the sample data |
+| `firmware/` | PlatformIO, Arduino-ESP32. Safety logic in plain C++ with native tests (Unity) |
+| `contracts/fixtures/` | Sample serial and REST messages checked by all three parts |
+| `docs/plan/` | Technical plan: product, architecture, contracts, firmware, vision, session, voice, frontend, tests, UX |
+| `handoffs/` | Briefs (WP0–WP12) that coding agents used to build each part, and their status |
+| `hardware/` | CAD, STLs, 3D viewer, printing notes and bench logs (section 3) |
 
-### 4.3 Pantallas
+### 4.3 Screens
 
-| Ruta | Pantalla |
+| Route | Screen |
 |---|---|
-| `/` | Inicio |
-| `/setup` | Elegir guante (USB o simulado), cámara y mano afectada |
+| `/` | Home |
+| `/setup` | Choose glove (USB or simulated), camera and affected hand |
 | `/calibrate` | Wizard: five servo ranges (jog) → open / closed / pinch camera range → review. Thread friction (unhooked) is in Evaluate preflight. |
-| `/exercise` | Sesión de ejercicio (modo foco, sin navegación) |
-| `/evaluate` | Evaluación de resistencia |
-| `/history` | Tendencias de rango, ayuda y resistencia; repetición de cada sesión (`/history/sessions/:id`) y evaluación |
-| `/doctor` | Vista del terapeuta: tendencias, resumen de Gemini a pedido, exportar JSON/CSV, imprimir. El único ajuste es el **plan adaptativo** (sección 4.10) |
-| `/profile` | Perfil opcional del paciente |
+| `/exercise` | Exercise session (focus mode, no navigation) |
+| `/evaluate` | Resistance evaluation |
+| `/history` | Trends for range, assistance and resistance; replay of each session (`/history/sessions/:id`) and evaluation |
+| `/doctor` | Therapist view: trends, on-demand Gemini summary, JSON/CSV export, print. The only setting is the **adaptive plan** (section 4.10) |
+| `/profile` | Optional patient profile |
 
-En el encabezado hay un menú **Demo tools** para pasar a guante o cámara simulados en medio de la demo sin recargar.
+The header has a **Demo tools** menu to switch to a simulated glove or camera mid-demo without reloading.
 
-### 4.4 Protocolo serie (laptop ↔ ESP32)
+### 4.4 Serial protocol (laptop ↔ ESP32)
 
-USB a **115200 baud**, una línea JSON compacta por mensaje (máx. 200 bytes). Los arrays de dedos van siempre en orden **[pulgar, índice, medio, anular, meñique]**.
+USB at **115200 baud**, one compact JSON line per message (max. 200 bytes). Finger arrays are always in the order **[thumb, index, middle, ring, pinky]**.
 
-| Laptop → ESP32 | Ejemplo | Qué hace |
+| Laptop → ESP32 | Example | What it does |
 |---|---|---|
 | `target` | `{"t":"target","f":[0.8,0.6,0.6,0.5,0.5],"v":0.5}` | Target tendon pull (0 = slack, 1 = calibrated straight finger) at speed `v` |
 | `follow` | `{"t":"follow","f":[0.3,0.4,0.1,0.2,0.2]}` | Follow vision converted to pull, subtracting 0.08 slack; unwind at 3.0/s |
-| `release` | `{"t":"release"}` | Aflojar todo; también sale de `fault` |
+| `release` | `{"t":"release"}` | Release everything; also exits `fault` |
 | `calib` | `{"t":"calib","i":1,"min":20,"max":150}` | Servo angles for slack `min` and neutral-open `max`; not persisted on the board |
-| `jog` | `{"t":"jog","i":1,"deg":95}` | Mover un servo a un ángulo, para calibrar |
-| `limit` / `ping` / `hello` | `{"t":"limit","ma":1500}` | Umbral de corriente / keepalive / pedir `info` |
+| `jog` | `{"t":"jog","i":1,"deg":95}` | Move one servo to an angle, for calibration |
+| `limit` / `ping` / `hello` | `{"t":"limit","ma":1500}` | Current threshold / keepalive / request `info` |
 
-| ESP32 → laptop | Ejemplo |
+| ESP32 → laptop | Example |
 |---|---|
 | `tel` (50 Hz) | `{"t":"tel","ms":12345,"a":[0.42,0.40,0.35,0.30,0.30],"ma":312,"st":"run","md":"follow","tg":[0.42,0.45,0.40,0.35,0.35]}` |
 | `evt` | `overcurrent`, `stop_button`, `stop_released`, `watchdog`, `boot`, `ina_missing`, `calib_ok` |
-| `info` / `err` | Versión, cantidad de dedos, límite y calibración / comando rechazado y por qué |
+| `info` / `err` | Version, finger count, limit and calibration / rejected command and why |
 
 `boot` events include optional `reset_reason` from `esp_reset_reason()`. Code **9** means brown-out: Setup and runtime status tell the helper to check the 470–1000 µF capacitor and the supply limit.
 
-`a` es la posición **comandada** (los micro servos no informan la real). Estados: `boot → idle → run`, `calib` durante el jog, y `fault` tras un corte, hasta un `release`.
+`a` is the **commanded** position (micro servos don't report the real one). States: `boot → idle → run`, `calib` during jog, and `fault` after a cutoff, until a `release`.
 
-### 4.5 Seguridad en el firmware
+### 4.5 Firmware safety
 
-Se aplica siempre, aunque la laptop diga otra cosa (detalle en [`firmware/README.md`](firmware/README.md)):
-- Al arrancar, PWM desconectado: no recuerda calibración ni movimiento. `target` y `follow` se rechazan hasta calibrar todos los dedos.
+Always enforced, whatever the laptop says (details in [`firmware/README.md`](firmware/README.md)):
+- At boot, PWM is detached: no remembered calibration or movement. `target` and `follow` are rejected until every finger is calibrated.
 - Stays within calibration: target winding ≤1 range/s, follow winding 1.5/s, unwinding 3.0/s.
-- **Corte por corriente:** más del umbral (filtrado) durante 100 ms → afloja todo y queda en `fault`.
-- **STOP:** se engancha al primer flanco; para seguir hay que soltarlo y mandar `release`.
-- **Watchdog:** 1 s sin mensajes válidos → afloja todo.
+- **Overcurrent cutoff:** above the (filtered) threshold for 100 ms → releases everything and stays in `fault`.
+- **STOP:** latches on the first edge; to continue, release the button and send `release`.
+- **Watchdog:** 1 s without valid messages → releases everything.
 - Release unwinds to pull 0 (slack), then detaches PWM after 500 ms.
 
-### 4.6 Visión
+### 4.6 Vision
 
-- MediaPipe Hand Landmarker (modelo local en `frontend/public/models/`), 640×480 a 30 Hz.
-- Cierre por dedo a partir de los ángulos de flexión, normalizado con la calibración del paciente y suavizado con filtro One Euro.
-- Si la mano no se ve, la confianza baja o la cámara se traba (100 ms sin cuadros), el dato se invalida y la sesión no le pide nada nuevo al guante.
-- Es una **estimación**, no un goniómetro.
+- MediaPipe Hand Landmarker (local model in `frontend/public/models/`), 640×480 at 30 Hz.
+- Per-finger closure from flexion angles, normalized with the patient's calibration and smoothed with a One Euro filter.
+- If the hand isn't visible, confidence drops or the camera freezes (100 ms without frames), the reading is invalidated and the session asks nothing new of the glove.
+- It is an **estimate**, not a goniometer.
 
-### 4.7 Motor de sesión
+### 4.7 Session engine
 
-Motor determinista en TypeScript (`frontend/src/engine/`), sin reloj propio, testeado con el simulador.
+Deterministic TypeScript engine (`frontend/src/engine/`), with no clock of its own, tested with the simulator.
 
 ```
  PRESENT → ATTEMPT (follow) → reached → HOLD → RELEASE → REST
@@ -344,187 +343,187 @@ Motor determinista en TypeScript (`frontend/src/engine/`), sin reloj propio, tes
 - The simulator exposes rigid-finger resistance. Detection also covers a stall already present in the initial assist baseline; a single stall need not exceed the aggregate firmware current limit. See `docs/DEV.md` for the browser and unit regressions.
 - **Evaluation:** from a relaxed, curled hand, sweep opening pull slowly and quickly. Subtract recent thread friction (threads unhooked from the yellow fingertip anchors) measured in Evaluate preflight; fast − slow estimates velocity dependence of flexor tone.
 
-**Métricas por intento:** cierre activo máximo por dedo, tiempo hasta la posición, ayuda necesaria, corriente pico y media, eventos de seguridad, y una traza a 20 Hz para repetir el intento después.
+**Per-attempt metrics:** maximum active closure per finger, time to pose, assistance needed, peak and mean current, safety events, and a 20 Hz trace to replay the attempt later.
 
-### 4.8 Voz y Gemini
+### 4.8 Voice and Gemini
 
-| Capa | Qué hace |
+| Layer | What it does |
 |---|---|
-| **Red de seguridad local** | Sonidos y voz del navegador para los avisos de seguridad ("Stopping. I felt resistance in your index."). Funciona en cualquier modo, sin red |
-| **Coach (Gemini Live)** | Da la instrucción, alienta, comenta cada intento y responde. Comandos de voz: pausa, seguir, saltar, repetir, parar, "cómo voy" |
-| **Voz simple** | Frases fijas, sin key. Se activa sola si Gemini Live falla 3 veces |
-| **Resúmenes (Gemini texto)** | Para el paciente al terminar la sesión y para el terapeuta a pedido desde `/doctor` |
+| **Local safety net** | Browser sounds and speech for safety alerts ("Stopping. I felt resistance in your index."). Works in every mode, offline |
+| **Coach (Gemini Live)** | Gives the instruction, encourages, comments on each attempt and answers questions. Voice commands: pause, continue, skip, repeat, stop, "how am I doing" |
+| **Simple voice** | Fixed phrases, no key needed. Turns on automatically if Gemini Live fails 3 times |
+| **Summaries (Gemini text)** | For the patient at the end of the session and for the therapist on demand from `/doctor` |
 
-Gemini solo recibe métricas resumidas, nunca video. Todo se presenta como acompañamiento, no como indicación médica.
+Gemini only receives summarized metrics, never video. Everything is presented as coaching, not medical advice.
 
-### 4.9 Datos
+### 4.9 Data
 
-SQLite en `backend/data/rehab.db`: perfil, calibraciones, sesiones, intentos con trazas, evaluaciones y transcripciones de voz. Exportable a JSON y CSV desde la vista del terapeuta. Demo data from `make demo-seed` contains 25 sessions (212 attempts, including three legacy closing sessions) and five opening evaluations over six weeks, with voice-coach decisions, check-ins and transcripts in the last 18 days. All carry `is_demo`; directions remain separated in history.
+SQLite in `backend/data/rehab.db`: profile, calibrations, sessions, attempts with traces, evaluations and voice transcripts. Exportable to JSON and CSV from the therapist view. Demo data from `make demo-seed` contains 25 sessions (212 attempts, including three legacy closing sessions) and five opening evaluations over six weeks, with voice-coach decisions, check-ins and transcripts in the last 18 days. All carry `is_demo`; directions remain separated in history.
 
-### 4.10 Plan del día (progresión adaptativa)
+### 4.10 Today's plan (adaptive progression)
 
-Cada práctica puede arrancar desde las últimas sesiones en vez del mismo plan estándar. **Está apagado por defecto**: lo prende el terapeuta en `/doctor` → **Adaptive plan** (Standard o Gentle). Apagado, la práctica y la demo funcionan igual que antes.
+Each practice can start from the latest sessions instead of the same standard plan. **It is off by default**: the therapist turns it on in `/doctor` → **Adaptive plan** (Standard or Gentle). When off, practice and the demo work exactly as before.
 
-- **Objetivo por dedo:** un dedo que casi nunca llega solo a abrirse del todo recibe un objetivo un poco más allá de lo que abre solo (por ejemplo, meñique al 60%). Así practica un desafío alcanzable.
-- **La ayuda se retira de a poco:** si la mayoría de las aperturas salen solas, la ayuda se ofrece más tarde (6 → 7 → 8 s para intentar solo). Si en la última sesión hubo dolor o mucha fatiga, el tiempo queda estándar.
-- **Solo hace la práctica más fácil o da más tiempo:** nunca cambia la velocidad del guante, la tracción máxima, los límites de corriente ni el firmware. Un objetivo más bajo también hace que el guante tire menos. El coach ajusta desde ahí, con sus propios límites.
-- En la pantalla de práctica (Home → Customize plan) el paciente ve **Today's plan** y puede usar el plan estándar ese día; los botones de inicio rápido aplican el plan sin mostrarlo. El plan aplicado queda en el registro de la sesión ("Today's plan applied").
-- Detalle, reglas y pruebas: [`docs/plan/17-progression.md`](docs/plan/17-progression.md). Es una estimación inspirada en la práctica clínica, no un protocolo validado.
+- **Per-finger target:** a finger that almost never opens fully on its own gets a target a little beyond what it opens alone (for example, pinky at 60%). That way it practices a reachable challenge.
+- **Help fades gradually:** if most openings happen unaided, help is offered later (6 → 7 → 8 s to try alone). If the last session had pain or a lot of fatigue, the timing stays standard.
+- **It only makes practice easier or gives more time:** it never changes the glove speed, maximum pull, current limits or firmware. A lower target also makes the glove pull less. The coach adjusts from there, within its own limits.
+- On the practice screen (Home → Customize plan) the patient sees **Today's plan** and can use the standard plan that day; the quick-start buttons apply the plan without showing it. The applied plan is stored in the session record ("Today's plan applied").
+- Details, rules and tests: [`docs/plan/17-progression.md`](docs/plan/17-progression.md). It is an estimate inspired by clinical practice, not a validated protocol.
 
-### 4.11 Pendiente
+### 4.11 To do
 
-**Plan del equipo, paso a paso y con responsables:** [`docs/TEAM_PLAN.md`](docs/TEAM_PLAN.md).
+**Team plan, step by step and with owners:** [`docs/TEAM_PLAN.md`](docs/TEAM_PLAN.md).
 
-- **Pasar de 3 a 5 dedos** (en curso): contrato (`docs/plan/03-contracts.md`, `contracts/fixtures/`, `firmware/lib/core/protocol.h`, `frontend/src/contracts/`, `backend/app/contracts/`) y todo lo que lo usa: firmware, calibración, mano virtual, métricas, gráficos, simulador, tests y prompt de voz.
-- **Umbral de corriente para 5 servos:** medirlo en el banco de pruebas.
-- **Probar el firmware en la placa** con [`firmware/BENCH.md`](firmware/BENCH.md) y después [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), sin el guante puesto.
-- **Gemini con la key real:** confirmar que `/api/health` diga `gemini: true` y ensayar una conexión de voz y un resumen.
-- Fuera de alcance: modo espejo, retiro de las luces y de la frecuencia de ayuda (el plan del día solo retrasa la ayuda, sección 4.10), acceso remoto, varios pacientes, otros idiomas.
+- **Going from 3 to 5 fingers** (in progress): the contract (`docs/plan/03-contracts.md`, `contracts/fixtures/`, `firmware/lib/core/protocol.h`, `frontend/src/contracts/`, `backend/app/contracts/`) and everything that uses it: firmware, calibration, virtual hand, metrics, charts, simulator, tests and voice prompt.
+- **Current threshold for 5 servos:** measure it on the bench.
+- **Test the firmware on the board** with [`firmware/BENCH.md`](firmware/BENCH.md) and then [`docs/HARDWARE_CHECKLIST.md`](docs/HARDWARE_CHECKLIST.md), without the glove on.
+- **Gemini with the real key:** confirm `/api/health` reports `gemini: true` and rehearse a voice connection and a summary.
+- Out of scope: mirror mode, fading the lights and the assistance frequency (today's plan only delays help, section 4.10), remote access, multiple patients, other languages.
 
 ---
 
-## 5. Modos
+## 5. Modes
 
-| Modo | Qué hace | Qué mide |
+| Mode | What it does | What it measures |
 |---|---|---|
-| **Ejercicio** (principal) | Posiciones de terapia. El paciente intenta solo y el guante ayuda lo que falta | Cuánto llega solo cada dedo, tiempo hasta la posición, cuánta ayuda necesitó |
-| **Evaluación** | From a relaxed curled hand, opens each selected finger slowly then quickly | Resistencia de cada dedo según la velocidad |
-| **Espejo** (no construido) | Una mano sana frente a la cámara controla el guante | Nada: es para practicar y para la demo |
+| **Exercise** (main) | Therapy poses. The patient tries alone and the glove helps with what's missing | How far each finger gets alone, time to pose, how much help was needed |
+| **Evaluation** | From a relaxed curled hand, opens each selected finger slowly then quickly | Resistance of each finger by speed |
+| **Mirror** (not built) | A healthy hand in front of the camera controls the glove | Nothing: it's for practice and for the demo |
 
-**Posiciones** (ejercicios reales de terapia de mano):
-- **Deslizamiento de tendones:** mano abierta, gancho, puño completo, mesa, puño recto.
-- **Oposición del pulgar:** tocar con el pulgar la punta de cada dedo (inspirado en el test de Kapandji).
-- **Pinza:** pulgar e índice.
+**Poses** (real hand-therapy exercises):
+- **Tendon glides:** open hand, hook, full fist, tabletop, straight fist.
+- **Thumb opposition:** touch the tip of each finger with the thumb (inspired by the Kapandji test).
+- **Pinch:** thumb and index.
 
-**Feedback que se retira** (primer paso construido, sección 4.10): con el plan adaptativo prendido, la ayuda se ofrece más tarde a medida que el paciente abre solo, y cada dedo practica un objetivo a su medida. Falta reducir las luces y ofrecer ayuda en menos intentos (por ejemplo, del 100% al 50%). El feedback constante genera dependencia.
+**Fading feedback** (first step built, section 4.10): with the adaptive plan on, help is offered later as the patient opens alone, and each finger practices a target tailored to it. Still missing: dimming the lights and offering help on fewer attempts (for example, from 100% to 50%). Constant feedback creates dependence.
 
 ---
 
-## 6. Métricas
+## 6. Metrics
 
-Por dedo y por intento:
+Per finger and per attempt:
 
 - **Active opening:** how far the finger opens alone (0–100%), derived from open-pose closure. Closing ability is recorded separately by pose.
-- **Tiempo hasta la posición.**
-- **Ayuda necesaria:** cuánto recorrido completó el guante.
-- **Resistencia:** corriente de los servos durante el modo evaluación, menos la del guante vacío (calibración).
+- **Time to pose.**
+- **Assistance needed:** how much of the travel the glove completed.
+- **Resistance:** servo current during evaluation mode, minus thread friction (calibration).
 
-La rigidez después de un ACV aumenta con la velocidad del movimiento. Comparar la resistencia a velocidad lenta y rápida es lo que el terapeuta evalúa a mano (escala de Ashworth).
+Stiffness after a stroke increases with movement speed. Comparing resistance at slow and fast speed is what the therapist assesses by hand (Ashworth scale).
 
-> Comunicar todo como "estimación inspirada en la práctica clínica", **no** como medición validada.
+> Communicate everything as an "estimate inspired by clinical practice", **not** as a validated measurement.
 
 ---
 
-## 7. El ángulo de Healthcare
+## 7. The Healthcare angle
 
-| Población | Uso del guante |
+| Population | Use of the glove |
 |---|---|
-| **ACV con mano parética** (protagonista) | Repeticiones asistidas y medición del rango y la rigidez |
-| Lesión de tendón o post-cirugía de mano | Ejercicios de deslizamiento de tendones en casa |
-| Lesión medular cervical | Opening practice after team and clinical assessment |
-| Esclerosis múltiple, parálisis cerebral | Seguimiento de la rigidez en el tiempo |
+| **Stroke with a paretic hand** (main case) | Assisted repetitions and measurement of range and stiffness |
+| Tendon injury or post hand surgery | Tendon-glide exercises at home |
+| Cervical spinal cord injury | Opening practice after team and clinical assessment |
+| Multiple sclerosis, cerebral palsy | Tracking stiffness over time |
 
-**Telerrehabilitación:** el paciente practica en casa y el terapeuta ve el dashboard a distancia. Gemini genera un resumen semanal para el terapeuta.
+**Telerehabilitation:** the patient practices at home and the therapist views the dashboard remotely. Gemini generates a weekly summary for the therapist.
 
 ---
 
-## 8. Demo y pitch
+## 8. Demo and pitch
 
-El guion detallado (6 minutos, con qué decir en cada paso y cómo recuperarse si falla la cámara, el guante o Gemini) está en [`docs/DEMO.md`](docs/DEMO.md). Todo lo que fuerce resistencia o STOP se muestra con el simulador, nunca con la mano de una persona.
+The detailed script (6 minutes, with what to say at each step and how to recover if the camera, glove or Gemini fails) is in [`docs/DEMO.md`](docs/DEMO.md). Anything that forces resistance or STOP is shown with the simulator, never with a person's hand.
 
 1. Use both simulators with the moderate patient. Make a fist alone, then watch the glove help open. Show blue active movement, orange opening help and green reach.
 2. In the simulator, enable Rigid index during an opening. Show the resistance stop and its saved event. For STOP/overcurrent, show pause and slack; never deliberately stall a person's hand.
 3. Show opening trends, an Open hand replay, and the two labeled legacy closing sessions. Evaluation measures resistance to opening (flexor tone).
 4. Open Doctor view, request a summary if available, and export the marked records. Rehearse [docs/DEMO.md](docs/DEMO.md).
 
-### Video de Devpost (3 min)
+### Devpost video (3 min)
 
-| Criterio | Qué mostrar |
+| Criterion | What to show |
 |---|---|
-| Problem solving | Paciente post-ACV, falta de horas de terapia, telerrehabilitación |
-| Innovation | Ayuda solo lo que falta + medición de rigidez con la corriente de los servos |
-| Technology | Visión por computadora, tendones artificiales, control de servos con corte por corriente, Gemini |
-| Design | Guante liviano, servos en un módulo de muñeca, seguridad en capas |
-| Completion | Demo en vivo |
+| Problem solving | Post-stroke patient, lack of therapy hours, telerehabilitation |
+| Innovation | Helps only with what's missing + stiffness measurement from servo current |
+| Technology | Computer vision, artificial tendons, servo control with overcurrent cutoff, Gemini |
+| Design | Lightweight glove, servos in a wrist module, layered safety |
+| Completion | Live demo |
 
 ---
 
-## 9. Challenges a sumar
+## 9. Challenges
 
-| Challenge | Cómo entra | Qué hace falta |
+| Challenge | How it fits | What's needed |
 |---|---|---|
-| **MLH Gemini API** | Coach de voz y resúmenes para el terapeuta | Usar la Gemini API |
-| **Trace** | PCB del guante: ESP32 + conectores de servos + INA219 + STOP | Diseño en Trace, ERC/DRC, BOM, Gerbers, vista mecánica. Código `MAKECU-X-TRACE-26` |
-| **Zelos** | Ver en vivo la corriente y los ángulos durante el desarrollo | Plan Academic con mail universitario |
-| **Notability** (opcional) | Documentar el proceso | Taggear, 2+ capturas, 1–2 frases. Código `MAKECU` |
+| **MLH Gemini API** | Voice coach and summaries for the therapist | Use the Gemini API |
+| **Trace** | Glove PCB: ESP32 + servo connectors + INA219 + STOP | Design in Trace, ERC/DRC, BOM, Gerbers, mechanical view. Code `MAKECU-X-TRACE-26` |
+| **Zelos** | Watch current and angles live during development | Academic plan with a university email |
+| **Notability** (optional) | Document the process | Tag, 2+ screenshots, 1–2 sentences. Code `MAKECU` |
 
-Touchtronix ya no aplica: no usamos el SensX25.
+Touchtronix no longer applies: we don't use the SensX25.
 
 ---
 
-## 10. Lista de hardware
+## 10. Hardware list
 
-### Desk de CURC (órdenes del sitio de MakeCU)
+### CURC desk (orders from the MakeCU site)
 
-| Orden | Ítem | Cant. |
+| Order | Item | Qty |
 |---|---|---|
 | O-00039 | Facmogu Adjustable DC Power Supply | 1 |
 | O-00039 | INA219 Current and Power Monitor | 1 |
 | O-00039 | Tactile Push Buttons (Assorted) | 1 |
-| O-00036 | ESP32 ESP-WROOM-32 Development Board | 2 (una de repuesto) |
+| O-00036 | ESP32 ESP-WROOM-32 Development Board | 2 (one spare) |
 | O-00036 | WS2812B NeoPixel Ring (24 px) | 1 |
 | O-00036 | 4-channel Logic Level Shifter | 1 |
-| O-00036 | INMP441 I2S Microphone | 1 (opcional: alcanza con el micrófono de la laptop) |
+| O-00036 | INMP441 I2S Microphone | 1 (optional: the laptop microphone is enough) |
 | O-00036 | Alligator Clip Test Lead | 2 |
-| O-00014 | Audio Amplifier + Dweii Mini Speaker | 1 + 1 (opcional: alcanza con el parlante de la laptop) |
+| O-00014 | Audio Amplifier + Dweii Mini Speaker | 1 + 1 (optional: the laptop speaker is enough) |
 | O-00014 | Solderless Breadboard full + half | 1 + 1 |
 
-Pedir que saquen de la O-00014: ESP32-CAM, Raspberry Pi AI Camera, USB 3.1 breakout y micrófono electret.
+Ask them to remove from O-00014: ESP32-CAM, Raspberry Pi AI Camera, USB 3.1 breakout and electret microphone.
 
-### Desk de MLH (en persona)
+### MLH desk (in person)
 
-| Ítem | Cant. |
+| Item | Qty |
 |---|---|
 | Resistor Kit | 1 |
 | Wire Spool | 1 |
-| DMM, Wire Strippers, Flush Cutters | 1 c/u |
-| Grove 3 Axis Digital (opcional, temblor) | 1 |
+| DMM, Wire Strippers, Flush Cutters | 1 each |
+| Grove 3 Axis Digital (optional, tremor) | 1 |
 
-### Por fuera del inventario
+### Outside the inventory
 
-- Cables micro-USB para las ESP32.
-- Guante de tela fina o de ciclismo.
-- Tanza o hilo encerado.
-- Tubitos plásticos o sorbetes para las guías.
-- Banda elástica para el dorso.
-- Velcro (2 correas para el módulo).
-- Cables jumper macho-macho y macho-hembra (5 servos a la breadboard).
-- Hilo de coser resistente, aguja y gotita (para guías, anclajes y nudos).
-- Capacitor electrolítico de 470–1000 µF para la línea de 5 V de los servos.
+- Micro-USB cables for the ESP32s.
+- Thin fabric or cycling glove.
+- Fishing line or waxed thread.
+- Small plastic tubes or straws for the guides.
+- Elastic band for the back of the hand.
+- Velcro (2 straps for the module).
+- Male-male and male-female jumper wires (5 servos to the breadboard).
+- Strong sewing thread, needle and super glue (for guides, anchors and knots).
+- 470–1000 µF electrolytic capacitor for the servos' 5 V line.
 
-### Impresión 3D (Makerspace, Mudd 254)
+### 3D printing (Makerspace, Mudd 254)
 
-Piezas en `hardware/`: módulo de muñeca, tapa, carretes, guías y anclajes (ver sección 3). Hacer la **capacitación del Makerspace temprano**. Máximo 4 h por impresión, 1 impresora por equipo.
+Parts in `hardware/`: wrist module, lid, spools, guides and anchors (see section 3 and [`hardware/PRINTING.md`](hardware/PRINTING.md)). Do the **Makerspace training early**. Max 4 h per print, 1 printer per team.
 
 ---
 
-## 11. Plan de trabajo
+## 11. Work plan
 
-| Rol | Tarea | Estado |
+| Role | Task | Status |
 |---|---|---|
-| Software | App, backend, firmware, simulador, voz | **Hecho** (WP0–WP12). Falta probarlo con hardware real |
-| Mecánica | Imprimir módulo, tapa y carretes; coser guías, anclajes y elásticos al guante | Guías y anclajes impresos |
-| Electrónica | Cablear ESP32, INA219, STOP y servos; banco de pruebas de `firmware/BENCH.md` | Pendiente |
-| Integración | Un dedo de punta a punta: calibrar, `follow`, asistencia, corte por corriente | Software integrated; physical opening strength gate pending |
-| Pitch | Ensayar `docs/DEMO.md`, video de Devpost | Pendiente |
+| Software | App, backend, firmware, simulator, voice | **Done** (WP0–WP12). Still needs testing with real hardware |
+| Mechanics | Print module, lid and spools; attach guides, anchors and elastics | Guides and anchors printed |
+| Electronics | Wire ESP32, INA219, STOP and servos; bench tests in `firmware/BENCH.md` | In progress (see [`hardware/FIXES.md`](hardware/FIXES.md)) |
+| Integration | One finger end to end: calibrate, `follow`, assistance, overcurrent cutoff | Software integrated; physical opening strength gate pending |
+| Pitch | Rehearse `docs/DEMO.md`, Devpost video | Pending |
 
-**Orden:** primero **un dedo + un servo + la cámara de punta a punta**. Después los otros cuatro.
+**Order:** first **one finger + one servo + the camera end to end**. Then the other four.
 
-### Riesgos
+### Risks
 
-- **La mecánica es lo más difícil:** fricción del hilo, anclajes que se sueltan, guante que se corre. Probar con un solo dedo lo antes posible.
-- **Servos:** 5× Smraza S51. Falta medir cada uno en banco (reposo, movimiento, trabado) y confirmar que entran en sus alojamientos.
+- **Mechanics are the hardest part:** thread friction, anchors coming loose, the attachment shifting. Test with a single finger as early as possible.
+- **Servos:** 5× Smraza S51. Each still needs measuring on the bench (rest, moving, stalled) and checking that it fits its housing.
 - **Opening travel and force:** measure dorsal travel, extension strength and sustained current on a fixture before finalizing spools.
-- **Cámara con dedos tapados:** probar la posición de la webcam temprano.
-- **Firmware nunca probado en una placa:** hacer el banco de pruebas temprano, con el guante sin poner.
-- Si la mecánica falla, la app con el simulador (o con la cámara real y el guante simulado) sigue siendo una demo que funciona sola.
+- **Camera with covered fingers:** test the webcam position early.
+- **Firmware only lightly tested on a board:** finish the bench tests early, with the glove off.
+- If the mechanics fail, the app with the simulator (or with the real camera and the simulated glove) is still a demo that works on its own.

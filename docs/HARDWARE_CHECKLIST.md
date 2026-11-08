@@ -12,7 +12,7 @@ sheet. Its steps **1–7 must pass on the real board and be recorded before anyo
 connects a person's hand**. The ordered **Opening glove gate** at the end of BENCH must also pass; its permitted fixture/volunteer stages are authoritative. Complete the remaining bench checks too; any failed
 check blocks use with a person. Do not treat passing host tests as board evidence.
 
-Read [Matias' first bench session, 7 Nov 2026](../hardware/BANCO.md) before
+Read [Matias' first bench session, 7 Nov 2026](../hardware/BENCH-1.md) before
 wiring. It records unloaded jogs and STOP observations, with no INA219 connected;
 it does **not** pass the BENCH gate. The actual Facmogu adapter has **no current
 limit**, and the MB102 breadboard regulator is insufficient for glove practice.
@@ -43,7 +43,7 @@ is the supply on the bench.
 - [ ] Servo power off: check common ground, signal pins and STOP wiring. Keep
   USB/ESP32 power separate from servo power. **Measure breadboard rail polarity
   with a multimeter before connecting servos**; do not infer +/− from row position.
-  BANCO records reversed red/brown servo leads causing heat within seconds.
+  BENCH-1 records reversed red/brown servo leads causing heat within seconds.
 - [ ] **INA219 required before any physical practice:** wire it in the positive
   servo rail and verify sensor/current readings against the DMM. Without it the
   firmware refuses assistance (`target`/`follow`); `jog` still works and a zero

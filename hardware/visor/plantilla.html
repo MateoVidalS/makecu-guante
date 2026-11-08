@@ -1,10 +1,10 @@
 <meta charset="utf-8">
-<title>Montaje del Guante Robótico</title>
+<title>Robotic Glove Assembly</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: banco de trabajo. Visor 3D a la izquierda, ficha técnica a la derecha; en teléfono se apilan. */
+/* Layout: workbench. 3D viewer on the left, spec sheet on the right; stacked on phones. */
 :root {
   --bg: #e9edf1;
   --panel: #f7f9fb;
@@ -101,74 +101,75 @@ code, .mono { font-family: var(--font-mono); font-size: 12px; }
 
 <div class="app">
   <div class="stage">
-    <canvas id="view" aria-label="Modelo 3D del módulo de muñeca con cinco servos, la mano con el guante, la laptop y la webcam"></canvas>
+    <canvas id="view" aria-label="3D model of the wrist module with five servos, the gloved hand, the laptop and the webcam"></canvas>
     <div class="legend" aria-hidden="true">
-      <span><i class="sw" style="background:var(--pla)"></i>impreso (PLA)</span>
+      <span><i class="sw" style="background:var(--pla)"></i>printed (PLA)</span>
       <span><i class="sw" style="background:#2f6fd0"></i>servo</span>
-      <span><i class="sw" style="background:var(--thread)"></i>hilo</span>
-      <span><i class="sw" style="background:#4fae7a"></i>elástico</span>
-      <span><i class="sw" style="background:#7c4dff"></i>campo de la webcam</span>
+      <span><i class="sw" style="background:var(--thread)"></i>thread</span>
+      <span><i class="sw" style="background:#4fae7a"></i>elastic</span>
+      <span><i class="sw" style="background:#7c4dff"></i>webcam field of view</span>
     </div>
     <div class="pip" id="pip">
       <div class="frame" id="pipFrame"></div>
-      <div class="cap">Lo que ve la webcam</div>
+      <div class="cap">What the webcam sees</div>
     </div>
     <div class="hud">
-      <div class="seg" role="group" aria-label="Vista">
-        <button id="vAssembly" aria-pressed="true">Montaje</button>
-        <button id="vBed" aria-pressed="false">Piezas</button>
+      <div class="seg" role="group" aria-label="View">
+        <button id="vAssembly" aria-pressed="true">Assembly</button>
+        <button id="vBed" aria-pressed="false">Parts</button>
       </div>
       <div class="chip" id="closureChip">
-        <label for="closure">Cierre</label>
+        <label for="closure">Closure</label>
         <input id="closure" type="range" min="0" max="100" value="60">
         <span id="closureVal">60%</span>
       </div>
-      <button id="play" aria-pressed="false">Animar</button>
-      <button id="insideBtn" aria-pressed="true">Ver por dentro</button>
-      <button id="gloveBtn" aria-pressed="false">Guante transparente</button>
+      <button id="play" aria-pressed="false">Animate</button>
+      <button id="insideBtn" aria-pressed="true">See inside</button>
+      <button id="gloveBtn" aria-pressed="false">Transparent glove</button>
     </div>
   </div>
 
   <aside>
     <header>
-      <div class="eyebrow">MakeCU · Healthcare · v0.6 · módulo de muñeca</div>
-      <h1>Montaje del guante robótico</h1>
-      <p>Un módulo impreso de 80,5 × 80 × 47 mm va debajo de la muñeca y el antebrazo, sujeto con dos correas. Es rígido y abarca la muñeca, así que la mantiene recta. Adentro, los cinco carretes están a la misma altura, justo debajo de la tapa. Cada hilo sale horizontal y tangente a su carrete por arriba del frente, sube unos 10° hasta la palma y corre pegado a la piel por guías cosidas al guante hasta la punta del dedo. Sin fundas ni tubos.</p>
+      <div class="eyebrow">MakeCU · Healthcare · v0.6 · wrist module</div>
+      <h1>Robotic glove assembly</h1>
+      <p>An 80.5 × 80 × 47 mm printed module sits under the wrist and forearm, held by two straps. It is rigid and spans the wrist, so it keeps it straight. Inside, the five spools sit at the same height, just under the lid. Each thread leaves its spool horizontally and tangentially over the front, rises about 10° to the palm and runs close to the skin through guides sewn to the glove up to the fingertip. No sleeves or tubes.</p>
     </header>
 
     <section>
-      <h2>Piezas</h2>
+      <h2>Parts</h2>
       <div class="parts" id="parts"></div>
     </section>
 
     <section class="detail" id="detail" aria-live="polite"></section>
 
     <section>
-      <h2>Puesta en la mesa</h2>
+      <h2>Table setup</h2>
       <ol class="steps">
-        <li>Ponerse el guante y el módulo debajo de la muñeca. Cerrar la correa de adelante alrededor de la mano y la de atrás alrededor del antebrazo.</li>
-        <li>Palma hacia abajo, con el frente del módulo en el borde de la mesa: la mano queda afuera y los dedos se cierran en el aire.</li>
-        <li>Antebrazo sobre una toalla doblada de unos 4 cm, para que quede a la altura del módulo.</li>
-        <li>Webcam adelante y del lado del pulgar (en el rincón de la mesa), a 30–40 cm de los dedos y más alta que la mano, apuntando en diagonal.</li>
-        <li>Laptop adelante del paciente, del lado del pulgar, con la pantalla hacia él.</li>
-        <li>Breadboard con la ESP32 y el INA219 sobre la mesa, detrás de la base; el botón STOP del otro lado.</li>
+        <li>Put on the glove with the module under the wrist. Close the front strap around the hand and the back strap around the forearm.</li>
+        <li>Palm down, with the front of the module at the table edge: the hand sticks out and the fingers close in the air.</li>
+        <li>Forearm on a towel folded to about 4 cm, so it sits level with the module.</li>
+        <li>Webcam in front, on the thumb side (at the corner of the table), 30–40 cm from the fingers and higher than the hand, pointing diagonally.</li>
+        <li>Laptop in front of the patient, on the thumb side, with the screen facing them.</li>
+        <li>Breadboard with the ESP32 and the INA219 on the table, behind the base; the STOP button on the other side.</li>
       </ol>
     </section>
 
     <section>
-      <h2>Orden de armado</h2>
+      <h2>Assembly order</h2>
       <ol class="steps">
-        <li>Atornillar los 3 servos de la fila de adelante y los 2 de atrás, con el eje hacia arriba y en 0°.</li>
-        <li>Atornillar cada carrete a su brazo en cruz y montarlo en el servo.</li>
-        <li>Coser en el guante, del lado de la palma: anclaje en la punta de cada dedo, una guía por falange y una en la palma a la altura de cada nudillo.</li>
-        <li>Pasar cada hilo: anclaje, guías, salida del frente del módulo y carrete. Ordenados de pulgar a meñique; índice y anular pasan por el hueco entre los carretes de adelante. Anudar con el dedo abierto y el hilo apenas tenso.</li>
-        <li>Coser los elásticos del dorso, de la punta de cada dedo al puño del guante.</li>
-        <li>Sacar los cables de los servos por la ranura de atrás hacia la breadboard y cerrar la tapa con 4 tornillos.</li>
+        <li>Screw in the 3 front-row servos and the 2 back-row ones, shaft up and at 0°.</li>
+        <li>Screw each spool to its cross horn and mount it on the servo.</li>
+        <li>Sew onto the glove, on the palm side: an anchor at each fingertip, one guide per phalanx and one on the palm at each knuckle.</li>
+        <li>Route each thread: anchor, guides, the module's front exit and spool. In order from thumb to pinky; index and ring pass through the gap between the front spools. Knot it with the finger open and the thread just taut.</li>
+        <li>Sew the back-of-hand elastics, from each fingertip to the glove cuff.</li>
+        <li>Run the servo cables out through the back slot to the breadboard and close the lid with 4 screws.</li>
       </ol>
     </section>
 
     <section class="warn">
-      <p><strong>Antes de imprimir:</strong> medir el servo real (cuerpo, orejas, altura del eje) y el recorrido de hilo de un dedo, y ajustar los parámetros en <code>hardware/cad/piezas.py</code>. El módulo está hecho para la mano derecha; para la izquierda, espejar módulo y tapa en el slicer.</p>
+      <p><strong>Before printing:</strong> measure the actual servo (body, tabs, shaft height) and one finger's thread travel, and adjust the parameters in <code>hardware/cad/piezas.py</code>. The module is made for the right hand; for the left, mirror the module and lid in the slicer.</p>
+      <p><strong>Superseded routing:</strong> this viewer shows the earlier palm-down, palm-side (closing-assist) design. Since Nov 8 the tendons run over the back of the bare hand to assist opening; see README §3.</p>
     </section>
   </aside>
 </div>
@@ -180,53 +181,53 @@ code, .mono { font-family: var(--font-mono); font-size: 12px; }
 const STL = /*__PARTS__*/null;
 
 const PART_INFO = [
-  { id: "base", name: "Módulo de muñeca", qty: "1", src: "imprimir", color: "pla",
-    meta: "80,5 × 80 × 41 mm · 68,2 cm³",
-    text: "Va debajo de la muñeca, del lado de la palma. Es rígido y abarca la muñeca: con las dos correas, la mantiene recta y el largo de los hilos no cambia. Adentro, cada servo va en su propio soporte (un tubo rectangular del piso hasta las orejas) y los 5 carretes quedan a la misma altura, justo debajo de la tapa, en zigzag: pulgar, medio y meñique adelante; índice y anular atrás, con sus hilos pasando por el hueco entre los carretes de adelante. Cada hilo sale horizontal y tangente a su carrete por arriba del frente: enrolla parejo y no carga de costado el eje del servo. Atrás hay una ranura para los cables.",
-    print: "PLA, 20% de relleno, 3 perímetros. Imprimir parada sobre el piso, sin soportes. Estimado 2,5 a 3,5 h (confirmar en el slicer)." },
-  { id: "tapa", name: "Tapa (apoyo de la muñeca)", qty: "1", src: "imprimir", color: "pla",
-    meta: "80,5 × 102 × 6 mm · 32,0 cm³",
-    text: "Cierra el módulo con 4 tornillos (M2,5 o los de los servos). Es cóncava para que la muñeca calce. Tiene dos pares de orejas para correas de velcro de 25 mm (adelante rodean la mano, atrás el antebrazo).",
-    print: "PLA, 30%. Con la cara plana sobre la cama, sin soportes. Aproximadamente 1 h." },
-  { id: "carrete", name: "Carrete", qty: "5", src: "imprimir", color: "pla",
-    meta: "Ø 22 × 8,2 mm · radio de enrollado 10 mm",
-    text: "Se atornilla al brazo en cruz del servo. Con 10 mm de radio, 180° de giro enrollan unos 31 mm de hilo. El hilo se anuda en el agujero radial del núcleo.",
-    print: "PLA, 100%. Sin soportes." },
-  { id: "guia", name: "Guía de tendón", qty: "13", src: "imprimir", color: "pla",
-    meta: "12 × 9 × 5 mm · canal Ø 2 mm",
-    text: "Se cose al guante del lado de la palma: 3 por dedo largo (palma, falange proximal y media) y 1 en el pulgar. Mantienen el hilo pegado a la piel. Entradas abocinadas para que el hilo no roce contra una arista.",
-    print: "PLA, 100%. Imprimir de a varias, con 2 o 3 de repuesto." },
-  { id: "anclaje", name: "Anclaje de punta", qty: "5", src: "imprimir", color: "pla",
-    meta: "12 × 9 × 5,2 mm",
-    text: "Se cose en la punta de cada dedo. El hilo pasa por el canal y se anuda del otro lado del tope.",
-    print: "PLA, 100%. Sin soportes." },
-  { id: "servos", name: "Micro servos", qty: "5", src: "tenemos", color: "servo",
-    meta: "SG92R · MG90S · 2× S51 · 1 negro sin identificar",
-    text: "Cada uno en su soporte individual, con el eje hacia arriba. Los alojamientos son universales (23,6 × 13,2 mm, agujeros alargados) y el del pulgar 1,5 mm más grande. Asignación por torque: índice → SG92R (~2,5 kg·cm), medio → MG90S (engranajes de metal), anular y meñique → S51 (~1,6–1,8 kg·cm), pulgar → el negro (medirlo). Con 5 servos, límite de la fuente en unos 2,5 A.",
+  { id: "base", name: "Wrist module", qty: "1", src: "print", color: "pla",
+    meta: "80.5 × 80 × 41 mm · 68.2 cm³",
+    text: "Goes under the wrist, on the palm side. It is rigid and spans the wrist: with the two straps it keeps the wrist straight, so thread length doesn't change. Inside, each servo sits in its own mount (a rectangular tube from the floor up to the tabs) and the 5 spools sit at the same height, just under the lid, in a zigzag: thumb, middle and pinky in front; index and ring behind, with their threads passing through the gap between the front spools. Each thread leaves its spool horizontally and tangentially over the front: it winds evenly and doesn't side-load the servo shaft. There is a slot at the back for the cables.",
+    print: "PLA, 20% infill, 3 perimeters. Print standing on its floor, no supports. Estimated 2.5 to 3.5 h (confirm in the slicer)." },
+  { id: "tapa", name: "Lid (wrist rest)", qty: "1", src: "print", color: "pla",
+    meta: "80.5 × 102 × 6 mm · 32.0 cm³",
+    text: "Closes the module with 4 screws (M2.5 or the servo screws). It is concave so the wrist sits in it. It has two pairs of ears for 25 mm velcro straps (the front ones go around the hand, the back ones around the forearm).",
+    print: "PLA, 30%. Flat face on the bed, no supports. About 1 h." },
+  { id: "carrete", name: "Spool", qty: "5", src: "print", color: "pla",
+    meta: "Ø 22 × 8.2 mm · 10 mm winding radius",
+    text: "Screws onto the servo's cross horn. With a 10 mm radius, 180° of rotation winds about 31 mm of thread. The thread is knotted in the radial hole of the core.",
+    print: "PLA, 100%. No supports." },
+  { id: "guia", name: "Tendon guide", qty: "13", src: "print", color: "pla",
+    meta: "12 × 9 × 5 mm · Ø 2 mm channel",
+    text: "Sewn to the glove on the palm side: 3 per long finger (palm, proximal and middle phalanx) and 1 on the thumb. They keep the thread close to the skin. Flared entries so the thread doesn't rub against an edge.",
+    print: "PLA, 100%. Print several at once, with 2 or 3 spares." },
+  { id: "anclaje", name: "Fingertip anchor", qty: "5", src: "print", color: "pla",
+    meta: "12 × 9 × 5.2 mm",
+    text: "Sewn at each fingertip. The thread runs through the channel and is knotted on the other side of the stop.",
+    print: "PLA, 100%. No supports." },
+  { id: "servos", name: "Micro servos", qty: "5", src: "have", color: "servo",
+    meta: "SG92R · MG90S · 2× S51 · 1 unidentified black one",
+    text: "Each in its own mount, shaft up. The housings are universal (23.6 × 13.2 mm, slotted holes) and the thumb one is 1.5 mm larger. Assignment by torque: index → SG92R (~2.5 kg·cm), middle → MG90S (metal gears), ring and pinky → S51 (~1.6–1.8 kg·cm), thumb → the black one (measure it). With 5 servos, supply limit around 2.5 A. (Since Nov 8 all five are Smraza S51.)",
     print: "" },
-  { id: "electronica", name: "ESP32 + INA219", qty: "1 + 1", src: "pedir", color: "pcb",
-    meta: "en la breadboard, sobre la mesa",
-    text: "La ESP32 controla los 5 servos con PWM y lee la corriente total con el INA219. Va en la breadboard detrás de la base; los cables de los servos salen por la ranura de atrás.",
+  { id: "electronica", name: "ESP32 + INA219", qty: "1 + 1", src: "request", color: "pcb",
+    meta: "on the breadboard, on the table",
+    text: "The ESP32 drives the 5 servos with PWM and reads the total current with the INA219. It sits on the breadboard behind the base; the servo cables leave through the back slot.",
     print: "" },
-  { id: "hilos", name: "Hilos (tendones)", qty: "5", src: "comprar", color: "thread",
-    meta: "tanza 0,5–0,8 mm o hilo encerado",
-    text: "Del carrete, por la salida del frente del módulo y las guías pegadas a la palma, hasta el anclaje de la punta. Al girar el servo, el hilo se enrolla y el dedo se cierra.",
+  { id: "hilos", name: "Threads (tendons)", qty: "5", src: "buy", color: "thread",
+    meta: "0.5–0.8 mm fishing line or waxed thread",
+    text: "From the spool, through the module's front exit and the guides on the palm, to the fingertip anchor. When the servo turns, the thread winds up and the finger closes.",
     print: "" },
-  { id: "elasticos", name: "Elásticos del dorso", qty: "5", src: "comprar", color: "elastic",
-    meta: "banda elástica de costura",
-    text: "Abren el dedo cuando el servo afloja. Tienen que ser suaves: si tiran mucho, el servo no puede cerrar la mano.",
+  { id: "elasticos", name: "Back-of-hand elastics", qty: "5", src: "buy", color: "elastic",
+    meta: "sewing elastic band",
+    text: "They open the finger when the servo releases. They must be soft: if they pull too hard, the servo can't close the hand.",
     print: "" },
-  { id: "webcam", name: "Webcam", qty: "1", src: "pedir", color: "cam",
-    meta: "Logitech del desk de MLH, en un trípode chico",
-    text: "Adelante y del lado del pulgar, a 30–40 cm de los dedos y más alta que la mano. Desde ahí ve los dedos de costado y en diagonal: se nota cuánto se doblan y no se tapan entre sí. El recuadro de arriba a la derecha muestra lo que ve.",
+  { id: "webcam", name: "Webcam", qty: "1", src: "request", color: "cam",
+    meta: "Logitech from the MLH desk, on a small tripod",
+    text: "In front and on the thumb side, 30–40 cm from the fingers and higher than the hand. From there it sees the fingers from the side and diagonally: you can tell how much they bend and they don't hide each other. The inset at the top right shows what it sees.",
     print: "" },
-  { id: "laptop", name: "Laptop", qty: "1", src: "propio", color: "laptop",
-    meta: "mano virtual, voz y dashboard",
-    text: "Adelante del paciente, del lado del pulgar, con la pantalla hacia él. Muestra la mano virtual con la posición objetivo. Se conecta a la ESP32 por USB y a la webcam.",
+  { id: "laptop", name: "Laptop", qty: "1", src: "own", color: "laptop",
+    meta: "virtual hand, voice and dashboard",
+    text: "In front of the patient, on the thumb side, with the screen facing them. Shows the virtual hand with the target pose. Connects to the ESP32 over USB and to the webcam.",
     print: "" },
 ];
 
-/* ---------- utilidades ---------- */
+/* ---------- utilities ---------- */
 const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function decode(b64) {
   const bin = atob(b64); const u8 = new Uint8Array(bin.length);
@@ -246,7 +247,7 @@ function stlGeom(name) {
 const D = THREE.MathUtils.degToRad;
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 
-/* ---------- escena ---------- */
+/* ---------- scene ---------- */
 const canvas = document.getElementById("view");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -293,18 +294,18 @@ const assembly = new THREE.Group(); scene.add(assembly);
 const bed = new THREE.Group(); bed.visible = false; scene.add(bed);
 const hideInPip = [];
 
-/* Ejes: +X hacia los dedos, +Y arriba, -Z lado del pulgar (mano derecha, palma abajo). */
+/* Axes: +X toward the fingers, +Y up, -Z thumb side (right hand, palm down). */
 const BASE_H = 41, LID_T = 6;
-/* el módulo va debajo de la muñeca: el fondo de la tapa cóncava (z = 53) toca la muñeca */
-const TABLE_Y = -20 - (BASE_H + 2), EDGE_X = 12; /* el frente del módulo queda apenas pasando el pliegue de la muñeca */
+/* the module goes under the wrist: the bottom of the concave lid (z = 53) touches the wrist */
+const TABLE_Y = -20 - (BASE_H + 2), EDGE_X = 12; /* the front of the module sits just past the wrist crease */
 
 const table = new THREE.Mesh(new THREE.BoxGeometry(700, 6, 760), M.table);
 table.position.set(EDGE_X - 350, TABLE_Y - 3, -110); assembly.add(table);
-/* ala de la mesa del lado del pulgar, donde va la webcam (rincón de la mesa) */
+/* table wing on the thumb side, where the webcam goes (corner of the table) */
 const wing = new THREE.Mesh(new THREE.BoxGeometry(260, 6, 300), M.table);
 wing.position.set(EDGE_X + 130, TABLE_Y - 3, -340); assembly.add(wing);
 const towelH = -27 - TABLE_Y;
-/* la toalla termina antes del módulo: el módulo apoya directo en la mesa */
+/* the towel ends before the module: the module rests directly on the table */
 const TOWEL_X0 = -265, TOWEL_X1 = EDGE_X - 80.5 - 6;
 const towel = new THREE.Mesh(new THREE.RoundedBoxGeometry(TOWEL_X1 - TOWEL_X0, towelH, 95, 3, 8), M.towel);
 towel.position.set((TOWEL_X0 + TOWEL_X1) / 2, TABLE_Y + towelH / 2, 0); assembly.add(towel);
@@ -324,8 +325,8 @@ function guideMesh(kind) {
 function marker(parent, x, y, z) { const o = new THREE.Object3D(); o.position.set(x, y, z); parent.add(o); return o; }
 
 const fingers = [];
-/* Orientación de un dedo a partir de dos direcciones: el eje del hueso y el lado
-   de la palma del dedo (hacia donde se flexiona). Local: +X = hueso, -Y = palmar. */
+/* Finger orientation from two directions: the bone axis and the palm side
+   of the finger (the direction it flexes). Local: +X = bone, -Y = palmar. */
 function basisQuat(axis, palmar) {
   const x = V3(...axis).normalize();
   const p = V3(...palmar); p.sub(x.clone().multiplyScalar(p.dot(x))).normalize();
@@ -337,7 +338,7 @@ function buildFinger({ name, base, segs, r, rot = [0, 0, 0], flex, skipFirst = f
   if (basis) root.quaternion.copy(basisQuat(basis.axis, basis.palmar));
   assembly.add(root);
   const joints = [], path = [], dorsal = [];
-  if (!skipFirst) { /* guía en la palma, a la altura del nudillo */
+  if (!skipFirst) { /* guide on the palm, at knuckle level */
     const g = guideMesh("guia"); g.position.set(74, -13, base[2]); assembly.add(g);
     path.push(marker(assembly, 70, -15.6, base[2]), marker(assembly, 78, -15.6, base[2]));
   }
@@ -360,24 +361,24 @@ function buildFinger({ name, base, segs, r, rot = [0, 0, 0], flex, skipFirst = f
   const f = { name, root, joints, flex, path, dorsal, baseRotY: rot[1], baseQuat: root.quaternion.clone() };
   fingers.push(f); return f;
 }
-/* en el mismo orden que los servos: pulgar, índice, medio, anular, meñique */
-/* Pulgar: nace en la base de la palma (lado radial, cerca de la muñeca). El metacarpiano
-   va hacia adelante, hacia afuera y hacia abajo (palmar), metido en la eminencia tenar.
-   Está rotado ~90°: la uña mira hacia afuera y su lado palmar mira hacia el índice,
-   así que al flexionarse se cierra por debajo de la palma, hacia los dedos. */
-buildFinger({ name: "pulgar", base: [6, -7, -28], segs: [40, 31, 26], r: 11.5, flex: [12, 40, 60], skipFirst: true,
+/* in the same order as the servos: thumb, index, middle, ring, pinky */
+/* Thumb: starts at the base of the palm (radial side, near the wrist). The metacarpal
+   runs forward, outward and down (palmar), tucked into the thenar eminence.
+   It is rotated ~90°: the nail faces outward and its palmar side faces the index,
+   so when it flexes it closes under the palm, toward the fingers. */
+buildFinger({ name: "thumb", base: [6, -7, -28], segs: [40, 31, 26], r: 11.5, flex: [12, 40, 60], skipFirst: true,
   basis: { axis: [0.72, -0.38, -0.58], palmar: [0.15, -0.45, 0.88] } });
-buildFinger({ name: "índice", base: [92, 0, -27], segs: [44, 26, 20], r: 9, flex: [75, 95, 60] });
-buildFinger({ name: "medio", base: [92, 0, -8], segs: [48, 30, 22], r: 9.5, flex: [75, 95, 60] });
-buildFinger({ name: "anular", base: [91, 0, 11], segs: [45, 28, 21], r: 9, flex: [75, 95, 60] });
-buildFinger({ name: "meñique", base: [86, 0, 29], segs: [34, 21, 18], r: 7.5, rot: [D(-6), 0, 0], flex: [75, 95, 60] });
+buildFinger({ name: "index", base: [92, 0, -27], segs: [44, 26, 20], r: 9, flex: [75, 95, 60] });
+buildFinger({ name: "middle", base: [92, 0, -8], segs: [48, 30, 22], r: 9.5, flex: [75, 95, 60] });
+buildFinger({ name: "ring", base: [91, 0, 11], segs: [45, 28, 21], r: 9, flex: [75, 95, 60] });
+buildFinger({ name: "pinky", base: [86, 0, 29], segs: [34, 21, 18], r: 7.5, rot: [D(-6), 0, 0], flex: [75, 95, 60] });
 
-/* base palmar (coordenadas de la pieza: +X dedos, +Y pulgar, +Z arriba) */
+/* palmar base (part coordinates: +X fingers, +Y thumb, +Z up) */
 const dev = new THREE.Group();
 dev.rotation.x = -Math.PI / 2; dev.position.set(EDGE_X, TABLE_Y, 0); assembly.add(dev);
 const baseMesh = tag("base", new THREE.Mesh(stlGeom("modulo_muneca"), M.plaShell)); dev.add(baseMesh);
 const lidMesh = tag("tapa", new THREE.Mesh(stlGeom("tapa"), M.plaShell)); lidMesh.position.z = BASE_H; dev.add(lidMesh);
-/* todos los carretes a la misma altura; 3 adelante y 2 atrás, en zigzag */
+/* all spools at the same height; 3 in front and 2 behind, in a zigzag */
 const DECK = 18.9;
 const SERVOS = [[-20, 25, DECK], [-54, 2.5, DECK], [-20, 0, DECK], [-54, -22.5, DECK], [-20, -25, DECK]];
 const spools = [], spoolOut = [], eyeIn = [], eyeOut = [];
@@ -395,14 +396,13 @@ SERVOS.forEach(([sx, sy, deck]) => {
   sg.add(tag("carrete", new THREE.Mesh(stlGeom("carrete"), M.pla)));
   spools.push(sg);
   spoolOut.push(marker(dev, sx, sy + 10, tz));
-  /* el hilo sube del carrete y sale por arriba, por la tapa, junto al borde delantero */
-  /* el hilo sale horizontal y tangente al carrete, por arriba del frente */
+    /* the thread leaves horizontally and tangent to the spool, over the front */
   const ty = sy + 10;
   eyeIn.push(marker(dev, -2.5, ty, tz));
   eyeOut.push(marker(dev, 0.5, ty, tz));
 });
 
-/* correas de velcro: adelante alrededor de la mano, atrás alrededor del antebrazo */
+/* velcro straps: front around the hand, back around the forearm */
 M.strap = new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 1 });
 [[EDGE_X - 17, 15, 46], [EDGE_X - 64, 22, 46]].forEach(([x, top, half]) => {
   const ly = TABLE_Y + BASE_H + 3;
@@ -417,7 +417,7 @@ function cable(points, r = 2.2, mat = M.cable) {
   assembly.add(m); return m;
 }
 
-/* breadboard con la ESP32 y el INA219, detrás de la base */
+/* breadboard with the ESP32 and the INA219, behind the base */
 const bb = new THREE.Group(); bb.position.set(-30, TABLE_Y, 95); assembly.add(bb);
 const board = new THREE.Mesh(new THREE.BoxGeometry(84, 9, 55), M.board); board.position.y = 4.5; bb.add(board);
 const esp = tag("electronica", new THREE.Mesh(new THREE.BoxGeometry(52, 4, 28), M.pcb)); esp.position.set(-8, 12, 0); bb.add(esp);
@@ -425,14 +425,14 @@ const mod = tag("electronica", new THREE.Mesh(new THREE.BoxGeometry(18, 3.2, 25)
 const ina = tag("electronica", new THREE.Mesh(new THREE.BoxGeometry(22, 4, 18), M.ina)); ina.position.set(30, 12, 12); bb.add(ina);
 cable([V3(EDGE_X - 80, TABLE_Y + 9, 0), V3(-10, TABLE_Y + 8, 20), V3(-25, TABLE_Y + 14, 70)], 3, M.servo);
 
-/* laptop: adelante del paciente, del lado del pulgar, mirando hacia él */
+/* laptop: in front of the patient, on the thumb side, facing them */
 const laptop = new THREE.Group(); laptop.position.set(-190, TABLE_Y, -300); assembly.add(laptop);
 laptop.rotation.y = Math.atan2(-230, 300);
 const lbase = tag("laptop", new THREE.Mesh(new THREE.RoundedBoxGeometry(300, 10, 210, 2, 4), M.dark)); lbase.position.y = 5; laptop.add(lbase);
 const screenTex = (() => {
   const c = document.createElement("canvas"); c.width = 600; c.height = 380; const g = c.getContext("2d");
   g.fillStyle = "#0f1720"; g.fillRect(0, 0, 600, 380);
-  g.fillStyle = "#93a1b0"; g.font = "500 22px monospace"; g.fillText("PUÑO  ·  intento 2 de 3", 28, 44);
+  g.fillStyle = "#93a1b0"; g.font = "500 22px monospace"; g.fillText("FIST  ·  attempt 2 of 3", 28, 44);
   const hand = (ox, col, curl) => {
     g.strokeStyle = col; g.lineWidth = 16; g.lineCap = "round";
     g.beginPath(); g.moveTo(ox, 300); g.lineTo(ox, 200); g.stroke();
@@ -443,7 +443,7 @@ const screenTex = (() => {
     g.beginPath(); g.moveTo(ox - 60, 250); g.quadraticCurveTo(ox - 100, 220, ox - 90, 180); g.stroke();
   };
   hand(190, "#4fae7a", [1, 1, 1, 1]); hand(420, "#e4e9ee", [0.6, 0.55, 0.45, 0.4]);
-  g.fillStyle = "#4fae7a"; g.fillText("objetivo", 140, 350); g.fillStyle = "#e4e9ee"; g.fillText("tu mano  60%", 350, 350);
+  g.fillStyle = "#4fae7a"; g.fillText("target", 140, 350); g.fillStyle = "#e4e9ee"; g.fillText("your hand  60%", 350, 350);
   return new THREE.CanvasTexture(c);
 })();
 const screenG = new THREE.Group(); screenG.position.set(0, 10, -105); screenG.rotation.x = -D(12); laptop.add(screenG);
@@ -451,7 +451,7 @@ const lidL = tag("laptop", new THREE.Mesh(new THREE.RoundedBoxGeometry(300, 200,
 const scr = new THREE.Mesh(new THREE.PlaneGeometry(280, 177), new THREE.MeshBasicMaterial({ map: screenTex })); scr.position.set(0, 100, 3.2); screenG.add(scr);
 cable([V3(-15, TABLE_Y + 12, 95), V3(-60, TABLE_Y + 3, 60), V3(-150, TABLE_Y + 3, -130), V3(-190, TABLE_Y + 6, -200)]);
 
-/* botón STOP y anillo de luz */
+/* STOP button and light ring */
 const stop = new THREE.Group(); stop.position.set(-110, TABLE_Y, 190); assembly.add(stop);
 const sbox = new THREE.Mesh(new THREE.RoundedBoxGeometry(50, 22, 50, 2, 4), M.dark); sbox.position.y = 11; stop.add(sbox);
 const btn = new THREE.Mesh(new THREE.CylinderGeometry(13, 13, 8, 24), M.red); btn.position.y = 26; stop.add(btn);
@@ -459,7 +459,7 @@ cable([V3(-45, TABLE_Y + 12, 105), V3(-80, TABLE_Y + 3, 150), V3(-105, TABLE_Y +
 const ring = new THREE.Mesh(new THREE.TorusGeometry(30, 4, 10, 32), new THREE.MeshStandardMaterial({ color: 0x4fae7a, emissive: 0x2c8a55, roughness: 0.5 }));
 ring.rotation.x = Math.PI / 2; ring.position.set(-110, TABLE_Y + 5, -150); assembly.add(ring);
 
-/* webcam en trípode chico, del lado del pulgar */
+/* webcam on a small tripod, on the thumb side */
 const webcam = new THREE.Group(); assembly.add(webcam);
 const CAM_POS = V3(260, 50, -250), LOOK = V3(105, -30, -5);
 const tripod = new THREE.Group(); tripod.position.set(CAM_POS.x, TABLE_Y, CAM_POS.z); webcam.add(tripod);
@@ -486,7 +486,7 @@ webCam.position.copy(CAM_POS); webCam.lookAt(LOOK); webCam.updateMatrixWorld();
   assembly.add(fr); hideInPip.push(fr);
 }
 
-/* hilos y elásticos que cambian con el cierre */
+/* threads and elastics that change with closure */
 const dynamic = new THREE.Group(); assembly.add(dynamic);
 const wp = (o) => o.getWorldPosition(new THREE.Vector3());
 function tubeThrough(points, radius, mat) {
@@ -499,7 +499,7 @@ function rebuildDynamic() {
   fingers.forEach((f, i) => {
     dynamic.add(tag("hilos", tubeThrough([wp(spoolOut[i]), wp(eyeIn[i]), wp(eyeOut[i]), ...f.path.map(wp)], 0.6, M.thread)));
     const z = f.root.position.z;
-    const back = f.name === "pulgar" ? [V3(-6, 18, -18), V3(14, 6, -36)] : [V3(-6, 21, z * 0.6), V3(30, 14.5, z * 0.85), V3(80, 14, z)];
+    const back = f.name === "thumb" ? [V3(-6, 18, -18), V3(14, 6, -36)] : [V3(-6, 21, z * 0.6), V3(30, 14.5, z * 0.85), V3(80, 14, z)];
     dynamic.add(tag("elasticos", tubeThrough([...back, ...f.dorsal.map(wp)], 1.2, M.elastic)));
   });
   applyHighlight();
@@ -510,15 +510,15 @@ function setClosure(c) {
   closure = c;
   fingers.forEach((f) => {
     f.joints.forEach((j, i) => { j.rotation.z = -D(f.flex[i] || 0) * c; });
-    /* oposición: el pulgar gira hacia el índice a medida que la mano se cierra */
-    if (f.name === "pulgar") f.root.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), -D(28) * c).multiply(f.baseQuat));
+    /* opposition: the thumb turns toward the index as the hand closes */
+    if (f.name === "thumb") f.root.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), -D(28) * c).multiply(f.baseQuat));
   });
   spools.forEach((s) => { s.rotation.z = Math.PI * c; });
   rebuildDynamic();
   document.getElementById("closureVal").textContent = Math.round(c * 100) + "%";
 }
 
-/* ---------- vista de piezas ---------- */
+/* ---------- parts view ---------- */
 {
   const plateMesh = new THREE.Mesh(new THREE.BoxGeometry(250, 2, 250), M.table); plateMesh.position.y = -1; bed.add(plateMesh);
   const put = (file, id, x, z) => {
@@ -548,8 +548,8 @@ function select(id) {
   PART_INFO.forEach((p) => document.getElementById("part-" + p.id).setAttribute("aria-pressed", String(p.id === id)));
   const p = PART_INFO.find((q) => q.id === id);
   detailEl.innerHTML = p
-    ? `<h3>${p.name}</h3><p>${p.text}</p>${p.print ? `<p style="margin-top:8px"><span class="mono">Impresión:</span> ${p.print}</p>` : ""}`
-    : `<h3>Elegí una pieza</h3><p>Tocá una pieza de la lista para resaltarla en el modelo.</p>`;
+    ? `<h3>${p.name}</h3><p>${p.text}</p>${p.print ? `<p style="margin-top:8px"><span class="mono">Printing:</span> ${p.print}</p>` : ""}`
+    : `<h3>Pick a part</h3><p>Tap a part in the list to highlight it in the model.</p>`;
   applyHighlight();
 }
 const HL = new THREE.Color(0x3b82f6);
@@ -561,15 +561,15 @@ function applyHighlight() {
   }));
 }
 
-/* ---------- controles ---------- */
+/* ---------- controls ---------- */
 const slider = document.getElementById("closure");
 slider.addEventListener("input", () => { stopPlay(); setClosure(slider.value / 100); });
 const playBtn = document.getElementById("play");
 let playing = false, t0 = 0;
-function stopPlay() { playing = false; playBtn.setAttribute("aria-pressed", "false"); playBtn.textContent = "Animar"; }
+function stopPlay() { playing = false; playBtn.setAttribute("aria-pressed", "false"); playBtn.textContent = "Animate"; }
 playBtn.addEventListener("click", () => {
   if (playing) return stopPlay();
-  playing = true; t0 = performance.now(); playBtn.setAttribute("aria-pressed", "true"); playBtn.textContent = "Pausar";
+  playing = true; t0 = performance.now(); playBtn.setAttribute("aria-pressed", "true"); playBtn.textContent = "Pause";
 });
 const insideBtn = document.getElementById("insideBtn");
 insideBtn.addEventListener("click", () => {
