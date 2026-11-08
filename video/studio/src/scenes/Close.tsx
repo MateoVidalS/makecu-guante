@@ -38,7 +38,7 @@ export const Close: React.FC = () => {
             <Lockup height={120} />
             <T size="h1" style={{ marginTop: space.s48 }}>{COPY.close.line}</T>
             <div style={{ display: 'flex', gap: space.s64, marginTop: space.s64 }}>
-              {TEAM.map((person) => <div key={person.name} style={{ textAlign: 'center' }}><T size="h3">{person.name}</T><T size="small" w={400} color={c.muted} style={{ marginTop: space.s8 }}>{person.role}</T></div>)}
+              {TEAM.map((person) => <div key={person.name} style={{ textAlign: 'center' }}><T size="h3">{person.name}</T>{person.role && <T size="small" w={400} color={c.muted} style={{ marginTop: space.s8 }}>{person.role}</T>}</div>)}
             </div>
             <T size="body" w={400} color={c.muted} style={{ marginTop: space.s64 }}>{COPY.close.event}</T>
           </div>
