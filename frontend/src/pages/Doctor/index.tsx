@@ -35,6 +35,7 @@ import {
 } from '../../components/charts';
 import { LEGACY_GLOVE } from '../../components/charts/direction';
 import { firstAndLast, useAllSessions } from '../History/data';
+import { DoctorChat } from './chat/DoctorChat';
 import { ExportButtons } from './ExportButtons';
 import './doctor.css';
 import { TherapyReview } from './TherapyReview';
@@ -105,53 +106,55 @@ export default function Doctor() {
             </div>
           }
         />
-        <DataSection
-          title="Therapist summary"
-          className="therapist-summary"
-          description={
-            latest
-              ? `Generated ${formatDate(latest.created_at)} · Last ${latest.days ?? 7} days · Model: ${latest.model}${latest.model === 'fixture' ? ' (Demo data)' : ''}`
-              : undefined
-          }
-          actions={
-            <Button
-              size="sm"
-              variant="primary"
-              className="no-print"
-              disabled={generate.isPending || summaries.isPending}
-              onClick={() => generate.mutate({ kind: 'therapist', days: 7 })}
-            >
-              {generate.isPending ? 'Generating…' : 'Generate (last 7 days)'}
-            </Button>
-          }
-        >
-          <DataStatus loading={summaries.isPending} error={summaries.error}>
-            {latest ? (
-              <>
-                {stale && (
-                  <p role="status" className="footnote summary-stale">
-                    Generated before the latest sessions or evaluations, so it
-                    may not match the charts below. Generate again for an
-                    up-to-date summary.
-                  </p>
-                )}
-                <p className="summary-copy">{latest.text}</p>
-              </>
-            ) : (
-              <p className="footnote">No summary generated yet.</p>
+        <div data-chat-section="summary">
+          <DataSection
+            title="Therapist summary"
+            className="therapist-summary"
+            description={
+              latest
+                ? `Generated ${formatDate(latest.created_at)} · Last ${latest.days ?? 7} days · Model: ${latest.model}${latest.model === 'fixture' ? ' (Demo data)' : ''}`
+                : undefined
+            }
+            actions={
+              <Button
+                size="sm"
+                variant="primary"
+                className="no-print"
+                disabled={generate.isPending || summaries.isPending}
+                onClick={() => generate.mutate({ kind: 'therapist', days: 7 })}
+              >
+                {generate.isPending ? 'Generating…' : 'Generate (last 7 days)'}
+              </Button>
+            }
+          >
+            <DataStatus loading={summaries.isPending} error={summaries.error}>
+              {latest ? (
+                <>
+                  {stale && (
+                    <p role="status" className="footnote summary-stale">
+                      Generated before the latest sessions or evaluations, so it
+                      may not match the charts below. Generate again for an
+                      up-to-date summary.
+                    </p>
+                  )}
+                  <p className="summary-copy">{latest.text}</p>
+                </>
+              ) : (
+                <p className="footnote">No summary generated yet.</p>
+              )}
+            </DataStatus>
+            {generate.isPending && (
+              <p role="status" className="footnote">
+                Preparing the therapist summary…
+              </p>
             )}
-          </DataStatus>
-          {generate.isPending && (
-            <p role="status" className="footnote">
-              Preparing the therapist summary…
-            </p>
-          )}
-          {generate.isError && (
-            <p role="status" className="footnote">
-              Summary unavailable. Check the Gemini connection and try again.
-            </p>
-          )}
-        </DataSection>
+            {generate.isError && (
+              <p role="status" className="footnote">
+                Summary unavailable. Check the Gemini connection and try again.
+              </p>
+            )}
+          </DataSection>
+        </div>
         <DataStatus loading={overview.isPending} error={overview.error}>
           {overview.data && (
             <KpiRow>
@@ -165,37 +168,41 @@ export default function Doctor() {
             </KpiRow>
           )}
         </DataStatus>
-        <DataSection
-          title="At a glance"
-          description={`Blue: active opening in open poses. Orange: opening the glove completed.${hasDemo ? ' Demo data is drawn hollow.' : ''}`}
-          className="report-glance"
-        >
-          <div className="report-glance__grid">
-            <HandRangeMap
-              {...handFromOverview(overview.data, sessions.data, rom.data)}
-              {...firstAndLast(sessions.data)}
-              mirror={profile.data?.affected_hand === 'left'}
-              loading={overview.isPending || sessions.isPending}
-              compact
-            />
-            <LatestEffortBars
-              timeline={sessions.data}
-              rom={rom.data ?? []}
-              assist={assist.data ?? []}
-              loading={rom.isPending || assist.isPending || sessions.isPending}
-            />
-            <PracticeCalendar
-              sessions={sessions.data ?? []}
-              loading={sessions.isPending}
-            />
-            <ResistanceDumbbells
-              points={resistance.data ?? []}
-              loading={resistance.isPending}
-              compact
-              hint="Extra motor current. Circle: slow sweep. Diamond: fast sweep. The bar is fast − slow, a velocity-dependence estimate. Check friction calibration and incomplete sweeps in evaluation details."
-            />
-          </div>
-        </DataSection>
+        <div data-chat-section="glance">
+          <DataSection
+            title="At a glance"
+            description={`Blue: active opening in open poses. Orange: opening the glove completed.${hasDemo ? ' Demo data is drawn hollow.' : ''}`}
+            className="report-glance"
+          >
+            <div className="report-glance__grid">
+              <HandRangeMap
+                {...handFromOverview(overview.data, sessions.data, rom.data)}
+                {...firstAndLast(sessions.data)}
+                mirror={profile.data?.affected_hand === 'left'}
+                loading={overview.isPending || sessions.isPending}
+                compact
+              />
+              <LatestEffortBars
+                timeline={sessions.data}
+                rom={rom.data ?? []}
+                assist={assist.data ?? []}
+                loading={
+                  rom.isPending || assist.isPending || sessions.isPending
+                }
+              />
+              <PracticeCalendar
+                sessions={sessions.data ?? []}
+                loading={sessions.isPending}
+              />
+              <ResistanceDumbbells
+                points={resistance.data ?? []}
+                loading={resistance.isPending}
+                compact
+                hint="Extra motor current. Circle: slow sweep. Diamond: fast sweep. The bar is fast − slow, a velocity-dependence estimate. Check friction calibration and incomplete sweeps in evaluation details."
+              />
+            </div>
+          </DataSection>
+        </div>
       </section>
       <DataStatus loading={profile.isPending} error={profile.error}>
         {profile.data &&
@@ -245,8 +252,8 @@ export default function Doctor() {
         onToggle={(e) => setDetailsOpen(e.currentTarget.open)}
       >
         <summary>Details</summary>
-        {detailsOpen && (
-          <>
+        <div data-chat-section="range">
+          {detailsOpen && (
             <section className="report-page">
               <DataSection
                 title="Active range over sessions"
@@ -281,6 +288,10 @@ export default function Doctor() {
                 </DataStatus>
               </DataSection>
             </section>
+          )}
+        </div>
+        <div data-chat-section="assistance">
+          {detailsOpen && (
             <DataSection
               className="report-page"
               title="Assistance over sessions"
@@ -299,12 +310,19 @@ export default function Doctor() {
                 />
               </DataStatus>
             </DataSection>
-          </>
-        )}
+          )}
+        </div>
       </details>
-      <TherapyReview sessions={sessions.data ?? []} />
-      <SessionList doctor />
-      <EvaluationList />
+      <div data-chat-section="therapy">
+        <TherapyReview sessions={sessions.data ?? []} />
+      </div>
+      <div data-chat-section="sessions">
+        <SessionList doctor />
+      </div>
+      <div data-chat-section="evaluations">
+        <EvaluationList />
+      </div>
+      <DoctorChat />
     </section>
   );
 }

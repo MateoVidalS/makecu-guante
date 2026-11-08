@@ -319,6 +319,9 @@ Errors: `{ "error": { "code": "...", "message": "..." } }`. Pydantic models mirr
 | `GET /api/summaries?kind=&limit=` | – | `Summary[]` |
 | `POST /api/voice/token` | `{ session_id: number \| null }` | `VoiceToken`. 503 `voice_unavailable` |
 | `GET /api/export?format=json\|csv` | – | file download (all sessions, attempts, evaluations; CSV = one row per attempt-finger) |
+| `POST /api/chat` | `ChatIn` | `text/event-stream` of `ChatStreamEvent` (§4.1). 503 `chat_unavailable` before streaming when no key |
+| `POST /api/chat/voice-token` | – | `ChatVoiceToken`. 503 `chat_unavailable` |
+| `POST /api/chat/tools/{name}` | `ChatToolIn` | `ChatToolResult` (read-only; `show_chart` is browser-only → 422). 404 unknown tool |
 
 ```ts
 interface Profile { pseudonym: string; affected_hand: Handedness; condition: string; goals: string; therapist_name: string; therapist_email: string }
@@ -336,6 +339,25 @@ interface HistoryOverview { sessions: number; attempts: number; evaluations: num
 interface RomPoint { session_id: number; started_at: string; finger: GloveFinger; pose: PoseId | null; active_max_mean: number; is_demo: boolean }
 interface AssistPoint { session_id: number; started_at: string; finger: GloveFinger; assist_needed_mean: number; assisted_rate: number; is_demo: boolean }
 interface ResistancePoint { evaluation_id: number; started_at: string; finger: GloveFinger; slow: number | null; fast: number | null; dependence: number | null; is_demo: boolean }
+```
+
+
+### 4.1 Doctor chat
+
+Read-only questions about the patient's records, by text or voice, in the Doctor view. The server stores no chat
+history. Records follow the therapist-summary cohort rule: real records when any exist, otherwise demo records, labeled.
+Types live in `frontend/src/contracts/chat.ts` and `backend/app/contracts/chat.py`.
+
+```ts
+type ChatToolName = "get_session" | "get_transcript" | "get_evaluation" | "compare" | "find" | "show_chart"
+type ChartSection = "summary" | "glance" | "range" | "assistance" | "therapy" | "sessions" | "evaluations"
+interface ChatMessage { role: "user" | "model"; text: string }            // 1–4000 chars
+interface ChatIn { messages: ChatMessage[] }                              // 1–40, oldest first, last from user
+type ChatStreamEvent = { type: "delta"; text: string } | { type: "tool"; name: ChatToolName; label: string }
+  | { type: "done"; model: string } | { type: "error"; code: "chat_unavailable" | "invalid_request"; message: string }
+interface ChatToolIn { args: Record<string, unknown> }
+interface ChatToolResult { name: ChatToolName; result: Record<string, unknown> }
+interface ChatVoiceToken { token: string; expires_at: string; model: string; voice: string; context: string | null }
 ```
 
 ---
