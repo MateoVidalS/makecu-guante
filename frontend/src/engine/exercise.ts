@@ -627,17 +627,20 @@ class Exercise implements ExerciseEngine {
       this.lowAt = null;
       this.releasedForVision = false;
     }
+    // The new attempt's pose must be in place before announcing the phase: the coach
+    // speaks from this event, and the previous pose here made it say "make a fist"
+    // while the screen asked to open.
+    if (phase === 'PRESENT' || phase === 'ATTEMPT')
+      this.currentPose = this.therapy.pose(this.basePose);
     this.phaseEvent(out);
     if (phase === 'PRESENT' || phase === 'RELEASE' || phase === 'PAUSED')
       out.commands.push({ t: 'release' });
     if (phase === 'PRESENT') {
-      this.currentPose = this.therapy.pose(this.basePose);
       this.visibleAt = null;
       this.repromptAt = this.now;
       this.lastFollow = null;
     }
     if (phase === 'ATTEMPT') {
-      this.currentPose = this.therapy.pose(this.basePose);
       this.scheduler = null;
       this.targetSent = false;
       this.helped.clear();
