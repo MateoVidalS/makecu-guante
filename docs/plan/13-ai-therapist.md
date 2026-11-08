@@ -33,6 +33,7 @@ feels, and **adjusts the session through tools**: more or less help per finger, 
 | `highlight_finger` | `finger` | Highlights the finger on the virtual hand for ~4 s while the coach names it (helps aphasia/neglect) | immediately |
 | `note_for_therapist` | `text` | Stores a clinical note (e.g. "reports tingling in the little finger"); shown in replay and fed to the therapist summary | immediately |
 | `repeat_pose` | `reason` | One more rep of the current pose (≤ 3 extra reps per session) | after the current attempt |
+| `intensify` | `finger`, `kind` (`further` \| `hold_longer` \| `faster`), `consent` (`patient_asked` \| `accepted_offer`), `patient_quote` | **Patient-requested intensity** (owner decision, Nov 7): **further** = close that finger up to **100% of its calibrated range**; **hold_longer** = +≤ 2 s hold; **faster** = assist up to **0.30/s**. Allowed only if the patient asked, or said yes to the coach's offer, **within the last 20 s** (the voice layer reports patient speech via `therapy.notePatientSpeech`); blocked if pain ≥ 2 or a resistance event on that finger in the last 60 s; **reverted automatically** if resistance or pain appears. The coach may *offer* more intensity after good progress, but never applies it without a yes | next ATTEMPT |
 | `set_attempt_time` | `seconds`, `reason` | Attempt time within **[4, 9] s** (default 6) | next ATTEMPT |
 | `add_rest` | `seconds`, `reason` | Extra rest before the next pose, **≤ 20 s** per call, ≤ 60 s per session | next REST |
 | `choose_next_pose` | `pose`, `reason` | Overrides the next pose from the plan's poses (not pinch); the plan length doesn't change | next PRESENT |
@@ -44,7 +45,7 @@ feels, and **adjusts the session through tools**: more or less help per finger, 
 Rejected calls (out of range, unknown finger, too frequent, session not running) return `{ok:false, reason}` to the model,
 which must say something natural and not retry blindly.
 
-**Never available to the model:** direct motor commands, raising the current limit, changing calibration, assist faster than the default speed.
+**Never available to the model:** direct motor commands, raising the current limit (it is the emergency brake: raising it only delays the cut when a finger jams), changing calibration (a person sets the comfortable range with the hand in the glove), and raising intensity on its own initiative. Intensity above the gentle defaults is possible only through `intensify`, at the patient's request, inside the calibrated range.
 
 ## 4. Contract additions (**source of truth: `frontend/src/contracts/therapist.ts`**, updated Nov 7 with the tools above; TypeScript in `frontend/src/contracts/therapist.ts`, Pydantic in `backend/app/contracts/therapist.py`)
 ```ts
