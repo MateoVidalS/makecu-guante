@@ -28,9 +28,9 @@ const jobs = [
   ['scene-doctor', 450, 'out/v5-review/doctor-current.png'],
   ['scene-doctor', 672, 'out/v5-review/doctor-export.png'],
   ['scene-doctor', 780, 'out/v5-review/doctor-honesty.png'],
-  ['Main', 1314, 'out/v5-review/main-session.png'],
-  ['Main', 2892, 'out/v5-review/main-coach.png'],
-  ['Main', 3738, 'out/v5-review/main-doctor.png'],
+  ['Main', 1242, 'out/v5-review/main-session.png'],
+  ['Main', 2820, 'out/v5-review/main-coach.png'],
+  ['Main', 3666, 'out/v5-review/main-doctor.png'],
 ];
 try {
   for (const [id, frame, output] of jobs) {

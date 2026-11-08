@@ -19,6 +19,8 @@ Expected focus labels are listed in `mock/manifest.ts`: `virtual-hand`, `ghost`,
 
 Footage at `public/footage/session-hand.mp4` or `coach-talk.mp4` replaces the corresponding slate placeholder. Only coach-talk retains its audio, inside frames 144–468. The session inset is exactly 480×270 and remains above captions. Legend pulse estimates use the actual `session-4` VO duration when V2's manifest exists, with the planned slot as fallback.
 
+Drawn copy uses “memo”, “the wrist module” or “the threads”, including the Simulated device and camera badge imported from the shared brand component. Text inside source app screenshots and recordings remains unchanged. The team-first 5256-frame cut starts Session at 1152, Coach at 2520 and Doctor at 3096; the Main evidence offsets match those starts.
+
 ## Verification
 
 Run from `video/studio/`:
