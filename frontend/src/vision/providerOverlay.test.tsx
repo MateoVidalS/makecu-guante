@@ -20,6 +20,7 @@ import {
   VisionProvider,
 } from './VisionProvider';
 import { CameraOverlay } from './CameraOverlay';
+import { SimVision } from './SimVision';
 import { drawOverlay, handInsideGuide } from './overlay';
 import { missingFrame } from './frameProcessor';
 import { fingerMap } from './flex';
@@ -90,7 +91,10 @@ describe('vision source controller', () => {
     vi.useFakeTimers();
     let shared = false;
     function Probe() {
-      shared = useVision().source === useGlove().world.vision;
+      const source = useVision().source;
+      shared =
+        source instanceof SimVision &&
+        source.delegate === useGlove().world.vision;
       return null;
     }
     const view = render(
@@ -134,7 +138,12 @@ describe('vision source controller', () => {
     await controller.start();
     expect(controller.robustness().samples).toBe(0);
     await controller.setKind('sim');
-    expect(controller.robustness().samples).toBe(0);
+    // The adapter discards queued frames; this test source emits a fresh missing observation on stop.
+    expect(controller.robustness()).toMatchObject({
+      samples: 1,
+      detectionRate: 0,
+      observedMs: 0,
+    });
     controller.stop();
     expect(controller.store.getState().robustness.observedMs).toBe(0);
   });

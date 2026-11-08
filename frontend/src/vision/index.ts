@@ -25,3 +25,5 @@ export type { LandmarkCapture, LandmarkRecording } from './recorder';
 
 export { LIGHTING_THRESHOLDS, measureLighting } from './lighting';
 export type { LightingStats, VisionDiagnostics } from './lighting';
+
+export { SimVision } from './SimVision';

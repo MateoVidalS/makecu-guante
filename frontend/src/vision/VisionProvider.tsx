@@ -15,6 +15,7 @@ import {
 import { createSimWorld } from '../glove/sim';
 import { useGlove } from '../glove';
 import { CameraVision } from './cameraVision';
+import { SimVision } from './SimVision';
 import { missingFrame } from './frameProcessor';
 import {
   VisionRobustnessTracker,
@@ -31,7 +32,8 @@ export function createVisionController(
   } = {},
 ) {
   const ownedWorld = options.simSource ? null : createSimWorld();
-  const sim = options.simSource ?? ownedWorld!.vision;
+  const rawSim = options.simSource ?? ownedWorld!.vision;
+  const sim = rawSim instanceof SimVision ? rawSim : new SimVision(rawSim);
   const camera = options.cameraSource ?? new CameraVision();
   const initial =
     options.initialKind ??

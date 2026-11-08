@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import type { Handedness, VisionSource } from '../contracts/vision';
 import { createSimWorld } from '../glove/sim';
 import { CameraVision } from './cameraVision';
+import { SimVision } from './SimVision';
 import { CameraOverlay } from './CameraOverlay';
 import { POSES, type PoseId } from '../contracts/poses';
 import { FINGERS } from './flex';
@@ -22,7 +23,7 @@ import '@fontsource/atkinson-hyperlegible/400.css';
 function Preview() {
   const camera = useMemo(() => new CameraVision(), []),
     world = useMemo(() => createSimWorld(), []);
-  const sim = world.vision;
+  const sim = useMemo(() => new SimVision(world.vision), [world]);
   const tracker = useMemo(() => new VisionRobustnessTracker(), []);
   const recorder = useRef<ReturnType<typeof recordLandmarks> | null>(null);
   const [recording, setRecording] = useState(false);

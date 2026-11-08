@@ -58,7 +58,7 @@ engine read one timeline. The 3D hand adds frame-rate-independent damping and a
 
 `VisionProvider` uses camera by default and simulator with `VITE_SIM=1`. It obtains
 the shared simulator from the enclosing `GloveProvider`, so the simulated glove
-and camera observe the same patient. For standalone use, inject `simSource`
+and camera observe the same patient through a `SimVision` adapter. For standalone use, inject `simSource`
 explicitly (the low-level controller uses the exported `createSimWorld()` factory
 and disposes its owned world). Runtime integration can pass the shared source:
 
@@ -88,7 +88,12 @@ revision adds one. Changing it invalidates the frame and resets the filters.
 
 `CameraVision.start({ view })` and controller `start` / `setKind` accept
 `front_upright` (default) or legacy `front_diagonal`. View settings survive source
-switches. Upright long-finger MCP is the angle of the proximal bone out of the
+switches. The exported vision-side `SimVision` wraps the existing shared
+`SimWorld.vision` (available as `delegate`), retains `cameraView()`, forwards the
+view to its delegate, and clears queued frames before restarting. Synthetic
+joints/closure have no camera projection, so their math and calibration are
+identical in either view. The glove simulator implementation stays untouched.
+Upright long-finger MCP is the angle of the proximal bone out of the
 plane formed by knuckles 5, 9, 13 and 17, using that arch's area normal. Wrist
 position and in-plane splay do not count as MCP flexion. PIP/DIP and thumb math
 are unchanged. Every flexion calculation uses world landmarks; image landmarks
