@@ -316,15 +316,18 @@ export default function Calibrate() {
     let resistanceSince: number | null = null;
     let previousRaw = vision.latest?.rawFlexSum ?? null;
     let resistanceCheckAt = started;
-    // Short detection gaps are tolerated (as by the engine's reach dwell); the
-    // capture rule leaves missed frames out. A longer loss cancels and releases.
+    // While the glove drives the hand (the opening stretch and its held open
+    // position), any missed frame cancels and releases: the stall check below
+    // needs vision, and a relaxed interlock needs a hardware check first. A
+    // passive capture (the patient's own fist, open hand or pinch) tolerates
+    // short detection gaps, as the hold-still rule does; a longer loss cancels.
     let handSeen = true;
     let lastSeenAt = started;
     const unsubscribe = vision.source.onFrame((frame) => {
       lastFrameAt = performance.now();
       handSeen = frame.detected && frame.confidence >= VISION_LOW_CONFIDENCE;
       if (handSeen) lastSeenAt = frame.t;
-      else if (frame.t - lastSeenAt >= CAPTURE_RULE.maxGapMs) {
+      else if (opening || frame.t - lastSeenAt >= CAPTURE_RULE.maxGapMs) {
         cancel.current();
         setError('Keep your hand in view. Try again.');
         return;
@@ -355,9 +358,8 @@ export default function Calibrate() {
         setError('Glove stopped. Check the glove before continuing.');
         return;
       }
-      // Stop a loaded stretch that is no longer opening the fingers. Progress
-      // needs the hand in view: during a short gap the check waits.
-      if (opening && reading && handSeen && now - resistanceCheckAt >= 300) {
+      // Stop a loaded stretch that is no longer opening the fingers.
+      if (opening && reading && now - resistanceCheckAt >= 300) {
         const raw = vision.latest?.rawFlexSum;
         const stalled =
           raw &&
@@ -381,7 +383,8 @@ export default function Calibrate() {
       }
       const position = reading?.a;
       if (opening && holdStarted === null && position) {
-        // Never start another finger while the hand is not seen.
+        // Never start another finger while the hand is not seen (a missed
+        // frame already cancels the opening; this keeps it so if that changes).
         if (handSeen && opening.advance(now, position))
           client.target([...opening.target], 0.3);
         if (opening.settled(position)) holdStarted = now;

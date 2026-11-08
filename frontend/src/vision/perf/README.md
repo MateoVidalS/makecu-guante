@@ -114,6 +114,14 @@ it accepted almost no still hand. Both now use one rule, `captureStats`
 - the hand must end where it started: per finger, the medians of the first and last
   third of the hold may differ by at most 14° (thumb 8°; pinch ratio 0.08).
 
+The gap tolerance applies to **passive captures only** (the patient's own fist, open
+hand and pinch, with the glove released). While the glove drives the hand (it opens
+the fingers and then holds them open for the open capture), any missed frame cancels
+the capture and releases the glove, as before: the page's stall check ("Resistance
+while opening") needs the hand in view, and with gaps tolerated the stall stop came
+up to 250 ms later (600 → 850 ms with 150 ms gaps, safety review). Relaxing this for
+the motor-driven phase needs a hardware check and a safety owner's sign-off.
+
 `calibrationCapture.test.ts` (10 seeds): still hands accepted 100% at 1× and 100% / 70–100%
 (full range / flexor tone) at 2× with 0–10% dropouts, and 0–10% at 3.5×. Whole-hand or
 one-long-finger movement during the hold (1× and 2× pooled) is accepted 18–25% of the time

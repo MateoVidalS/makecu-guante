@@ -287,16 +287,38 @@ it('refuses a hand that keeps closing during the hold', () => {
   }));
   expect(screen.getByRole('alert')).toHaveTextContent('Too much movement');
 });
-it('starts no finger while the hand is not seen during the glove opening', () => {
+// The glove drives the hand while it opens it and while it holds it open: the
+// page's stall check needs vision, so any missed frame cancels and releases
+// (relaxing this needs a hardware check). Only passive captures tolerate gaps.
+it('cancels and releases the glove opening on a single missed frame', () => {
   mount();
   fireEvent.click(screen.getByRole('button', { name: 'Glove opens the hand' }));
   advance(200);
   const before = target.mock.calls.length;
-  advanceWith(150, () => missed);
-  expect(target).toHaveBeenCalledTimes(before);
-  expect(alertText()).toBe('');
-  advance(3300);
-  expect(target).toHaveBeenCalledTimes(5);
+  expect(before).toBeGreaterThan(0);
+  advanceWith(50, () => missed);
+  expect(screen.getByRole('alert')).toHaveTextContent('Keep your hand in view');
   expect(calls.at(-1)).toBe('release');
+  advance(3000);
+  expect(target).toHaveBeenCalledTimes(before);
+  expect(calls.at(-1)).toBe('release');
+});
+it('cancels and releases on a missed frame while the glove holds the hand open', () => {
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Glove opens the hand' }));
+  // Opening ends and the 2.1 s hold starts within 1.2 s (the capture ends by 3.3 s).
+  advance(2500);
+  expect(target).toHaveBeenCalledTimes(5);
   expect(alertText()).toBe('');
+  advanceWith(50, () => missed);
+  expect(screen.getByRole('alert')).toHaveTextContent('Keep your hand in view');
+  expect(calls.at(-1)).toBe('release');
+});
+it('keeps a passive own-hand open capture through a short detection gap', () => {
+  state.client.kind = 'sim';
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Capture open hand' }));
+  advanceWith(2300, (t) => (t >= 900 && t < 1000 ? missed : {}));
+  expect(alertText()).toBe('');
+  expect(target).not.toHaveBeenCalled();
 });
