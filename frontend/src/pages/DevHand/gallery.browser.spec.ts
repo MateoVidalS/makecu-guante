@@ -77,6 +77,9 @@ test('renders all poses, grayscale overlay, mirroring, loss of tracking and dark
     await page.getByRole('button', { name: 'Match target' }).click();
     await expect(hand).toHaveAttribute('aria-label', new RegExp(name));
     await page.waitForTimeout(500);
+    await hand.evaluate((element) =>
+      element.scrollIntoView({ block: 'center' }),
+    );
     await hand.screenshot({ path: `${evidence}${id}.png` });
   }
   await page.getByRole('button', { name: 'Hook', exact: true }).click();
@@ -85,6 +88,7 @@ test('renders all poses, grayscale overlay, mirroring, loss of tracking and dark
     (element as HTMLElement).style.filter = 'grayscale(1)';
   });
   await page.waitForTimeout(500);
+  await hand.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await hand.screenshot({ path: `${evidence}grayscale.png` });
   await hand.evaluate((element) => {
     (element as HTMLElement).style.filter = '';
@@ -95,6 +99,7 @@ test('renders all poses, grayscale overlay, mirroring, loss of tracking and dark
   await page.getByRole('button', { name: 'Match target' }).click();
   await page.getByRole('combobox', { name: 'Theme' }).selectOption('dark');
   await page.waitForTimeout(500);
+  await hand.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await hand.screenshot({ path: `${evidence}left-dark.png` });
   await page.getByRole('checkbox', { name: 'Hand visible' }).uncheck();
   await expect(hand).toHaveAttribute('data-visible', 'false');
@@ -234,6 +239,9 @@ test('shows both camera views, every pose and mirrored left/right hands', async 
           new RegExp(`${pose.name}.*${handedness} hand`),
         );
         await page.waitForTimeout(150);
+        await hand.evaluate((element) =>
+          element.scrollIntoView({ block: 'center' }),
+        );
         await hand.screenshot({
           path: `${evidence}${view}-${pose.id}-${handedness}-${width}.png`,
         });
