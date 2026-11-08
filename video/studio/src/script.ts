@@ -31,7 +31,7 @@ export const VO: VoLine[] = [
   { id: 'reveal-2', scene: 'reveal', at: 108, maxFrames: 108, voice: 'narrator', text: 'A soft tendon glove, a webcam, and a voice coach.' },
   { id: 'reveal-3', scene: 'reveal', at: 228, maxFrames: 126, voice: 'narrator', text: 'It watches. It coaches. It helps you open.' },
 
-  // session (1512 f)
+  // session (1368 f)
   { id: 'session-1', scene: 'session', at: 18, maxFrames: 126, voice: 'narrator', text: 'memo shows the goal. You try first.' },
   { id: 'session-2', scene: 'session', at: 162, maxFrames: 180, voice: 'narrator', text: 'The camera measures how far each finger opens, on its own.' },
   { id: 'session-3', scene: 'session', at: 378, maxFrames: 198, voice: 'narrator', text: "When a finger can't get there, the glove helps. Only with the rest." },
@@ -39,7 +39,7 @@ export const VO: VoLine[] = [
   { id: 'session-5', scene: 'session', at: 900, maxFrames: 90, voice: 'narrator', text: 'If a finger resists…' },
   // The app's real local safety phrase (frontend/src/voice). Re-voiced with the app's Live voice; caption is verbatim.
   { id: 'session-coach', scene: 'session', at: 1008, maxFrames: 126, voice: 'coach', text: "I feel resistance opening your index, let's stop here." },
-  { id: 'session-6', scene: 'session', at: 1152, maxFrames: 342, voice: 'narrator', text: 'the glove lets go. Safety runs on the board, not in the browser.' },
+  { id: 'session-6', scene: 'session', at: 1152, maxFrames: 210, voice: 'narrator', text: 'the glove lets go. Safety runs on the board, not in the browser.' },
 
   // coach (576 f). Frames 144–468 are reserved for the team's real Gemini Live conversation audio.
   { id: 'coach-1', scene: 'coach', at: 12, maxFrames: 126, voice: 'narrator', text: 'The coach runs on Gemini Live. It names the finger and adjusts the session.' },
@@ -52,6 +52,9 @@ export const VO: VoLine[] = [
   { id: 'doctor-4', scene: 'doctor', at: 468, maxFrames: 210, voice: 'narrator', text: 'and get a summary from Gemini in one click.' },
   { id: 'doctor-5', scene: 'doctor', at: 690, maxFrames: 168, voice: 'narrator', text: 'Honest numbers for the people who guide you.' },
 
+  // build (288 f)
+  { id: 'build-1', scene: 'build', at: 18, maxFrames: 252, voice: 'narrator', text: 'Five micro servos wind thin threads over the back of each finger. A current sensor feels every pull.' },
+
   // underHood (432 f)
   { id: 'hood-1', scene: 'underHood', at: 12, maxFrames: 126, voice: 'narrator', text: 'The board decides, not the browser.' },
   { id: 'hood-2', scene: 'underHood', at: 144, maxFrames: 270, voice: 'narrator', text: 'A current cut-off, a stop button, a watchdog, and a release that always goes slack.' },
@@ -60,8 +63,7 @@ export const VO: VoLine[] = [
 // On-screen copy that is not voiced. Scenes import their strings from here so copy review happens in one file.
 export const COPY = {
   hook: {
-    line1: 'Her grandson wants a high-five.',
-    punch: 'Technically a fist bump.',
+    line1: "This is Rosa's hand.",
     note: 'Rosa is a composite character based on published survivor accounts.',
   },
   problem: {
