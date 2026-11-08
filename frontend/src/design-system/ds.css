@@ -878,7 +878,7 @@ button.ds-stepper__button:hover {
   outline-offset: 2px;
 }
 .ds-checkbox__input:disabled + .ds-checkbox__box,
-.ds-checkbox__input:disabled ~ .ds-checkbox__text {
+.ds-checkbox__input:disabled ~ .ds-checkbox__text > .ds-checkbox__label {
   opacity: 0.5;
 }
 

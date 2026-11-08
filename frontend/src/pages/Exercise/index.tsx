@@ -14,6 +14,7 @@ import { useStore } from 'zustand';
 import { useRuntime, useExerciseView, useSavingStatus } from '../../runtime';
 import {
   DEFAULT_PLAN,
+  TENDON_GLIDE_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
   POSES,
 } from '../../contracts/poses';
@@ -310,7 +311,7 @@ export default function Exercise() {
     [planning, setPlanning] = useState(
       () => new URLSearchParams(location.search).get('customize') === '1',
     ),
-    [preset, setPreset] = useState(short ? 'short' : 'glides');
+    [preset, setPreset] = useState(short ? 'short' : 'opening');
   const safetyVisible = useSafetyBannerVisible();
   useProgressPlan(plan);
   const calibrationStatus = useCalibrationStatus();
@@ -423,7 +424,13 @@ export default function Exercise() {
         />
         <Inline>
           {[
-            { id: 'glides', label: 'Tendon glides', plan: DEFAULT_PLAN },
+            { id: 'opening', label: 'Opening practice', plan: DEFAULT_PLAN },
+            { id: 'glides', label: 'Tendon glides', plan: TENDON_GLIDE_PLAN },
+            {
+              id: 'open',
+              label: 'Open only, 1 rep',
+              plan: [{ pose: 'open' as const, reps: 1 }],
+            },
             {
               id: 'fist',
               label: 'Fist only, 1 rep',
