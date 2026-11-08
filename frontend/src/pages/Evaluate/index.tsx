@@ -9,7 +9,12 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from 'zustand';
-import { useRuntime, useEvaluationView } from '../../runtime';
+import {
+  useRuntime,
+  useEvaluationView,
+  useSavingStatus,
+} from '../../runtime';
+import { savedNote } from '../Exercise/recapStatus';
 import { useGlove } from '../../glove';
 import { GLOVE_FINGERS, type GloveFinger } from '../../contracts/glove';
 import { DEFAULT_EVAL_SETTINGS } from '../../contracts/poses';
@@ -379,10 +384,7 @@ export default function Evaluate() {
                 : 'mA measured'
             }
           />
-          <p className="hp-note">
-            Results are saved with your history. Lower values suggest less
-            resistance.
-          </p>
+          <EvaluationSavedNote />
           <details className="hp-disclosure">
             <summary>Show as table</summary>
             <p className="hp-note">
@@ -601,5 +603,15 @@ export default function Evaluate() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Never claims the results are saved while the server is unreachable. */
+function EvaluationSavedNote() {
+  const saving = useSavingStatus();
+  return (
+    <p className="hp-note" role="status">
+      {savedNote(saving, 'results')} Lower values suggest less resistance.
+    </p>
   );
 }

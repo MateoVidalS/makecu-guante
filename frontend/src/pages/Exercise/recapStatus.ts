@@ -21,11 +21,20 @@ export function recapStatus({
   if (saving === 'Offline')
     return {
       kind: 'status',
-      text: "Not saved yet: memo can't reach its server. Your practice is kept on this computer and saves by itself when the server is back.",
+      text: "Not saved yet: memo can't reach its server. Your practice is kept on this computer and will save automatically when the server is back.",
     };
   if (saving !== 'Saved')
     return { kind: 'status', text: 'Saving your session…' };
   if (failed)
     return { kind: 'status', text: 'Summary unavailable. Your session is saved.' };
   return null;
+}
+
+/** One sentence about where saved records stand, for any result screen. */
+export function savedNote(saving: SavingState, what: string) {
+  return saving === 'Offline'
+    ? `Your ${what} are not saved yet: memo can't reach its server. They are kept on this computer and will save automatically when the server is back.`
+    : saving === 'Saving…'
+      ? `Saving your ${what}…`
+      : `Your ${what} are saved with your history.`;
 }
