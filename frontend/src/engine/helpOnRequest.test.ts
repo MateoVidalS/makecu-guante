@@ -179,3 +179,50 @@ describe('the glove helps only when the patient asks', () => {
     expect(run.engine.therapy.queuedHelp()).toEqual([]);
   });
 });
+
+describe('the coach tool and the patient request racing (live run)', () => {
+  it('a coach call that lands before the voice request still helps, when the patient asked', () => {
+    const run = new Run('open', { ...onRequest, attempt_s: 9 });
+    run.world.hand = [...CLOSED] as Quint;
+    run.until('ATTEMPT');
+    for (let i = 0; i < 20; i++) run.step();
+    run.engine.therapy.notePatientSpeech('Yes please, help me.');
+    const decision = run.engine.therapy.adjust(
+      'assist_finger_now',
+      { finger: 'thumb', reason: 'The patient asked for help.' },
+      'coach',
+    );
+    expect(decision.result).toBe('applied');
+    expect(run.engine.state().phase).toBe('ASSIST');
+    // The voice's own request arrives after the sentence ends: it widens help to all.
+    run.accept(run.engine.requestHelp(run.world.now));
+    for (let i = 0; i < 40; i++) run.step();
+    const pulled = new Set(
+      run
+        .targets()
+        .flatMap((t) =>
+          t.f.flatMap((p, i) =>
+            p > pullFromClosure(CLOSED[i]) + 1e-6 ? [i] : [],
+          ),
+        ),
+    );
+    expect(pulled.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('without the patient asking, the coach is told to ask first and nothing moves', () => {
+    const run = new Run('open', { ...onRequest, attempt_s: 9 });
+    run.world.hand = [...CLOSED] as Quint;
+    run.until('ATTEMPT');
+    for (let i = 0; i < 20; i++) run.step();
+    run.engine.therapy.notePatientSpeech('My hand feels tight.');
+    const decision = run.engine.therapy.adjust(
+      'assist_finger_now',
+      { finger: 'thumb', reason: 'Coach thinks it would help.' },
+      'coach',
+    );
+    expect(decision.result).toBe('rejected');
+    expect(JSON.stringify(decision)).toContain('Ask them first');
+    for (let i = 0; i < 20; i++) run.step();
+    expect(run.engine.state().phase).toBe('ATTEMPT');
+  });
+});

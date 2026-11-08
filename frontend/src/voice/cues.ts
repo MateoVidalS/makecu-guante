@@ -10,6 +10,43 @@ export interface Cue {
   speak: boolean;
   present?: boolean;
   opening?: boolean;
+  /** What the cue is about, for timing logs (set by VoiceController). */
+  label?: string;
+  /** performance.now() of the engine event behind the cue. */
+  at?: number;
+  /** Attempt index when the cue was made. */
+  index?: number;
+  /**
+   * Still worth saying aloud? A spoken cue that is no longer true (its attempt ended,
+   * help already released) is passed as context instead, never spoken late.
+   */
+  valid?: (view: ExerciseView) => boolean;
+}
+
+/** Spoken-cue validity by event: what must still hold when the coach would say it. */
+export function cueValidity(
+  event: EngineEvent,
+  index: number,
+): ((view: ExerciseView) => boolean) | undefined {
+  switch (event.kind) {
+    case 'phase':
+      return event.phase === 'PRESENT'
+        ? (v) =>
+            v.index === index && (v.phase === 'PRESENT' || v.phase === 'ATTEMPT')
+        : (v) => v.index === index;
+    case 'progress':
+      return (v) => v.index === index && v.phase === 'ATTEMPT';
+    case 'reached':
+      // Praise belongs to the attempt: never during the rest or the next invitation.
+      return (v) =>
+        v.index === index && v.phase !== 'REST' && v.phase !== 'PRESENT';
+    case 'assist_started':
+      return (v) => v.index === index && v.assisting;
+    case 'help_offered':
+      return (v) => v.index === index && !!v.helpOffered;
+    default:
+      return undefined; // check-ins, results and the goodbye stay valid
+  }
 }
 export function eventCue(
   event: EngineEvent,
@@ -143,7 +180,11 @@ export class CueScheduler {
     clearTimeout(this.timer);
     const cue = this.pending;
     if (!cue || (this.talking && !cue.present)) return;
-    const delay = Math.max(0, 2500 - (this.now() - this.lastSpoke));
+    // The pose invitation never waits for the spacing: the attempt waits for it (F4), and
+    // live runs measured up to 2 s of spacing in its 3.4 s worst case to first sound.
+    const delay = cue.present
+      ? 0
+      : Math.max(0, 2500 - (this.now() - this.lastSpoke));
     if (delay) {
       this.timer = setTimeout(() => this.drain(), delay);
       return;
@@ -155,5 +196,9 @@ export class CueScheduler {
   clear() {
     clearTimeout(this.timer);
     this.pending = null;
+  }
+  /** A spoken cue is waiting for its turn. */
+  hasPending() {
+    return this.pending !== null;
   }
 }

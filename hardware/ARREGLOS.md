@@ -25,11 +25,15 @@ se reemplazó por un S51, ese problema debería estar resuelto. Igual hay que ve
 
 | Dedo | Pin de señal (naranja) | Servo |
 | --- | --- | --- |
-| Pulgar | D25 (GPIO25) | Smraza S51 |
-| Índice | D26 (GPIO26) | Smraza S51 |
+| Pulgar | D4 (GPIO4) | Smraza S51 |
+| Índice | D13 (GPIO13) | Smraza S51 |
 | Medio | D27 (GPIO27) | Smraza S51 |
-| Anular | D13 (GPIO13) | Smraza S51 |
-| Meñique | D4 (GPIO4) | Smraza S51 |
+| Anular | D26 (GPIO26) | Smraza S51 |
+| Meñique | D25 (GPIO25) | Smraza S51 |
+
+> **8/11/2026, tarde:** se recablearon los servos con este mapa (antes: pulgar D25, índice
+> D26, medio D27, anular D13, meñique D4). Las menciones de pines más abajo son del mapa
+> viejo, de cuando se encontraron esos problemas.
 
 Rojo de cada servo a la fila **+**, marrón a la fila **−**. Ojo: en la breadboard las filas
 + y − están invertidas arriba y abajo.

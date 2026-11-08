@@ -420,6 +420,11 @@ export class RehabRuntime implements TherapyRuntime {
       if (this.mode === 'exercise')
         this.handle(this.exerciseEngine.requestHelp(this.clock(), fingers));
     },
+    // A flag only: never ticks or emits, so the voice may call it while the runtime is
+    // handling an engine output.
+    voiceBusy: (busy) => {
+      this.exerciseEngine.setVoiceBusy(this.clock(), busy);
+    },
     stop: async () => {
       if (this.mode === 'exercise')
         this.handle(this.exerciseEngine.stop(this.clock()));

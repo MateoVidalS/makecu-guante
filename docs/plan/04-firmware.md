@@ -26,7 +26,7 @@ Libraries: `madhephaestus/ESP32Servo`, `adafruit/Adafruit INA219`, `bblanchon/Ar
 
 ## 2. Pins (from README)
 
-Servos: thumb GPIO25, index GPIO26, middle GPIO27, ring GPIO13, pinky GPIO4 (LEDC 50 Hz, 500–2500 µs). NeoPixel data GPIO33 (through the level
+Servos: thumb GPIO4, index GPIO13, middle GPIO27, ring GPIO26, pinky GPIO25 (LEDC 50 Hz, 500–2500 µs). NeoPixel data GPIO33 (through the level
 shifter + 330 Ω). INA219: SDA 21, SCL 22 (addr 0x40). STOP: GPIO32 `INPUT_PULLUP`, button to GND. Avoid 0, 2, 5, 12, 14, 15.
 
 ## 3. Control loop (200 Hz, `main.cpp`)
