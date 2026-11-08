@@ -19,7 +19,8 @@ import { createHandScene, type FingerState, type HandTheme } from './scene';
 import { useHandPreferences } from './preferences';
 import { createHandAnimator } from './animation';
 import './hand.css';
-import { palmDownCamera, HAND_LOOK_AT, PALM_DOWN_ROTATION } from './view';
+import { handPresentation } from './view';
+import { CURRENT_CAMERA_VIEW, type CameraView } from '../contracts/calibration';
 import { fitHandViewport, handFamilyBounds } from './framing';
 export type { JointMap } from './rig';
 export interface VirtualHandProps {
@@ -29,6 +30,8 @@ export interface VirtualHandProps {
   /** A steady coach focus contour, independent of movement/assistance state. */
   highlight?: FingerId | null;
   handedness?: Handedness;
+  /** Upright mirror view by default; front_diagonal retains the legacy camera. */
+  view?: CameraView;
   /** Manual orthographic zoom when fit is false. */
   zoom?: number;
   /** Fit the pose family's full motion envelope to the canvas (default true). */
@@ -58,6 +61,7 @@ function HandScene({
   actual,
   state,
   handedness = 'right',
+  view = CURRENT_CAMERA_VIEW,
   zoom = 85,
   fit = true,
   keepTargetOnReach = false,
@@ -83,6 +87,10 @@ function HandScene({
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const family = pose === 'pinch' ? 'pinch' : 'tendon_glide';
+  const presentation = useMemo(
+    () => handPresentation(handedness, view, family === 'pinch'),
+    [handedness, view, family],
+  );
   const tracking = useRef({
     frames: 0,
     elapsed: 0,
@@ -94,11 +102,11 @@ function HandScene({
     animator.resetReach();
   }, [scene, target, animator]);
   useEffect(() => {
-    camera.position.set(...palmDownCamera(handedness, family === 'pinch'));
-    camera.lookAt(...HAND_LOOK_AT);
+    camera.position.set(...presentation.camera);
+    camera.lookAt(...presentation.lookAt);
     if (fit) {
       const framing = fitHandViewport(
-        handFamilyBounds(handedness, family),
+        handFamilyBounds(handedness, family, view),
         size.width,
         size.height,
       );
@@ -110,7 +118,17 @@ function HandScene({
       camera.zoom = framing.zoom;
     } else camera.zoom = zoom;
     camera.updateProjectionMatrix();
-  }, [camera, family, zoom, fit, handedness, size.width, size.height]);
+  }, [
+    camera,
+    presentation,
+    family,
+    zoom,
+    fit,
+    handedness,
+    view,
+    size.width,
+    size.height,
+  ]);
 
   useFrame((_frame, delta) => {
     const live = tracking.current;
@@ -156,7 +174,7 @@ function HandScene({
         color={palette.reached}
         intensity={0}
       />
-      <group rotation={PALM_DOWN_ROTATION}>
+      <group rotation={presentation.rotation}>
         <primitive object={scene.target} />
         <primitive object={scene.actual} />
       </group>
@@ -191,19 +209,26 @@ export function VirtualHand(props: VirtualHandProps) {
   const label = props.target
     ? `Target pose: ${pose ? POSES[pose].name : 'custom hand pose'}. Ghost outline is your target; solid hand is you.`
     : 'Your hand. No target pose.';
+  const view = props.view ?? CURRENT_CAMERA_VIEW;
+  const orientation =
+    view === 'front_upright'
+      ? 'Upright, palm toward you, mirrored'
+      : 'Palm down';
   const palette = preferences.dark ? tokens.dark : tokens.light;
   return (
     <div
       className="hand-view"
       role="img"
-      aria-label={`${label} Palm down, ${props.handedness ?? 'right'} hand.${props.highlight ? ` Focus on your ${props.highlight}.` : ''}`}
+      aria-label={`${label} ${orientation}, ${props.handedness ?? 'right'} hand.${props.highlight ? ` Focus on your ${props.highlight}.` : ''}`}
       data-visible={visible}
+      data-view={view}
     >
       <HandFallback>
         <Canvas
           orthographic
           camera={{
-            position: palmDownCamera(props.handedness ?? 'right'),
+            position: handPresentation(props.handedness ?? 'right', view)
+              .camera,
             zoom: 85,
             near: 0.1,
             far: 50,

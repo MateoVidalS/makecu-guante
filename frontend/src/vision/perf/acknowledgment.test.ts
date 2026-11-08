@@ -126,10 +126,8 @@ describe(
   'known gaps (it.fails: passes while the gap exists; fix the code, then flip to it)',
   SLOW,
   () => {
-    // contracts/poses.ts: pinch.render index = 50/50/20 = 120° of flexion, but the index target is 0.55
-    // (reached at ≥ 0.45). With a full-range calibration (closed = 270°) the rendered pinch is 0.44.
-    // A patient who copies the virtual hand exactly is never acknowledged.
-    it.fails(
+    // The rendered pinch must satisfy its target even with full-range calibration.
+    it(
       'copying the on-screen pinch is acknowledged (full-range calibration)',
       () => {
         const patient = PATIENTS.healthy;

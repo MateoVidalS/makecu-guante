@@ -56,10 +56,10 @@ for (const theme of ['light', 'dark']) {
     expect(
       await page.evaluate(() => {
         const details = document
-          .querySelector('.live-details')!
+          .querySelector('.coach-panel')!
           .getBoundingClientRect();
         const coach = document
-          .querySelector('.coach-quick-controls')!
+          .querySelector('.coach-panel')!
           .getBoundingClientRect();
         const audit = document
           .querySelector('.therapy-live')!
@@ -75,14 +75,22 @@ for (const theme of ['light', 'dark']) {
     await expect(
       page.getByRole('button', { name: 'Resume', exact: true }).first(),
     ).toBeVisible();
-    await page.getByText('Demo tools', { exact: true }).click();
+    await page.locator('.runtime-fallback').evaluate((menu) => {
+      // Expose simulator fault injection only inside this test.
+      (menu as HTMLElement).hidden = false;
+      menu.querySelector('summary')!.click();
+    });
     await page
       .getByRole('button', { name: 'Press simulated STOP', exact: true })
       .click();
     await expect(
       page.locator('#safety-banner-slot').getByRole('alert'),
     ).toBeVisible();
-    await page.getByText('Demo tools', { exact: true }).click();
+    await page.locator('.runtime-fallback').evaluate((menu) => {
+      // Expose simulator fault injection only inside this test.
+      (menu as HTMLElement).hidden = false;
+      menu.querySelector('summary')!.click();
+    });
     await expect(
       page.getByRole('button', { name: 'Brake', exact: true }),
     ).toBeVisible();

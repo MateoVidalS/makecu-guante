@@ -1,13 +1,21 @@
 import { useCallback, useSyncExternalStore } from 'react';
-import type { Calibration, CameraCalibration } from '../contracts/calibration';
+import {
+  CURRENT_CAMERA_VIEW,
+  type Calibration,
+  type CameraCalibration,
+} from '../contracts/calibration';
 import { GLOVE_FINGERS } from '../contracts/glove';
 import type { FingerId, VisionFrame } from '../contracts/vision';
 import { jointsFromClosure } from '../glove/sim/simVision';
 import { useVision, useVisionFrame } from '../vision';
 import { useRuntime } from './RuntimeProvider';
 
+export const CAMERA_VIEW_RECAPTURE_MESSAGE =
+  'Your camera range was captured in the old position. Recapture it with your hand raised.';
+
 export interface CalibrationIssue {
-  finger: FingerId;
+  /** Absent when the whole camera capture needs redoing. */
+  finger?: FingerId;
   step: 'glove' | 'camera';
   message: string;
 }
@@ -84,9 +92,16 @@ export function selectCalibrationStatus(
     )
       add(finger, 'glove');
   }
-  for (const finger of GLOVE_FINGERS) {
-    if (cameraRangeError(calibration.camera, finger, simulatedCamera, frame))
-      add(finger, 'camera');
+  if (calibration.camera.camera_view !== CURRENT_CAMERA_VIEW) {
+    issues.push({
+      step: 'camera',
+      message: CAMERA_VIEW_RECAPTURE_MESSAGE,
+    });
+  } else {
+    for (const finger of GLOVE_FINGERS) {
+      if (cameraRangeError(calibration.camera, finger, simulatedCamera, frame))
+        add(finger, 'camera');
+    }
   }
   return { state: issues.length ? 'invalid' : 'ok', issues };
 }
@@ -114,7 +129,7 @@ export function useCalibrationStatus(): CalibrationStatus {
   );
 }
 export const calibrationIssueHref = (issue: CalibrationIssue) =>
-  `/calibrate?step=${issue.step}&finger=${issue.finger}`;
+  `/calibrate?step=${issue.step}${issue.finger ? `&finger=${issue.finger}` : ''}`;
 export function calibrationReadiness(status: CalibrationStatus) {
   return {
     label: 'Calibration',
@@ -122,7 +137,11 @@ export function calibrationReadiness(status: CalibrationStatus) {
       status.state === 'ok'
         ? 'Ready'
         : status.state === 'invalid'
-          ? 'Needs a quick redo'
+          ? status.issues.some(
+              (issue) => issue.message === CAMERA_VIEW_RECAPTURE_MESSAGE,
+            )
+            ? 'Needed'
+            : 'Needs a quick redo'
           : 'Needed',
     tone: status.state === 'ok' ? ('reached' as const) : ('caution' as const),
     href: status.issues[0]

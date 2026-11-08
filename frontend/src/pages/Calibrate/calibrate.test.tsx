@@ -9,10 +9,15 @@ import {
 import '@testing-library/jest-dom/vitest';
 import Calibrate from './index';
 import {
-  helperRuntime,
+  helperRuntime as legacyHelperRuntime,
   mountHelper,
   resetHelperStorage,
 } from '../../components/calibration/testSupport';
+function helperRuntime() {
+  const runtime = legacyHelperRuntime();
+  runtime.calibration.current!.camera.camera_view = 'front_upright';
+  return runtime;
+}
 vi.mock('../../vision/CameraOverlay', () => ({
   CameraOverlay: () => <div>Hand camera preview</div>,
 }));
@@ -26,7 +31,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 it('opens a valid saved range on Review without unset fingers', () => {
-  mountHelper(<Calibrate />);
+  mountHelper(<Calibrate />, helperRuntime());
   expect(
     screen.getByRole('heading', { name: 'Review your range' }),
   ).toBeVisible();
@@ -87,7 +92,7 @@ it('hydrates a late backend reload even without camera frames', () => {
   ).toBeVisible();
 });
 it('shares the amber safety strip and releases on request', () => {
-  mountHelper(<Calibrate />);
+  mountHelper(<Calibrate />, helperRuntime());
   const release = screen.getByRole('button', { name: 'Release glove now' });
   expect(release.closest('.ds-banner')).toHaveClass('ds-banner--warning');
   expect(release.closest('.ds-banner')).toHaveTextContent(
@@ -112,6 +117,7 @@ it('the single simulator shortcut saves both sources and refreshes Review', asyn
   expect(save).toHaveBeenCalledWith(
     expect.objectContaining({
       camera: expect.objectContaining({
+        camera_view: 'front_upright',
         closed_flex: {
           thumb: 100,
           index: 270,
@@ -127,4 +133,46 @@ it('the single simulator shortcut saves both sources and refreshes Review', asyn
     screen.getByRole('button', { name: 'Save calibration' }),
   ).toBeEnabled();
   expect(screen.queryByText('Needs a quick redo')).not.toBeInTheDocument();
+});
+
+it('opens legacy calibration at the camera step with glove ranges retained', () => {
+  const runtime = legacyHelperRuntime();
+  delete runtime.calibration.current!.camera.camera_view;
+  mountHelper(<Calibrate />, runtime);
+  expect(
+    screen.getByRole('heading', { name: 'Step 2 · Camera range' }),
+  ).toBeVisible();
+  expect(
+    screen.getByText(
+      'Your camera range was captured in the old position. Recapture it with your hand raised.',
+    ),
+  ).toBeVisible();
+  expect(screen.getByText(/Raise your hand, palm to the screen/)).toBeVisible();
+  expect(screen.getAllByText('Not captured')).toHaveLength(2);
+  fireEvent.click(screen.getByRole('button', { name: /Glove range/ }));
+  for (const finger of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
+    expect(
+      screen.getByRole('button', { name: `${finger} · Set` }),
+    ).toBeVisible();
+});
+
+it('saves the current camera view while preserving the existing friction curves', async () => {
+  const runtime = helperRuntime();
+  const friction = runtime.calibration.current!.friction;
+  const save = vi
+    .spyOn(runtime.calibration, 'save')
+    .mockImplementation(async (value) => ({
+      ...value,
+      id: 100,
+      created_at: new Date().toISOString(),
+    }));
+  mountHelper(<Calibrate />, runtime);
+  fireEvent.click(screen.getByRole('button', { name: 'Save calibration' }));
+  await screen.findByRole('heading', { name: 'Your range is saved' });
+  expect(save).toHaveBeenCalledWith(
+    expect.objectContaining({
+      camera: expect.objectContaining({ camera_view: 'front_upright' }),
+      friction,
+    }),
+  );
 });

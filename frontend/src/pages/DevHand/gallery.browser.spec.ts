@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { POSES } from '../../contracts/poses';
 const evidence = fileURLToPath(
-  new URL('../../../../docs/design/screenshots/ux-u2/', import.meta.url),
+  new URL('../../../../docs/design/screenshots/upright/', import.meta.url),
 );
 
 test('compares every pose in all four states, in color and grayscale', async ({
@@ -76,6 +77,9 @@ test('renders all poses, grayscale overlay, mirroring, loss of tracking and dark
     await page.getByRole('button', { name: 'Match target' }).click();
     await expect(hand).toHaveAttribute('aria-label', new RegExp(name));
     await page.waitForTimeout(500);
+    await hand.evaluate((element) =>
+      element.scrollIntoView({ block: 'center' }),
+    );
     await hand.screenshot({ path: `${evidence}${id}.png` });
   }
   await page.getByRole('button', { name: 'Hook', exact: true }).click();
@@ -84,6 +88,7 @@ test('renders all poses, grayscale overlay, mirroring, loss of tracking and dark
     (element as HTMLElement).style.filter = 'grayscale(1)';
   });
   await page.waitForTimeout(500);
+  await hand.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await hand.screenshot({ path: `${evidence}grayscale.png` });
   await hand.evaluate((element) => {
     (element as HTMLElement).style.filter = '';
@@ -94,6 +99,7 @@ test('renders all poses, grayscale overlay, mirroring, loss of tracking and dark
   await page.getByRole('button', { name: 'Match target' }).click();
   await page.getByRole('combobox', { name: 'Theme' }).selectOption('dark');
   await page.waitForTimeout(500);
+  await hand.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await hand.screenshot({ path: `${evidence}left-dark.png` });
   await page.getByRole('checkbox', { name: 'Hand visible' }).uncheck();
   await expect(hand).toHaveAttribute('data-visible', 'false');
@@ -190,4 +196,65 @@ test('maintains at least 55 fps with camera capture and a 30 Hz joint source', a
   await page.getByRole('button', { name: 'Stop camera' }).click();
   expect(stubHz).toBeGreaterThanOrEqual(28);
   expect(average).toBeGreaterThanOrEqual(55);
+});
+
+test('shows both camera views, every pose and mirrored left/right hands', async ({
+  page,
+}) => {
+  await mkdir(evidence, { recursive: true });
+  await page.goto('/_dev/hand');
+  const hand = page.getByRole('img');
+  await expect(hand).toHaveAttribute('data-view', 'front_upright');
+  await expect(hand).toHaveAttribute(
+    'aria-label',
+    /Upright, palm toward you, mirrored, right hand/,
+  );
+  await page
+    .getByRole('checkbox', { name: 'Reduced motion', exact: true })
+    .check();
+  for (const view of ['front_upright', 'front_diagonal']) {
+    await page
+      .getByRole('combobox', { name: 'Camera view' })
+      .selectOption(view);
+    for (const handedness of ['right', 'left']) {
+      const width = handedness === 'right' ? 1440 : 1280;
+      await page.setViewportSize({
+        width,
+        height: handedness === 'right' ? 900 : 720,
+      });
+      await page
+        .getByRole('combobox', { name: 'Affected hand' })
+        .selectOption(handedness);
+      await page
+        .getByRole('combobox', { name: 'Theme' })
+        .selectOption(handedness === 'right' ? 'light' : 'dark');
+      for (const pose of Object.values(POSES)) {
+        await page
+          .getByRole('button', { name: pose.name, exact: true })
+          .click();
+        await page.getByRole('button', { name: 'Match target' }).click();
+        await expect(hand).toHaveAttribute('data-view', view);
+        await expect(hand).toHaveAttribute(
+          'aria-label',
+          new RegExp(`${pose.name}.*${handedness} hand`),
+        );
+        await page.waitForTimeout(150);
+        await hand.evaluate((element) =>
+          element.scrollIntoView({ block: 'center' }),
+        );
+        await hand.screenshot({
+          path: `${evidence}${view}-${pose.id}-${handedness}-${width}.png`,
+        });
+      }
+    }
+    await page
+      .getByRole('checkbox', { name: 'Hand visible', exact: true })
+      .uncheck();
+    await expect(hand).toHaveAttribute('data-visible', 'false');
+    await expect(hand.getByRole('status')).toBeVisible();
+    await page
+      .getByRole('checkbox', { name: 'Hand visible', exact: true })
+      .check();
+    await expect(hand).toHaveAttribute('data-visible', 'true');
+  }
 });

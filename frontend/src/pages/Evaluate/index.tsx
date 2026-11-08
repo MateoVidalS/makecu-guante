@@ -1,3 +1,4 @@
+import { useProgressFingers } from '../../components/common/SessionProgress';
 import {
   Button,
   ButtonLink,
@@ -203,6 +204,7 @@ export default function Evaluate() {
     };
   }, []);
   const selectedFingers = GLOVE_FINGERS.filter((f) => selected.includes(f));
+  useProgressFingers(selectedFingers);
   useSessionLeaveGuard('evaluation');
   const running = ['prepare', 'sweep', 'cooldown'].includes(view.stage);
   useEffect(() => {
@@ -530,7 +532,7 @@ export default function Evaluate() {
             </p>
           </fieldset>
           <p className="hp-note">
-            Rest palm down, fingers beyond the table edge.
+            Raise your hand, palm to the screen. Support your elbow and relax.
           </p>
           <Checkbox
             label="Hand relaxed in the glove"

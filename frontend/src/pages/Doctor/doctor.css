@@ -49,12 +49,18 @@
   line-height: var(--line-height);
 }
 
-/* At a glance: four visuals in a 2 × 2 grid, one page in print. */
+/* The tall hand comparison gets its own row; short cards keep their natural height. */
 .report-glance__grid {
   display: grid;
+  align-items: start;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
   gap: var(--space-16);
   min-width: 0;
+}
+
+.report-glance__grid > .hand-map,
+.report-glance__grid > .resistance-dumbbells {
+  grid-column: 1 / -1;
 }
 
 @page {
@@ -195,7 +201,7 @@
     height: var(--space-24);
   }
   .doctor-report .report-glance .hand-figure {
-    width: 112px !important;
+    width: calc(var(--space-64) + var(--space-48)) !important;
   }
   .doctor-report .report-glance .hand-deltas__change {
     display: none;
@@ -268,6 +274,26 @@
   font-size: var(--small);
 }
 @media print {
+  .doctor-report .saved-evaluations {
+    break-inside: avoid;
+  }
+  .doctor-report .report-details > summary {
+    display: none;
+  }
+  .report-therapy {
+    break-before: page;
+    break-inside: avoid;
+  }
+  .doctor-report .data-section__header {
+    break-after: avoid;
+  }
+  .doctor-report .data-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .doctor-report .data-table-wrap {
+    overflow: visible;
+  }
   .therapy-trend {
     break-inside: avoid;
   }

@@ -10,7 +10,7 @@ import {
   Text,
 } from '../design-system';
 import './CoachPanel.css';
-export function CoachPanel() {
+export function CoachPanel({ compact = false }: { compact?: boolean }) {
   const voice = useVoice();
   const labels = {
     off: 'Voice off',
@@ -21,35 +21,79 @@ export function CoachPanel() {
     fallback: 'Simple voice',
   };
   return (
-    <Card as="aside" className="coach-panel" aria-label="Voice coach">
+    <Card
+      as="aside"
+      className={`coach-panel ${compact ? 'coach-panel--compact coach-compact' : ''}`}
+      aria-label="Voice coach"
+    >
       <Stack gap={12}>
-        <Inline justify="between">
-          <StatusChip
-            icon="mic"
-            label="Coach"
-            value={
-              voice.mode === 'simple' ? 'Simple voice' : labels[voice.status]
-            }
-            tone={voice.status === 'listening' ? 'active' : 'neutral'}
-          />
+        <Inline justify="between" className="coach-quick-controls">
+          <span className="coach-state">
+            <span
+              className="coach-speaking"
+              data-speaking={voice.status === 'speaking'}
+              aria-hidden="true"
+            >
+              <i />
+              <i />
+              <i />
+            </span>
+            <StatusChip
+              icon="mic"
+              label="Coach"
+              value={
+                voice.mode === 'simple' ? 'Simple voice' : labels[voice.status]
+              }
+              tone={voice.status === 'listening' ? 'active' : 'neutral'}
+            />
+          </span>
           <Switch
             label="Microphone"
             checked={voice.mode !== 'off' && !voice.muted}
             disabled={voice.mode === 'off'}
             onCheckedChange={(on) => voice.setMuted(!on)}
           />
-          <Select
-            label="Voice mode"
-            value={voice.mode}
-            onChange={(e) =>
-              voice.setMode(e.target.value as 'live' | 'simple' | 'off')
-            }
-            options={[
-              { value: 'live', label: 'Live coach' },
-              { value: 'simple', label: 'Simple voice' },
-              { value: 'off', label: 'Off' },
-            ]}
-          />
+          <details
+            data-safety-popover
+            className="coach-options"
+            onToggle={(event) => {
+              if (document.querySelector('#safety-banner-slot [role="alert"]'))
+                event.currentTarget.open = false;
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector('summary')?.focus();
+              }
+            }}
+          >
+            <summary>Coach controls</summary>
+            <div className="coach-popover">
+              <Select
+                label="Voice mode"
+                value={voice.mode}
+                onChange={(e) =>
+                  voice.setMode(e.target.value as 'live' | 'simple' | 'off')
+                }
+                options={[
+                  { value: 'live', label: 'Live coach' },
+                  { value: 'simple', label: 'Simple voice' },
+                  { value: 'off', label: 'Off' },
+                ]}
+              />
+              <p>
+                You can say “pause”, “continue”, “skip”, “repeat” or “stop”.
+              </p>
+              <p className="muted">
+                Stop and pain words work in Simple voice with microphone access.
+              </p>
+              <p className="muted">
+                Other commands need Live coach. Session buttons always work.
+              </p>
+            </div>
+          </details>
         </Inline>
         {voice.unavailable && (
           <Banner
@@ -57,13 +101,14 @@ export function CoachPanel() {
             title="Live coach unavailable — using simple voice"
           />
         )}
-        {voice.lastCoachLine && (
-          <Text className="coach-caption" size="lead">
-            {voice.lastCoachLine}
-          </Text>
-        )}
+        <h3 className="coach-caption">
+          {voice.lastCoachLine ??
+            (voice.mode === 'off' ? 'Voice off' : 'Your coach is here.')}
+        </h3>
         {voice.lastPatientLine && (
-          <Text tone="muted">You said: {voice.lastPatientLine}</Text>
+          <Text className="coach-patient" tone="muted">
+            You said: {voice.lastPatientLine}
+          </Text>
         )}
         {voice.transcriptError && (
           <Banner
@@ -71,16 +116,6 @@ export function CoachPanel() {
             title="Transcript save pending. Please keep this page open."
           />
         )}
-        <details>
-          <summary>You can say…</summary>
-          <Text>
-            “Pause”, “continue”, “skip”, “repeat”, “stop”, “how am I doing?”
-          </Text>
-          <Text tone="muted">
-            Stop and pain words work in Simple voice with microphone access.
-            Other commands need Live coach. Session buttons always work.
-          </Text>
-        </details>
       </Stack>
     </Card>
   );

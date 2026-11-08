@@ -26,6 +26,10 @@ import {
   calibrationReadiness,
 } from '../../runtime/calibrationValidation';
 import { CalibrationIssueBanner } from '../../components/calibration';
+import {
+  CurrentSensorNotice,
+  useCurrentSensorMissing,
+} from '../Setup/CurrentSensorNotice';
 import './home.css';
 export default function Home() {
   const profile = useProfile(),
@@ -33,6 +37,7 @@ export default function Home() {
   const runtime = useRuntime(),
     navigate = useNavigate(),
     { store } = useGlove();
+  const missingCurrentSensor = useCurrentSensorMissing();
   const connected = useStore(store, (s) => s.connection === 'connected');
   const seen = useVisionFrame((f) => !!f?.detected && f.confidence >= 0.6);
   const [short, setShort] = useShortPractice();
@@ -45,7 +50,7 @@ export default function Home() {
       navigate(readiness.href);
       return;
     }
-    if (!connected || !seen) {
+    if (!connected || !seen || missingCurrentSensor) {
       navigate('/setup');
       return;
     }
@@ -69,9 +74,11 @@ export default function Home() {
         ? 'Calibration needed. Start opens calibration first.'
         : !connected
           ? 'Glove not connected. Start opens Setup first.'
-          : !seen
-            ? "The camera can't see the hand. Start opens Setup first."
-            : null;
+          : missingCurrentSensor
+            ? 'The glove cannot help without its current sensor. Start opens Setup first.'
+            : !seen
+              ? "The camera can't see the hand. Start opens Setup first."
+              : null;
   const list = sessions.data ?? [];
   const week = lastSevenDays(list.map((s) => s.started_at));
   const range = rangeComparison(list);
@@ -82,6 +89,7 @@ export default function Home() {
         title={`Hello${profile.data?.pseudonym ? `, ${profile.data.pseudonym}` : ''}`}
         lead="Check that everything is ready, then start today's practice."
       />
+      <CurrentSensorNotice missing={missingCurrentSensor} />
       <Section flush>
         <div className="hp-actions">
           <Stack gap={8}>
@@ -108,6 +116,9 @@ export default function Home() {
           </p>
         )}
       </Section>
+      <p className="hp-note">
+        Raise your hand, palm to the screen. Support your elbow and relax.
+      </p>
       <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
       <div className="hp-columns">
         <Stack gap={32}>
@@ -124,8 +135,16 @@ export default function Home() {
               items={[
                 {
                   label: 'Glove',
-                  value: connected ? 'Connected' : 'Not connected',
-                  tone: connected ? 'reached' : 'off',
+                  value: connected
+                    ? missingCurrentSensor
+                      ? 'Calibration only'
+                      : 'Connected'
+                    : 'Not connected',
+                  tone: connected
+                    ? missingCurrentSensor
+                      ? 'caution'
+                      : 'reached'
+                    : 'off',
                   action: (
                     <Link to="/setup">{connected ? 'Setup' : 'Connect'}</Link>
                   ),
