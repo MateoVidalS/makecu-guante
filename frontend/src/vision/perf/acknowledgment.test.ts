@@ -44,6 +44,10 @@ const TENDON: PoseId[] = [
 ];
 const ALL: PoseId[] = [...TENDON, 'pinch'];
 const DWELL_MS = DEFAULT_EXERCISE_SETTINGS.reach_dwell_s * 1000;
+/** Near-line false acknowledgments with the production filters, Nov 2026 (see the near-line test). */
+const NEAR_LINE_FALSE_ACKS = 93;
+/** Near-line acceptances are rare events: 32 seeds per cell give about 90 of them. */
+const NEAR_LINE_SEEDS = Array.from({ length: 32 }, (_, i) => i + 1);
 const TOL = DEFAULT_EXERCISE_SETTINGS.tolerance;
 /**
  * Latency budgets, measured from the moment the true hand satisfies the rule.
@@ -259,9 +263,10 @@ describe(
       view: CameraView,
       pose: PoseId,
       offset: number,
+      seeds = SEEDS,
     ) =>
       summarize(
-        SEEDS.map((seed) =>
+        seeds.map((seed) =>
           attempt(
             patient,
             { view, hand: 'right', noise },
@@ -303,6 +308,94 @@ describe(
         expect(r['-0.05'], name).toBe(1);
         expect(r['0'], name).toBe(1);
       }
+    });
+
+    /**
+     * Just outside the tolerance line, upright view. A noise-induced closure bias of
+     * +0.01 to +0.03 (largest for the limited range at 2x noise) can put the measured
+     * hold above the line; resting jitter, which restarts the 0.5 s dwell, is then what
+     * refuses it. A smoother joint filter flickers less and raises this count, so filter
+     * tuning must keep it from rising (perf/README.md, temporal tuning study).
+     */
+    it('near the line: holds 0.01-0.05 beyond the tolerance are rarely acknowledged (upright, guard for filter tuning)', async () => {
+      const offsets = [-0.2, -0.18, -0.17, -0.16];
+      const rows: Record<string, number | string>[] = [];
+      let falseAcks = 0,
+        runs = 0;
+      for (const noise of [NOISE.bench, NOISE.poorLight])
+        for (const patient of Object.values(PATIENTS))
+          for (const pose of [
+            'tabletop',
+            'hook',
+            'straight_fist',
+            'full_fist',
+          ] as PoseId[]) {
+            // The full range at 1x noise reads without bias near the line: never acknowledged.
+            if (noise === NOISE.bench && patient === PATIENTS.healthy) continue;
+            const row: Record<string, number | string> = {
+              noise: noise.label,
+              patient: patient.name,
+              pose,
+            };
+            for (const offset of offsets) {
+              const s = ackRate(
+                patient,
+                noise,
+                'front_upright',
+                pose,
+                offset,
+                NEAR_LINE_SEEDS,
+              );
+              row[`${offset}`] = round(s.hits / s.runs, 2);
+              falseAcks += s.hits;
+              runs += s.runs;
+            }
+            // Flicker: crossings of the line per scored finger per second, last 4 s of a hold on it.
+            const scene: Scene = {
+              view: 'front_upright',
+              hand: 'right',
+              noise,
+            };
+            const camera = cal(patient, scene);
+            let crossings = 0,
+              fingers = 0;
+            for (const seed of SEEDS.slice(0, 2)) {
+              const samples = stream(
+                patient,
+                scene,
+                reach(patient, pose, offsetGoal(patient, pose, -TOL)),
+                7500,
+                { seed },
+              );
+              const held = runVision(samples, scene, camera).filter(
+                (f) => f.t >= 3500,
+              );
+              for (const f of FINGERS) {
+                const target = POSES[pose].closure[f];
+                if (target === null) continue;
+                const v = held.map((x) => x.closure![f] - (target - TOL));
+                crossings += v
+                  .slice(1)
+                  .filter((y, i) => Math.sign(y) !== Math.sign(v[i])).length;
+                fingers++;
+              }
+            }
+            row.lineCrossingsPerS = round(crossings / fingers / 4, 2);
+            rows.push(row);
+            await breathe();
+          }
+      report(
+        `Near-line false acknowledgments (rate per offset beyond the ${TOL} tolerance) and line flicker, front_upright`,
+        rows,
+      );
+      report('Near-line false acknowledgments, total', [
+        { falseAcks, runs, rate: round(falseAcks / runs, 4) },
+      ]);
+      for (const r of rows)
+        expect(r['-0.2'], `${r.noise} ${r.patient} ${r.pose}`).toBe(0);
+      // 93 of 1536 with the production filters. The second-order speed estimate
+      // (beta 0.025, dCutoff 1) gives 103: less flicker, more near-line acceptances.
+      expect(falseAcks).toBeLessThanOrEqual(NEAR_LINE_FALSE_ACKS);
     });
 
     it('does not acknowledge when a single finger lags (four fingers reach, the pinky stays 0.25 short)', () => {

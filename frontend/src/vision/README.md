@@ -73,6 +73,9 @@ cancel in the flex sum. Pinch has a separate One Euro filter in ratio units
 tracks a closing pinch promptly, while the low resting cutoff and smoother
 derivative keep fingertip jitter from restarting the reach dwell. The 3D hand adds
 frame-rate-independent damping and a 1° dead-band (`hand3d/smoothing.ts`). `hand3d/jitter.test.ts` measures the result.
+`OneEuroFilter` also offers an opt-in second-order speed estimate (`speedOrder: 2`), which
+noise opens less; it is not enabled because it raises near-line false acknowledgments
+(`perf/README.md`, temporal tuning study).
 
 ## Device profiles
 

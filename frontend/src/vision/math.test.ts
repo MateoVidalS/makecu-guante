@@ -187,6 +187,56 @@ describe('One Euro filter', () => {
     expect(filter.filter(0, 0)).toBe(0);
     expect(() => filter.filter(NaN, 1)).toThrow();
   });
+
+  // Deterministic standard normal noise (LCG + Box-Muller).
+  const gaussian = (seed: number) => {
+    let state = seed;
+    const uniform = () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return (state + 0.5) / 4294967296;
+    };
+    return () =>
+      Math.sqrt(-2 * Math.log(uniform())) * Math.cos(2 * Math.PI * uniform());
+  };
+  const spread = (values: number[]) => {
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    return Math.sqrt(
+      values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length,
+    );
+  };
+  it('a second-order speed estimate opens less on stationary noise and on a one-frame glitch', () => {
+    const still = (speedOrder: 1 | 2) => {
+      const filter = new OneEuroFilter(0.3, 0.03, 1, { speedOrder });
+      const noise = gaussian(7);
+      const output = Array.from({ length: 600 }, (_, i) =>
+        filter.filter(100 + 4 * noise(), (i * 1000) / 30),
+      );
+      return spread(output.slice(90));
+    };
+    expect(still(2)).toBeLessThan(still(1) * 0.85);
+    const glitch = (speedOrder: 1 | 2) => {
+      const filter = new OneEuroFilter(0.3, 0.03, 1, { speedOrder });
+      for (let i = 0; i < 60; i++) filter.filter(100, (i * 1000) / 30);
+      return filter.filter(130, 2000) - 100;
+    };
+    // A 30 degree one-frame glitch opens the classic filter for itself: about half passes.
+    expect(glitch(1)).toBeGreaterThan(12);
+    expect(glitch(2)).toBeLessThan(glitch(1) * 0.5);
+  });
+  it('keeps the classic speed estimate by default and rejects other speed orders', () => {
+    const classic = new OneEuroFilter(0.3, 0.02, 0.5);
+    const explicit = new OneEuroFilter(0.3, 0.02, 0.5, { speedOrder: 1 });
+    const noise = gaussian(3);
+    for (let i = 0; i < 90; i++) {
+      const value = 40 + 5 * noise() + (i > 45 ? 60 : 0);
+      expect(classic.filter(value, (i * 1000) / 30)).toBe(
+        explicit.filter(value, (i * 1000) / 30),
+      );
+    }
+    expect(
+      () => new OneEuroFilter(1, 0.02, 1, { speedOrder: 3 as never }),
+    ).toThrow();
+  });
 });
 
 describe('hand selection and confidence', () => {

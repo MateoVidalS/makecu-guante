@@ -238,6 +238,59 @@ up to 1.0 on single shots. Treat these as the reasons to record a real bare hand
 soon, not as measured accuracy on a person. The previous GPU measurement on a real
 photo (`fixtures/browser-benchmark.json`) gave 24.5 ms p50 inference.
 
+## Temporal tuning study (Nov 2026): joint filter not changed
+
+Goal: less jitter at rest, faster settling in motion, and calibration that succeeds.
+Evidence: this suite, plus real MediaPipe VIDEO-mode sequences of the rendered hand
+(rest, reach to a fist, hold, half-open, open; bare, points and violet glove; both
+hands; 4 noise seeds; also a limited-range hand), replayed through `FrameProcessor`.
+
+**Finding 1: noise opens the One Euro filter at rest.** Its speed is a frame
+difference, which is mostly high-frequency landmark noise; one 0.5 Hz smoothing stage
+passes much of it. In the MediaPipe sequences, still-hand jitter is 0.32 of the raw jitter
+(median), versus 0.22 for a fixed 0.3 Hz filter. A one-frame glitch opens the filter
+for itself: about half of a 30° glitch passes. `OneEuroFilter` now has an opt-in
+`speedOrder: 2` (two 1 Hz stages): 2.3× less noise speed, similar low-frequency delay.
+
+**Finding 2: less flicker means more near-line false acknowledgments.** With
+`speedOrder: 2`, `minCutoff 0.3`, `beta 0.025`, `dCutoff 1` (the best candidate):
+
+| Measure (this suite, both views, unless stated)               | Production          | Candidate           |
+| ------------------------------------------------------------- | ------------------- | ------------------- |
+| Lag behind the true hand at 50% / 85% of a fist (noise-free)  | 97 / 100 ms         | 89 / 86 ms          |
+| Settled within 0.05 / 0.02 after the hand stops               | 94 / 289 ms         | 44 / 166 ms         |
+| Acknowledgment latency at 2x noise, p50 / p95 / worst row p95 | 670 / 759 / 1213 ms | 656 / 738 / 1013 ms |
+| Still-hand jitter, closure std at 1x / 2x noise               | 0.0106 / 0.0362     | 0.0103 / 0.0343     |
+| Line crossings at rest (flicker), per finger per s            | 1.72                | 1.41                |
+| Correct poses missed, 0.01–0.05 inside the tolerance          | 1110 / 5760         | 973 / 5760          |
+| **False acks, 0.01–0.10 beyond the tolerance (48 seeds)**     | **152 / 9600**      | **173 / 9600**      |
+| MediaPipe VIDEO sequences: lag at 85%, crossings at rest      | 120 ms, 1214        | 101 ms, 1043        |
+
+The false acknowledgments are all 0.01–0.03 beyond the line, in the upright view, and
+mostly for the limited-range hand at 2x noise, where closure reads +0.01 to +0.03 high
+(noise-induced bias; the filter does not change it). Then only jitter, which restarts
+the 0.5 s dwell, refuses the hold. Any filter that flickers less accepts more of these.
+The near-line test in `acknowledgment.test.ts` pins this count (93 of 1536 now; 103 with
+the candidate). **Fix the bias (or add an entry margin to the reach rule) first**; then
+enable the candidate in `jointFilter.ts` and re-run that test.
+
+Rejected variants: a speed dead-band (adds lag for the limited-range hand: hook p95
+700 → 900 ms at 2x); `minCutoff 0.2` (false acks 54 → 66 of 3200 on seeds 1–16);
+`beta 0.03` (two acknowledgments 0.05 beyond the tolerance); extra gain above a speed
+"knee" (noise speed at 2x reaches real speeds, calibration fails); `speedOrder: 2` on
+the pinch (upright left-hand pinch p95 1067 → 1407 ms); a faster thumb prefilter
+(near-straight thumb bias at 2x, closure 0.1: −0.020 → −0.027).
+
+**Finding 3: the Calibrate page, not `captureStats`, limits calibration.** The page
+cancels a capture on any missed frame, and its `stableCapture` also rejects a finger
+whose flex sum varies by more than 12° peak to peak. On still synthetic hands it accepts
+5% (full range) and 0% (limited range) of upright captures at 2x noise, where
+`captureStats` (8° standard deviation, what this suite measures) accepts 100%; the
+median peak to peak is 18–22°. Smoother filters only raise this to 10–18%. In the
+MediaPipe VIDEO sequences every open-hand hold missed frames. A spread statistic that
+one noisy frame cannot dominate, and tolerance for short detection gaps, are Calibrate
+page decisions.
+
 ## Limits
 
 - The pipeline suite's hand is ideal geometry and its noise is a model. Real
