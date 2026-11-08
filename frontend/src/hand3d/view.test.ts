@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Euler, OrthographicCamera, Vector3 } from 'three';
-import { palmDownCamera, HAND_LOOK_AT, PALM_DOWN_ROTATION } from './view';
+import {
+  palmDownCamera,
+  HAND_LOOK_AT,
+  PALM_DOWN_ROTATION,
+  handPresentation,
+} from './view';
 import { POSES } from '../contracts/poses';
 import { applyJoints, createHandRig, FINGERS } from './rig';
 import { tokens } from '../styles/tokens';
@@ -66,4 +71,68 @@ describe('new finger palette', () => {
       ).toBe(5);
     });
   }
+});
+
+describe('upright mirror presentation', () => {
+  it('defaults to the palm-facing upright camera and retains the legacy view', () => {
+    for (const hand of ['left', 'right'] as const) {
+      const upright = handPresentation(hand);
+      expect(upright).toEqual(handPresentation(hand, 'front_upright'));
+      const towardCamera = new Vector3(...upright.camera)
+        .sub(new Vector3(...upright.lookAt))
+        .normalize();
+      expect(
+        new Vector3(0, 0, 1)
+          .applyEuler(new Euler(...upright.rotation))
+          .dot(towardCamera),
+      ).toBeCloseTo(1);
+      expect(
+        new Vector3(0, 1, 0).applyEuler(new Euler(...upright.rotation)).y,
+      ).toBeCloseTo(1);
+      for (const pinch of [false, true]) {
+        expect(handPresentation(hand, 'front_diagonal', pinch)).toEqual({
+          camera: palmDownCamera(hand, pinch),
+          rotation: PALM_DOWN_ROTATION,
+          lookAt: HAND_LOOK_AT,
+        });
+      }
+    }
+  });
+
+  it('matches selfie thumb sides, mirrors all six poses and curls toward the viewer', () => {
+    for (const pose of Object.values(POSES)) {
+      const project = (hand: 'left' | 'right') => {
+        const rig = createHandRig(hand);
+        applyJoints(rig, pose.render);
+        rig.updateMatrixWorld(true);
+        const presentation = handPresentation(hand);
+        const camera = new OrthographicCamera(-4, 4, 4, -4, 0.1, 50);
+        camera.position.set(...presentation.camera);
+        camera.lookAt(...presentation.lookAt);
+        camera.updateMatrixWorld(true);
+        return FINGERS.map((finger) =>
+          rig.fingers[finger].tip
+            .getWorldPosition(new Vector3())
+            .project(camera),
+        );
+      };
+      const left = project('left'),
+        right = project('right');
+      for (let i = 0; i < FINGERS.length; i++) {
+        expect(left[i].x).toBeCloseTo(-right[i].x);
+        expect(left[i].y).toBeCloseTo(right[i].y);
+        expect(left[i].z).toBeCloseTo(right[i].z);
+      }
+      if (pose.id === 'open') {
+        expect(right[0].x).toBeLessThan(right[1].x);
+        expect(left[0].x).toBeGreaterThan(left[1].x);
+      }
+    }
+    const rig = createHandRig('right');
+    applyJoints(rig, POSES.open.render);
+    const open = rig.fingers.index.tip.getWorldPosition(new Vector3());
+    applyJoints(rig, POSES.tabletop.render);
+    const bent = rig.fingers.index.tip.getWorldPosition(new Vector3());
+    expect(bent.z).toBeGreaterThan(open.z);
+  });
 });
