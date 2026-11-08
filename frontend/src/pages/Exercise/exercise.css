@@ -1,32 +1,25 @@
-/*
- * Live exercise. Calm and flat: hairline borders, no shadows, no tinted cards.
- * Selectors are scoped under .exercise-live so they win over the shared live.css
- * defaults without editing it.
- */
+/* The hand owns the stage. Supporting information shares a compact column. */
+.exercise-live {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
 .exercise-live .live-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(
-      calc(var(--body) * 20),
-      calc(var(--body) * 22)
-    );
-  grid-template-rows: none;
-  gap: var(--space-32);
+  grid-template-columns: minmax(0, 1fr) minmax(0, calc(var(--body) * 23));
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-24);
 }
 .exercise-live .live-hero {
-  gap: var(--space-16);
+  gap: var(--space-12);
 }
-
-/* ---- Heading ---- */
 .exercise-live .live-heading {
+  order: 1;
   display: grid;
   gap: var(--space-4);
   justify-items: center;
 }
-.exercise-live .live-hero .instruction {
+.exercise-live .instruction {
   font-size: var(--display);
-  line-height: var(--leading-tight);
+  font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
-  font-weight: var(--weight-bold);
-  margin: 0;
 }
 .exercise-live .pose-hint,
 .exercise-live .pose-next {
@@ -34,17 +27,18 @@
   font-size: var(--body);
   color: var(--muted);
 }
-
-/* ---- Stage: hand with an optional small camera ---- */
+.exercise-live .live-stage {
+  order: 2;
+}
+.exercise-live .practice-actions {
+  order: 3;
+  flex: none;
+}
 .live-stage {
+  position: relative;
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
-  gap: var(--space-16);
-}
-.live-stage[data-camera='hidden'] {
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
 }
 .live-panel {
   position: relative;
@@ -53,11 +47,13 @@
   min-width: 0;
   min-height: 0;
   margin: 0;
-  overflow: hidden;
   border: var(--control-border) solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
   text-align: start;
+}
+.live-stage > .live-panel:first-child {
+  flex: 1;
 }
 .live-panel__head {
   position: absolute;
@@ -68,7 +64,7 @@
   justify-content: space-between;
   gap: var(--space-12);
   min-height: var(--control-md);
-  padding: var(--space-8) var(--space-12) 0 var(--space-16);
+  padding: var(--space-8) var(--space-12);
   pointer-events: none;
 }
 .live-panel__head > * {
@@ -78,11 +74,7 @@
   margin: 0;
   font-size: var(--small);
   font-weight: var(--weight-regular);
-  letter-spacing: 0.01em;
   color: var(--muted);
-}
-.live-panel--camera .live-panel__title {
-  color: var(--vision-on-video);
 }
 .live-panel__body {
   flex: 1;
@@ -91,199 +83,178 @@
 .live-panel__body .hand-view {
   height: 100%;
   min-height: 0;
-  border-radius: 0;
+  border-radius: var(--radius-card);
 }
-/* The camera panel is a dark video well; its chrome sits on the video. */
+/* Fixed stage corner: the camera never reduces the hand's canvas width. */
 .live-panel--camera {
-  --vision-on-video: color-mix(in srgb, var(--on-chrome) 82%, transparent);
-  border-color: var(--border);
+  position: absolute;
+  inset-inline-end: var(--space-12);
+  inset-block-end: var(--space-12);
+  width: calc(var(--control-lg) * 3);
+  height: calc(var(--control-lg) * 2);
+  overflow: hidden;
   background: var(--chrome);
+}
+.live-panel--camera .live-panel__title {
+  color: var(--on-chrome);
 }
 .live-panel--camera .camera-overlay__confidence {
   top: auto;
-  bottom: var(--space-12);
+  bottom: var(--space-8);
 }
-.live-camera-toggle {
-  gap: var(--space-8);
+.live-panel--camera .live-camera-toggle .ds-switch-row__text {
+  display: none;
 }
 .live-camera-toggle .ds-switch-row__label {
   font-size: var(--small);
   color: var(--muted);
 }
-.live-panel--camera .live-camera-toggle .ds-switch-row__label {
-  color: var(--vision-on-video);
-}
-.live-camera-toggle .ds-switch-row__text {
-  order: -1;
-}
-
-/* ---- Actions: first in DOM for tab order, last on screen ---- */
-.exercise-live .live-heading {
-  order: 1;
-}
-.exercise-live .live-stage {
-  order: 2;
-}
-.exercise-live .practice-actions {
-  order: 3;
-  flex: none;
-}
-
-/* ---- Side column: phase, fingers, coach. Quiet, unboxed. ---- */
 .exercise-live .live-details {
   grid-template-columns: minmax(0, 1fr);
   align-content: center;
   align-items: stretch;
-  gap: var(--space-24);
+  gap: var(--space-16);
   text-align: start;
 }
 .exercise-live .phase-ring {
   justify-content: flex-start;
-  gap: var(--space-16);
-  font-size: var(--h2);
-  padding-block-end: var(--space-24);
-  border-block-end: var(--control-border) solid var(--border);
+  gap: var(--space-12);
 }
 .exercise-live .phase-ring strong {
   font-size: var(--h2);
   line-height: var(--leading-snug);
 }
-.exercise-live .live-details .finger-bars {
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-16);
+.exercise-live .mx-gauges {
+  gap: var(--space-8);
 }
-.exercise-live .live-details .finger-bars .ds-meter__head {
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: var(--space-4);
+.exercise-live .mx-gauges__row {
+  gap: var(--space-8);
 }
-.exercise-live .finger-bars .ds-meter__label {
-  font-size: var(--body);
-  color: var(--muted);
+.exercise-live .mx-gauge {
+  --gauge-h: calc(var(--control-lg) * 2);
 }
-.exercise-live .finger-bars .ds-meter__value {
-  font-size: var(--h3);
-  font-variant-numeric: tabular-nums;
+.exercise-live .mx-gauge__name {
+  font-size: var(--small);
+}
+.exercise-live .mx-gauge__value {
+  font-size: calc(var(--body) * 1.5);
 }
 .exercise-live .live-tools {
-  gap: var(--space-12);
-  padding-block-start: var(--space-24);
+  gap: var(--space-8);
+  padding-block-start: var(--space-12);
   border-block-start: var(--control-border) solid var(--border);
 }
-.exercise-live .coach-compact {
+.exercise-live .therapy-live {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-8);
 }
-.exercise-live .coach-compact > .coach-caption {
-  font-size: var(--body);
-  line-height: var(--leading-snug);
-  white-space: normal;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  color: var(--text);
+.exercise-live .therapy-live__copy {
+  grid-column: 1 / -1;
 }
-.exercise-live .coach-quick-controls {
-  justify-content: space-between;
-  gap: var(--space-12);
+.exercise-live .therapy-live__copy strong {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
-.exercise-live .coach-quick-controls summary {
-  font-size: var(--small);
-  color: var(--muted);
+.exercise-live .therapy-live .ds-button {
+  padding-inline: var(--space-8);
 }
-.exercise-live .coach-popover {
-  box-shadow: none;
-  border-color: var(--border-strong);
+.exercise-live .mx-attempt {
+  justify-self: center;
+  max-width: 100%;
 }
-.exercise-live .live-tools > details {
-  padding: var(--space-8) 0 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
+.exercise-live .mx-gauge[data-highlighted] {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--space-4);
+  border-radius: var(--radius-input);
 }
-.exercise-live .live-tools > details > summary {
-  color: var(--muted);
+/* Safety retains the full set of movement controls and Brake. */
+.shell--focus:has(#safety-banner-slot [role='alert'])
+  .exercise-live
+  .practice-actions {
+  display: flex;
 }
-
-/* Attempt feedback: flat, hairline, no floating shadow. */
-.exercise-live .attempt-toast,
-.exercise-live .attempt-toast.ds-toast,
-.exercise-live .attempt-toast .ds-toast {
-  box-shadow: none;
-}
-.exercise-live .coach-quick-controls .ds-switch-row__label {
-  font-size: var(--small);
-  color: var(--muted);
-}
-
-/* ---- Narrow screens: stack, keep the two panels side by side ---- */
-@media (max-width: 1100px) {
-  .exercise-live .live-layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
-    gap: var(--space-16);
-  }
+@media (max-height: 800px) {
   .exercise-live .live-details {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: center;
-    gap: var(--space-24);
+    gap: var(--space-8);
   }
-  .exercise-live .phase-ring {
-    padding: 0;
-    border: 0;
-  }
-  .exercise-live .live-tools {
-    padding: 0;
-    border: 0;
-  }
-}
-@media (max-width: 720px) {
-  .live-stage {
-    grid-template-columns: minmax(0, 1fr);
-    grid-auto-rows: minmax(0, 1fr);
-  }
-  .exercise-live .live-details {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* ---- Live finger gauges (side column) ---- */
-.exercise-live .live-details .mx-gauges {
-  gap: var(--space-8);
-}
-@media (max-height: 760px) {
   .exercise-live .mx-gauge {
-    --gauge-h: 7rem;
+    --gauge-h: var(--control-lg);
   }
-  /* The icon next to the % carries the state; the word moves to the meter's name. */
   .exercise-live .mx-gauge__status {
     display: none;
-  }
-  .exercise-live .live-details {
-    gap: var(--space-16);
-  }
-  .exercise-live .phase-ring {
-    padding-block-end: var(--space-16);
-  }
-  .exercise-live .live-tools {
-    padding-block-start: var(--space-16);
-  }
-}
-@media (max-width: 1100px) {
-  .exercise-live .mx-gauge {
-    --gauge-h: 5.5rem;
   }
   .exercise-live .mx-legend--gauge {
     display: none;
   }
+  .live-panel--camera {
+    display: none;
+  }
 }
-
-/* Attempt feedback sits bottom-center, in flow, never over the hand. */
-.exercise-live .mx-attempt {
-  justify-self: center;
-  max-width: 100%;
+/* At laptop width the details form a bottom strip; the camera yields first. */
+@media (max-width: 1280px) {
+  .exercise-live .live-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: var(--space-12);
+  }
+  .exercise-live .live-details {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 2fr);
+    grid-template-rows: auto auto;
+    column-gap: var(--space-24);
+    row-gap: var(--space-8);
+    align-content: start;
+  }
+  .exercise-live .phase-ring {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+  }
+  .exercise-live .mx-gauges {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .exercise-live .glove-motors {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .exercise-live .live-tools {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    border: 0;
+    padding: 0;
+  }
+  .exercise-live .mx-gauge {
+    --gauge-h: var(--control-lg);
+  }
+  .exercise-live .mx-gauge__status,
+  .exercise-live .mx-legend--gauge,
+  .live-panel--camera {
+    display: none;
+  }
+}
+@media (max-width: 800px) {
+  .exercise-live .live-details {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+  .exercise-live .phase-ring {
+    grid-row: 1;
+  }
+  .exercise-live .mx-gauges {
+    grid-column: 2;
+  }
+  .exercise-live .glove-motors {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .exercise-live .live-tools {
+    grid-column: 2;
+    grid-row: 2;
+  }
 }
 
 /* ---- Session recap ---- */
@@ -330,37 +301,6 @@
   }
 }
 
-/* Five values stay readable at 1 m without crowding the thumb/middle labels. */
-.exercise-live .mx-gauges__row {
-  gap: var(--space-8);
-}
-.exercise-live .mx-gauge__name {
-  font-size: var(--small);
-}
-.exercise-live .mx-gauge__value {
-  font-size: calc(var(--body) * 1.5);
-}
-.exercise-live .phase-ring strong {
-  font-size: calc(var(--body) * 1.75);
-}
-
-/* Keep the optional camera small; hide it before squeezing the finger meters. */
-.live-panel--camera {
-  align-self: end;
-  height: calc(var(--control-lg) * 2);
-}
-[data-voice-mode='simple'] .coach-popover .ds-switch-row {
-  display: none;
-}
-@media (max-width: 1279px) {
-  .live-stage {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .live-panel--camera {
-    display: none;
-  }
-}
-
 /* Glove motors: which motor is helping (orange), following (blue) or resting. */
 .glove-motors {
   display: grid;
@@ -378,7 +318,7 @@
   color: var(--muted);
 }
 .glove-motors__tag {
-  font-size: var(--caption);
+  font-size: var(--small);
   color: var(--muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -395,15 +335,15 @@
 .glove-motor {
   display: grid;
   justify-items: center;
-  gap: 2px;
-  font-size: var(--caption);
+  gap: var(--space-2);
+  font-size: var(--small);
   color: var(--muted);
 }
 .glove-motor__bar {
   position: relative;
   inline-size: 100%;
-  max-inline-size: 40px;
-  block-size: 20px;
+  max-inline-size: var(--space-40);
+  block-size: var(--space-16);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   overflow: hidden;
@@ -414,7 +354,7 @@
   inset-block-end: 0;
   background: var(--muted);
   opacity: 0.35;
-  transition: block-size 120ms linear;
+  transition: block-size var(--dur-fast) linear;
 }
 .glove-motor__name {
   color: var(--text);
@@ -442,62 +382,31 @@
     transition: none;
   }
 }
-
-/* The safety banner carries the coach message while paused. Keep the five
-   motor states and Resume visible instead of repeating coach tools below. */
-.shell--focus:has(#safety-banner-slot [role='alert'])
-  .exercise-live.practice-paused
-  .live-tools {
-  display: none;
+@media (max-width: 1280px) and (min-width: 801px) {
+  .exercise-live .therapy-live {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    align-items: center;
+  }
+  .exercise-live .therapy-live__copy {
+    grid-column: 1;
+  }
+  .exercise-live .therapy-live .ds-button {
+    font-size: var(--body);
+  }
 }
-
-/* The compact audit line reserves its own row below the hand. */
-.exercise-live {
-  grid-template-rows: minmax(0, 1fr) auto auto;
-}
-
-/* Leave room for wrapping speech, the audit row and attempt feedback together. */
-@media (max-height: 760px) {
-  .exercise-live .live-details {
-    gap: var(--space-8);
+@media (max-width: 1280px) {
+  .exercise-live .live-tools {
+    align-content: start;
   }
   .exercise-live .mx-gauge {
-    --gauge-h: var(--control-lg);
+    --gauge-h: var(--space-48);
   }
-  .exercise-live .phase-ring {
-    padding-block-end: var(--space-8);
-  }
-  .exercise-live .live-tools {
-    padding-block-start: var(--space-8);
-  }
-  .shell--focus:has(#safety-banner-slot [role='alert'])
-    .exercise-live
-    .mx-gauge {
-    --gauge-h: var(--space-32);
-  }
-  .shell--focus:has(#safety-banner-slot [role='alert'])
-    .exercise-live
-    .mx-legend--gauge {
+  .exercise-live .glove-motor__name,
+  .exercise-live .glove-motor__bar {
     display: none;
   }
-}
-
-/* Safety owns Resume, while the patient's Brake stays available below the hand. */
-.shell--focus:has(#safety-banner-slot [role='alert'])
-  .exercise-live
-  .practice-actions {
-  display: flex;
-}
-.shell--focus:has(#safety-banner-slot [role='alert'])
-  .exercise-live
-  .practice-actions
-  > :not(.therapy-brake) {
-  display: none;
-}
-
-/* Coach focus is separate from the movement state and uses no animation. */
-.exercise-live .mx-gauge[data-highlighted] {
-  outline: var(--focus-width) solid var(--accent);
-  outline-offset: var(--space-4);
-  border-radius: var(--radius-input);
+  .exercise-live .glove-motors {
+    align-content: start;
+    gap: var(--space-4);
+  }
 }

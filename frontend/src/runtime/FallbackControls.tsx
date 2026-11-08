@@ -8,7 +8,7 @@ import { RuntimeSimulatorControls } from './SimulatorControls';
 import './fallback.css';
 
 /** One recovery menu, available during a run without navigation or reload. */
-export function RuntimeFallbackControls() {
+export function RuntimeFallbackControls({ live = false }: { live?: boolean }) {
   const runtime = useRuntime();
   const glove = useGlove(),
     vision = useVision();
@@ -53,10 +53,12 @@ export function RuntimeFallbackControls() {
       )
       .finally(() => setBusy(false));
   };
-  if (import.meta.env.VITE_DEMO !== '1' && !simulated) return null;
+  if (import.meta.env.VITE_DEMO !== '1' && import.meta.env.VITE_SIM !== '1')
+    return null;
   return (
     <details
       ref={menu}
+      hidden={live}
       className="runtime-fallback"
       data-safety-popover
       onKeyDown={(e) => {

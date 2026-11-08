@@ -1,3 +1,4 @@
+import { useProgressFingers } from '../../components/common/SessionProgress';
 import {
   Button,
   ButtonLink,
@@ -203,6 +204,7 @@ export default function Evaluate() {
     };
   }, []);
   const selectedFingers = GLOVE_FINGERS.filter((f) => selected.includes(f));
+  useProgressFingers(selectedFingers);
   useSessionLeaveGuard('evaluation');
   const running = ['prepare', 'sweep', 'cooldown'].includes(view.stage);
   useEffect(() => {

@@ -26,18 +26,33 @@ export function useSavingStatus() {
   );
 }
 
-export function RuntimeStatus() {
+export function RuntimeStatus({ focus = false }: { focus?: boolean }) {
   const runtime = useRuntime();
   return runtime instanceof RehabRuntime ? (
     <>
-      <SavingStatus runtime={runtime} />
+      <SavingStatus runtime={runtime} focus={focus} />
       <RuntimeBrownoutNotice inline />
     </>
   ) : null;
 }
-function SavingStatus({ runtime }: { runtime: RehabRuntime }) {
+function SavingStatus({
+  runtime,
+  focus,
+}: {
+  runtime: RehabRuntime;
+  focus: boolean;
+}) {
   const state = useStore(runtime.persistence.store);
   const status = useSavingStatus();
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (status !== 'Saving…') return;
+    const timer = setTimeout(() => setSlow(true), 2000);
+    return () => clearTimeout(timer);
+  }, [status]);
+  if (focus && status !== 'Offline' && !(status === 'Saving…' && slow))
+    return null;
   return (
     <span role="status" aria-label="Session saving status">
       {status}
