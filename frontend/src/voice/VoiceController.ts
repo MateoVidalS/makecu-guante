@@ -86,6 +86,10 @@ export class VoiceController {
   private patientBraked = false;
   /** After an on-screen Brake, the coach stays quiet until the patient speaks. */
   private quietUntilPatient = false;
+  /** After session_done: let the coach finish its goodbye, then hang up. */
+  private ending = false;
+  private coachSpokeSinceEnd = false;
+  private endTimer?: ReturnType<typeof setTimeout>;
   private brakeLatched = false;
   private failures = 0;
   private greeted = false;
@@ -194,6 +198,9 @@ export class VoiceController {
     this.brakeLatched = false;
     this.patientBraked = false;
     this.quietUntilPatient = false;
+    this.ending = false;
+    this.coachSpokeSinceEnd = false;
+    clearTimeout(this.endTimer);
     this.liveTimer = setInterval(() => {
       if (!this.active || !this.connected || this.state.mode !== 'live') return;
       const state = this.runtime.therapy?.state();
@@ -343,6 +350,7 @@ export class VoiceController {
           performance.now() >= this.safetyUntil
         ) {
           this.deps.audio.play(event.data);
+          if (this.ending) this.coachSpokeSinceEnd = true;
           this.scheduler.noteCoachSpeech();
           this.update({ status: 'speaking' });
         }
@@ -381,6 +389,11 @@ export class VoiceController {
       case 'turnComplete':
         this.finishTranscripts();
         this.scheduler.setTalking(false);
+        if (this.ending && this.coachSpokeSinceEnd) {
+          clearTimeout(this.endTimer);
+          // Let the last audio drain before hanging up.
+          this.endTimer = setTimeout(() => this.finishSession(), 1500);
+        }
         this.update({
           status: this.safetySpeaking
             ? 'speaking'
@@ -605,8 +618,17 @@ export class VoiceController {
     if (event.kind === 'session_done') {
       clearInterval(this.liveTimer);
       this.deps.patient?.stop();
-      this.finishTranscripts();
+      // Save what is complete now (summary and history read it); keep the coach's current
+      // sentence whole: it is saved when its turn ends or when the coach hangs up.
+      this.finishTranscript('patient');
       void this.batch?.flush();
+      this.ending = true;
+      clearTimeout(this.endTimer);
+      // Live: hang up after the goodbye turn; never wait more than 15 s.
+      this.endTimer = setTimeout(
+        () => this.finishSession(),
+        this.state.mode === 'live' && this.connected ? 15000 : 4000,
+      );
     }
   }
   setMuted(muted: boolean) {
@@ -640,7 +662,16 @@ export class VoiceController {
     this.scheduler.clear();
     this.scheduler.setTalking(false);
   }
+  /** The session ended: save the last lines and hang up the coach. */
+  private finishSession() {
+    if (!this.ending) return;
+    this.ending = false;
+    this.coachSpokeSinceEnd = false;
+    this.finishTranscripts();
+    this.stop();
+  }
   stop() {
+    clearTimeout(this.endTimer);
     this.generation++;
     this.active = false;
     clearInterval(this.liveTimer);

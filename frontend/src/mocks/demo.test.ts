@@ -23,8 +23,8 @@ describe('shared backend and MSW demo story', () => {
     const state = createDemoState(date);
     expect(isCurrentCameraCalibration(story.calibration.camera)).toBe(true);
     expect(isCurrentCameraCalibration(state.calibrations[0].camera)).toBe(true);
-    expect(state.sessions).toHaveLength(14);
-    expect(state.evaluations).toHaveLength(4);
+    expect(state.sessions).toHaveLength(25);
+    expect(state.evaluations).toHaveLength(5);
     expect(state.sessions.every((s) => s.is_demo)).toBe(true);
     expect(
       state.evaluations.every(
@@ -33,11 +33,11 @@ describe('shared backend and MSW demo story', () => {
     ).toBe(true);
     expect(
       state.sessions.filter((s) => s.assist_direction === 'open'),
-    ).toHaveLength(12);
+    ).toHaveLength(22);
     expect(
       state.sessions.filter((s) => s.assist_direction === 'close'),
-    ).toHaveLength(2);
-    expect(state.details[3].summary?.previous).toBeNull();
+    ).toHaveLength(3);
+    expect(state.details[4].summary?.previous).toBeNull();
     expect(state.sessions[0].started_at.slice(0, 10)).toBe('2026-12-10');
     for (const [index, visit] of story.sessions.entries()) {
       const detail = state.details[index + 1];
@@ -86,13 +86,23 @@ describe('shared backend and MSW demo story', () => {
       expect(detail.feelings).toEqual(
         visit.feelings.map((f) => ({ ...f, session_id: detail.id })),
       );
+      expect(detail.transcript).toEqual(visit.transcript ?? []);
     }
-    expect(state.sessions.reduce((n, s) => n + s.n_attempts, 0)).toBe(110);
+    expect(state.sessions.reduce((n, s) => n + s.n_attempts, 0)).toBe(
+      story.sessions.reduce((n, s) => n + s.attempts.length, 0),
+    );
     expect(
       Object.values(state.details)
         .flatMap((s) => s.attempts)
         .flatMap((a) => a.safety_events),
-    ).toMatchObject([{ source: 'resistance', finger: 'index' }]);
+    ).toMatchObject([
+      { source: 'resistance', finger: 'index' },
+      { source: 'coach_brake', finger: null },
+    ]);
+    expect(state.calibrations.map((c) => c.created_at)).toEqual([
+      story.calibration.created_at,
+      story.legacy_calibration.created_at,
+    ]);
     expect(
       Object.values(state.details).flatMap((s) => s.feelings).length,
     ).toBeGreaterThan(0);
@@ -121,13 +131,17 @@ describe('shared backend and MSW demo story', () => {
       ).toBeCloseTo(
         metrics.reduce((sum, f) => sum + f.active_max!, 0) / metrics.length,
       );
-      const eligible = attempts.flatMap((a) =>
-        a.fingers
-          .filter(
-            (f) => f.finger === finger && f.scored && f.assist_needed !== null,
-          )
-          .map((f) => (a.assisted && f.assist_needed! > 0 ? 1 : 0)),
-      );
+      // The opening glove assists only the open pose; its fists are practiced alone.
+      const eligible = attempts
+        .filter((a) => a.pose === 'open')
+        .flatMap((a) =>
+          a.fingers
+            .filter(
+              (f) =>
+                f.finger === finger && f.scored && f.assist_needed !== null,
+            )
+            .map((f) => (a.assisted && f.assist_needed! > 0 ? 1 : 0)),
+        );
       expect(
         historyAssist().find(
           (p) => p.session_id === session.id && p.finger === finger,

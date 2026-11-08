@@ -21,7 +21,8 @@ def add_history(db, session_body, attempt_body, payload, *, legacy):
         c.SessionIn.model_validate(session_body),
         started_at="2026-11-01T10:00:00Z" if legacy else "2026-11-02T10:00:00Z",
     )
-    data = {**attempt_body, "fingers": []}
+    # Opening-glove assistance exists only on the open pose (its fists are practiced alone).
+    data = {**attempt_body, "pose": "open", "fingers": []}
     for index, finger in enumerate(fingers):
         active = 0.2 + index * 0.1
         data["fingers"].append(
@@ -97,9 +98,7 @@ def test_legacy_session_and_mixed_aggregates(client, db, session_body, attempt_b
     rom = client.get("/api/history/rom").json()
     assert len(rom) == 8
     for finger, expected in (("ring", 0.5), ("pinky", 0.6)):
-        filtered = client.get(
-            f"/api/history/rom?finger={finger}&pose={attempt_body['pose']}"
-        ).json()
+        filtered = client.get(f"/api/history/rom?finger={finger}&pose=open").json()
         assert len(filtered) == 1
         assert filtered[0]["session_id"] == current
         assert filtered[0]["active_max_mean"] == pytest.approx(expected)

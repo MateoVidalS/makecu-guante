@@ -8,6 +8,7 @@ import type {
   Session,
   SessionDetail,
   Summary,
+  TranscriptLine,
 } from '../contracts/api';
 import type { CoachDecision, FeelingEntry } from '../contracts/therapist';
 
@@ -25,6 +26,7 @@ export interface DemoStory {
     summary: SessionSummary;
     decisions: CoachDecision[];
     feelings: FeelingEntry[];
+    transcript?: TranscriptLine[];
   }[];
   evaluations: EvaluationResult[];
 }
@@ -60,6 +62,7 @@ export function demoOnDate(endDate = new Date().toISOString()): DemoStory {
     }
     for (const decision of session.decisions) decision.t = shifted(decision.t);
     for (const feeling of session.feelings) feeling.t = shifted(feeling.t);
+    for (const line of session.transcript ?? []) line.t = shifted(line.t);
   }
   for (const evaluation of story.evaluations) {
     evaluation.started_at = shifted(evaluation.started_at);
@@ -71,22 +74,9 @@ export function demoOnDate(endDate = new Date().toISOString()): DemoStory {
 /** Adapt generated records to the REST shapes, just as seed_demo.py does on insertion. */
 export function createDemoState(endDate = new Date().toISOString()) {
   const story = demoOnDate(endDate);
-  const calibration = {
-    ...story.calibration,
-    id: 1,
-    created_at: new Date(
-      Math.floor(Date.parse(endDate) / 86_400_000) * 86_400_000 +
-        10 * 3_600_000 -
-        25 * 86_400_000,
-    ).toISOString(),
-  };
-  const legacyCalibration = {
-    ...story.legacy_calibration,
-    id: 2,
-    created_at: new Date(
-      Date.parse(calibration.created_at) - 3 * 86_400_000,
-    ).toISOString(),
-  };
+  // Calibration times come from the story (already shifted), as in seed_demo.py.
+  const calibration = { ...story.calibration, id: 1 };
+  const legacyCalibration = { ...story.legacy_calibration, id: 2 };
   let attemptId = 0;
   const traces: Record<number, AttemptResult['trace']> = {};
   const details: Record<
@@ -137,7 +127,7 @@ export function createDemoState(endDate = new Date().toISOString()) {
         traces[++attemptId] = trace;
         return { ...attempt, id: attemptId, session_id: id };
       }),
-      transcript: [],
+      transcript: value.transcript ?? [],
       coach_decisions: value.decisions
         .map((d) => ({ ...d, session_id: id }))
         .sort((a, b) => a.t.localeCompare(b.t)),

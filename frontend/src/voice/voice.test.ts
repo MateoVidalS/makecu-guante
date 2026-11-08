@@ -713,3 +713,76 @@ it.each(['close', undefined] as const)(
     s.controller.dispose();
   },
 );
+
+it('ends a session smoothly: the goodbye finishes, whole sentences are saved, then the coach hangs up', async () => {
+  const s = setup();
+  await s.controller.start(8);
+  const t = s.transports[0];
+  const summary = JSON.parse(
+    readFileSync('../contracts/fixtures/sessions.json', 'utf8'),
+  )[0].summary;
+  t.emit({ type: 'transcript', role: 'coach', text: 'That brings us ' });
+  s.emit({ kind: 'session_done', summary });
+  // Not cut mid-sentence, not hung up yet.
+  expect(t.closed).toBe(false);
+  expect(t.texts.at(-1)?.text).toContain('say goodbye');
+  t.emit({ type: 'audio', data: 'AAAA' });
+  t.emit({
+    type: 'transcript',
+    role: 'coach',
+    text: 'to the end <no speech> of today.',
+  });
+  t.emit({ type: 'turnComplete' });
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(t.closed).toBe(true);
+  expect(s.controller.state.status).toBe('off');
+  await vi.advanceTimersByTimeAsync(10000);
+  expect(s.deps.save).toHaveBeenCalledWith(
+    8,
+    expect.arrayContaining([
+      expect.objectContaining({
+        role: 'coach',
+        text: 'That brings us to the end of today.',
+      }),
+    ]),
+  );
+  s.controller.dispose();
+});
+
+it('hangs up after a session ends even if the coach never answers', async () => {
+  const s = setup();
+  await s.controller.start(8);
+  const t = s.transports[0];
+  const summary = JSON.parse(
+    readFileSync('../contracts/fixtures/sessions.json', 'utf8'),
+  )[0].summary;
+  s.emit({ kind: 'session_done', summary });
+  await vi.advanceTimersByTimeAsync(16000);
+  expect(t.closed).toBe(true);
+  s.controller.dispose();
+});
+
+it('on-screen Brake silences the coach until the patient speaks and tells the model', async () => {
+  const s = setup();
+  await s.controller.start(8);
+  const t = s.transports[0];
+  s.controller.brake('You pressed Brake.');
+  expect(s.deps.audio.flush).toHaveBeenCalled();
+  expect(s.deps.local.speak).toHaveBeenCalledWith(
+    'Stopped. The glove has released. Tell me how you feel.',
+    expect.any(Function),
+  );
+  expect(t.texts.at(-1)?.text).toContain('never resume');
+  vi.mocked(s.deps.audio.play).mockClear();
+  t.emit({ type: 'audio', data: 'AAAA' });
+  expect(s.deps.audio.play).not.toHaveBeenCalled();
+  // The local "Stopped" announcement finishes.
+  vi.mocked(s.deps.local.speak).mock.calls.at(-1)?.[1]?.();
+  await vi.advanceTimersByTimeAsync(600);
+  t.emit({ type: 'audio', data: 'CCCC' });
+  expect(s.deps.audio.play).not.toHaveBeenCalled();
+  t.emit({ type: 'transcript', role: 'patient', text: 'I am fine' });
+  t.emit({ type: 'audio', data: 'BBBB' });
+  expect(s.deps.audio.play).toHaveBeenCalledWith('BBBB');
+  s.controller.dispose();
+});
