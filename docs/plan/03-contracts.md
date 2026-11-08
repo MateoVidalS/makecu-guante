@@ -389,7 +389,7 @@ Backend `backend/.env`:
 | Var | Default | Meaning |
 |---|---|---|
 | `GEMINI_API_KEY` | – | Voice (Live) and summaries. Missing → voice uses the fixed-phrase fallback, summaries return 503 |
-| `GEMINI_LIVE_MODEL` | `gemini-3.8-live-extended-thinking` | **Verify the current name** in Google's Live API docs |
+| `GEMINI_LIVE_MODEL` | `gemini-3.8-live` | Must deliver tool calls: check with `uv run python -m tools.coach_check`. `gemini-3.8-live-extended-thinking` never does, so the backend maps it to `gemini-3.8-live` |
 | `GEMINI_LIVE_VOICE` | `Puck` | Verify |
 | `GEMINI_TEXT_MODEL` | `gemini-4-argon` (falls back to gemini-3.8-flash, gemini-3.5-flash) | Verify |
 | `REHAB_DB_PATH` | `data/rehab.db` | |
