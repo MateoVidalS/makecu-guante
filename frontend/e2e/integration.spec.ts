@@ -150,23 +150,27 @@ test('sim calibration, full default plan, rigid-index safety, history, replay, e
   await expect(page.getByLabel('Attempt').locator('option')).toHaveCount(10);
   await page.goto('/evaluate');
   const measureFriction = page.getByRole('button', {
-    name: 'Measure glove friction',
+    name: 'Measure thread friction (unhooked)',
     exact: true,
   });
   if (await measureFriction.count()) {
     await page
-      .getByRole('checkbox', { name: 'The glove is empty and hanging freely' })
+      .getByRole('checkbox', {
+        name: 'Each thread is unhooked from its yellow fingertip anchor',
+      })
       .check();
     await measureFriction.click();
     await expect(
       page.getByText(
-        'Recent glove friction saved. Put the glove on, then relax.',
+        'Recent thread friction (unhooked) saved. Re-hook each thread to its yellow fingertip anchor, then relax.',
       ),
     ).toBeVisible({ timeout: 60_000 });
   }
 
   await page
-    .getByRole('checkbox', { name: 'Hand relaxed in the glove' })
+    .getByRole('checkbox', {
+      name: 'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+    })
     .check();
   await expect(
     page

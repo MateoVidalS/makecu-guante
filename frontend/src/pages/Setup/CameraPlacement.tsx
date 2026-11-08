@@ -55,7 +55,7 @@ export function CameraPlacement() {
   );
 }
 
-export function GloveDetectionCheck() {
+export function HandDetectionCheck() {
   const vision = useVision();
   const running = useVisionFrame((frame) => frame !== null);
   const [stats, setStats] = useState(() => vision.robustness());
@@ -67,14 +67,14 @@ export function GloveDetectionCheck() {
   }, [vision, vision.source]);
   const simulated = vision.source.kind === 'sim';
   return (
-    <section
-      className="setup-detection"
-      aria-labelledby="glove-detection-title"
-    >
-      <h3 id="glove-detection-title">Glove-detection check</h3>
+    <section className="setup-detection" aria-labelledby="hand-detection-title">
+      <h3 id="hand-detection-title">Hand-detection check</h3>
+      <p className="hp-note">
+        Keep your bare hand visible with the guides and anchors attached.
+      </p>
       {simulated && (
         <p className="hp-note">
-          Simulator check · Estimates only. Repeat with the real glove and
+          Simulator check · Estimates only. Repeat with your real hand and
           camera.
         </p>
       )}
@@ -114,14 +114,16 @@ export function GloveDetectionCheck() {
               ? 'Tracking looks steady.'
               : stats.status === 'poor'
                 ? 'Tracking needs adjustment.'
-                : 'Open and close all five fingers in your glove.'}
+                : 'Open and close all five fingers.'}
           </p>
           <ul className="hp-note">
             {stats.guidance.map((line) => (
               <li key={line}>
                 {line === CAMERA_PLACEMENT_GUIDANCE
                   ? UPRIGHT_PLACEMENT_GUIDANCE
-                  : line}
+                  : line.includes('light, thin glove')
+                    ? 'Improve the lighting. Keep your palm and all five fingers visible.'
+                    : line.replace(/\bgloved hand\b/g, 'hand')}
               </li>
             ))}
           </ul>

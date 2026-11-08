@@ -10,7 +10,7 @@ export default defineConfig({
   webServer: {
     ...(!Array.isArray(base.webServer) ? base.webServer : {}),
     // Helper-page scenarios provide their own calibration and need no demo history.
-    command: 'make -C .. dev-sim',
+    command: 'make -C .. dev-sim-all',
     cwd: fileURLToPath(new URL('../../../', import.meta.url)),
   },
 });

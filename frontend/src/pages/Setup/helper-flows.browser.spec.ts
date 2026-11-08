@@ -127,7 +127,10 @@ test('legacy camera capture routes to upright recapture while keeping glove rang
   await expect(
     page.getByText(/Raise your hand, palm to the screen/),
   ).toBeVisible();
-  await expect(page.getByText('Not captured', { exact: true })).toHaveCount(2);
+  await expect(page.getByText('Not captured', { exact: true })).toHaveCount(1);
+  await expect(
+    page.getByText('Capture your fist first', { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Continue to review' }),
   ).toBeDisabled();

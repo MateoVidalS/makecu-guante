@@ -54,6 +54,8 @@ import {
 import type { EngineEvent } from '../../contracts/engine';
 import { http, HttpResponse } from 'msw';
 import { sessions, profile } from '../../contracts/fixtures.check';
+import { PreflightGloveControls } from './preflightTestSupport';
+import { PRACTICE_PREFLIGHT_MESSAGE } from './preflight';
 const handRender = vi.hoisted(() => vi.fn());
 function helperRuntime() {
   const runtime = legacyHelperRuntime();
@@ -535,7 +537,7 @@ describe('Calibration wizard', () => {
     const first = mount(<Calibrate />, freshRuntime());
     expect(
       screen.getByText(
-        'Support your elbow. Keep your raised hand relaxed. Stop if it hurts.',
+        /For each finger, set two motor positions: slack with a relaxed fist/,
       ),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: 'Next finger' })).toBeDisabled();
@@ -617,6 +619,95 @@ describe('Calibration wizard', () => {
     expect(runtime.calibration.current!.friction).toEqual({});
   });
 });
+describe('practice preflight at every entry point', () => {
+  const entryPoints = [
+    { name: 'Home', Page: Home, startLabel: "Start today's practice" },
+    { name: 'Calibrate', Page: Calibrate, startLabel: 'Start practice' },
+    { name: 'Exercise', Page: Exercise, startLabel: 'Start practice' },
+  ];
+  function mountEntry(Page: typeof Home, runtime: ScriptedRuntime) {
+    vi.spyOn(runtime.calibration, 'save').mockImplementation(async (value) => {
+      const saved = { ...value, id: 99, created_at: new Date().toISOString() };
+      runtime.calibration.current = saved;
+      return saved;
+    });
+    const start = vi.spyOn(runtime.exercise, 'start').mockResolvedValue();
+    mount(
+      <>
+        <PreflightGloveControls />
+        <Link to="/">Return to practice start</Link>
+        <Routes>
+          <Route path="/" element={<Page />} />
+          <Route path="/setup" element={<Setup />} />
+          <Route path="/exercise" element={<p>Exercise destination</p>} />
+        </Routes>
+      </>,
+      runtime,
+    );
+    return start;
+  }
+  async function prepare(name: string) {
+    if (name === 'Calibrate') {
+      fireEvent.click(screen.getByRole('button', { name: 'Save calibration' }));
+      await screen.findByRole('heading', { name: 'Your range is saved' });
+    } else if (name === 'Home') {
+      await screen.findByText('Sees the hand', { exact: true });
+    }
+  }
+  it.each(entryPoints)(
+    '$name blocks the real glove until Setup confirms both checks',
+    async ({ name, Page, startLabel }) => {
+      const start = mountEntry(Page, helperRuntime());
+      fireEvent.click(screen.getByRole('button', { name: 'Use real glove' }));
+      await prepare(name);
+      fireEvent.click(screen.getByRole('button', { name: startLabel }));
+      expect(start).not.toHaveBeenCalled();
+      expect(
+        await screen.findByRole('heading', { name: 'Before practice' }),
+      ).toBeVisible();
+      expect(screen.getByText(PRACTICE_PREFLIGHT_MESSAGE)).toBeVisible();
+      expect(
+        screen.getByRole('region', { name: 'Practice safety checks' }),
+      ).toHaveFocus();
+      fireEvent.change(
+        screen.getByRole('combobox', {
+          name: 'Were the guides re-attached since the last calibration?',
+        }),
+        { target: { value: 'no' } },
+      );
+      // One confirmation alone must still block every entry point.
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Return to practice start' }),
+      );
+      await prepare(name);
+      fireEvent.click(screen.getByRole('button', { name: startLabel }));
+      expect(start).not.toHaveBeenCalled();
+      fireEvent.click(
+        screen.getByRole('checkbox', {
+          name: 'Skin under the guides and threads looks normal: no redness, marks or pain',
+        }),
+      );
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Return to practice start' }),
+      );
+      await prepare(name);
+      fireEvent.click(screen.getByRole('button', { name: startLabel }));
+      await waitFor(() => expect(start).toHaveBeenCalledOnce());
+    },
+  );
+  it.each(entryPoints)(
+    '$name allows the simulated glove without confirmations',
+    async ({ name, Page, startLabel }) => {
+      const start = mountEntry(Page, helperRuntime());
+      await prepare(name);
+      fireEvent.click(screen.getByRole('button', { name: startLabel }));
+      await waitFor(() => expect(start).toHaveBeenCalledOnce());
+      expect(
+        screen.queryByText(PRACTICE_PREFLIGHT_MESSAGE),
+      ).not.toBeInTheDocument();
+    },
+  );
+});
 describe('Evaluation', () => {
   function evaluationRuntime() {
     const runtime = helperRuntime();
@@ -629,7 +720,11 @@ describe('Evaluation', () => {
     for (const name of ['Thumb', 'Index', 'Middle'])
       fireEvent.click(screen.getByRole('checkbox', { name }));
     expect(screen.getByText(/4 sweeps/)).toBeVisible();
-    fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
+    fireEvent.click(
+      screen.getByLabelText(
+        'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      ),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Start evaluation' }));
     await waitFor(() =>
       expect(start).toHaveBeenCalledWith({
@@ -655,7 +750,11 @@ describe('Evaluation', () => {
     mount(<Evaluate />, evaluationRuntime());
     for (const name of ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'])
       fireEvent.click(screen.getByRole('checkbox', { name }));
-    fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
+    fireEvent.click(
+      screen.getByLabelText(
+        'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      ),
+    );
     expect(
       screen.getByRole('button', { name: 'Start evaluation' }),
     ).toBeDisabled();
@@ -674,7 +773,11 @@ describe('Evaluation', () => {
     expect(
       screen.queryByRole('checkbox', { name: 'Glove connected' }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
+    fireEvent.click(
+      screen.getByLabelText(
+        'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      ),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Start evaluation' }));
     await waitFor(() =>
       expect(
@@ -698,7 +801,11 @@ describe('Evaluation', () => {
       screen.getByText('An estimate inspired by clinical practice.'),
     ).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Evaluate again' }));
-    fireEvent.click(screen.getByLabelText('Hand relaxed in the glove'));
+    fireEvent.click(
+      screen.getByLabelText(
+        'Threads re-hooked to yellow fingertip anchors; hand relaxed',
+      ),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Start evaluation' }));
     await act(async () => {
       await runtime.evaluation.stop();

@@ -5,7 +5,7 @@ import {
   CAMERA_PLACEMENT_GUIDANCE,
   type VisionRobustnessStats,
 } from '../../vision/robustness';
-import { CameraPlacement, GloveDetectionCheck } from './CameraPlacement';
+import { CameraPlacement, HandDetectionCheck } from './CameraPlacement';
 
 const mock = vi.hoisted(() => ({
   running: true,
@@ -53,7 +53,7 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
-describe('camera placement and glove check', () => {
+describe('camera placement and hand check', () => {
   it('describes upright webcam framing, elbow support and lighting', () => {
     render(<CameraPlacement />);
     expect(screen.getByRole('img')).toHaveAccessibleName(
@@ -66,7 +66,11 @@ describe('camera placement and glove check', () => {
     ).not.toBeInTheDocument();
   });
   it('shows detection percentage and all five finger visibility estimates', () => {
-    render(<GloveDetectionCheck />);
+    render(<HandDetectionCheck />);
+    expect(
+      screen.getByRole('heading', { name: 'Hand-detection check' }),
+    ).toBeVisible();
+    expect(screen.getByText(/Keep your bare hand visible/)).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent(
       'Hand detected: 92% of the last 5 s',
     );
@@ -76,33 +80,58 @@ describe('camera placement and glove check', () => {
       expect(screen.getByText(finger)).toBeInTheDocument();
   });
   it('polls when frames stop, replacing ready status with poor tracking guidance', () => {
-    render(<GloveDetectionCheck />);
+    render(<HandDetectionCheck />);
     mock.robustness.mockReturnValue(
       stats({
         status: 'poor',
         detectionRate: 0.1,
-        guidance: ['Improve lighting. Use a light, thin glove.'],
+        guidance: [
+          'Improve the lighting and use a light, thin glove. If detection stays low, ask the team about exposed fingertips or a bare-hand demo.',
+        ],
       }),
     );
     act(() => vi.advanceTimersByTime(250));
     expect(screen.getByRole('status')).toHaveTextContent('10%');
     expect(screen.getByText('Tracking needs adjustment.')).toBeVisible();
-    expect(screen.getByText(/Improve lighting/)).toBeVisible();
+    expect(
+      screen.queryByText(/light, thin glove|exposed fingertips/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Improve the lighting. Keep your palm and all five fingers visible.',
+      ),
+    ).toBeVisible();
   });
   it('labels simulator estimates and collects a full five-second window', () => {
     mock.kind = 'sim';
     mock.robustness.mockReturnValue(
-      stats({ status: 'collecting', observedMs: 1200 }),
+      stats({
+        status: 'collecting',
+        observedMs: 1200,
+        guidance: [
+          'Keep your gloved hand visible for 5 seconds. Try opening and closing all five fingers.',
+        ],
+      }),
     );
-    render(<GloveDetectionCheck />);
+    render(<HandDetectionCheck />);
     expect(screen.getByText(/Simulator check/)).toBeVisible();
+    expect(screen.getByText(/Simulator check/)).toHaveTextContent(
+      'Repeat with your real hand and camera.',
+    );
+    expect(screen.getByText('Open and close all five fingers.')).toBeVisible();
+    expect(
+      screen.getByText(/Keep your hand visible for 5 seconds/),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/gloved hand|in your glove/),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('1.2 of 5 s');
   });
   it('uses upright placement while the shared vision guidance is being updated', () => {
     mock.robustness.mockReturnValue(
       stats({ status: 'poor', guidance: [CAMERA_PLACEMENT_GUIDANCE] }),
     );
-    render(<GloveDetectionCheck />);
+    render(<HandDetectionCheck />);
     expect(screen.getByText(/Raise your hand beside your face/)).toBeVisible();
     expect(
       screen.queryByText(/palm down|table edge|towel/i),
@@ -110,7 +139,7 @@ describe('camera placement and glove check', () => {
   });
   it('asks for the camera when stopped', () => {
     mock.running = false;
-    render(<GloveDetectionCheck />);
+    render(<HandDetectionCheck />);
     expect(screen.getByRole('status')).toHaveTextContent('Connect the camera');
     expect(
       screen.queryByText('Tracking looks steady.'),
@@ -120,7 +149,7 @@ describe('camera placement and glove check', () => {
     ['backlit', 'Your hand is in shadow.', /Close the curtain behind you/],
     ['low_light', 'Your hand needs more light.', /Add a light in front/],
   ] as const)('warns from V1 lighting stats: %s', (status, title, guidance) => {
-    render(<GloveDetectionCheck />);
+    render(<HandDetectionCheck />);
     expect(screen.queryByText(title)).not.toBeInTheDocument();
     mock.robustness.mockReturnValue(
       stats({
@@ -155,7 +184,7 @@ describe('camera placement and glove check', () => {
           },
         }),
       );
-      render(<GloveDetectionCheck />);
+      render(<HandDetectionCheck />);
       expect(
         screen.queryByText('Your hand is in shadow.'),
       ).not.toBeInTheDocument();

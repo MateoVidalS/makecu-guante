@@ -9,6 +9,11 @@ import {
   Checkbox,
   ProgressRing,
   StatusChip,
+  Badge,
+  Banner,
+  Icon,
+  Meter,
+  Card,
 } from '../../design-system';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DEFAULT_EXERCISE_SETTINGS } from '../../contracts/poses';
@@ -30,7 +35,10 @@ import {
   type ServoCalibration,
 } from '../../contracts/calibration';
 import type { VisionFrame } from '../../contracts/vision';
-import { Readouts, Section, Stepper, title } from '../../components/common';
+import { Section, Stepper, title } from '../../components/common';
+import { PoseIllustration } from './PoseIllustration';
+import { RangeBar } from './RangeBar';
+import './calibrate.css';
 import {
   fingers,
   resumableDraft,
@@ -53,8 +61,10 @@ import {
 } from '../../runtime/calibrationValidation';
 
 import { SimulatorCalibrationShortcut } from './SimulatorCalibrationShortcut';
+import { usePracticePreflightGate } from '../../components/common/preflight';
 
 export default function Calibrate() {
+  const { checkPreflight } = usePracticePreflightGate();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const linkedStep = params.get('step');
@@ -72,6 +82,9 @@ export default function Calibrate() {
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [capture, setCapture] = useState(false),
+    [captureKind, setCaptureKind] = useState<'open' | 'closed' | 'pinch'>(
+      'closed',
+    ),
     [progress, setProgress] = useState(0),
     [saved, setSaved] = useState(false);
   const seen = useVisionFrame(
@@ -127,9 +140,14 @@ export default function Calibrate() {
   }, [draft]);
   useEffect(() => {
     if (draft.step === 1) {
-      void vision
-        .start({ affectedHand: draft.hand })
-        .catch((e) => setError((e as Error).message));
+      void vision.start({ affectedHand: draft.hand }).catch((e) => {
+        const message = (e as Error).message;
+        setError(
+          /permission|notallowed/i.test(`${(e as Error).name} ${message}`)
+            ? 'Camera access is blocked. Allow the camera in the browser’s address bar, then reload the page.'
+            : message,
+        );
+      });
     }
   }, [draft.step, draft.hand, vision]);
   useEffect(() => {
@@ -243,6 +261,7 @@ export default function Calibrate() {
       return;
     }
     setError('');
+    setCaptureKind(kind);
     setCapture(true);
     setProgress(0);
     const frames: VisionFrame[] = [];
@@ -452,6 +471,7 @@ export default function Calibrate() {
             disabled={busy}
             onClick={() =>
               void action(async () => {
+                if (!checkPreflight()) return;
                 await runtime.exercise.start(
                   practicePlan(short),
                   DEFAULT_EXERCISE_SETTINGS,
@@ -478,28 +498,78 @@ export default function Calibrate() {
       Back
     </Button>
   );
+  const cameraDone = !!draft.open && !!draft.closed;
+  const task =
+    range?.min_deg == null ? 'slack' : range?.max_deg == null ? 'open' : 'done';
+  const bothSet = range?.min_deg != null && range?.max_deg != null;
+  const apart = bothSet ? Math.abs(range!.max_deg! - range!.min_deg!) : 0;
+  const issueFor = (f: string, step: 'glove' | 'camera') =>
+    draftStatus.issues.find((i) => i.finger === f && i.step === step);
+  const flexMax = Math.max(
+    1,
+    ...fingers.flatMap((f) => [
+      draft.open?.raw[f] ?? 0,
+      draft.closed?.raw[f] ?? 0,
+    ]),
+  );
+  const captureStatus = (kind: 'open' | 'closed') =>
+    capture &&
+    captureKind === kind && (
+      <div role="status" className="cal-capture">
+        <ProgressRing
+          value={progress / 100}
+          label="Hold still"
+          size={40}
+          thickness={5}
+        />
+        <span className="cal-capture__text">
+          {progress === 0
+            ? kind === 'open' && !ownFist
+              ? 'The glove is opening your hand…'
+              : 'Get into position…'
+            : 'Hold still…'}
+        </span>
+        <Button size="sm" variant="quiet" onClick={() => cancel.current()}>
+          Cancel capture and release
+        </Button>
+      </div>
+    );
   return (
     <div className="hp-page">
       <PageHeader
         title="Find your comfortable range"
-        lead="Three short steps. Your progress is kept if you leave this page."
+        lead="Three short steps, about three minutes. Your progress is kept if you leave this page."
       />
-      <div className="hp-wizard">
-        <Stepper
-          labels={['Glove range', 'Camera range', 'Review']}
-          step={draft.step}
-          disabled={busy || capture}
-          onStep={(step) => {
-            cancel.current();
-            client.release();
-            update({ step });
-          }}
-        />
-        <StatusChip
-          label="Calibration"
-          value={readiness.value}
-          tone={readiness.tone}
-        />
+      {simulated && (
+        <Section className="hp-plain cal-sim-top">
+          <SimulatorCalibrationShortcut
+            onSaved={(value) => {
+              edited.current = false;
+              hydrated.current = true;
+              setDraft(draftFromCalibration(value));
+            }}
+          />
+        </Section>
+      )}
+      <div className="hp-wizard cal-wizard">
+        <div className="cal-head">
+          <Stepper
+            labels={['Glove range', 'Camera range', 'Review']}
+            step={draft.step}
+            completed={[allRangesSet, cameraDone, false]}
+            disabled={busy || capture}
+            onStep={(step) => {
+              cancel.current();
+              client.release();
+              update({ step });
+            }}
+          />
+          <StatusChip
+            label="Calibration"
+            value={readiness.value}
+            tone={readiness.tone}
+          />
+        </div>
         <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
         <RelaxedHandSafetyStrip
           release={() => {
@@ -517,129 +587,228 @@ export default function Calibrate() {
           <Section
             flush
             title={`Step 1 · Glove range: ${title(finger)}`}
-            description="Support your elbow. Keep your raised hand relaxed. Stop if it hurts."
+            description="For each finger, set two motor positions: slack with a relaxed fist, and open with the finger straight."
           >
             {ownFist && (
-              <div className="hp-set-row">
+              <div className="cal-sim-card">
                 <div>
-                  <p>
+                  <p className="cal-strong">
                     The glove is simulated, so there are no motors to range.
                   </p>
-                  <p className="hp-set-row__value">
+                  <p className="hp-note">
                     Use standard ranges and go straight to the camera step.
                   </p>
                 </div>
-                <Button disabled={busy} onClick={applySimulatedRanges}>
+                <Button
+                  variant="primary"
+                  disabled={busy}
+                  onClick={applySimulatedRanges}
+                >
                   Use simulated glove ranges
                 </Button>
               </div>
             )}
             <div
-              className="hp-finger-tabs"
+              className="cal-fingers"
               role="group"
               aria-label="Finger to calibrate"
             >
-              {GLOVE_FINGERS.map((f, i) => (
-                <Button
-                  key={f}
-                  size="sm"
-                  variant={i === draft.finger ? 'secondary' : 'quiet'}
-                  aria-current={i === draft.finger ? 'step' : undefined}
-                  onClick={() => {
-                    client.release();
-                    update({ finger: i, angle: 90 });
-                  }}
+              {GLOVE_FINGERS.map((f, i) => {
+                const r = draft.servo[f];
+                const done = validRange(r);
+                const status = done
+                  ? 'Set'
+                  : i === draft.finger
+                    ? 'Editing'
+                    : 'Not set';
+                return (
+                  <button
+                    type="button"
+                    key={f}
+                    className={`cal-finger${i === draft.finger ? ' is-current' : ''}${done ? ' is-done' : ''}`}
+                    aria-label={`${title(f)} · ${status}`}
+                    aria-current={i === draft.finger ? 'step' : undefined}
+                    disabled={busy}
+                    onClick={() => {
+                      client.release();
+                      update({ finger: i, angle: r?.min_deg ?? 90 });
+                    }}
+                  >
+                    <span
+                      className="cal-dot"
+                      style={{ background: `var(--finger-${f})` }}
+                    />
+                    <span className="cal-finger__name">{title(f)}</span>
+                    <span className="cal-finger__status">
+                      {done ? (
+                        <>
+                          <Icon name="check" size={14} /> {r!.min_deg}°–
+                          {r!.max_deg}°
+                        </>
+                      ) : (
+                        status
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="cal-grid">
+              <div className="cal-main">
+                <Card padding="md" className="cal-motor">
+                  <p className="cal-strong">Move the {finger} motor</p>
+                  <Slider
+                    label="Servo angle"
+                    hint="Move gently. Find a comfortable range without pain."
+                    min={5}
+                    max={175}
+                    value={draft.angle}
+                    onValueChange={jog}
+                    format={(v) => `${v}°`}
+                  />
+                  <div className="hp-actions" aria-label="Fine adjustment">
+                    {[-5, -1, 1, 5].map((n) => (
+                      <Button
+                        key={n}
+                        size="sm"
+                        onClick={() => jog(draft.angle + n)}
+                      >
+                        {n > 0 ? '+' : '−'}
+                        {Math.abs(n)}°
+                      </Button>
+                    ))}
+                  </div>
+                  <RangeBar
+                    min={5}
+                    max={175}
+                    from={range?.min_deg}
+                    to={range?.max_deg}
+                    current={draft.angle}
+                    tone={bothSet && !validRange(range) ? 'caution' : 'active'}
+                  />
+                </Card>
+                <ol
+                  className="cal-tasks"
+                  aria-label={`${title(finger)} positions`}
                 >
-                  {title(f)} ·{' '}
-                  {validRange(draft.servo[f])
-                    ? 'Set'
-                    : i === draft.finger
-                      ? 'Editing'
-                      : 'Not set'}
-                </Button>
-              ))}
-            </div>
-            <p className="hp-note">
-              First check the range on a mannequin or helper hand. Five servos
-              share a 5 V, 2.5 A supply. Adjust one finger at a time. The normal
-              limit is 1500 mA; never exceed 2200 mA. Keep your elbow supported
-              and your raised hand relaxed.
-            </p>
-            <Readouts
-              label="Live glove readings"
-              items={[
-                { label: 'Current', value: Math.round(current), unit: 'mA' },
-                { label: 'Limit while adjusting', value: 400, unit: 'mA' },
-              ]}
-            />
-            {current > 400 && (
-              <p role="alert" className="hp-alert">
-                Resistance is rising. Release the glove and check the fit.
-              </p>
-            )}
-            <Slider
-              label="Servo angle"
-              hint="Move gently. Find a comfortable range without pain."
-              min={5}
-              max={175}
-              value={draft.angle}
-              onValueChange={jog}
-              format={(v) => `${v}°`}
-            />
-            <div className="hp-actions" aria-label="Fine adjustment">
-              {[-5, -1, 1, 5].map((n) => (
-                <Button key={n} size="sm" onClick={() => jog(draft.angle + n)}>
-                  {n > 0 ? '+' : '−'}
-                  {Math.abs(n)}°
-                </Button>
-              ))}
-            </div>
-            <div>
-              <div className="hp-set-row">
-                <div>
-                  <p>
-                    Slack: Make a relaxed full fist. Jog until the thread is
-                    just taut.
+                  <li
+                    className={`cal-task${task === 'slack' ? ' is-active' : ''}${range?.min_deg != null ? ' is-done' : ''}`}
+                  >
+                    <span className="cal-task__num" aria-hidden="true">
+                      {range?.min_deg != null ? (
+                        <Icon name="check" size={16} />
+                      ) : (
+                        1
+                      )}
+                    </span>
+                    <PoseIllustration pose="slack" />
+                    <div className="cal-task__body">
+                      <p className="cal-strong">Slack</p>
+                      <p>
+                        Make a relaxed full fist. Jog until the thread is just
+                        taut.
+                      </p>
+                      <p className="cal-task__value">
+                        {range?.min_deg != null
+                          ? `Slack at ${range.min_deg}°`
+                          : 'Slack not set'}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={task === 'slack' ? 'primary' : 'secondary'}
+                      onClick={() => setRange('min_deg')}
+                    >
+                      Set slack
+                    </Button>
+                  </li>
+                  <li
+                    className={`cal-task${task === 'open' ? ' is-active' : ''}${range?.max_deg != null ? ' is-done' : ''}`}
+                  >
+                    <span className="cal-task__num" aria-hidden="true">
+                      {range?.max_deg != null ? (
+                        <Icon name="check" size={16} />
+                      ) : (
+                        2
+                      )}
+                    </span>
+                    <PoseIllustration pose="open" />
+                    <div className="cal-task__body">
+                      <p className="cal-strong">Open</p>
+                      <p>Jog until the finger is straight.</p>
+                      <p id="hyperextension-warning" className="cal-caution">
+                        <Icon name="caution" size={16} />
+                        <span>
+                          Hyperextension warning: stop at straight. Never bend
+                          the finger back.
+                        </span>
+                      </p>
+                      <p className="cal-task__value">
+                        {range?.max_deg != null
+                          ? `Open at ${range.max_deg}°`
+                          : 'Open not set'}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={task === 'open' ? 'primary' : 'secondary'}
+                      aria-describedby="hyperextension-warning"
+                      onClick={() => setRange('max_deg')}
+                    >
+                      Set open
+                    </Button>
+                  </li>
+                </ol>
+                {bothSet && !validRange(range) && (
+                  <p role="alert" className="hp-alert">
+                    Slack and open are only {apart}° apart. They must differ by
+                    at least 20°.
                   </p>
-                  <p className="hp-set-row__value">
-                    {range?.min_deg != null
-                      ? `Slack at ${range.min_deg}°`
-                      : 'Slack not set'}
-                  </p>
-                </div>
-                <Button size="sm" onClick={() => setRange('min_deg')}>
-                  Set slack
-                </Button>
+                )}
               </div>
-              <div className="hp-set-row">
-                <div>
-                  <p>
-                    Open: Jog until the finger is straight. Never bend it back.
+              <aside className="cal-aside" aria-label="Glove status">
+                <Card tone="inset" padding="sm">
+                  <Meter
+                    label="Motor current"
+                    value={current}
+                    max={600}
+                    limit={400}
+                    valueText={`${Math.round(current)} mA`}
+                    tone={
+                      current > 400
+                        ? 'danger'
+                        : current > 300
+                          ? 'assist'
+                          : 'accent'
+                    }
+                  />
+                  <p className="hp-note">
+                    Limit while adjusting: 400 mA. The glove stops above it.
                   </p>
-                  <p id="hyperextension-warning" className="hp-alert">
-                    Hyperextension warning: stop at straight. Never bend the
-                    finger back.
+                  {current > 400 && (
+                    <p role="alert" className="hp-alert">
+                      Resistance is rising. Release the glove and check the fit.
+                    </p>
+                  )}
+                </Card>
+                <p className="cal-note">
+                  <Icon name="info" size={16} />
+                  <span>
+                    First check the range on a mannequin or helper hand. Adjust
+                    one finger at a time.
+                  </span>
+                </p>
+                <details className="hp-disclosure">
+                  <summary>Helper notes: power</summary>
+                  <p className="hp-note">
+                    Five servos share a 5 V, 2.5 A supply. The normal limit is
+                    1500 mA; never exceed 2200 mA.
+                    {client.kind !== 'sim' &&
+                      ' After sending, wait for the glove to confirm its ranges.'}
                   </p>
-                  <p className="hp-set-row__value">
-                    {range?.max_deg != null
-                      ? `Open at ${range.max_deg}°`
-                      : 'Open not set'}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  aria-describedby="hyperextension-warning"
-                  onClick={() => setRange('max_deg')}
-                >
-                  Set open
-                </Button>
-              </div>
+                </details>
+              </aside>
             </div>
-            <p className="hp-note">
-              Slack and open must differ by at least 20°.
-              {client.kind !== 'sim' &&
-                ' After sending, wait for the glove to confirm its ranges.'}
-            </p>
             {(!validRange(range) || !allRangesSet) && (
               <p id="next-finger-hint" className="hp-note">
                 {!validRange(range)
@@ -669,7 +838,11 @@ export default function Calibrate() {
                       void action(sendRanges);
                     else {
                       client.release();
-                      update({ finger: draft.finger + 1, angle: 90 });
+                      const next = GLOVE_FINGERS[draft.finger + 1];
+                      update({
+                        finger: draft.finger + 1,
+                        angle: draft.servo[next]?.min_deg ?? 90,
+                      });
                     }
                   }}
                 >
@@ -684,88 +857,104 @@ export default function Calibrate() {
         {draft.step === 1 && (
           <Section
             flush
-            title={`Step 2 · Camera range${linkedStep === 'camera' ? `: ${title(finger)}` : ''}`}
+            title={`Step 2 · Camera range${linkedStep === 'camera' && linkedFinger ? `: ${title(finger)}` : ''}`}
             description="Raise your hand, palm to the screen, with your elbow supported. Keep still for two seconds during each capture."
           >
-            <div className="hp-actions hp-actions--between">
-              <Select
-                label="Affected hand"
-                value={draft.hand}
-                disabled={capture}
-                onChange={(e) =>
-                  update({
-                    hand: e.target.value as 'left' | 'right',
-                    open: null,
-                    closed: null,
-                    pinch: null,
-                  })
-                }
-              >
-                <option value="right">Right</option>
-                <option value="left">Left</option>
-              </Select>
-              <Checkbox
-                label="Mirror preview"
-                checked={mirror}
-                onChange={(e) => update({ mirror: e.target.checked })}
-              />
-            </div>
-            <div className="hp-camera">
-              <CameraOverlay mirrored={mirror} />
-            </div>
-            {capture && (
-              <div role="status" className="hp-capture-status">
-                <ProgressRing
-                  value={progress / 100}
-                  label="Hold still"
-                  size={32}
-                  thickness={4}
-                />
-                {progress === 0 ? 'Get into position…' : 'Hold still…'}
-                <Button
-                  size="sm"
-                  variant="quiet"
-                  onClick={() => cancel.current()}
-                >
-                  Cancel capture and release
-                </Button>
-              </div>
-            )}
-            <div>
-              <div className="hp-set-row">
-                <div>
-                  <p>Closed: Make your own fist and hold it still.</p>
-                  <p className="hp-set-row__value">
-                    {draft.closed ? 'Captured' : 'Not captured'}
-                  </p>
+            <div className="cal-grid cal-grid--camera">
+              <div className="cal-main">
+                <div className="cal-camera-bar">
+                  <Select
+                    label="Affected hand"
+                    value={draft.hand}
+                    disabled={capture}
+                    onChange={(e) =>
+                      update({
+                        hand: e.target.value as 'left' | 'right',
+                        open: null,
+                        closed: null,
+                        pinch: null,
+                      })
+                    }
+                  >
+                    <option value="right">Right</option>
+                    <option value="left">Left</option>
+                  </Select>
+                  <Checkbox
+                    label="Mirror preview"
+                    checked={mirror}
+                    onChange={(e) => update({ mirror: e.target.checked })}
+                  />
+                  <Badge
+                    tone={seen ? 'reached' : 'caution'}
+                    icon={seen ? 'check' : 'caution'}
+                  >
+                    {seen ? 'Hand in view' : 'Show your hand to the camera'}
+                  </Badge>
                 </div>
-                <Button
-                  size="sm"
-                  disabled={capture || !seen}
-                  onClick={() => captureRange('closed')}
-                >
-                  Capture my fist
-                </Button>
-              </div>
-              <div className="hp-set-row">
-                <div>
-                  <p>
-                    {ownFist
-                      ? 'Open your own hand, fingers straight. Hold it still.'
-                      : 'Relax. The glove opens all five fingers in stages.'}
-                  </p>
-                  <p className="hp-set-row__value">
-                    {draft.open ? 'Captured' : 'Not captured'}
-                  </p>
+                <div className="hp-camera">
+                  <CameraOverlay mirrored={mirror} />
                 </div>
-                <Button
-                  size="sm"
-                  disabled={capture || !draft.closed || !seen}
-                  onClick={() => captureRange('open')}
-                >
-                  {ownFist ? 'Capture open hand' : 'Glove opens the hand'}
-                </Button>
               </div>
+              <ol className="cal-tasks cal-aside" aria-label="Camera captures">
+                <li
+                  className={`cal-task cal-task--stack${!draft.closed ? ' is-active' : ' is-done'}`}
+                >
+                  <span className="cal-task__num" aria-hidden="true">
+                    {draft.closed ? <Icon name="check" size={16} /> : 1}
+                  </span>
+                  <PoseIllustration pose="fist" size="sm" />
+                  <div className="cal-task__body">
+                    <p className="cal-strong">Your fist</p>
+                    <p>Make your own fist and hold it still.</p>
+                    <p className="cal-task__value">
+                      {draft.closed ? 'Captured' : 'Not captured'}
+                    </p>
+                    {captureStatus('closed')}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={!draft.closed ? 'primary' : 'secondary'}
+                    disabled={capture || !seen}
+                    onClick={() => captureRange('closed')}
+                  >
+                    Capture my fist
+                  </Button>
+                </li>
+                <li
+                  className={`cal-task cal-task--stack${draft.closed && !draft.open ? ' is-active' : ''}${draft.open ? ' is-done' : ''}`}
+                >
+                  <span className="cal-task__num" aria-hidden="true">
+                    {draft.open ? <Icon name="check" size={16} /> : 2}
+                  </span>
+                  <PoseIllustration pose="open-hand" size="sm" />
+                  <div className="cal-task__body">
+                    <p className="cal-strong">Open hand</p>
+                    <p>
+                      {ownFist
+                        ? 'Open your own hand, fingers straight. Hold it still.'
+                        : 'Relax. The glove opens all five fingers in stages.'}
+                    </p>
+                    <p className="cal-task__value">
+                      {draft.open
+                        ? 'Captured'
+                        : draft.closed
+                          ? 'Not captured'
+                          : 'Capture your fist first'}
+                    </p>
+                    {captureStatus('open')}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={
+                      draft.closed && !draft.open ? 'primary' : 'secondary'
+                    }
+                    disabled={capture || !draft.closed || !seen}
+                    onClick={() => captureRange('open')}
+                  >
+                    {ownFist ? 'Capture open hand' : 'Glove opens the hand'}
+                  </Button>
+                </li>
+              </ol>
             </div>
             <div className="hp-wizard__footer">
               {back(0)}
@@ -788,17 +977,116 @@ export default function Calibrate() {
             title="Review your range"
             description="Check the values, then save. Saving also sends them to the glove."
           >
-            <p>
-              {draftStatus.state === 'ok'
-                ? 'All five glove ranges and both camera captures are ready.'
-                : 'Check the flagged ranges before saving.'}
-            </p>
-            <p>Current limit: {draft.limit} mA</p>
+            <Banner
+              tone={draftStatus.state === 'ok' ? 'info' : 'warning'}
+              icon={draftStatus.state === 'ok' ? 'check' : 'caution'}
+              title={
+                draftStatus.state === 'ok'
+                  ? 'All five glove ranges and both camera captures are ready.'
+                  : 'Check the flagged ranges before saving.'
+              }
+            />
+            <div className="cal-review">
+              <Card
+                title="Glove ranges"
+                titleLevel={3}
+                actions={
+                  <Button
+                    size="sm"
+                    variant="quiet"
+                    onClick={() => update({ step: 0 })}
+                  >
+                    Redo glove ranges
+                  </Button>
+                }
+              >
+                <ul className="cal-review__list">
+                  {GLOVE_FINGERS.map((f) => {
+                    const r = draft.servo[f];
+                    const issue = issueFor(f, 'glove');
+                    return (
+                      <li key={f} className="cal-review__row">
+                        <span
+                          className="cal-dot"
+                          style={{ background: `var(--finger-${f})` }}
+                        />
+                        <span className="cal-review__name">{title(f)}</span>
+                        <RangeBar
+                          compact
+                          min={5}
+                          max={175}
+                          from={r?.min_deg}
+                          to={r?.max_deg}
+                          tone={issue ? 'caution' : 'reached'}
+                        />
+                        <span className="cal-review__val">
+                          {r?.min_deg ?? '–'}° → {r?.max_deg ?? '–'}°
+                        </span>
+                        <span
+                          className={
+                            issue ? 'cal-review__issue' : 'cal-review__ok'
+                          }
+                        >
+                          {issue?.message ?? 'Ready'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Card>
+              <Card
+                title={`Camera range · ${draft.hand} hand`}
+                titleLevel={3}
+                actions={
+                  <Button
+                    size="sm"
+                    variant="quiet"
+                    onClick={() => update({ step: 1 })}
+                  >
+                    Redo camera range
+                  </Button>
+                }
+              >
+                <ul className="cal-review__list">
+                  {fingers.map((f) => {
+                    const issue = issueFor(f, 'camera');
+                    return (
+                      <li key={f} className="cal-review__row">
+                        <span
+                          className="cal-dot"
+                          style={{ background: `var(--finger-${f})` }}
+                        />
+                        <span className="cal-review__name">{title(f)}</span>
+                        <RangeBar
+                          compact
+                          min={0}
+                          max={flexMax}
+                          from={draft.open?.raw[f]}
+                          to={draft.closed?.raw[f]}
+                          tone={issue ? 'caution' : 'reached'}
+                        />
+                        <span className="cal-review__val">
+                          {draft.open?.raw[f].toFixed(0) ?? '–'}° →{' '}
+                          {draft.closed?.raw[f].toFixed(0) ?? '–'}°
+                        </span>
+                        <span
+                          className={
+                            issue ? 'cal-review__issue' : 'cal-review__ok'
+                          }
+                        >
+                          {issue?.message ?? 'Ready'}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Card>
+            </div>
             <details
               className="hp-disclosure"
               open={draftStatus.state === 'invalid' ? true : undefined}
             >
-              <summary>Details</summary>
+              <summary>Exact values</summary>
               <table className="hp-table">
                 <caption>Glove angles</caption>
                 <thead>
@@ -819,12 +1107,7 @@ export default function Calibrate() {
                       <th scope="row">{title(f)}</th>
                       <td className="hp-num">{draft.servo[f]?.min_deg}°</td>
                       <td className="hp-num">{draft.servo[f]?.max_deg}°</td>
-                      <td>
-                        {draftStatus.issues.find(
-                          (issue) =>
-                            issue.finger === f && issue.step === 'glove',
-                        )?.message ?? 'Ready'}
-                      </td>
+                      <td>{issueFor(f, 'glove')?.message ?? 'Ready'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -853,33 +1136,12 @@ export default function Calibrate() {
                       <td className="hp-num">
                         {draft.closed?.raw[f].toFixed(1)}°
                       </td>
-                      <td>
-                        {draftStatus.issues.find(
-                          (issue) =>
-                            issue.finger === f && issue.step === 'camera',
-                        )?.message ?? 'Ready'}
-                      </td>
+                      <td>{issueFor(f, 'camera')?.message ?? 'Ready'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </details>
-            <div className="hp-actions">
-              <Button
-                size="sm"
-                variant="quiet"
-                onClick={() => update({ step: 0 })}
-              >
-                Redo glove ranges
-              </Button>
-              <Button
-                size="sm"
-                variant="quiet"
-                onClick={() => update({ step: 1 })}
-              >
-                Redo camera range
-              </Button>
-            </div>
             <details className="hp-disclosure">
               <summary>Advanced</summary>
               <Input
@@ -905,17 +1167,6 @@ export default function Calibrate() {
           </Section>
         )}
       </div>
-      {simulated && (
-        <Section className="hp-plain">
-          <SimulatorCalibrationShortcut
-            onSaved={(value) => {
-              edited.current = false;
-              hydrated.current = true;
-              setDraft(draftFromCalibration(value));
-            }}
-          />
-        </Section>
-      )}
     </div>
   );
 }

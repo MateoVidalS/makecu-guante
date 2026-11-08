@@ -56,6 +56,7 @@ import type { LiveTherapyState } from '../../contracts/therapist';
 import { useHighlightedFinger } from '../../components/therapy/useHighlightedFinger';
 import { useQuery } from '@tanstack/react-query';
 import { createSummary, useHealth } from '../../api/client';
+import { usePracticePreflightGate } from '../../components/common/preflight';
 const Hand = memo(function Hand() {
   const runtime = useRuntime(),
     vision = useVision();
@@ -276,6 +277,7 @@ function Summary({
   );
 }
 export default function Exercise() {
+  const { checkPreflight } = usePracticePreflightGate();
   const runtime = useRuntime(),
     voice = useVoice(),
     location = useLocation(),
@@ -398,6 +400,7 @@ export default function Exercise() {
   ]);
   useEffect(() => () => stopVoice(), [stopVoice]);
   async function start() {
+    if (!checkPreflight()) return;
     setBusy(true);
     setError('');
     try {
