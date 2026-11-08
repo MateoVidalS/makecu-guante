@@ -45,6 +45,41 @@ real records. `make dev-mock` does not use the SQLite demo seed. The API exposes
 OpenAPI at `/docs`; storage endpoints are implemented. No seed runs implicitly in
 normal development or production. See [DEMO.md](DEMO.md) for a rehearsable flow.
 
+## Laptop webcam and upright-hand checks
+
+Use `make dev-camera` for the day-1 glove detection check with simulated motors
+and the real laptop front webcam. Keep physical servo power off for this camera
+check; fitting the actual glove to a hand still requires the recorded hardware
+gate in [HARDWARE_CHECKLIST.md](HARDWARE_CHECKLIST.md).
+
+Sit facing the laptop, raise the affected hand beside the face with the palm
+toward the screen, and open/close toward the camera. Support the elbow on the
+table with comfortable padding and keep the forearm vertical. Start about
+40–60 cm from the laptop; adjust the screen so the wrist, whole hand and all five
+fingertips stay in frame without lifting the elbow. Use diffuse front/side light,
+with no window or bright light behind the person. Check the preview for a clearly
+lit palm. Use short sets and rests if holding the hand up causes fatigue.
+
+On day 1, check Setup's five-second detection fraction while opening and closing
+with the real thin light glove and thin light threads. The front view exposes
+palm-side threads, guides and anchors. Record the percentage, occlusions,
+configured affected hand, posture and lighting in the hardware checklist; repeat
+when event conditions change. Low detection needs light/framing adjustment and
+team review before a physical-camera demo.
+
+The committed camera contract uses `CameraView = 'front_upright' |
+'front_diagonal'`, with `CURRENT_CAMERA_VIEW = 'front_upright'` and optional
+`VisionSource.start({ view })`. Missing `CameraCalibration.camera_view` means
+legacy `front_diagonal`. Capture fresh open/closed/pinch references for the upright
+view instead of reusing old palm-down/diagonal calibration. The configured
+affected hand remains authoritative; selfie handedness is a cross-check.
+
+**Hardware question for the team:** the wrist module previously rested on the
+table; upright, it hangs from the forearm. Strap fit, hanging weight, thread exit
+angle and the effect of gravity on elastic return/servo pull require a recorded
+decision after empty-fixture checks, before mounting on a person. See the
+hardware checklist; software tests cannot resolve this mechanical question.
+
 ## Configuration
 
 Use `backend/.env.example` and `frontend/.env.example` as references; ignored `.env`
