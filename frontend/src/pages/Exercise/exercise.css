@@ -415,3 +415,17 @@
   height: var(--space-16);
   flex: none;
 }
+/* Expanded safety details share the height budget with the side column. */
+.shell--focus:has(#safety-banner-slot [role='alert']) .exercise-live .mx-gauge {
+  --gauge-h: var(--space-48);
+}
+.shell--focus:has(#safety-banner-slot [role='alert'])
+  .exercise-live
+  .live-details {
+  gap: var(--space-8);
+}
+.shell--focus:has(#safety-banner-slot [role='alert'])
+  .exercise-live
+  :is(.mx-gauge__status, .mx-legend--gauge, .live-panel--camera) {
+  display: none;
+}
