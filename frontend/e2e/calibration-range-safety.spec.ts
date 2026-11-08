@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { calibration as fixture } from '../src/contracts/fixtures.check';
+import { CURRENT_CAMERA_VIEW } from '../src/contracts/calibration';
 
 test('an undersized example camera range is flagged before practice sends motion', async ({
   page,
@@ -8,7 +9,13 @@ test('an undersized example camera range is flagged before practice sends motion
   // would normalize above 100% after mixing it with new servo ranges.
   await page.route('**/api/calibrations/latest', (route) =>
     route.fulfill({
-      json: { ...fixture, created_at: new Date().toISOString() },
+      // Captured in the current view, so the range check (not the old-view
+      // recapture rule) is what blocks practice.
+      json: {
+        ...fixture,
+        camera: { ...fixture.camera, camera_view: CURRENT_CAMERA_VIEW },
+        created_at: new Date().toISOString(),
+      },
     }),
   );
   let sessionsCreated = 0;
