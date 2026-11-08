@@ -37,6 +37,11 @@ def test_locked_single_use_voice_token_inline_or_context(client, sdk, monkeypatc
     )
     assert connect["input_audio_transcription"] == connect["output_audio_transcription"] == {}
     assert connect["tools"] == tools.TOOLS
+    realtime = connect["realtime_input_config"]
+    assert realtime["activity_handling"] == "NO_INTERRUPTION"
+    assert realtime["automatic_activity_detection"]["start_of_speech_sensitivity"] == (
+        "START_SENSITIVITY_LOW"
+    )
     assert "never say you will" in connect["system_instruction"]
     assert "60 words" in connect["system_instruction"]
     # Validate against the installed SDK locally; this does not make a request.
