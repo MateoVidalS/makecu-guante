@@ -86,6 +86,10 @@ export class VoiceController {
   private patientBraked = false;
   /** After an on-screen Brake, the coach stays quiet until the patient speaks. */
   private quietUntilPatient = false;
+  /** PRESENT re-prompts for the same attempt, and a rotating phrase variant (Simple voice). */
+  private presentIndex = -1;
+  private presentRepeats = 0;
+  private phraseVariant = 0;
   /** After session_done: let the coach finish its goodbye, then hang up. */
   private ending = false;
   private coachSpokeSinceEnd = false;
@@ -198,6 +202,8 @@ export class VoiceController {
     this.brakeLatched = false;
     this.patientBraked = false;
     this.quietUntilPatient = false;
+    this.presentIndex = -1;
+    this.presentRepeats = 0;
     this.ending = false;
     this.coachSpokeSinceEnd = false;
     clearTimeout(this.endTimer);
@@ -582,7 +588,29 @@ export class VoiceController {
       this.deps.local.tone('cue');
     if (event.kind === 'reached') this.deps.local.tone('reached');
     if (event.kind === 'assist_started') this.deps.local.tone('assist');
-    const cue = eventCue(event, view, this.lastAttempt);
+    let cue = eventCue(event, view, this.lastAttempt);
+    // The engine re-sends PRESENT every 8 s while it cannot see the hand. Never repeat
+    // the pose: ask once to see the hand, then stay quiet until it is visible.
+    let repeatPresent = false;
+    if (event.kind === 'phase' && event.phase === 'PRESENT') {
+      if (this.presentIndex === event.index) {
+        repeatPresent = true;
+        this.presentRepeats++;
+        cue =
+          this.presentRepeats === 1
+            ? {
+                text: "[session] Still can't see the hand for this pose. Ask once, briefly, to raise it into the camera. Do not repeat the pose.",
+                speak: true,
+              }
+            : {
+                text: '[session] Still waiting to see the hand.',
+                speak: false,
+              };
+      } else {
+        this.presentIndex = event.index;
+        this.presentRepeats = 0;
+      }
+    }
     const checkIn =
       event.kind === 'attempt_done' &&
       !event.result.interrupted &&
@@ -606,7 +634,11 @@ export class VoiceController {
     if (this.state.mode === 'simple' && !this.safetySpeaking) {
       const phrase = checkIn
         ? 'Nice work. Rate pain, then fatigue, from zero to ten.'
-        : fallbackPhrase(event);
+        : repeatPresent
+          ? this.presentRepeats === 1
+            ? "I can't see your hand yet. Raise it in front of the camera."
+            : null
+          : fallbackPhrase(event, this.phraseVariant++);
       if (phrase) {
         clearTimeout(this.fallbackTimer);
         const delay = Math.max(0, this.safetyUntil - performance.now());
