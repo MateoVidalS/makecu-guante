@@ -402,7 +402,7 @@ export const DEFAULT_EXERCISE_SETTINGS: ExerciseSettings = {
   attempt_s: 6,
   hold_s: 2,
   assist_max_s: 6,
-  rest_s: 5, // a real pause between poses
+  rest_s: 2, // about the length of the success tick; "get ready" is the guided pause
   tolerance: 0.15, // a little forgiving for a first demo
   reach_dwell_s: 0.5,
   assist_speed: 0.3,

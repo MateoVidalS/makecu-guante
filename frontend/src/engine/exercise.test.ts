@@ -431,6 +431,7 @@ it.each([[OPEN_ASSIST_PLAN], [TENDON_GLIDE_PLAN]])(
       'open',
       {
         ...DEFAULT_EXERCISE_SETTINGS,
+        help_on_request: false,
         present_s: 0,
         attempt_s: 1,
         hold_s: 0.1,
@@ -495,6 +496,7 @@ it('cannot replay a prior target if an assist times out without safe telemetry',
       [{ pose: 'open', reps: 1 }],
       {
         ...DEFAULT_EXERCISE_SETTINGS,
+        help_on_request: false,
         present_s: 0,
         attempt_s: 0.1,
         assist_max_s: 0.1,
@@ -550,7 +552,12 @@ it('preserves the motion safety property over seeded random inputs and lifecycle
       r.accept(
         r.engine.start(
           [{ pose: 'open', reps: 2 }],
-          { ...DEFAULT_EXERCISE_SETTINGS, present_s: 0, attempt_s: 0.3 },
+          {
+            ...DEFAULT_EXERCISE_SETTINGS,
+            help_on_request: false,
+            present_s: 0,
+            attempt_s: 0.3,
+          },
           calibration,
           r.world.now,
         ),

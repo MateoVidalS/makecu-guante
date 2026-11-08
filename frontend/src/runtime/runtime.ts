@@ -27,7 +27,7 @@ import {
   type FrictionCurve,
 } from '../contracts/calibration';
 import type { TherapyApi } from '../contracts/therapist';
-import type { EngineEvent } from '../contracts/engine';
+import type { EngineEvent, ExerciseSettings } from '../contracts/engine';
 import {
   GLOVE_FINGERS,
   type GloveFinger,
@@ -85,6 +85,34 @@ export interface RuntimeOptions {
 }
 
 /** One real-time loop shared by the UI, voice, simulator and hardware transports. */
+/** The ExerciseSettings contract fields, without engine-local extensions. */
+function contractSettings(settings: ExerciseSettings): ExerciseSettings {
+  const {
+    present_s,
+    attempt_s,
+    hold_s,
+    assist_max_s,
+    rest_s,
+    tolerance,
+    reach_dwell_s,
+    assist_speed,
+    plateau_s,
+    assist_enabled,
+  } = settings;
+  return {
+    present_s,
+    attempt_s,
+    hold_s,
+    assist_max_s,
+    rest_s,
+    tolerance,
+    reach_dwell_s,
+    assist_speed,
+    plateau_s,
+    assist_enabled,
+  };
+}
+
 export class RehabRuntime implements TherapyRuntime {
   readonly exerciseStore = createStore<ExerciseView>(initialExercise);
   readonly evaluationStore = createStore<EvaluationView>(initialEvaluation);
@@ -358,7 +386,9 @@ export class RehabRuntime implements TherapyRuntime {
         value: {
           mode: 'exercise',
           plan,
-          settings,
+          // Only the shared contract fields are stored; engine-local options
+          // (help_on_request, assist stagger, ...) would be rejected by the backend.
+          settings: contractSettings(settings),
           calibration_id: calibration.id,
           is_demo:
             this.sources.glove === 'sim' || this.sources.vision === 'sim',
@@ -377,6 +407,10 @@ export class RehabRuntime implements TherapyRuntime {
     skip: () => {
       if (this.mode === 'exercise')
         this.handle(this.exerciseEngine.skip(this.clock()));
+    },
+    requestHelp: () => {
+      if (this.mode === 'exercise')
+        this.handle(this.exerciseEngine.requestHelp(this.clock()));
     },
     stop: async () => {
       if (this.mode === 'exercise')
@@ -666,6 +700,7 @@ export class RehabRuntime implements TherapyRuntime {
           state.phase === 'ASSIST' ||
           state.phase === 'ASSIST_HOLD' ||
           (state.phase === 'ATTEMPT' && this.exerciseEngine.hasAssistance()),
+        helpOffered: this.exerciseEngine.helpOffered(),
       });
     } else if (this.mode)
       this.evaluationStore.setState(

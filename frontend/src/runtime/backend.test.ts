@@ -23,6 +23,12 @@ import {
   DEFAULT_EVAL_SETTINGS,
 } from '../contracts/poses';
 
+/** These runs test the help mechanics end to end; production waits for the patient to ask. */
+const AUTO_HELP_SETTINGS = {
+  ...DEFAULT_EXERCISE_SETTINGS,
+  help_on_request: false,
+} as typeof DEFAULT_EXERCISE_SETTINGS;
+
 let process: ChildProcess;
 let directory: string;
 let base: string;
@@ -133,7 +139,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     runtime.mount();
     await runtime.calibration.reload();
     world.advance(200);
-    await runtime.exercise.start(OPEN_ASSIST_PLAN, DEFAULT_EXERCISE_SETTINGS);
+    await runtime.exercise.start(OPEN_ASSIST_PLAN, AUTO_HELP_SETTINGS);
     for (
       let ms = 0;
       ms < 400_000 && runtime.exercise.view().phase !== 'DONE';
@@ -188,7 +194,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     // Exercise A1's durable queue against A3's actual validation and SQLite storage.
     await runtime.exercise.start(
       [{ pose: 'open', reps: 1 }],
-      DEFAULT_EXERCISE_SETTINGS,
+      AUTO_HELP_SETTINGS,
     );
     runtime.therapy.notePatientSpeech('Yes, please.');
     runtime.therapy.adjust(

@@ -1,10 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { calibrateSimulator, silenceCoach } from './helpers';
+import {
+  calibrateSimulator,
+  silenceCoach,
+  askForHelpWhenOffered,
+} from './helpers';
 
 test('focus-shell recovery readies each simulator and simple voice within five seconds without reload', async ({
   page,
 }, testInfo) => {
   await silenceCoach(page);
+  await askForHelpWhenOffered(page);
   await calibrateSimulator(page);
   const errors: string[] = [];
   const timings: Record<string, number> = {};
@@ -90,6 +95,7 @@ test('simulated STOP, disconnect and camera loss announce, focus and recover saf
 }) => {
   test.setTimeout(90_000);
   await silenceCoach(page);
+  await askForHelpWhenOffered(page);
   await calibrateSimulator(page);
   await page
     .getByRole('button', { name: 'Start practice', exact: true })
