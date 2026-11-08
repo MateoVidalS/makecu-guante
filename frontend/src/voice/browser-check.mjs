@@ -19,7 +19,7 @@ try {
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
   await page.goto(`${url}/exercise`);
-  await page.getByRole('complementary', { name: 'Voice coach' }).waitFor();
+  await page.locator('main').waitFor();
   // Exercise the real modules with scripted engine events; no physical device.
   await page.evaluate(async () => {
     const { mountCheck } = await import('/src/voice/check.browser.tsx');
@@ -110,8 +110,7 @@ try {
   assert.ok(timing.phraseQueued < 300);
   assert.equal(timing.context, 'running');
   await page
-    .getByRole('heading', {
-      name: 'Stopping. I felt resistance in your index.',
+    .getByText('Stopping. I felt resistance in your index.', {
       exact: true,
     })
     .waitFor();
@@ -130,6 +129,19 @@ try {
   if (process.env.CHROME === '1')
     assert.ok(timing.phraseStarted !== null && timing.phraseStarted < 300);
   timing.caption = await page.evaluate(() => window.check.voice.lastCoachLine);
+  const patientBrake = await page.evaluate(() => {
+    const check = window.check;
+    const started = performance.now();
+    check.patient('me duele');
+    return { elapsed: performance.now() - started, brakes: check.brakes() };
+  });
+  assert.equal(patientBrake.brakes, 1);
+  assert.ok(patientBrake.elapsed < 50);
+  await page
+    .getByText('Stopped. The glove has released. Tell me how you feel.', {
+      exact: true,
+    })
+    .waitFor();
   await page
     .getByRole('complementary', { name: 'Voice coach' })
     .first()
@@ -140,6 +152,7 @@ try {
         fallback,
         audio,
         timing,
+        patientBrake,
         errors,
         screenshot: '/tmp/wp8-browser-check.png',
       },

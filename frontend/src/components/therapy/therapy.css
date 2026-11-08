@@ -1,0 +1,94 @@
+.therapy-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-16);
+}
+.therapy-timeline > li {
+  display: grid;
+  grid-template-columns: calc(var(--body) * 4) minmax(0, 1fr);
+  gap: var(--space-12);
+  border-block-start: var(--control-border) solid var(--border);
+  padding-block-start: var(--space-12);
+}
+.therapy-timeline time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.therapy-timeline p,
+.therapy-audit p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.therapy-audit {
+  font-size: var(--small);
+}
+.therapy-audit pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.therapy-audit dd {
+  margin-inline-start: var(--space-16);
+}
+.therapy-live {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  border-block-start: var(--control-border) solid var(--border);
+  padding-block-start: var(--space-8);
+  min-width: 0;
+}
+.therapy-live__copy {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--small);
+}
+.therapy-live__copy p {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.feeling-scale {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(var(--control-lg), 1fr));
+  gap: var(--space-8);
+}
+.feeling-scale .ds-button {
+  padding-inline: var(--space-8);
+  font-size: var(--h2);
+}
+.feeling-help {
+  margin: 0;
+}
+.feeling-dialog .ds-dialog__title {
+  font-size: var(--h2);
+}
+@media (max-width: 1000px) {
+  .feeling-scale {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .therapy-live {
+    flex-wrap: wrap;
+  }
+  .therapy-live__copy {
+    flex-basis: 100%;
+  }
+}
+
+/* Long audits scroll within the modal; Brake remains in its fixed footer. */
+.therapy-history .ds-dialog__body {
+  max-block-size: calc(100dvh - var(--space-64));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.therapy-history .therapy-timeline {
+  overflow: auto;
+  min-block-size: 0;
+}
+
+.feeling-error {
+  margin: 0;
+  max-block-size: calc(var(--control-lg) * 2);
+  overflow: auto;
+}

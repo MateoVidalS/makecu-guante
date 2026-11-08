@@ -15,6 +15,13 @@ export function mountCheck() {
   const runtime = new ScriptedRuntime({ persist: false });
   const audio = new BrowserAudio();
   const local = new BrowserLocalVoice();
+  let patient: (text: string, finished: boolean) => void = () => {};
+  let brakes = 0;
+  const pause = runtime.exercise.pause;
+  runtime.exercise.pause = () => {
+    brakes++;
+    pause();
+  };
   let receive: (event: EngineEvent) => void = () => {};
   runtime.exercise.onEvent = (cb) => {
     receive = cb;
@@ -26,6 +33,12 @@ export function mountCheck() {
     save: async () => {},
     audio,
     local,
+    patient: {
+      start: (cb: typeof patient) => {
+        patient = cb;
+      },
+      stop: () => {},
+    },
     transport: () => new FakeTransport(),
   };
   const check = {
@@ -35,6 +48,8 @@ export function mountCheck() {
     timings: {} as Record<string, number>,
     voice: null as ReturnType<typeof useVoice> | null,
     emit: (event: EngineEvent) => receive(event),
+    patient: (text: string) => patient(text, true),
+    brakes: () => brakes,
     dispose: () => {
       root.unmount();
       runtime.dispose();
