@@ -51,9 +51,11 @@ TOOLS = [
             ),
             declaration(
                 "assist_finger_now",
-                "Request opening help on one finger now, only in ATTEMPT. Uses gentle speed and "
-                "shaped target through the runtime's existing stagger/power safety rules. "
-                "For several fingers, call once per finger the patient named.",
+                "Request opening help on one finger. In ATTEMPT it starts now; at any other "
+                "time it is set for the next opening attempt (see applies in the result). "
+                "Uses gentle speed and shaped target through the runtime's stagger/power "
+                "safety rules. For several fingers, call once per finger the patient named. "
+                "Call it before telling the patient the glove helps.",
                 {"finger": FINGER, "reason": REASON},
             ),
             declaration(

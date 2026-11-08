@@ -463,10 +463,13 @@ describe('approved therapy tools and gentleness policy', () => {
 
   it('immediate finger requests obey the stagger and three-motor cap during ATTEMPT', () => {
     const h = harness({ attempt_s: 9, assist_max_s: 6 });
-    expect(
-      h.call('assist_finger_now', { finger: 'thumb', reason: 'Help now.' })
-        .result,
-    ).toBe('rejected');
+    // Asked before the attempt: set for the next opening attempt, not refused.
+    const early = h.call('assist_finger_now', {
+      finger: 'thumb',
+      reason: 'Help now.',
+    });
+    expect(early.result).toBe('applied');
+    expect(early.applied).toMatchObject({ applies: 'next opening ATTEMPT' });
     h.until(() => h.engine.state().phase === 'ATTEMPT');
     for (const finger of GLOVE_FINGERS)
       expect(
@@ -1275,4 +1278,61 @@ it('refuses further intensity on closing poses and scales them in their existing
     POSES.full_fist.closure.index! * 0.5,
   );
   expect(shapePose(POSES.open, scales).closure.index).toBeCloseTo(0.5);
+});
+
+describe('help asked between attempts', () => {
+  const startedAt = (h: ReturnType<typeof harness>, i: number) =>
+    h.commands().findIndex((c) => c.t === 'target' && c.f[i] > 0);
+
+  it('starts on that finger alone about a second into the next opening attempt', () => {
+    const h = harness({ attempt_s: 9, assist_max_s: 6 });
+    const d = h.call('assist_finger_now', {
+      finger: 'index',
+      reason: 'Asked.',
+    });
+    expect(d.result).toBe('applied');
+    expect(h.therapy.state()).not.toBeNull();
+    h.until(() => h.engine.state().phase === 'ATTEMPT');
+    h.tick(500);
+    expect(startedAt(h, 1)).toBe(-1); // the patient tries first
+    h.until(() => startedAt(h, 1) >= 0);
+    const first = h.commands()[startedAt(h, 1)];
+    // Only the index is helped; the others keep their own low (follow) pull.
+    if (first.t !== 'target') throw new Error('expected a target');
+    expect(first.f[1]).toBeCloseTo(MAX_ASSIST_PULL);
+    expect(first.f.filter((_, i) => i !== 1).every((v) => v < 0.3)).toBe(true);
+    expect(h.engine.state().phase).toBe('ATTEMPT'); // long before the 9 s default help
+  });
+
+  it('a second request for the same finger is refused while one is waiting', () => {
+    const h = harness({ attempt_s: 9 });
+    h.call('assist_finger_now', { finger: 'ring', reason: 'Asked.' });
+    expect(
+      h.call('assist_finger_now', { finger: 'ring', reason: 'Again.' }).result,
+    ).toBe('rejected');
+  });
+
+  it('brake and undo cancel waiting help: no motion starts afterwards', () => {
+    for (const cancel of ['brake', 'undo'] as const) {
+      const h = harness({ attempt_s: 9, assist_max_s: 6 });
+      h.call('assist_finger_now', { finger: 'middle', reason: 'Asked.' });
+      if (cancel === 'brake') h.therapy.brake('Stop.', 'patient_ui');
+      else h.therapy.undo();
+      expect(h.therapy.queuedHelp()).toEqual([]);
+      if (cancel === 'undo') {
+        h.until(() => h.engine.state().phase === 'ATTEMPT');
+        for (let i = 0; i < 30; i++) h.tick(50); // 1.5 s into the attempt
+      }
+      expect(startedAt(h, 2)).toBe(-1);
+    }
+  });
+
+  it('expires after one opening attempt the finger opened alone', () => {
+    const h = harness({ attempt_s: 2 });
+    h.world.hand = [0, 0, 0, 0, 0]; // already open: nothing to help
+    h.call('assist_finger_now', { finger: 'thumb', reason: 'Asked.' });
+    h.until(() => h.engine.state().phase === 'ATTEMPT');
+    h.until(() => h.engine.state().phase !== 'ATTEMPT');
+    expect(h.therapy.queuedHelp()).toEqual([]);
+  });
 });

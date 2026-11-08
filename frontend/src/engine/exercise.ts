@@ -463,6 +463,7 @@ class Exercise implements ExerciseEngine {
         }
         break;
       case 'ATTEMPT':
+        this.startQueuedHelp();
         if (
           this.settings.assist_enabled &&
           this.assistable().some(
@@ -597,6 +598,14 @@ class Exercise implements ExerciseEngine {
 
   /** 06-session §3 entry actions: PRESENT/RELEASE/PAUSED release; ASSIST targets once. */
   private enter(phase: ExercisePhase, out: Output): void {
+    // Queued help lasts one opening attempt: if that finger opened alone, it expires
+    // rather than surprising the patient in a later pose.
+    if (this.phase === 'ATTEMPT' && phase !== 'ATTEMPT')
+      for (const finger of this.therapy.queuedHelp()) {
+        const target = this.pose.closure[finger];
+        if (target !== null && target < 0.5)
+          this.therapy.consumeQueuedHelp(finger);
+      }
     const continuingAssist =
       (this.phase === 'ASSIST' && phase === 'ASSIST_HOLD') ||
       (this.phase === 'ATTEMPT' &&
@@ -900,6 +909,23 @@ class Exercise implements ExerciseEngine {
         value > target + this.settings.tolerance
       );
     });
+  }
+  /**
+   * Help the coach set between attempts starts once the patient has had a moment (1 s, the
+   * shortest help delay) in an attempt where that finger must open. It then uses the same
+   * path as immediate help: stagger, motor cap, gentle speed and shaped target.
+   */
+  private startQueuedHelp(): void {
+    if (!this.settings.assist_enabled || !this.metrics || !this.input) return;
+    if (this.now - this.metrics.start < 1000 || !motorSafe(this.input)) return;
+    const unreached = this.assistable();
+    for (const finger of this.therapy.queuedHelp()) {
+      const i = GLOVE_FINGERS.indexOf(finger);
+      if (this.pose.closure[finger] === null || !unreached[i]) continue;
+      this.forced.add(finger);
+      this.suppressed.delete(finger);
+      this.therapy.consumeQueuedHelp(finger);
+    }
   }
   private eligible(finger: GloveFinger): boolean {
     return (
