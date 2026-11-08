@@ -45,6 +45,8 @@ The app has no separate “Therapist summary” reveal button: the stored summar
 
 ## Manifest and editor coordinates
 
+The judging chapter label reserves the top **64 composition pixels** (1920×1080 scene coordinates). V5 should keep its recording window and callouts below that band, retaining the ScreenFrame 64 px margin while zooming. The source recordings stay native; their boxes and points need no coordinate conversion. Scene starts come from `src/timeline.ts`; every event frame in this manifest remains relative to its own clip.
+
 `width`/`height` describe the **encoded recording pixels**, 3840×2160; the source CSS viewport is 1920×1080. All `box` and `point` values are in recording pixels (`getBoundingClientRect()` × 2), matching V5's zoom/callout coordinate space. Full scrollable section boxes may extend past the viewport. Fingertip points are estimates relative to the visible canvas and explicitly labeled `approximate`; they are not measured anatomical landmarks. Each phase repeats the hand, meters and fingertip anchors.
 
 `node capture/contact.mjs` rebuilds all contact sheets from the encoded MP4s; pass clip IDs to rebuild selected sheets. Opening, resistance and coach sheets sample their actual event frames so the reached state, release and Undo remain visible.
