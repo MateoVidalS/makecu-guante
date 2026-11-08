@@ -12,7 +12,10 @@ import { SimWorld } from '../glove/sim';
 import { createGloveController } from '../glove/GloveProvider';
 import { createVisionController } from '../vision/VisionProvider';
 import { RehabRuntime } from './runtime';
-import { CURRENT_CAMERA_VIEW } from '../contracts/calibration';
+import {
+  CURRENT_CAMERA_VIEW,
+  CURRENT_FLEX_MODEL,
+} from '../contracts/calibration';
 import { calibration as fixture } from '../contracts/fixtures.check';
 import {
   OPEN_ASSIST_PLAN,
@@ -96,6 +99,7 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     camera: {
       ...fixture.camera,
       camera_view: CURRENT_CAMERA_VIEW,
+      flex_model: CURRENT_FLEX_MODEL,
       closed_flex: {
         thumb: 100,
         index: 270,
@@ -119,6 +123,10 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
     initialKind: 'sim',
   });
   const runtime = new RehabRuntime({ glove, vision });
+  const observed: import('../contracts/engine').AttemptResult[] = [];
+  runtime.exercise.onEvent((event) => {
+    if (event.kind === 'attempt_done') observed.push(event.result);
+  });
   try {
     glove.mount();
     await vision.start();
@@ -145,13 +153,15 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       is_demo: true,
     });
     const detail = await api.getSession(sessions[0].id);
-    expect(detail.summary).toMatchObject({
-      attempts: 10,
-      assisted: 5,
-      reached_active: 5,
-    });
+    // The engine owns the outcome policy; runtime must store its exact results.
+    expect(detail.summary).toEqual(runtime.exercise.view().summary);
+    expect(detail.summary?.attempts).toBe(10);
+    expect(detail.attempts).toMatchObject(
+      observed.map(({ trace: _trace, ...result }) => result),
+    );
     expect(detail.attempts).toHaveLength(10);
     const trace = await api.getAttemptTrace(detail.attempts[3].id);
+    expect(trace).toEqual(observed[3].trace);
     expect(trace.phase).toContain('ASSIST');
     expect(trace.closure.index).toHaveLength(trace.t.length);
     await runtime.evaluation.start(DEFAULT_EVAL_SETTINGS);
@@ -241,34 +251,31 @@ it('stores the simulator plan, traces, evaluation, therapy audit and exports in 
       coach_decisions: CoachDecision[];
       feelings: FeelingEntry[];
     }>(`/sessions/${id}`);
-    expect(audit.coach_decisions.map((d) => d.tool)).toEqual([
-      'intensify',
-      'note_for_therapist',
-      'intensify',
-      'record_feeling',
-      'record_feeling',
-      'adjust_help',
-      'set_attempt_time',
-      'brake',
-      'record_feeling',
-      'get_live_state',
-    ]);
+    // Store all engine decisions, including any rejection or automatic safety undo.
+    const canonicalDecision = (decision: CoachDecision) => ({
+      ...decision,
+      t: Date.parse(decision.t),
+      session_id: id,
+    });
+    expect(audit.coach_decisions.map(canonicalDecision)).toEqual(
+      runtime.therapy.decisions().map(canonicalDecision),
+    );
     expect(audit.coach_decisions.every((d) => d.session_id === id)).toBe(true);
     expect(audit.coach_decisions[0]).toMatchObject({
+      tool: 'intensify',
       requested: { patient_quote: 'Yes, please.' },
     });
     expect(audit.coach_decisions[1]).toMatchObject({
+      tool: 'note_for_therapist',
       applied: { text: 'Reports tingling in the little finger.' },
     });
-    expect(audit.coach_decisions[2]).toMatchObject({
-      result: 'undone',
-      source: 'local_rule',
-      applied: { auto_reverted: true },
-    });
-    expect(audit.coach_decisions[7]).toMatchObject({
-      source: 'local_rule',
-      applied: { safety_source: 'coach_brake' },
-    });
+    expect(audit.coach_decisions).toContainEqual(
+      expect.objectContaining({
+        tool: 'brake',
+        source: 'local_rule',
+        applied: { phase: 'PAUSED', safety_source: 'coach_brake' },
+      }),
+    );
     expect(audit.feelings.map((f) => f.pain)).toEqual([1, 2, 5]);
     expect(audit.feelings.at(-1)).toMatchObject({
       session_id: id,

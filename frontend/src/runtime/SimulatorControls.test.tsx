@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { CURRENT_FLEX_MODEL } from '../contracts/calibration';
 import { PATIENT_PRESET_OPTIONS } from '../glove/sim/patient';
 import {
   RuntimeSimulatorCalibration,
@@ -57,7 +58,10 @@ it('marks the runtime simulator shortcut as opening assistance', async () => {
   expect(mocks.save).toHaveBeenCalledWith(
     expect.objectContaining({
       assist_direction: 'open',
-      camera: expect.objectContaining({ camera_view: 'front_upright' }),
+      camera: expect.objectContaining({
+        camera_view: 'front_upright',
+        flex_model: CURRENT_FLEX_MODEL,
+      }),
     }),
   );
 });

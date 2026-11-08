@@ -10,6 +10,7 @@ import '@testing-library/jest-dom/vitest';
 import { MemoryRouter } from 'react-router-dom';
 import type { GloveEvent, GloveTelemetry, Quint } from '../../contracts/glove';
 import type { VisionFrame } from '../../contracts/vision';
+import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
 import { calibration as fixture } from '../../contracts/fixtures.check';
 import { MAX_ASSIST_PULL } from '../../contracts/poses';
 import { freshDraft, saveDraft } from './draft';
@@ -112,7 +113,11 @@ beforeEach(() => {
       current: {
         ...fixture,
         assist_direction: 'open',
-        camera: { ...fixture.camera, camera_view: 'front_upright' },
+        camera: {
+          ...fixture.camera,
+          camera_view: 'front_upright',
+          flex_model: CURRENT_FLEX_MODEL,
+        },
       },
     },
     evaluation: { stop: vi.fn().mockResolvedValue(undefined) },

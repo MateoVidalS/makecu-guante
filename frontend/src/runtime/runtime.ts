@@ -623,7 +623,7 @@ export class RehabRuntime implements TherapyRuntime {
     if (!pending) return;
     const goal =
       pending.mode === 'follow'
-        ? pending.f.map((f) => Math.max(0, f - 0.05))
+        ? pending.f.map((f) => Math.max(0, f - 0.08))
         : pending.f;
     if (
       tel.md === pending.mode &&
