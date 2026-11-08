@@ -90,6 +90,7 @@ afterAll(async () => {
 });
 it('stores the simulator plan, traces, evaluation, therapy audit and exports in a real temporary SQLite backend', async () => {
   const calibration = await api.createCalibration({
+    assist_direction: 'open',
     servo: fixture.servo,
     camera: {
       ...fixture.camera,
