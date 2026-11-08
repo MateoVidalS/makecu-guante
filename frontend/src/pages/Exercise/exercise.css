@@ -410,3 +410,8 @@
     gap: var(--space-4);
   }
 }
+.exercise-live .mx-gauge__icon {
+  width: var(--space-16);
+  height: var(--space-16);
+  flex: none;
+}

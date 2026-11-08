@@ -148,3 +148,13 @@
     grid-column: 1 / -1;
   }
 }
+/* Anchor above the trigger so the open menu never blocks its own close control. */
+.coach-options {
+  position: relative;
+}
+.coach-options .coach-popover {
+  position: absolute;
+  inset: auto 0 calc(100% + var(--space-8)) auto;
+  max-block-size: calc(100dvh - var(--control-lg) * 2);
+  overflow: auto;
+}

@@ -37,7 +37,9 @@ async function frame(page: Page, state: string, width: number) {
   }
   await expect(page.getByRole('meter')).toHaveCount(5);
   if (width === 1440)
-    expect((await page.locator('.hand-view canvas').boundingBox())!.width).toBeGreaterThanOrEqual(width * 0.55);
+    expect(
+      (await page.locator('.hand-view canvas').boundingBox())!.width,
+    ).toBeGreaterThanOrEqual(width * 0.55);
   await page.screenshot({ path: `${shots}/after-${state}-${width}.png` });
 }
 for (const [width, height] of [
