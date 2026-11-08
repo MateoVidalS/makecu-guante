@@ -34,7 +34,10 @@ export const ScreenFrame: React.FC<{
   const manifest = useJson<RecordingManifest>('recordings/manifest.json');
   const real = manifest?.clips.find((item) => item.id === id);
   const clip = real ? recordingForScreen(real) : mockManifest.clips.find((item) => item.id === id);
-  if (!clip) throw new Error(`Missing recording: ${id}`);
+  if (!clip) {
+    if (!manifest) return null; // the manifest is still loading (delayRender holds the frame)
+    throw new Error(`Missing recording: ${id}`);
+  }
   const frame = clipFrameAt(clip, sceneFrame, from, real ? playback : undefined);
   const bounds = sourceRegion ? targetBox(clip, sourceRegion, frame) : { x: 0, y: 0, w: clip.width, h: clip.height };
   const wholeCard = card ? cardAt(targetBox(clip, card, frame), area) : null;

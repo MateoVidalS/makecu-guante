@@ -15,8 +15,23 @@ const ChatShot: React.FC = () => {
   const manifest = useJson<RecordingManifest>('recordings/manifest.json');
   const clip = manifest?.clips.find((item) => item.id === 'doctor-chat');
   if (clip) {
-    const card = clip.events.find((e) => e.label === 'focus:chat-panel' || e.label === 'focus:chat')?.label;
-    return <ScreenFrame clip="doctor-chat" card={card} camera={[]} />;
+    // Clip frames 100-310: the question finishes typing, sends, the tool chips run, the chart lights up, Gemini answers.
+    return (
+      <ScreenFrame
+        clip="doctor-chat"
+        from={100}
+        cursor={false}
+        camera={[
+          { at: 0, target: 'focus:chat-input', zoom: 2.0 },
+          { at: 40, target: 'focus:chat-input', zoom: 2.0 },
+          { at: 62, target: 'focus:chat-answer', zoom: 2.0 },
+          { at: 128, target: 'focus:chat-answer', zoom: 2.0 },
+          { at: 146, target: 'focus:chat-chart', zoom: 1.0 },
+          { at: 172, target: 'focus:chat-chart', zoom: 1.0 },
+          { at: 190, target: 'focus:chat-answer', zoom: 1.9 },
+        ]}
+      />
+    );
   }
   return (
     <Fill>

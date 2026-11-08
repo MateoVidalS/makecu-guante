@@ -25,3 +25,4 @@ Team footage in: team-intro, coach-talk, bench-real. Still a placeholder: sessio
   (reverted). A proper fix: in `therapy.ts`'s ATTEMPT branch, when `patientAskedForHelp()` is true, register the patient's
   request before calling `assistNow`.
 - The coach prompt names the device "the glove"; the owner prefers "memo" in anything shown publicly.
+| V1c | doctor chat recording | `…/v1c-doctor-chat` | `term_539fa893` | `MateoVidalS/v1c-doctor-chat` | #177 | merged |
