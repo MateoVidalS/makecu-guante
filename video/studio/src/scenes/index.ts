@@ -1,5 +1,6 @@
 import type React from 'react';
 import type { SceneId } from '../timeline';
+import { Build } from './Build';
 import { Close } from './Close';
 import { Coach } from './Coach';
 import { Doctor } from './Doctor';
@@ -19,6 +20,7 @@ export const SCENE_COMPONENTS: Record<SceneId, React.FC> = {
   session: Session,
   coach: Coach,
   doctor: Doctor,
+  build: Build,
   underHood: UnderHood,
   next: Next,
   close: Close,
