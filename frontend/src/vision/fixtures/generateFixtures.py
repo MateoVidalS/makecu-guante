@@ -1,4 +1,4 @@
-"""Synthetic palm-down hand model, NOT real glove/webcam validation.
+"""Synthetic upright and legacy palm-down hands, NOT real glove/webcam validation.
 
 Run from the repository root. Writes only this owned fixture directory; the
 legacy shared contract fixtures remain frozen. Distances are metres. The camera
@@ -74,35 +74,38 @@ def model(name, angles, thumb_angles):
     return points
 
 
-target = [0, 0.065, 0]
-position = add(target, scale(unit([-0.55, 0.65, -0.52]), 0.36))
-forward = unit(add(target, scale(position, -1)))
-right = unit(cross(forward, [0, 0, -1]))
-up = cross(right, forward)
-for name, (angles, thumb_angles) in POSES.items():
-    frames = []
-    for i in range(30):
-        rotation = 0.025 * math.sin(i * 0.4)
-        c, s = math.cos(rotation), math.sin(rotation)
-        points = [[c * x - s * y + i * 0.00002, s * x + c * y, z] for x, y, z in model(name, angles, thumb_angles)]
-        world, image = [], []
-        wrist_depth = dot(add(points[0], scale(position, -1)), forward)
-        for p in points:
-            world.append([round(dot(p, right), 8), round(-dot(p, up), 8), round(dot(p, forward), 8)])
-            offset = add(p, scale(position, -1))
-            depth = dot(offset, forward)
-            image.append([
-                round(0.5 + 480 * dot(offset, right) / depth / 640, 8),
-                round(0.5 - 480 * dot(offset, up) / depth / 480, 8),
-                round((depth - wrist_depth) * 480 / wrist_depth / 640, 8),
-            ])
-        frames.append({"t": round(i * 1000 / 30, 5), "worldLandmarks": world, "landmarks": image})
-    fixture = {
-        "source": "synthetic forward-kinematic model; NOT real webcam or glove recordings",
-        "generator": "frontend/src/vision/fixtures/generateFixtures.py",
-        "pose": name, "affectedHand": "right", "score": 0.95, "fps": 30,
-        "posture": "palm-down; wrist fixed at table edge; fingers close down into free space",
-        "camera": {"view": "front diagonal, thumb side, above hand", "distanceCm": 36},
-        "frames": frames,
-    }
-    (OUTPUT / f"palm-down_{name}.json").write_text(json.dumps(fixture, separators=(",", ":")) + "\n")
+for view in ("front_diagonal", "front_upright"):
+    target = [0, 0.065, 0]
+    upright = view == "front_upright"
+    position = add(target, [0, 0, 0.5] if upright else scale(unit([-0.55, 0.65, -0.52]), 0.36))
+    forward = unit(add(target, scale(position, -1)))
+    right = unit(cross(forward, [0, 1, 0] if upright else [0, 0, -1]))
+    up = cross(right, forward)
+    for name, (angles, thumb_angles) in POSES.items():
+        frames = []
+        for i in range(30):
+            rotation = 0.025 * math.sin(i * 0.4)
+            c, s = math.cos(rotation), math.sin(rotation)
+            points = [[c * x - s * y + i * 0.00002, s * x + c * y, z] for x, y, z in model(name, angles, thumb_angles)]
+            world, image = [], []
+            wrist_depth = dot(add(points[0], scale(position, -1)), forward)
+            for p in points:
+                world.append([round(dot(p, right), 8), round(-dot(p, up), 8), round(dot(p, forward), 8)])
+                offset = add(p, scale(position, -1))
+                depth = dot(offset, forward)
+                image.append([
+                    round(0.5 + 480 * dot(offset, right) / depth / 640, 8),
+                    round(0.5 - 480 * dot(offset, up) / depth / 480, 8),
+                    round((depth - wrist_depth) * 480 / wrist_depth / 640, 8),
+                ])
+            frames.append({"t": round(i * 1000 / 30, 5), "worldLandmarks": world, "landmarks": image})
+        fixture = {
+            "source": "synthetic forward-kinematic model; NOT real webcam or glove recordings",
+            "generator": "frontend/src/vision/fixtures/generateFixtures.py",
+            "pose": name, "affectedHand": "right", "score": 0.95, "fps": 30,
+            "posture": "upright; palm to laptop webcam; elbow supported; fingers curl toward lens" if upright else "palm-down; wrist fixed at table edge; fingers close down into free space",
+            "camera": {"view": "front upright, palm to lens, no rotation" if upright else "front diagonal, thumb side, above hand", "distanceCm": 50 if upright else 36},
+            "frames": frames,
+        }
+        prefix = "front_upright" if upright else "palm-down"
+        (OUTPUT / f"{prefix}_{name}.json").write_text(json.dumps(fixture, separators=(",", ":")) + "\n")

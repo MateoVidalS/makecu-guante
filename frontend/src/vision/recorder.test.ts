@@ -47,7 +47,7 @@ describe('opt-in real landmark recording', () => {
       durationMs: 30000,
     });
     expect(recording.source).toContain('not synthetic');
-    expect(recording.requestedSetup).toContain('palm down');
+    expect(recording.requestedSetup).toContain('palm facing the laptop screen');
     expect(recording.frames).toHaveLength(2);
     expect(recording.frames[0].result.landmarks[0][0].x).toBe(0.2);
     expect(recording.frames[1].result.landmarks).toEqual([]);
