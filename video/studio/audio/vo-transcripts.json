@@ -1,0 +1,416 @@
+[
+  {
+    "id": "problem-1",
+    "expected": "After a stroke, many people can still close their hand.",
+    "recognized": "After a stroke, many people can still close their hand.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 0.238792",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 0.289083 | silence_duration: 0.0502917",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 0.580646",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 0.624833 | silence_duration: 0.0441875",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 0.855792",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 0.947083 | silence_duration: 0.0912917",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 1.024146",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 1.096896 | silence_duration: 0.07275",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 1.402229",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 1.453125 | silence_duration: 0.0508958",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 1.577646",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 1.618792 | silence_duration: 0.0411458",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 1.7265",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 1.789854 | silence_duration: 0.0633542",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 2.084958",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 2.138187 | silence_duration: 0.0532292",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 2.329708",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 2.387021 | silence_duration: 0.0573125",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_start: 2.816771",
+      "[Parsed_silencedetect_0 @ 0xa3c8089c0] silence_end: 2.857479 | silence_duration: 0.0407083"
+    ]
+  },
+  {
+    "id": "problem-2",
+    "expected": "Opening it is the hard part.",
+    "recognized": "Opening it is the hard part.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_start: 0.138063",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_end: 0.209021 | silence_duration: 0.0709583",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_start: 0.588458",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_end: 0.65375 | silence_duration: 0.0652917",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_start: 0.653896",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_end: 0.721708 | silence_duration: 0.0678125",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_start: 1.252",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_end: 1.321375 | silence_duration: 0.069375",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_start: 1.501542",
+      "[Parsed_silencedetect_0 @ 0x8c8c0d080] silence_end: 1.5565 | silence_duration: 0.0549583"
+    ]
+  },
+  {
+    "id": "problem-3",
+    "expected": "And most practice happens at home, alone.",
+    "recognized": "and most practice happens at home, alone.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x93c8249c0] silence_start: 0.533042",
+      "[Parsed_silencedetect_0 @ 0x93c8249c0] silence_end: 0.597396 | silence_duration: 0.0643542",
+      "[Parsed_silencedetect_0 @ 0x93c8249c0] silence_start: 0.763",
+      "[Parsed_silencedetect_0 @ 0x93c8249c0] silence_end: 0.822042 | silence_duration: 0.0590417",
+      "[Parsed_silencedetect_0 @ 0x93c8249c0] silence_start: 1.103312",
+      "[Parsed_silencedetect_0 @ 0x93c8249c0] silence_end: 1.159167 | silence_duration: 0.0558542",
+      "[Parsed_silencedetect_0 @ 0x93c8249c0] silence_start: 1.793729",
+      "[Parsed_silencedetect_0 @ 0x93c8249c0] silence_end: 2.133958 | silence_duration: 0.340229"
+    ]
+  },
+  {
+    "id": "reveal-1",
+    "expected": "This is memo.",
+    "recognized": "This is Memo.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x94ec509c0] silence_start: 0.838542",
+      "[Parsed_silencedetect_0 @ 0x94ec509c0] silence_end: 0.883958 | silence_duration: 0.0454167"
+    ]
+  },
+  {
+    "id": "reveal-2",
+    "expected": "A soft tendon glove, a webcam, and a voice coach.",
+    "recognized": "a soft tendon glove, a webcam, and a voice coach.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_start: 0.504292",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_end: 0.581688 | silence_duration: 0.0773958",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_start: 1.403833",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_end: 1.770437 | silence_duration: 0.366604",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_start: 2.0165",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_end: 2.061875 | silence_duration: 0.045375",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_start: 2.068687",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_end: 2.120875 | silence_duration: 0.0521875",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_start: 2.411896",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_end: 2.769062 | silence_duration: 0.357167",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_start: 3.119479",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_end: 3.167417 | silence_duration: 0.0479375",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_start: 3.303854",
+      "[Parsed_silencedetect_0 @ 0xbd0c0d080] silence_end: 3.371687 | silence_duration: 0.0678333"
+    ]
+  },
+  {
+    "id": "reveal-3",
+    "expected": "It watches. It coaches. It helps you open.",
+    "recognized": "It watches, it coaches, it helps you open.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_start: 0.386771",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_end: 0.437208 | silence_duration: 0.0504375",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_start: 0.862979",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_end: 1.11725 | silence_duration: 0.254271",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_start: 1.177417",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_end: 1.267229 | silence_duration: 0.0898125",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_start: 1.43525",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_end: 1.484917 | silence_duration: 0.0496667",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_start: 1.787396",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_end: 2.350125 | silence_duration: 0.562729",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_start: 2.650208",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_end: 2.723854 | silence_duration: 0.0736458",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_start: 3.001417",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_end: 3.132979 | silence_duration: 0.131562",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_start: 3.237271",
+      "[Parsed_silencedetect_0 @ 0x856c0d080] silence_end: 3.31875 | silence_duration: 0.0814792"
+    ]
+  },
+  {
+    "id": "session-1",
+    "expected": "memo shows the goal. You try first.",
+    "recognized": "Memo shows the goal. You try first.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_start: 0.619146",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_end: 0.670792 | silence_duration: 0.0516458",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_start: 1.753521",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_end: 1.834458 | silence_duration: 0.0809375",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_start: 1.834854",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_end: 2.458167 | silence_duration: 0.623312",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_start: 2.617958",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_end: 2.669167 | silence_duration: 0.0512083",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_start: 3.180312",
+      "[Parsed_silencedetect_0 @ 0x7f282c9c0] silence_end: 3.250125 | silence_duration: 0.0698125"
+    ]
+  },
+  {
+    "id": "session-2",
+    "expected": "The camera measures how far each finger opens, on its own.",
+    "recognized": "The camera measures how far each finger opens on its own.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x97ec449c0] silence_start: 0.107062",
+      "[Parsed_silencedetect_0 @ 0x97ec449c0] silence_end: 0.14925 | silence_duration: 0.0421875",
+      "[Parsed_silencedetect_0 @ 0x97ec449c0] silence_start: 2.069958",
+      "[Parsed_silencedetect_0 @ 0x97ec449c0] silence_end: 2.128563 | silence_duration: 0.0586042",
+      "[Parsed_silencedetect_0 @ 0x97ec449c0] silence_start: 2.481771",
+      "[Parsed_silencedetect_0 @ 0x97ec449c0] silence_end: 2.622042 | silence_duration: 0.140271"
+    ]
+  },
+  {
+    "id": "session-3",
+    "expected": "When a finger can't get there, the glove helps. Only with the rest.",
+    "recognized": "When a finger can't get there, the glove helps, only with the rest.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_start: 0.545083",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_end: 0.595229 | silence_duration: 0.0501458",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_start: 0.955792",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_end: 1.082354 | silence_duration: 0.126562",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_start: 1.378646",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_end: 1.573479 | silence_duration: 0.194833",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_start: 2.076479",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_end: 2.145938 | silence_duration: 0.0694583",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_start: 2.284813",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_end: 2.723292 | silence_duration: 0.438479",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_start: 3.117958",
+      "[Parsed_silencedetect_0 @ 0x7c10489c0] silence_end: 3.227187 | silence_duration: 0.109229"
+    ]
+  },
+  {
+    "id": "session-4",
+    "expected": "Blue is you. Orange is the glove. Green means you made it.",
+    "recognized": "Blue is you. Orange is the glove. Green means you made it.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x73b4449c0] silence_start: 0.782229",
+      "[Parsed_silencedetect_0 @ 0x73b4449c0] silence_end: 1.341583 | silence_duration: 0.559354",
+      "[Parsed_silencedetect_0 @ 0x73b4449c0] silence_start: 2.165687",
+      "[Parsed_silencedetect_0 @ 0x73b4449c0] silence_end: 2.829 | silence_duration: 0.663312",
+      "[Parsed_silencedetect_0 @ 0x73b4449c0] silence_start: 3.777146",
+      "[Parsed_silencedetect_0 @ 0x73b4449c0] silence_end: 3.844 | silence_duration: 0.0668542"
+    ]
+  },
+  {
+    "id": "session-5",
+    "expected": "If a finger resists\u2026",
+    "recognized": "if a finger resists.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xa1cc0d080] silence_start: 0.0301042",
+      "[Parsed_silencedetect_0 @ 0xa1cc0d080] silence_end: 0.163667 | silence_duration: 0.133563",
+      "[Parsed_silencedetect_0 @ 0xa1cc0d080] silence_start: 1.371583",
+      "[Parsed_silencedetect_0 @ 0xa1cc0d080] silence_end: 1.447125 | silence_duration: 0.0755417"
+    ]
+  },
+  {
+    "id": "session-coach",
+    "expected": "I feel resistance opening your index, let's stop here.",
+    "recognized": "I feel resistance opening your index. Let's stop here.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xcb2c0d080] silence_start: 0.717958",
+      "[Parsed_silencedetect_0 @ 0xcb2c0d080] silence_end: 0.758646 | silence_duration: 0.0406875",
+      "[Parsed_silencedetect_0 @ 0xcb2c0d080] silence_start: 1.738312",
+      "[Parsed_silencedetect_0 @ 0xcb2c0d080] silence_end: 1.803917 | silence_duration: 0.0656042",
+      "[Parsed_silencedetect_0 @ 0xcb2c0d080] silence_start: 1.970896",
+      "[Parsed_silencedetect_0 @ 0xcb2c0d080] silence_end: 2.242208 | silence_duration: 0.271313"
+    ]
+  },
+  {
+    "id": "session-6",
+    "expected": "the glove lets go. Safety runs on the board, not in the browser.",
+    "recognized": "The glove lets go. Safety runs on the board, not in the browser.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_start: 0.0312083",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_end: 0.0886458 | silence_duration: 0.0574375",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_start: 0.593146",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_end: 0.643937 | silence_duration: 0.0507917",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_start: 0.821187",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_end: 1.767104 | silence_duration: 0.945917",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_start: 3.026417",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_end: 3.293438 | silence_duration: 0.267021",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_start: 3.294542",
+      "[Parsed_silencedetect_0 @ 0xbaac509c0] silence_end: 3.348604 | silence_duration: 0.0540625"
+    ]
+  },
+  {
+    "id": "coach-1",
+    "expected": "The coach runs on Gemini Live. It names the finger and adjusts the session.",
+    "recognized": "The coach runs on Gemini Live. It names the finger and adjusts the session.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xaa743c9c0] silence_start: 0.131562",
+      "[Parsed_silencedetect_0 @ 0xaa743c9c0] silence_end: 0.198271 | silence_duration: 0.0667083",
+      "[Parsed_silencedetect_0 @ 0xaa743c9c0] silence_start: 1.729625",
+      "[Parsed_silencedetect_0 @ 0xaa743c9c0] silence_end: 1.879625 | silence_duration: 0.15",
+      "[Parsed_silencedetect_0 @ 0xaa743c9c0] silence_start: 2.818396",
+      "[Parsed_silencedetect_0 @ 0xaa743c9c0] silence_end: 2.968396 | silence_duration: 0.15",
+      "[Parsed_silencedetect_0 @ 0xaa743c9c0] silence_start: 3.386187",
+      "[Parsed_silencedetect_0 @ 0xaa743c9c0] silence_end: 3.433187 | silence_duration: 0.047"
+    ]
+  },
+  {
+    "id": "coach-2",
+    "expected": "It never moves the motors itself.",
+    "recognized": "it never moves the motors itself.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x716c0d080] silence_start: 0.138708",
+      "[Parsed_silencedetect_0 @ 0x716c0d080] silence_end: 0.206146 | silence_duration: 0.0674375",
+      "[Parsed_silencedetect_0 @ 0x716c0d080] silence_start: 1.271833",
+      "[Parsed_silencedetect_0 @ 0x716c0d080] silence_end: 1.333646 | silence_duration: 0.0618125",
+      "[Parsed_silencedetect_0 @ 0x716c0d080] silence_start: 1.491625",
+      "[Parsed_silencedetect_0 @ 0x716c0d080] silence_end: 1.573521 | silence_duration: 0.0818958",
+      "[Parsed_silencedetect_0 @ 0x716c0d080] silence_start: 1.578917",
+      "[Parsed_silencedetect_0 @ 0x716c0d080] silence_end: 1.619896 | silence_duration: 0.0409792"
+    ]
+  },
+  {
+    "id": "doctor-1",
+    "expected": "Every attempt is saved.",
+    "recognized": "Every attempt is saved.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xab6c489c0] silence_start: 0.385229",
+      "[Parsed_silencedetect_0 @ 0xab6c489c0] silence_end: 0.425833 | silence_duration: 0.0406042",
+      "[Parsed_silencedetect_0 @ 0xab6c489c0] silence_start: 1.116458",
+      "[Parsed_silencedetect_0 @ 0xab6c489c0] silence_end: 1.166083 | silence_duration: 0.049625"
+    ]
+  },
+  {
+    "id": "doctor-2",
+    "expected": "Therapists see every finger, on its own and with help, over weeks.",
+    "recognized": "Help therapists see every finger, on its own and with help, over weeks.",
+    "matches": true,
+    "contextReview": {
+      "note": "Isolated ASR inserted a leading word; whole-take ASR matches exactly. The edit contains the target words and no adjacent spoken words.",
+      "source": "audio/cache/scene-doctor.wav",
+      "firstWordStart": 2.18,
+      "lastWordEnd": 5.78,
+      "cutStart": 1.9644,
+      "cutEnd": 5.9931
+    },
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 0.0327083",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 0.0890625 | silence_duration: 0.0563542",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 0.298604",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 0.353292 | silence_duration: 0.0546875",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 0.867708",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 0.955792 | silence_duration: 0.0880833",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 1.605896",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 1.876167 | silence_duration: 0.270271",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 1.87625",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 1.928604 | silence_duration: 0.0523542",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 2.519104",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 2.562771 | silence_duration: 0.0436667",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 3.095479",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 3.166396 | silence_duration: 0.0709167",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 3.213042",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 3.357979 | silence_duration: 0.144937",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_start: 3.743104",
+      "[Parsed_silencedetect_0 @ 0xa6b0489c0] silence_end: 3.834958 | silence_duration: 0.0918542"
+    ]
+  },
+  {
+    "id": "doctor-3",
+    "expected": "They can replay any attempt,",
+    "recognized": "they can replay any attempt.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xa02c449c0] silence_start: 0.348458",
+      "[Parsed_silencedetect_0 @ 0xa02c449c0] silence_end: 0.407042 | silence_duration: 0.0585833",
+      "[Parsed_silencedetect_0 @ 0xa02c449c0] silence_start: 0.638292",
+      "[Parsed_silencedetect_0 @ 0xa02c449c0] silence_end: 0.684438 | silence_duration: 0.0461458"
+    ]
+  },
+  {
+    "id": "doctor-4",
+    "expected": "and get a summary from Gemini in one click.",
+    "recognized": "and get a summary from Gemini in one click.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0x7b0c509c0] silence_start: 0.0745625",
+      "[Parsed_silencedetect_0 @ 0x7b0c509c0] silence_end: 0.139958 | silence_duration: 0.0653958",
+      "[Parsed_silencedetect_0 @ 0x7b0c509c0] silence_start: 0.261625",
+      "[Parsed_silencedetect_0 @ 0x7b0c509c0] silence_end: 0.465312 | silence_duration: 0.203687",
+      "[Parsed_silencedetect_0 @ 0x7b0c509c0] silence_start: 1.853229",
+      "[Parsed_silencedetect_0 @ 0x7b0c509c0] silence_end: 1.982812 | silence_duration: 0.129583",
+      "[Parsed_silencedetect_0 @ 0x7b0c509c0] silence_start: 2.572958",
+      "[Parsed_silencedetect_0 @ 0x7b0c509c0] silence_end: 2.647187 | silence_duration: 0.0742292"
+    ]
+  },
+  {
+    "id": "doctor-5",
+    "expected": "Honest numbers for the people who guide you.",
+    "recognized": "honest numbers for the people who guide you.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xaa68149c0] silence_start: 0.862187",
+      "[Parsed_silencedetect_0 @ 0xaa68149c0] silence_end: 0.923833 | silence_duration: 0.0616458",
+      "[Parsed_silencedetect_0 @ 0xaa68149c0] silence_start: 1.207229",
+      "[Parsed_silencedetect_0 @ 0xaa68149c0] silence_end: 1.277813 | silence_duration: 0.0705833"
+    ]
+  },
+  {
+    "id": "build-1",
+    "expected": "Five micro servos wind thin threads over the back of each finger. A current sensor feels every pull.",
+    "recognized": "Five micro servos wind thin threads over the back of each finger. A current sensor feels every pull.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 0.696333",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 0.762042 | silence_duration: 0.0657083",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 1.491354",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 1.561187 | silence_duration: 0.0698333",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 1.908479",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 2.079458 | silence_duration: 0.170979",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 3.262458",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 3.326312 | silence_duration: 0.0638542",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 3.734229",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 3.776937 | silence_duration: 0.0427083",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 3.866896",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 3.908167 | silence_duration: 0.0412708",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 4.40125",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 4.853667 | silence_duration: 0.452417",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 4.892208",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 4.952333 | silence_duration: 0.060125",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 6.135375",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 6.246187 | silence_duration: 0.110812",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_start: 6.652625",
+      "[Parsed_silencedetect_0 @ 0xa0ac189c0] silence_end: 6.693687 | silence_duration: 0.0410625"
+    ]
+  },
+  {
+    "id": "hood-1",
+    "expected": "The board decides, not the browser.",
+    "recognized": "The board decides, not the browser.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xb78c0d080] silence_start: 1.119375",
+      "[Parsed_silencedetect_0 @ 0xb78c0d080] silence_end: 1.347917 | silence_duration: 0.228542",
+      "[Parsed_silencedetect_0 @ 0xb78c0d080] silence_start: 1.575021",
+      "[Parsed_silencedetect_0 @ 0xb78c0d080] silence_end: 1.639062 | silence_duration: 0.0640417"
+    ]
+  },
+  {
+    "id": "hood-2",
+    "expected": "A current cut-off, a stop button, a watchdog, and a release that always goes slack.",
+    "recognized": "a current cutoff, a stop button, a watchdog, and a release that always goes slack.",
+    "matches": true,
+    "silenceReport": [
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 0.0843958",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 0.164208 | silence_duration: 0.0798125",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 0.465438",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 0.507292 | silence_duration: 0.0418542",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 1.110833",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 1.186729 | silence_duration: 0.0758958",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 1.518292",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 1.631729 | silence_duration: 0.113437",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 1.999812",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 2.346333 | silence_duration: 0.346521",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 3.109042",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 3.359729 | silence_duration: 0.250688",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 3.969688",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 4.014167 | silence_duration: 0.0444792",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 4.112437",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 4.221542 | silence_duration: 0.109104",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 4.622229",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 4.672021 | silence_duration: 0.0497917",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_start: 5.155812",
+      "[Parsed_silencedetect_0 @ 0xc9b4089c0] silence_end: 5.236292 | silence_duration: 0.0804792"
+    ]
+  }
+]
