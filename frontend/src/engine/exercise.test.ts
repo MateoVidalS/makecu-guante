@@ -115,6 +115,11 @@ describe('exercise phase table (06-session §3 and §6)', () => {
       current_mean_ma: null,
     });
     expect(result.time_to_position_s).toBeCloseTo(0.5);
+    expect(r.events).toContainEqual({
+      kind: 'reached',
+      assisted: false,
+      t_rel: 0.5,
+    });
     expect(result.fingers[1]).toMatchObject({
       active_max: 0.6,
       assist_needed: 0,
@@ -246,6 +251,129 @@ describe('exercise phase table (06-session §3 and §6)', () => {
   });
 });
 
+describe.each(['ATTEMPT', 'ASSIST'] as const)(
+  '%s reach dwell gaps',
+  (phase) => {
+    const prepare = () => {
+      const r = new Run('hook', { attempt_s: phase === 'ASSIST' ? 0.1 : 6 });
+      r.until('ATTEMPT');
+      const attemptAt = r.world.now;
+      r.until(phase);
+      r.world.hand = [0, 0.6, 0.6, 0.6, 0.6];
+      r.step();
+      return { r, attemptAt, dwellAt: r.world.now };
+    };
+    const hold = phase === 'ATTEMPT' ? 'HOLD' : 'ASSIST_HOLD';
+    const expectReached = (r: Run, tRel: number) => {
+      expect(r.engine.state().phase).toBe(hold);
+      expect(r.outputs.at(-1)!.commands.some((c) => c.t === 'target')).toBe(
+        false,
+      );
+      expect(r.events).toContainEqual({
+        kind: 'reached',
+        assisted: phase === 'ASSIST',
+        t_rel: tRel,
+      });
+    };
+
+    it.each([50, 199, 200])(
+      'preserves the dwell across a %i ms gap, excluding its time from progress and metrics',
+      (gap) => {
+        const { r, attemptAt, dwellAt } = prepare();
+        r.step(200);
+        r.world.detected = false;
+        expect(r.step(50).commands).toEqual([]);
+        r.world.detected = true;
+        r.step(gap);
+        r.step(249);
+        expect(r.engine.state().phase).toBe(phase);
+        r.step(1);
+        expect(r.world.now - dwellAt).toBe(500 + gap);
+        const tRel = (dwellAt - attemptAt) / 1000;
+        expectReached(r, tRel);
+        r.until('DONE');
+        expect(r.results()[0].time_to_position_s).toBe(
+          phase === 'ATTEMPT' ? tRel : null,
+        );
+      },
+    );
+
+    it.each([false, true])(
+      'resets a gap longer than 200 ms (intermediate invisible tick: %s)',
+      (intermediate) => {
+        const { r, attemptAt } = prepare();
+        r.step(400);
+        r.world.detected = false;
+        r.step(50);
+        if (intermediate) r.step(201);
+        r.world.detected = true;
+        r.step(intermediate ? 1 : 201);
+        const restartedAt = r.world.now;
+        r.step(499);
+        expect(r.engine.state().phase).toBe(phase);
+        r.step(1);
+        expectReached(r, (restartedAt - attemptAt) / 1000);
+      },
+    );
+
+    it('resets immediately on a visible unsatisfied frame, including after a short gap', () => {
+      const { r, attemptAt } = prepare();
+      r.step(400);
+      r.world.detected = false;
+      r.step(50);
+      r.world.detected = true;
+      r.world.hand[1] = 0.2;
+      r.step(100);
+      r.world.hand[1] = 0.6;
+      r.step(50);
+      const restartedAt = r.world.now;
+      r.step(499);
+      expect(r.engine.state().phase).toBe(phase);
+      r.step(1);
+      expectReached(r, (restartedAt - attemptAt) / 1000);
+    });
+
+    it.each(['missing', 'low confidence', 'stale', 'null'] as const)(
+      'cannot complete on an invisible input (%s), even at the dwell deadline',
+      (kind) => {
+        const { r, attemptAt, dwellAt } = prepare();
+        r.step(450);
+        const unseen = (input: EngineInput) => {
+          if (kind === 'missing') {
+            input.vision!.detected = false;
+            input.vision!.closure = null;
+          } else if (kind === 'low confidence') input.vision!.confidence = 0.59;
+          else if (kind === 'stale') input.vision!.t -= 301;
+          else input.vision = null;
+        };
+        for (const ms of [50, 100, 100]) {
+          expect(r.step(ms, unseen).commands).toEqual([]);
+          expect(r.engine.state().phase).toBe(phase);
+          expect(r.events.some((e) => e.kind === 'reached')).toBe(false);
+        }
+        r.step(0);
+        expectReached(r, (dwellAt - attemptAt) / 1000);
+      },
+    );
+
+    it('excludes each of multiple short gaps without moving the successful window start', () => {
+      const { r, attemptAt, dwellAt } = prepare();
+      for (let i = 0; i < 2; i++) {
+        r.step(100);
+        r.world.detected = false;
+        r.step(50);
+        r.world.detected = true;
+        r.step(150);
+      }
+      r.step(199);
+      expect(r.engine.state().phase).toBe(phase);
+      r.step(1);
+      expect(r.world.now - dwellAt).toBe(800);
+      expectReached(r, (dwellAt - attemptAt) / 1000);
+    });
+  },
+);
+
 describe('exercise safety (06-session §3)', () => {
   it('suppresses follow during low confidence ATTEMPT while its timer keeps running', () => {
     const r = new Run('hook', { attempt_s: 1 });
@@ -257,23 +385,31 @@ describe('exercise safety (06-session §3)', () => {
       ).toBe(true);
     expect(r.engine.state().phase).toBe('ASSIST');
   });
-  it('releases at 300 ms of low confidence in ASSIST and pauses at 1 s', () => {
-    const r = new Run('hook', { attempt_s: 0.1 });
-    r.until('ASSIST');
-    r.world.confidence = 0;
-    r.step();
-    const start = r.world.now;
-    for (let i = 0; i < 5; i++) expect(r.step().commands).toEqual([]);
-    expect(r.step().commands).toEqual([{ t: 'release' }]);
-    r.until('PAUSED');
-    expect(r.world.now - start).toBe(1000);
-    expect(r.events).toContainEqual({
-      kind: 'safety',
-      source: 'camera_lost',
-      finger: null,
-      ma: null,
-    });
-  });
+  it.each(['low confidence', 'missing'])(
+    'releases at 300 ms of %s in ASSIST and pauses at 1 s despite a pending dwell',
+    (kind) => {
+      const r = new Run('hook', { attempt_s: 0.1 });
+      r.until('ASSIST');
+      r.world.hand = [0, 0.6, 0.6, 0.6, 0.6];
+      r.step();
+      r.step(400);
+      if (kind === 'low confidence') r.world.confidence = 0;
+      else r.world.detected = false;
+      r.step();
+      const start = r.world.now;
+      for (let i = 0; i < 5; i++) expect(r.step().commands).toEqual([]);
+      expect(r.step().commands).toEqual([{ t: 'release' }]);
+      r.until('PAUSED');
+      expect(r.world.now - start).toBe(1000);
+      expect(r.events).toContainEqual({
+        kind: 'safety',
+        source: 'camera_lost',
+        finger: null,
+        ma: null,
+      });
+      expect(r.events.some((e) => e.kind === 'reached')).toBe(false);
+    },
+  );
   it('attributes overcurrent from the largest gap in the last 300 ms', () => {
     const r = new Run('hook', { attempt_s: 0.1 });
     r.until('ASSIST');
@@ -387,18 +523,6 @@ describe('exercise safety (06-session §3)', () => {
       expect(r.results()[0].interrupted).toBe(true);
       expect(r.engine.stop(r.world.now).events).toEqual([]);
     }
-  });
-  it('treats stale frames as unseen and resets a broken reach dwell', () => {
-    const r = new Run();
-    r.until('ATTEMPT');
-    r.world.hand = [0, 0.6, 0.6, 0.6, 0.6];
-    for (let i = 0; i < 8; i++) r.step();
-    r.step(50, (input) => {
-      input.vision!.t -= 301;
-    });
-    for (let i = 0; i < 8; i++) r.step();
-    expect(r.engine.state().phase).toBe('ATTEMPT');
-    r.until('HOLD');
   });
 });
 
