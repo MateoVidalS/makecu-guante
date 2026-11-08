@@ -20,7 +20,6 @@ import {
   VisionProvider,
 } from './VisionProvider';
 import { CameraOverlay } from './CameraOverlay';
-import { SimVision } from './SimVision';
 import { drawOverlay, handInsideGuide } from './overlay';
 import { missingFrame } from './frameProcessor';
 import { fingerMap } from './flex';
@@ -91,9 +90,7 @@ describe('vision source controller', () => {
     vi.useFakeTimers();
     let shared = false;
     function Probe() {
-      const source = useVision().source;
-      const { world } = useGlove();
-      shared = source instanceof SimVision && source.delegate === world.vision;
+      shared = useVision().source === useGlove().world.vision;
       return null;
     }
     const view = render(

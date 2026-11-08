@@ -33,7 +33,8 @@ export function createVisionController(
 ) {
   const ownedWorld = options.simSource ? null : createSimWorld();
   const rawSim = options.simSource ?? ownedWorld!.vision;
-  const sim = rawSim instanceof SimVision ? rawSim : new SimVision(rawSim);
+  const sim = rawSim;
+  const simView = rawSim instanceof SimVision ? rawSim : new SimVision(rawSim);
   const camera = options.cameraSource ?? new CameraVision();
   const initial =
     options.initialKind ??
@@ -104,7 +105,7 @@ export function createVisionController(
         listeners.forEach((cb) => cb(latest));
       });
       try {
-        await source.start(settings);
+        await (source === sim ? simView : source).start(settings);
       } catch (error) {
         if (request !== generation) return;
         store.setState({

@@ -48,19 +48,29 @@ describe('view-aware shared simulated vision', () => {
   );
   it('keeps the requested view through controller restarts', async () => {
     vi.useFakeTimers();
-    const controller = createVisionController({ initialKind: 'sim' });
+    const world = createSimWorld();
+    const start = vi.spyOn(world.vision, 'start');
+    const controller = createVisionController({
+      initialKind: 'sim',
+      simSource: world.vision,
+    });
     await controller.start({ affectedHand: 'left', view: 'front_diagonal' });
-    expect((controller.source as SimVision).cameraView()).toBe(
-      'front_diagonal',
-    );
+    expect(controller.source).toBe(world.vision);
+    expect(start).toHaveBeenLastCalledWith({
+      affectedHand: 'left',
+      view: 'front_diagonal',
+    });
     controller.stop();
     await controller.setKind('sim');
-    expect((controller.source as SimVision).cameraView()).toBe(
-      'front_diagonal',
-    );
+    expect(controller.source).toBe(world.vision);
+    expect(start).toHaveBeenLastCalledWith({
+      affectedHand: 'left',
+      view: 'front_diagonal',
+    });
     await vi.advanceTimersByTimeAsync(120);
     expect(controller.latest?.handedness).toBe('left');
     controller.stop();
+    world.stop();
     expect(vi.getTimerCount()).toBe(0);
   });
 });

@@ -58,7 +58,8 @@ engine read one timeline. The 3D hand adds frame-rate-independent damping and a
 
 `VisionProvider` uses camera by default and simulator with `VITE_SIM=1`. It obtains
 the shared simulator from the enclosing `GloveProvider`, so the simulated glove
-and camera observe the same patient through a `SimVision` adapter. For standalone use, inject `simSource`
+and camera observe the same patient. Controller `source` preserves the exact
+shared `SimWorld.vision` identity; its start calls use an internal `SimVision` adapter. For standalone use, inject `simSource`
 explicitly (the low-level controller uses the exported `createSimWorld()` factory
 and disposes its owned world). Runtime integration can pass the shared source:
 
