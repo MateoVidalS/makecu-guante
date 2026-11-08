@@ -217,7 +217,7 @@ async function record(id) {
     }
     if (id === 'doctor-history') {
       if (f < 300) await page.evaluate(y => scrollTo(0, y), scrollFrom + (scrollTo - scrollFrom) * ease((f - 60) / 240));
-      if (f === 0 || f === 390) await event(clip, page, f, 'focus', 'focus:then-now-demo-data', page.getByRole('heading', { name: 'First and latest sessions' }).locator('..'));
+      if (f === 0 || f === 270) await event(clip, page, f, 'focus', 'focus:then-now-demo-data', page.getByRole('heading', { name: 'First and latest sessions' }).locator('..'));
       // The history route exposes then/now; the Doctor report contains trend charts.
       if (f === 300) {
         await click(clip, page, f, page.getByRole('link', { name: 'Doctor view', exact: true }), 'Doctor view trends');
