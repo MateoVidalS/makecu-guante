@@ -59,6 +59,61 @@ tracks a closing pinch promptly, while the low resting cutoff and smoother
 derivative keep fingertip jitter from restarting the reach dwell. The 3D hand adds
 frame-rate-independent damping and a 1° dead-band (`hand3d/smoothing.ts`). `hand3d/jitter.test.ts` measures the result.
 
+## Glove colours
+
+MediaPipe's palm detector is trained on bare skin, so solid violet, sky blue,
+magenta and black gloves are often not detected at all. `gloveColor.ts` repaints
+pixels of the glove colour in a skin tone (keeping their shading) on a copy of the
+frame before inference. The preview video and recordings of the image are unchanged.
+
+The setting (`CameraVision.setGloveSetting`, persisted in localStorage under
+`rehab-hub.camera.glove-color`, chosen in Setup as **Glove color**) is one of:
+
+- `auto` (default): uses the raw video while the hand is tracked, exactly as before.
+  After the hand has been missing for 250 ms it tries bare → violet → sky blue →
+  magenta → black, one per frame, and keeps the first that finds the hand. While
+  tracking, it moves to the most specific colour the hand actually wears (≥ 60% of
+  skeleton points; violet before sky blue before magenta; never black), reading the
+  raw video's pixels every 15th frame for this. So a lavender glove found as sky
+  blue, or tracked on the raw image, moves to violet. If the hand found while
+  repainting is not actually that colour (under 30% of skeleton points match for
+  5 frames), it returns to the raw video.
+- `none`: never repaints. `violet`, `sky-blue`, `magenta`, `black`: always repaint
+  that colour.
+
+Colour rules and shading are tuned per colour (`TUNING` in `gloveColor.ts`):
+
+- **Violet** (lavender/periwinkle nitrile) was tuned on four rounds of real
+  laptop-webcam frames (two places, navy and black T-shirts, open/fist/side and
+  palm-down exercise poses, the hand in front of the other bare forearm). Confident
+  pixels: hue 224–268°, saturation 0.15–0.60, value ≥ 0.28; the saturation cap and
+  hue floor keep navy clothing out. Shadowed folds (hue 220–268°, saturation up to
+  0.85, value ≥ 0.15) are also repainted when within 8 px of a confident pixel, so
+  an isolated navy patch is not. Repaint: a pale skin tone at 1.0× the glove's mean brightness with a mild contrast
+  power of 1.5. Finger accuracy was tuned on the rendered-hand bench (known joint
+  angles, upright view, hand coloured like the glove): a flat repaint hid the thumb
+  against the palm (calibrated thumb range 32° vs 59° bare; the gloved left hand
+  could not be calibrated at all). Contrast 1.5 restores it (55°, thumb error 0.13 =
+  bare; left hand 91% detected, long fingers as accurate as bare) and finds more
+  hands on the real frames. Contrast 2 or edge sharpening broke calibration, and
+  darker tones lost the hand against bare skin behind it. Frames
+  detected independently (rounds 1–4): 28/30, 25/30, 56/60, 55/60 (raw: 6, 0, 2, 1).
+  In the app, rounds 3 and 4 were tracked 98–99% of the time (raw: 68% and 4%).
+  Misses were edge-on hands, hands partly out of frame or in front of the face.
+- **Black** averages the channels, smooths over a 5 px radius (at 640 px width) and
+  squares the brightness ratio, to recover faint folds from camera noise. Known
+  gap: a dark-grey glove with strong real shading can be over-contrasted (one
+  synthetic case regressed); an adaptive contrast power was prototyped but not applied.
+- **Sky blue** and **magenta** use plain brightness shading.
+
+Repainting reads the video into a canvas (about 3 ms per 640×480 frame, 5–6 ms for
+black and violet, included in `stats().inference`); `stats().glove` reports the setting and
+active colour. If the browser cannot read pixels, the raw video is used. Known
+limits: a background of the glove's colour (a blue towel with a sky blue glove, a
+black table with a black glove) becomes skin-coloured too, so use a contrasting
+background; a uniformly coloured fist that fills most of the frame may still be
+missed; and a black glove the camera clips to pure black has no folds to recover.
+
 ## Provider and overlay
 
 `VisionProvider` uses camera by default and simulator with `VITE_SIM=1`. It obtains

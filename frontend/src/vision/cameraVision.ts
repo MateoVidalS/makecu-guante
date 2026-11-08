@@ -12,8 +12,28 @@ import {
 import { FrameProcessor, missingFrame } from './frameProcessor';
 import type { LandmarkCapture } from './recorder';
 import { VideoLightingSampler, type VisionDiagnostics } from './lighting';
+import {
+  GloveColorSelector,
+  createRecolorScratch,
+  gloveCoverage,
+  recolorGlove,
+  savedGloveSetting,
+  saveGloveSetting,
+  suggestGloveColor,
+  type GloveColor,
+  type GloveSetting,
+} from './gloveColor';
 
 type Delegate = 'GPU' | 'CPU';
+/** While automatic mode tracks the raw video, read its pixels this often. */
+const GLOVE_SAMPLE_FRAMES = 15;
+type PreparedFrame = {
+  /** Repainted copy for inference, or null to use the raw video. */
+  image: ImageData | null;
+  pixels: Uint8ClampedArray;
+  width: number;
+  height: number;
+};
 export interface LatencyStats {
   p50: number | null;
   p95: number | null;
@@ -26,6 +46,8 @@ export interface CameraStats {
   frames: number;
   skipped: number;
   error: string | null;
+  /** Glove-colour setting and the colour repainted on the latest frame. */
+  glove: { setting: GloveSetting; active: GloveColor };
 }
 const percentiles = (values: number[]): LatencyStats => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -77,6 +99,13 @@ export class CameraVision implements VisionSource {
   private frames = 0;
   private skipped = 0;
   private error: string | null = null;
+  private glove = new GloveColorSelector(savedGloveSetting());
+  private recolorScratch = createRecolorScratch();
+  private canvas: HTMLCanvasElement | null = null;
+  private context: CanvasRenderingContext2D | null = null;
+  private output: ImageData | null = null;
+  /** Set when the browser cannot read video pixels; the raw video is used. */
+  private recolorUnavailable = false;
 
   static async devices(): Promise<MediaDeviceInfo[]> {
     if (!navigator.mediaDevices?.enumerateDevices) return [];
@@ -96,6 +125,60 @@ export class CameraVision implements VisionSource {
     }
     this.processor.reset();
     this.publish(missingFrame(performance.now()));
+  }
+  gloveSetting(): GloveSetting {
+    return this.glove.mode;
+  }
+  /** The colour repainted before inference on the latest frame. */
+  activeGloveColor(): GloveColor {
+    return this.recolorUnavailable ? 'none' : this.glove.current;
+  }
+  /** Persists the setting; takes effect on the next frame. */
+  setGloveSetting(setting: GloveSetting) {
+    saveGloveSetting(setting);
+    this.glove.configure(setting);
+  }
+  /**
+   * Reads the frame's pixels and, unless `color` is none, repaints glove-coloured
+   * pixels in a copy. Null (no pixels) keeps the raw video.
+   */
+  private prepare(
+    video: HTMLVideoElement,
+    color: GloveColor,
+  ): PreparedFrame | null {
+    const width = video.videoWidth,
+      height = video.videoHeight;
+    if (!width || !height) return null;
+    this.canvas ??= document.createElement('canvas');
+    if (this.canvas.width !== width) this.canvas.width = width;
+    if (this.canvas.height !== height) this.canvas.height = height;
+    this.context ??= this.canvas.getContext('2d', {
+      willReadFrequently: true,
+    });
+    if (!this.context) {
+      this.recolorUnavailable = true;
+      console.info('[vision] canvas unavailable; glove colours disabled');
+      return null;
+    }
+    try {
+      this.context.drawImage(video, 0, 0, width, height);
+      const source = this.context.getImageData(0, 0, width, height);
+      if (color === 'none')
+        return { image: null, pixels: source.data, width, height };
+      if (this.output?.width !== width || this.output.height !== height)
+        this.output = new ImageData(width, height);
+      recolorGlove(
+        source.data,
+        this.output.data,
+        width,
+        height,
+        color,
+        this.recolorScratch,
+      );
+      return { image: this.output, pixels: source.data, width, height };
+    } catch {
+      return null; // Use the raw video for this frame.
+    }
   }
   private async createLandmarker(delegate: Delegate): Promise<HandLandmarker> {
     const { FilesetResolver, HandLandmarker } =
@@ -129,6 +212,8 @@ export class CameraVision implements VisionSource {
     this.frames = 0;
     this.skipped = 0;
     this.error = null;
+    // Setup may have changed the setting while another source was active.
+    this.glove.configure(savedGloveSetting());
     let stream: MediaStream | null = null;
     let model: HandLandmarker | null = null;
     try {
@@ -251,7 +336,19 @@ export class CameraVision implements VisionSource {
     this.lastInference = now;
     try {
       const started = performance.now();
-      const result = this.landmarker.detectForVideo(this.video, started);
+      const color = this.activeGloveColor();
+      // On the raw video, automatic mode still samples pixels to notice a glove.
+      const sample =
+        color === 'none' &&
+        this.glove.mode === 'auto' &&
+        !this.recolorUnavailable &&
+        this.frames % GLOVE_SAMPLE_FRAMES === 0;
+      const prepared =
+        color !== 'none' || sample ? this.prepare(this.video, color) : null;
+      const result = this.landmarker.detectForVideo(
+        prepared?.image ?? this.video,
+        started,
+      );
       const ended = performance.now();
       if (generation !== this.generation) return;
       this.landmarkListeners.forEach((cb) => cb({ t: started, result }));
@@ -266,6 +363,28 @@ export class CameraVision implements VisionSource {
         lighting: this.lightingSampler.sample(this.video, frame.landmarks),
         handednessMismatch: this.processor.handednessMismatch,
       };
+      const hand = frame.detected ? frame.landmarks : null;
+      this.glove.update(
+        started,
+        frame.detected,
+        prepared && hand && color !== 'none'
+          ? gloveCoverage(
+              prepared.pixels,
+              prepared.width,
+              prepared.height,
+              hand,
+              color,
+            )
+          : null,
+        prepared && hand
+          ? suggestGloveColor(
+              prepared.pixels,
+              prepared.width,
+              prepared.height,
+              hand,
+            )
+          : undefined,
+      );
       this.lastResult = ended;
       this.inference.push(ended - started);
       this.latency.push(Math.max(0, performance.now() - captured));
@@ -333,6 +452,7 @@ export class CameraVision implements VisionSource {
     this.previousMediaTime = -1;
     this.lastInference = -Infinity;
     this.processor.reset();
+    this.glove.reset();
     this.publish(missingFrame(performance.now()));
   }
   setCalibration(calibration: CameraCalibration | null): void {
@@ -384,6 +504,7 @@ export class CameraVision implements VisionSource {
       frames: this.frames,
       skipped: this.skipped,
       error: this.error,
+      glove: { setting: this.glove.mode, active: this.activeGloveColor() },
     };
   }
 }
