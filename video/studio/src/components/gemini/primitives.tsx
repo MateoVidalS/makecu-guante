@@ -42,6 +42,7 @@ const iconPaths: Record<IconName, React.ReactNode> = {
 };
 
 export const Icon: React.FC<{ name: IconName; size?: number }> = ({ name, size = 48 }) => (
+  // Keep the rendered stroke at 2 px when scaling the 24-unit icon geometry.
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={c.text}
     strokeWidth={48 / size} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true">
     {iconPaths[name]}

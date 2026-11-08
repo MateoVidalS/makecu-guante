@@ -60,10 +60,11 @@ export const BoundedCall: React.FC<{ frame: number }> = ({ frame }) => {
       <Card style={{
         left: 1096 + 228 * expand, top: 400 - 64 * expand, width: 340 + 160 * expand, height: 192 + space.s32 * expand,
         border: `${frame >= 186 ? 3 : 1}px solid ${frame >= 186 ? c.brand : c.border}`,
-        padding: space.s32, overflow: 'hidden',
+        padding: space.s16 + space.s16 * expand, overflow: 'hidden',
       }}>
-        <div style={{ display: 'flex', gap: space.s24, alignItems: 'center' }}>
-          <Icon name="clamp" /><T size="h3">{COPY.gemini.flow[3]}</T>
+        <div style={{ display: 'flex', gap: space.s24 * expand, alignItems: 'center' }}>
+          <div style={{ width: 48 * expand, overflow: 'hidden', opacity: expand, flexShrink: 0 }}><Icon name="clamp" /></div>
+          <T size="h3" style={{ whiteSpace: 'nowrap' }}>{COPY.gemini.flow[3]}</T>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: space.s16, marginTop: space.s32, opacity: checked }}>
           <T size="small" w={400}>clamped · logged ·</T>
@@ -77,7 +78,7 @@ export const BoundedCall: React.FC<{ frame: number }> = ({ frame }) => {
         position: 'absolute', left: 1124 + 292 * dispatch, top: 442, padding: `${space.s16}px ${space.s24}px`,
         border: `1px solid ${c.borderStrong}`, background: c.surface2, borderRadius: radius.input,
         fontFamily: mono, fontSize: type.small, color: c.text, opacity: 1 - enter(frame, 180, 6),
-      }}>adjust_help</div>}
+      }}>{COPY.gemini.exampleCall.split('(')[0]}</div>}
       <T size="h3" style={{ position: 'absolute', left: safe.x, top: 624, opacity: enter(frame, 150) }}>
         {COPY.gemini.toolCount}
       </T>
