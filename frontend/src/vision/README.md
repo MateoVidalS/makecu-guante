@@ -136,9 +136,17 @@ repaint the whole frame (their shading uses the glove's mean brightness).
 
 **Calibration and device.** A device shifts where MediaPipe puts the joints, so
 a camera calibration only fits the device it was captured with. The frozen
-`CameraCalibration` has no device field: when Calibrate saves, the tracked
-profile is stored in localStorage (`rehab-hub.camera.calibration-device`) keyed
-to the calibration's values (`calibrationDevice.ts`). Setup and the camera step
+`CameraCalibration` has no device field. Each capture (fist, open hand, pinch)
+records the profile its seen frames were tracked with
+(`CameraVision.trackedDeviceProfile()` on every frame of the hold): a capture
+whose frames span two profiles (Automatic switched mid-hold) is refused ("The
+camera changed how it reads your hand. Try again."), and a capture whose profile
+differs from the draft's other captures clears them ("Now tracking <device>, not
+<device>. Start again with your fist."). Saving refuses mixed captures and stores
+the captures' profile, not the one tracked at save time, in localStorage
+(`rehab-hub.camera.calibration-device`) keyed to the calibration's values
+(`calibrationDevice.ts`); a saved calibration's record is carried back into the
+draft when it is reopened. Setup and the camera step
 of Calibrate then show "Calibrated with <device>. Calibrate again for <device>."
 when the device on the hand (the fixed setting, or what Automatic tracks while it
 sees the hand) differs. Calibrations saved before this, or with the simulator,

@@ -14,6 +14,7 @@ import {
   rememberCalibrationDevice,
 } from '../../vision/calibrationDevice';
 import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
+import { draftFromCalibration, saveDraft } from './draft';
 import { CAMERA_VIEW_RECAPTURE_MESSAGE } from '../../runtime/calibrationValidation';
 import {
   helperRuntime as legacyHelperRuntime,
@@ -238,11 +239,18 @@ describe('the device on the hand', () => {
     vi.spyOn(CameraVision.prototype, 'start').mockResolvedValue(undefined);
   });
   afterEach(() => vi.restoreAllMocks());
-  it('remembers the device the hand was tracked with when saving', async () => {
+  it('remembers the device the captures were taken with, not the one tracked at save time', async () => {
     vi.spyOn(CameraVision.prototype, 'trackedDeviceProfile').mockReturnValue(
-      'strap-device',
+      'bare-hand',
     );
     const runtime = helperRuntime();
+    const draft = draftFromCalibration(runtime.calibration.current!);
+    saveDraft({
+      ...draft,
+      edited: true,
+      open: { ...draft.open!, device: 'strap-device' },
+      closed: { ...draft.closed!, device: 'strap-device' },
+    });
     const save = vi
       .spyOn(runtime.calibration, 'save')
       .mockImplementation(async (value) => ({
@@ -255,6 +263,35 @@ describe('the device on the hand', () => {
     await screen.findByRole('heading', { name: 'Your range is saved' });
     const camera = save.mock.calls[0][0].camera;
     expect(calibrationDevice(camera)).toBe('strap-device');
+  });
+  it('refuses to save captures taken with different devices', async () => {
+    const runtime = helperRuntime();
+    const save = vi.spyOn(runtime.calibration, 'save');
+    const draft = draftFromCalibration(runtime.calibration.current!);
+    saveDraft({
+      ...draft,
+      edited: true,
+      open: { ...draft.open!, device: 'bare-hand' },
+      closed: { ...draft.closed!, device: 'strap-device' },
+    });
+    mountHelper(<Calibrate />, runtime);
+    fireEvent.click(screen.getByRole('button', { name: 'Save calibration' }));
+    expect(
+      await screen.findByText(
+        'Your captures used different devices. Start again with your fist.',
+      ),
+    ).toBeVisible();
+    expect(save).not.toHaveBeenCalled();
+  });
+  it("carries a saved calibration's device into the draft", () => {
+    const runtime = helperRuntime();
+    rememberCalibrationDevice(
+      runtime.calibration.current!.camera,
+      'violet-glove',
+    );
+    const draft = draftFromCalibration(runtime.calibration.current!);
+    expect(draft.open?.device).toBe('violet-glove');
+    expect(draft.closed?.device).toBe('violet-glove');
   });
   it('asks to calibrate again on the camera step when the device changed', () => {
     const runtime = helperRuntime();

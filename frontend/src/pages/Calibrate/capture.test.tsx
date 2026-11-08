@@ -13,7 +13,8 @@ import type { VisionFrame } from '../../contracts/vision';
 import { CURRENT_FLEX_MODEL } from '../../contracts/calibration';
 import { calibration as fixture } from '../../contracts/fixtures.check';
 import { MAX_ASSIST_PULL } from '../../contracts/poses';
-import { freshDraft, saveDraft } from './draft';
+import { freshDraft, loadDraft, saveDraft } from './draft';
+import type { DeviceProfileId } from '../../vision/deviceProfiles';
 import Calibrate from './index';
 
 /** Step 1 hides per-motor tuning in an "advanced" disclosure. */
@@ -52,6 +53,8 @@ vi.mock('../../runtime/calibrationValidation', async (original) => ({
 let telemetry: GloveTelemetry;
 let frame: VisionFrame;
 let frameListener: ((frame: VisionFrame) => void) | undefined;
+/** The profile the mocked camera tracks the hand with. */
+let device: DeviceProfileId;
 let eventListener: ((event: GloveEvent) => void) | undefined;
 let target: ReturnType<typeof vi.fn>;
 let release: ReturnType<typeof vi.fn>;
@@ -105,9 +108,11 @@ beforeEach(() => {
     onError: () => () => {},
     onConnection: () => () => {},
   };
+  device = 'bare-hand';
   state.vision = {
     source: {
       kind: 'camera',
+      trackedDeviceProfile: () => device,
       onFrame: (cb: typeof frameListener) => {
         frameListener = cb;
         return () => {
@@ -321,4 +326,41 @@ it('keeps a passive own-hand open capture through a short detection gap', () => 
   advanceWith(2300, (t) => (t >= 900 && t < 1000 ? missed : {}));
   expect(alertText()).toBe('');
   expect(target).not.toHaveBeenCalled();
+});
+// A camera calibration only fits the device it was captured with.
+it('records the device each capture was tracked with', () => {
+  device = 'strap-device';
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Capture my fist' }));
+  advance(2300);
+  expect(alertText()).toBe('');
+  expect(loadDraft().closed?.device).toBe('strap-device');
+});
+it('refuses a capture whose frames switch device', () => {
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Capture my fist' }));
+  advance(1000);
+  device = 'strap-device'; // Automatic switched mid-hold.
+  advance(1300);
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'The camera changed how it reads your hand',
+  );
+  // The saved fist (no device record) is still the draft's: nothing new was stored.
+  expect(loadDraft().closed?.device ?? null).toBeNull();
+});
+it('starts again from the fist when the device changed between captures', () => {
+  device = 'strap-device';
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: 'Capture my fist' }));
+  advance(2300);
+  expect(loadDraft().closed?.device).toBe('strap-device');
+  device = 'bare-hand';
+  fireEvent.click(screen.getByRole('button', { name: 'Glove opens the hand' }));
+  advance(3300);
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Now tracking bare hand, not strap device. Start again with your fist.',
+  );
+  expect(loadDraft().closed).toBeNull();
+  expect(loadDraft().open).toBeNull();
+  expect(calls.at(-1)).toBe('release');
 });

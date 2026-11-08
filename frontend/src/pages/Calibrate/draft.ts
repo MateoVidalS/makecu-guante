@@ -11,6 +11,8 @@ import {
   type ServoCalibration,
 } from '../../contracts/calibration';
 import { isCurrentCameraCalibration } from '../../vision/calibrationCompatibility';
+import { calibrationDevice } from '../../vision/calibrationDevice';
+import type { DeviceProfileId } from '../../vision/deviceProfiles';
 export const fingers: FingerId[] = [
   'thumb',
   'index',
@@ -21,6 +23,26 @@ export const fingers: FingerId[] = [
 export interface Capture {
   raw: Record<FingerId, number>;
   pinch: number;
+  /**
+   * The device profile every seen frame of this capture was tracked with
+   * (CameraVision.trackedDeviceProfile); absent when unknown (simulator, or a
+   * saved calibration without a device record).
+   */
+  device?: DeviceProfileId | null;
+}
+
+/**
+ * The one device profile the given captures were taken with: null when none is
+ * known, 'mixed' when they differ. A camera calibration only fits one device.
+ */
+export function captureDevice(
+  captures: readonly (Capture | null | undefined)[],
+): DeviceProfileId | null | 'mixed' {
+  const known = new Set(
+    captures.map((c) => c?.device).filter((d): d is DeviceProfileId => !!d),
+  );
+  if (known.size > 1) return 'mixed';
+  return known.size ? [...known][0] : null;
 }
 export interface Draft {
   sourceId?: number;
@@ -142,6 +164,7 @@ export function stableCapture(frames: VisionFrame[]): Capture {
 
 /** Saved values are a complete starting point for review or a focused redo. */
 export function draftFromCalibration(calibration: Calibration): Draft {
+  const device = calibrationDevice(calibration.camera);
   return currentCameraDraft({
     ...freshDraft(),
     cameraView: calibration.camera.camera_view,
@@ -156,10 +179,12 @@ export function draftFromCalibration(calibration: Calibration): Draft {
     open: {
       raw: { ...calibration.camera.open_flex },
       pinch: calibration.camera.pinch_open,
+      device,
     },
     closed: {
       raw: { ...calibration.camera.closed_flex },
       pinch: calibration.camera.pinch_closed,
+      device,
     },
     limit: calibration.current_limit_ma,
     friction: calibration.friction,

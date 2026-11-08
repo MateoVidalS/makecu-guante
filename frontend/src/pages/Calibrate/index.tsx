@@ -52,6 +52,8 @@ import {
   freshDraft,
   stableCapture,
   validRange,
+  captureDevice,
+  type Capture,
   type Draft,
 } from './draft';
 import {
@@ -60,8 +62,12 @@ import {
   RelaxedHandSafetyStrip,
   TestModeCard,
 } from '../../components/calibration';
-import { CameraVision } from '../../vision/cameraVision';
+import type { CameraVision } from '../../vision/cameraVision';
 import { rememberCalibrationDevice } from '../../vision/calibrationDevice';
+import {
+  deviceProfile,
+  type DeviceProfileId,
+} from '../../vision/deviceProfiles';
 import {
   useCalibrationStatus,
   useSavedCalibration,
@@ -85,6 +91,14 @@ function draftCamera(draft: Draft): CameraCalibration | null {
     // Pinch practice is postponed; retain a valid contract value without another capture.
     pinch_closed: Math.min(draft.closed.pinch, draft.open.pinch * 0.5),
   };
+}
+
+/** The profile the camera tracked the hand with on its latest frame (camera sources only). */
+function trackedDevice(source: unknown): DeviceProfileId | null {
+  const camera = source as Partial<Pick<CameraVision, 'trackedDeviceProfile'>>;
+  return typeof camera.trackedDeviceProfile === 'function'
+    ? camera.trackedDeviceProfile()
+    : null;
 }
 
 export default function Calibrate() {
@@ -323,6 +337,9 @@ export default function Calibrate() {
     // short detection gaps, as the hold-still rule does; a longer loss cancels.
     let handSeen = true;
     let lastSeenAt = started;
+    // The device profile of every seen frame of the hold: a capture mixing
+    // profiles (Automatic switched mid-hold) is refused.
+    const devices = new Set<DeviceProfileId>();
     const unsubscribe = vision.source.onFrame((frame) => {
       lastFrameAt = performance.now();
       handSeen = frame.detected && frame.confidence >= VISION_LOW_CONFIDENCE;
@@ -334,6 +351,8 @@ export default function Calibrate() {
       }
       if (holdStarted === null) return;
       frames.push(frame);
+      const device = handSeen ? trackedDevice(vision.source) : null;
+      if (device) devices.add(device);
       setProgress(Math.min(100, (performance.now() - holdStarted) / 20));
     });
     const cleanup = () => {
@@ -399,9 +418,31 @@ export default function Calibrate() {
       if (now - holdStarted < 2100) return;
       cleanup();
       try {
-        const value = stableCapture(frames);
+        const value: Capture = stableCapture(frames);
         if (frames.some((f) => f.detected && f.handedness !== draft.hand))
           throw new Error('Show the selected hand and try again.');
+        if (devices.size > 1)
+          throw new Error(
+            'The camera changed how it reads your hand. Try again.',
+          );
+        value.device = devices.size ? [...devices][0] : null;
+        // Every capture of one calibration must use the same device profile.
+        const earlier = captureDevice(
+          kind === 'closed'
+            ? [draft.pinch]
+            : kind === 'open'
+              ? [draft.closed, draft.pinch]
+              : [draft.closed, draft.open],
+        );
+        if (value.device && earlier && earlier !== value.device) {
+          update({ closed: null, open: null, pinch: null });
+          setError(
+            earlier === 'mixed'
+              ? 'Start again with your fist.'
+              : `Now tracking ${deviceProfile(value.device).label.toLowerCase()}, not ${deviceProfile(earlier).label.toLowerCase()}. Start again with your fist.`,
+          );
+          return;
+        }
         if (
           kind === 'open' &&
           draft.closed &&
@@ -431,11 +472,12 @@ export default function Calibrate() {
     )
       throw new Error('Complete each calibration step before saving.');
     const camera = draftCamera(draft)!;
-    // The device the hand was tracked with (the captures needed a tracked hand).
-    const device =
-      vision.source instanceof CameraVision
-        ? vision.source.trackedDeviceProfile()
-        : null;
+    // The device the captures were taken with (not whatever is tracked now).
+    const device = captureDevice([draft.closed, draft.open, draft.pinch]);
+    if (device === 'mixed')
+      throw new Error(
+        'Your captures used different devices. Start again with your fist.',
+      );
     const saved = await runtime.calibration.save({
       assist_direction: CURRENT_ASSIST_DIRECTION,
       servo: GLOVE_FINGERS.map((f) => draft.servo[f] as ServoCalibration),
