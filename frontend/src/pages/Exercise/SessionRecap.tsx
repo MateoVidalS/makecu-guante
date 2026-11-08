@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AttemptResult, SessionSummary } from '../../contracts/engine';
 import { GLOVE_FINGERS, pullFromClosure } from '../../contracts/glove';
-import { POSES } from '../../contracts/poses';
+import { POSES, opensFinger } from '../../contracts/poses';
 import { Card, Heading } from '../../design-system';
 import { useRuntime } from '../../runtime';
 import {
@@ -58,13 +58,16 @@ export function SessionRecap({
   attempts: AttemptResult[];
   mirrored?: boolean;
 }) {
-  const openAttempts = attempts.filter((a) => a.pose === 'open');
+  // Every pose where this finger had to open counts: the open hand, and the raised
+  // fingers of finger-by-finger poses (thumb in Thumbs up, index in Point, ...).
   const opening = GLOVE_FINGERS.map((finger) => {
-    const readings = openAttempts.flatMap((a) =>
-      a.fingers.filter(
-        (f) => f.finger === finger && f.scored && f.active_max != null,
-      ),
-    );
+    const readings = attempts
+      .filter((a) => POSES[a.pose] && opensFinger(POSES[a.pose], finger))
+      .flatMap((a) =>
+        a.fingers.filter(
+          (f) => f.finger === finger && f.scored && f.active_max != null,
+        ),
+      );
     const mean = (values: number[]) =>
       values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
     return {
@@ -100,7 +103,7 @@ export function SessionRecap({
       </header>
       <Card
         title="Your active opening today"
-        description="How far each finger opened on its own in open poses."
+        description="How far each finger opened on its own, in every pose where it had to open."
       >
         <ThenNow deltas={deltas} mirrored={mirrored} size={128} />
         {!summary.previous && (

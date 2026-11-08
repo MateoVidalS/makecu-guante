@@ -20,7 +20,7 @@ export function eventCue(
     case 'phase':
       if (event.phase === 'PRESENT')
         return {
-          text: `[session] PRESENT: ${event.pose}, rep ${event.rep}. Attempt ${event.index + 1} of ${view.total}. Instruction: ${poseInstruction(event.pose)}`,
+          text: `[session] PRESENT: ${event.pose}, rep ${event.rep}. Attempt ${event.index + 1} of ${view.total}. Pose: ${poseInstruction(event.pose)} Invite it in your own words, differently from before.${event.index === 0 ? ' First pose: if natural, mention once that the glove only helps fingers open; for fists they work alone.' : ''}`,
           speak: true,
           present: true,
         };
@@ -65,7 +65,7 @@ export function eventCue(
       };
     case 'session_done':
       return {
-        text: `[session] Session complete. Summary: ${summaryContext(event.summary)}`,
+        text: `[session] Session complete. Summary: ${summaryContext(event.summary)} In one or two short sentences, recap and say goodbye. The session is over: do not start new exercises or ask questions.`,
         speak: true,
       };
   }

@@ -7,6 +7,7 @@ import {
   PageHeader,
   Pill,
   Switch,
+  Icon,
 } from '../../design-system';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -15,6 +16,8 @@ import { useRuntime, useExerciseView, useSavingStatus } from '../../runtime';
 import {
   DEFAULT_PLAN,
   TENDON_GLIDE_PLAN,
+  FINGER_PLAN,
+  OPEN_ASSIST_PLAN,
   DEFAULT_EXERCISE_SETTINGS,
   POSES,
 } from '../../contracts/poses';
@@ -40,6 +43,7 @@ import type { AttemptResult } from '../../contracts/engine';
 import { liveFingerState } from './fingerState';
 import { LiveFingerMeters } from './LiveFingerMeters';
 import { GloveMotors } from './GloveMotors';
+import { attemptStatus } from './attemptStatus';
 import { SessionRecap, useSessionAttempts } from './SessionRecap';
 import {
   practicePlan,
@@ -212,6 +216,7 @@ function LiveDetails({ onBrake }: { onBrake: () => void }) {
         elapsed={view.phaseElapsed}
         duration={view.phaseDuration}
         waiting={view.phase === 'PRESENT' && !seen}
+        status={attemptStatus(view.phase, view.lastResult, view.index)}
       />
       <LiveFingerMeters
         pose={view.pose}
@@ -325,6 +330,8 @@ export default function Exercise() {
   const live = phase !== 'DONE';
   const attempts = useSessionAttempts();
   const index = useExerciseView((v) => v.index);
+  const lastResult = useExerciseView((v) => v.lastResult);
+  const status = attemptStatus(phase, lastResult, index);
   const next = plan.flatMap((p) =>
     Array.from({ length: Math.min(10, Math.max(0, p.reps)) }, () => p.pose),
   )[index + 1];
@@ -433,6 +440,12 @@ export default function Exercise() {
         <Inline>
           {[
             { id: 'opening', label: 'Opening practice', plan: DEFAULT_PLAN },
+            { id: 'fingers', label: 'Finger by finger', plan: FINGER_PLAN },
+            {
+              id: 'open-close',
+              label: 'Open and close',
+              plan: OPEN_ASSIST_PLAN,
+            },
             { id: 'glides', label: 'Tendon glides', plan: TENDON_GLIDE_PLAN },
             {
               id: 'open',
@@ -526,8 +539,22 @@ export default function Exercise() {
       <div className="live-layout">
         <div className="live-hero">
           <div className="live-heading">
-            <h1 className="instruction">{instruction}</h1>
-            {hint && <p className="pose-hint">{hint}</p>}
+            <h1
+              className={`instruction${status ? ` instruction--${status.tone}` : ''}`}
+            >
+              {status ? (
+                <>
+                  {status.done && <Icon name="check" />} {status.title}
+                </>
+              ) : (
+                instruction
+              )}
+            </h1>
+            {status && phase !== 'REST' ? (
+              <p className="pose-hint">{instruction}</p>
+            ) : (
+              !status && hint && <p className="pose-hint">{hint}</p>
+            )}
             {(phase === 'REST' || phase === 'RELEASE') && (
               <p className="pose-next">
                 Next: {next ? POSES[next].name.toLowerCase() : 'session recap'}

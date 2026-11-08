@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlmodel import Session as DbSession
 
 from app.contracts.therapist import CoachDecisionsIn, FeelingsIn, SessionDetail
@@ -16,6 +16,7 @@ from app.contracts.types import (
 )
 from app.db import repo
 from app.db.session import get_session
+from app.llm.refresh import refresh_therapist_summary
 
 Db = Annotated[DbSession, Depends(get_session)]
 
@@ -59,8 +60,13 @@ def post_sessions_id_attempts(db: Db, id: int, body: AttemptResult) -> Attempt:
     response_model=Session,
     responses={404: {"model": ApiError}, 422: {"model": ApiError}},
 )
-def post_sessions_id_end(db: Db, id: int, body: SessionEndIn) -> Session:
-    return repo.end_session(db, id, body.summary)
+def post_sessions_id_end(
+    db: Db, id: int, body: SessionEndIn, background: BackgroundTasks
+) -> Session:
+    ended = repo.end_session(db, id, body.summary)
+    # Keep the Doctor view's therapist summary current, after the response is sent.
+    background.add_task(refresh_therapist_summary, db.get_bind())
+    return ended
 
 
 @router.get(

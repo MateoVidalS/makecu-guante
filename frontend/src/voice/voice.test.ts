@@ -313,7 +313,7 @@ describe('cue table and scheduler', () => {
     expect(cues[3]?.text).toContain('2.1 s');
     expect(cues[5]?.text).toContain('Previous rep');
     expect(cues[7]?.speak).toBe(false);
-    expect(events.map(fallbackPhrase)).toEqual([
+    expect(events.map((e) => fallbackPhrase(e))).toEqual([
       poseInstruction('hook'),
       null,
       null,
@@ -652,11 +652,16 @@ it('describes opening assistance and independent fist practice in every instruct
   } as const;
   const fist = { ...open, pose: 'full_fist' } as const;
   expect(fallbackPhrase(open)).toBe('Open your hand as wide as you can.');
-  expect(fallbackPhrase(fist)).toBe(
-    'Make a fist on your own; the glove just follows.',
-  );
+  expect(fallbackPhrase(fist)).toBe('Make a fist.');
+  // The glove is explained once, on the first pose, not in every instruction.
   expect(eventCue(fist, s.runtime.exercise.view())?.text).toContain(
-    'on your own; the glove just follows',
+    'glove only helps fingers open',
+  );
+  expect(
+    eventCue({ ...fist, index: 2 }, s.runtime.exercise.view())?.text,
+  ).not.toContain('glove');
+  expect(eventCue(fist, s.runtime.exercise.view())?.text).toContain(
+    'in your own words',
   );
   const instruction = await dispatchTool(
     s.runtime,
@@ -713,3 +718,125 @@ it.each(['close', undefined] as const)(
     s.controller.dispose();
   },
 );
+
+it('ends a session smoothly: the goodbye finishes, whole sentences are saved, then the coach hangs up', async () => {
+  const s = setup();
+  await s.controller.start(8);
+  const t = s.transports[0];
+  const summary = JSON.parse(
+    readFileSync('../contracts/fixtures/sessions.json', 'utf8'),
+  )[0].summary;
+  t.emit({ type: 'transcript', role: 'coach', text: 'That brings us ' });
+  s.emit({ kind: 'session_done', summary });
+  // Not cut mid-sentence, not hung up yet.
+  expect(t.closed).toBe(false);
+  expect(t.texts.at(-1)?.text).toContain('say goodbye');
+  t.emit({ type: 'audio', data: 'AAAA' });
+  t.emit({
+    type: 'transcript',
+    role: 'coach',
+    text: 'to the end <no speech> of today.',
+  });
+  t.emit({ type: 'turnComplete' });
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(t.closed).toBe(true);
+  expect(s.controller.state.status).toBe('off');
+  await vi.advanceTimersByTimeAsync(10000);
+  expect(s.deps.save).toHaveBeenCalledWith(
+    8,
+    expect.arrayContaining([
+      expect.objectContaining({
+        role: 'coach',
+        text: 'That brings us to the end of today.',
+      }),
+    ]),
+  );
+  s.controller.dispose();
+});
+
+it('hangs up after a session ends even if the coach never answers', async () => {
+  const s = setup();
+  await s.controller.start(8);
+  const t = s.transports[0];
+  const summary = JSON.parse(
+    readFileSync('../contracts/fixtures/sessions.json', 'utf8'),
+  )[0].summary;
+  s.emit({ kind: 'session_done', summary });
+  await vi.advanceTimersByTimeAsync(16000);
+  expect(t.closed).toBe(true);
+  s.controller.dispose();
+});
+
+it('on-screen Brake silences the coach until the patient speaks and tells the model', async () => {
+  const s = setup();
+  await s.controller.start(8);
+  const t = s.transports[0];
+  s.controller.brake('You pressed Brake.');
+  expect(s.deps.audio.flush).toHaveBeenCalled();
+  expect(s.deps.local.speak).toHaveBeenCalledWith(
+    'Stopped. The glove has released. Tell me how you feel.',
+    expect.any(Function),
+  );
+  expect(t.texts.at(-1)?.text).toContain('never resume');
+  vi.mocked(s.deps.audio.play).mockClear();
+  t.emit({ type: 'audio', data: 'AAAA' });
+  expect(s.deps.audio.play).not.toHaveBeenCalled();
+  // The local "Stopped" announcement finishes.
+  vi.mocked(s.deps.local.speak).mock.calls.at(-1)?.[1]?.();
+  await vi.advanceTimersByTimeAsync(600);
+  t.emit({ type: 'audio', data: 'CCCC' });
+  expect(s.deps.audio.play).not.toHaveBeenCalled();
+  t.emit({ type: 'transcript', role: 'patient', text: 'I am fine' });
+  t.emit({ type: 'audio', data: 'BBBB' });
+  expect(s.deps.audio.play).toHaveBeenCalledWith('BBBB');
+  s.controller.dispose();
+});
+
+it('varies Simple-voice phrases instead of repeating the same sentence', () => {
+  const fist = {
+    kind: 'phase',
+    phase: 'PRESENT',
+    pose: 'full_fist',
+    rep: 1,
+    index: 0,
+  } as const;
+  const said = [0, 1, 2].map((v) => fallbackPhrase(fist, v));
+  expect(new Set(said).size).toBe(3);
+  const done = [0, 1, 2].map((v) =>
+    fallbackPhrase({ kind: 'reached', t_rel: 1, assisted: false }, v),
+  );
+  expect(new Set(done).size).toBe(3);
+});
+
+it('asks once to see the hand instead of repeating the pose every 8 s', async () => {
+  const s = setup();
+  await s.controller.start(8);
+  const t = s.transports[0];
+  const present = {
+    kind: 'phase',
+    phase: 'PRESENT',
+    pose: 'full_fist',
+    rep: 1,
+    index: 1,
+  } as const;
+  s.emit(present);
+  await vi.advanceTimersByTimeAsync(20000);
+  const first = t.texts.filter((m) => m.text.includes('[session] PRESENT:')).length;
+  expect(first).toBe(1);
+  // Re-prompts for the same attempt: one short "raise your hand", then silence.
+  s.emit(present);
+  await vi.advanceTimersByTimeAsync(20000);
+  s.emit(present);
+  await vi.advanceTimersByTimeAsync(20000);
+  s.emit(present);
+  await vi.advanceTimersByTimeAsync(20000);
+  expect(t.texts.filter((m) => m.text.includes('[session] PRESENT:'))).toHaveLength(1);
+  expect(
+    t.texts.filter((m) => m.text.includes("Still can't see the hand")),
+  ).toHaveLength(1);
+  // A new attempt gets its own invitation.
+  s.emit({ ...present, index: 2 });
+  await vi.advanceTimersByTimeAsync(20000);
+  expect(t.texts.filter((m) => m.text.includes('[session] PRESENT:'))).toHaveLength(2);
+  s.controller.dispose();
+});

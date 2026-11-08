@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { POSES, type PoseId } from '../../contracts/poses';
+import type { Summary } from '../../contracts/api';
 import { EvaluationList, SessionList } from '../History';
 import {
   Button,
@@ -53,11 +54,32 @@ export default function Doctor() {
   const rom = useHistoryRom({ pose: 'open' }),
     assist = useHistoryAssist(),
     resistance = useHistoryResistance();
-  const summaries = useSummaries({ kind: 'therapist', limit: 20 }),
+  // A stored summary describes the records that existed when it was generated. The backend
+  // regenerates it after each session; until the new one lands, say the shown one is older
+  // than the charts, and look for the fresh one every 15 s.
+  const newestRecord = Math.max(
+    ...(sessions.data ?? []).map((s) => Date.parse(s.ended_at ?? s.started_at)),
+    ...(evaluations.data ?? []).map((e) => Date.parse(e.ended_at)),
+    -Infinity,
+  );
+  const newest = (list?: Summary[]) =>
+    list
+      ?.slice()
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  const summaries = useSummaries(
+      { kind: 'therapist', limit: 20 },
+      {
+        refetchInterval: (data) => {
+          const shown = newest(data);
+          return shown && Date.parse(shown.created_at) < newestRecord
+            ? 15_000
+            : false;
+        },
+      },
+    ),
     generate = useCreateSummary();
-  const latest = summaries.data
-    ?.slice()
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  const latest = newest(summaries.data);
+  const stale = !!latest && Date.parse(latest.created_at) < newestRecord;
   const demoSessions = !!sessions.data?.some((s) => s.is_demo);
   const demoEvaluations = !!evaluations.data?.some((e) => e.is_demo);
   const hasDemo = demoSessions || demoEvaluations;
@@ -107,7 +129,16 @@ export default function Doctor() {
           >
             <DataStatus loading={summaries.isPending} error={summaries.error}>
               {latest ? (
-                <p className="summary-copy">{latest.text}</p>
+                <>
+                  {stale && (
+                    <p role="status" className="footnote summary-stale">
+                      Generated before the latest sessions or evaluations, so it
+                      may not match the charts below. Generate again for an
+                      up-to-date summary.
+                    </p>
+                  )}
+                  <p className="summary-copy">{latest.text}</p>
+                </>
               ) : (
                 <p className="footnote">No summary generated yet.</p>
               )}

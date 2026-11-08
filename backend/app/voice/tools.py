@@ -114,7 +114,17 @@ TOOLS = [
                 {
                     "pose": {
                         "type": "STRING",
-                        "enum": ["open", "hook", "full_fist", "tabletop", "straight_fist"],
+                        "enum": [
+                            "open",
+                            "hook",
+                            "full_fist",
+                            "tabletop",
+                            "straight_fist",
+                            "thumbs_up",
+                            "point",
+                            "peace",
+                            "pinky_up",
+                        ],
                     },
                     "reason": REASON,
                 },

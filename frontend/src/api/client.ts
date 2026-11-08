@@ -196,10 +196,19 @@ export const useHistoryResistance = () =>
     queryKey: ['history', 'resistance'],
     queryFn: getHistoryResistance,
   });
-export const useSummaries = (filters: SummaryFilters = {}) =>
+export const useSummaries = (
+  filters: SummaryFilters = {},
+  options: {
+    /** Poll while the caller is waiting for a summary generated in the background. */
+    refetchInterval?: (data: Summary[] | undefined) => number | false;
+  } = {},
+) =>
   useQuery({
     queryKey: ['summaries', filters],
     queryFn: () => getSummaries(filters),
+    refetchInterval: options.refetchInterval
+      ? (query) => options.refetchInterval!(query.state.data)
+      : false,
   });
 // Writes invalidate related lists and derived history. Live data stays outside Query.
 function useWrite<T, V>(fn: (value: V) => Promise<T>, keys: string[]) {

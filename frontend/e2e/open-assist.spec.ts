@@ -1,11 +1,18 @@
 import { expect, test } from '@playwright/test';
 import type { Calibration } from '../src/contracts/calibration';
 import type { SessionDetail } from '../src/contracts/api';
-import { DEFAULT_PLAN, MAX_ASSIST_PULL } from '../src/contracts/poses';
+import {
+  DEFAULT_PLAN,
+  MAX_ASSIST_PULL,
+  POSES,
+  opensFinger,
+  type PoseId,
+} from '../src/contracts/poses';
+import { GLOVE_FINGERS } from '../src/contracts/glove';
 import type {} from './ai-therapist-harness';
 import { silenceCoach } from './helpers';
 
-test('manual slack/open and camera calibration leads to ten moderate fist/open attempts and direction-marked history', async ({
+test('manual slack/open and camera calibration leads to the default plan (fist, open, finger by finger) and direction-marked history', async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -89,11 +96,17 @@ test('manual slack/open and camera calibration leads to ten moderate fist/open a
   ).toBeVisible();
   const targets = completed.commands.filter((c) => c.kind === 'target');
   expect(targets.length).toBeGreaterThan(0);
-  expect(
-    targets.every(
-      (c) => c.pose === 'open' && c.f!.every((p) => p <= MAX_ASSIST_PULL),
-    ),
-  ).toBe(true);
+  // The glove only pulls in poses with fingers to open, never past the cap, and never
+  // on a finger that should stay closed (finger-by-finger poses).
+  for (const c of targets) {
+    const pose = POSES[c.pose as PoseId];
+    expect(pose.id === 'open' || !!pose.raise).toBe(true);
+    expect(c.f!.every((p) => p <= MAX_ASSIST_PULL)).toBe(true);
+    GLOVE_FINGERS.forEach((finger, i) => {
+      if (!opensFinger(pose, finger) && pose.closure[finger] !== null)
+        expect(c.f![i]).toBeLessThan(0.15);
+    });
+  }
   expect(completed.firmware.position).toEqual([0, 0, 0, 0, 0]);
   const detail = (await (
     await page.request.get(`/api/sessions/${completed.view.sessionId}`)

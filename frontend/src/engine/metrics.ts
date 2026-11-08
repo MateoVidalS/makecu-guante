@@ -1,4 +1,4 @@
-import type { PoseDef, PoseId } from '../contracts/poses';
+import { opensFinger, type PoseDef, type PoseId } from '../contracts/poses';
 import type {
   AttemptResult,
   AttemptTrace,
@@ -100,7 +100,7 @@ export class AttemptMetrics {
           this.best[f] =
             this.best[f] === undefined
               ? value
-              : this.pose.id === 'open'
+              : opensFinger(this.pose, f)
                 ? Math.min(this.best[f]!, value)
                 : Math.max(this.best[f]!, value);
         }
@@ -140,7 +140,9 @@ export class AttemptMetrics {
         assist_needed:
           best === null || target === null
             ? null
-            : Math.max(0, best > target + this.tolerance ? best - target : 0),
+            : opensFinger(this.pose, f) && best > target + this.tolerance
+              ? best - target
+              : 0,
         final: this.final[f] ?? null,
       };
     });
@@ -150,8 +152,8 @@ export class AttemptMetrics {
         f.active_max === null
           ? 0
           : clamp01(
-              this.pose.id === 'open'
-                ? pullFromClosure(f.active_max)
+              opensFinger(this.pose, f.finger)
+                ? pullFromClosure(f.active_max - f.target!)
                 : f.active_max / f.target!,
             ),
       );
