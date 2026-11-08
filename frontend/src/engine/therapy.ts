@@ -113,6 +113,8 @@ export class TherapyController implements TherapyApi {
   private allowedPoses = new Set<PoseId>();
   private changed = new Set<string>();
   private settingsAssist = true;
+  /** The glove only moves when the patient asks (engine help_on_request). */
+  private onRequest = true;
   /** Help asked for outside an attempt: started by the engine at the next opening ATTEMPT. */
   private queued = new Set<FingerId>();
   private undoStack: Undo[] = [];
@@ -151,6 +153,8 @@ export class TherapyController implements TherapyApi {
 
   reset(plan: ExercisePlanItem[], settings: ExerciseSettings) {
     this.settingsAssist = settings.assist_enabled;
+    this.onRequest =
+      (settings as { help_on_request?: boolean }).help_on_request !== false;
     this.desired = defaults();
     this.speedCap = Math.min(
       this.bounds.assist_speed[1],
@@ -366,6 +370,22 @@ export class TherapyController implements TherapyApi {
   }
   delay(finger: FingerId) {
     return this.active.assist_delay_s[finger];
+  }
+  /** The patient's latest turn (within the consent window) asks for help or says yes. */
+  private patientAskedForHelp(): boolean {
+    const now = this.context.now();
+    return this.patientSpeech.some(
+      (line) =>
+        now >= line.at &&
+        now - line.at <= this.bounds.consent_window_s * 1000 &&
+        !/\b(no|not|don t|stop|para|basta|no quiero)\b/.test(line.normalized) &&
+        (/\b(help|ayuda|ayudame|ayudar|ayudes|assist)\b/.test(
+          line.normalized,
+        ) ||
+          /^(yes|yeah|yep|sure|please|si|dale|bueno|ok|okay|por favor)\b/.test(
+            line.normalized,
+          )),
+    );
   }
   /** Fingers waiting for help at the next opening attempt. */
   queuedHelp(): FingerId[] {
@@ -954,6 +974,10 @@ export class TherapyController implements TherapyApi {
           // request always has a real effect the coach can truthfully describe.
           if (!this.settingsAssist)
             return reject('Assistance is off for this session.');
+          if (this.onRequest && !this.patientAskedForHelp())
+            return reject(
+              'The glove moves only when the patient asks. Ask them first; set help after they ask or say yes.',
+            );
           if (this.queued.has(finger))
             return reject(
               'Help for this finger is already set for the next attempt.',

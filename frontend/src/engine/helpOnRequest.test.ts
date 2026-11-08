@@ -106,6 +106,7 @@ describe('the glove helps only when the patient asks', () => {
     const run = new Run('open', { ...onRequest, attempt_s: 9 });
     run.world.hand = [...CLOSED] as Quint;
     // Asked before the attempt (e.g. during a check-in): the coach queues it.
+    run.engine.therapy.notePatientSpeech('I need help moving the index.');
     const queued = run.engine.therapy.adjust(
       'assist_finger_now',
       { finger: 'index', reason: 'The patient asked for index help.' },
@@ -124,6 +125,43 @@ describe('the glove helps only when the patient asks', () => {
         ),
     );
     expect([...pulled]).toEqual([1]);
+  });
+
+  it('the coach cannot queue help between attempts unless the patient asked', () => {
+    for (const said of [null, 'My hand feels fine.', 'No, not now.']) {
+      const run = new Run('open', { ...onRequest, attempt_s: 9 });
+      run.world.hand = [...CLOSED] as Quint;
+      if (said) run.engine.therapy.notePatientSpeech(said);
+      const queued = run.engine.therapy.adjust(
+        'assist_finger_now',
+        { finger: 'index', reason: 'Coach thinks it would help.' },
+        'coach',
+      );
+      expect(queued.result).toBe('rejected');
+      run.until('ATTEMPT');
+      for (let i = 0; i < 60; i++) run.step(); // 3 s into the attempt
+      expect(run.engine.state().phase).toBe('ATTEMPT'); // nothing moved on its own
+    }
+  });
+
+  it('a request naming fingers helps only those fingers', () => {
+    const run = new Run('open', onRequest);
+    run.world.hand = [...CLOSED] as Quint;
+    run.until('ATTEMPT');
+    run.step();
+    run.accept(run.engine.requestHelp(run.world.now, ['index', 'middle']));
+    expect(run.engine.state().phase).toBe('ASSIST');
+    for (let i = 0; i < 200; i++) run.step();
+    const pulled = new Set(
+      run
+        .targets()
+        .flatMap((t) =>
+          t.f.flatMap((p, i) =>
+            p > pullFromClosure(CLOSED[i]) + 1e-6 ? [i] : [],
+          ),
+        ),
+    );
+    expect([...pulled].sort()).toEqual([1, 2]);
   });
 
   it('once the patient asked, the coach can add a finger, and nothing is queued for later', () => {

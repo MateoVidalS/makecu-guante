@@ -408,9 +408,9 @@ export class RehabRuntime implements TherapyRuntime {
       if (this.mode === 'exercise')
         this.handle(this.exerciseEngine.skip(this.clock()));
     },
-    requestHelp: () => {
+    requestHelp: (fingers) => {
       if (this.mode === 'exercise')
-        this.handle(this.exerciseEngine.requestHelp(this.clock()));
+        this.handle(this.exerciseEngine.requestHelp(this.clock(), fingers));
     },
     stop: async () => {
       if (this.mode === 'exercise')

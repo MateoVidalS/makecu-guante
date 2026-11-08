@@ -589,7 +589,7 @@ export default function Exercise() {
                   size="lg"
                   variant={helpOffered ? 'primary' : 'secondary'}
                   disabled={safetyVisible}
-                  onClick={runtime.exercise.requestHelp}
+                  onClick={() => runtime.exercise.requestHelp()}
                 >
                   Help me open
                 </Button>

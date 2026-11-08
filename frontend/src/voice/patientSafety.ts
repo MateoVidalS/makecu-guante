@@ -79,3 +79,40 @@ export function patientBrakeReason(
     ? `Patient reported pain ${pain}/10.`
     : null;
 }
+
+const FINGER_WORDS: [
+  RegExp,
+  'thumb' | 'index' | 'middle' | 'ring' | 'pinky',
+][] = [
+  [/\b(thumb|pulgar)\b/, 'thumb'],
+  [/\b(index|pointer|indice)\b/, 'index'],
+  [/\b(middle|medio|mayor|corazon)\b/, 'middle'],
+  [/\b(ring|anular)\b/, 'ring'],
+  [/\b(little|pinky|pinkie|small|menique|chiquito)\b/, 'pinky'],
+];
+
+/**
+ * Fingers a patient names in a help request ("help my index and middle", "ayudame con
+ * el pulgar"). Empty when none are named or the whole hand is meant, which asks for
+ * every finger that needs opening.
+ */
+export function namedFingers(
+  text: string,
+): ('thumb' | 'index' | 'middle' | 'ring' | 'pinky')[] {
+  const said = normalizePatientText(text);
+  if (
+    /\b(all|every|whole|todos|todas|toda la mano|la mano entera)\b/.test(said)
+  )
+    return [];
+  return FINGER_WORDS.filter(([word]) => word.test(said)).map(([, f]) => f);
+}
+
+/** The patient's own words ask for the glove's help, or say yes to an offer. */
+export function asksForHelp(text: string): boolean {
+  const said = normalizePatientText(text);
+  if (/\b(no|not|dont|stop|para|basta|no quiero)\b/.test(said)) return false;
+  return (
+    /\b(help|ayuda|ayudame|ayudar|ayudes|assist)\b/.test(said) ||
+    /^(yes|yeah|yep|sure|please|si|dale|bueno|ok|okay|por favor)\b/.test(said)
+  );
+}

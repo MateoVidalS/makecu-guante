@@ -48,7 +48,7 @@ export interface ExerciseEngine {
   /** Help has been offered this attempt and not requested yet. */
   helpOffered(): boolean;
   /** The patient asks for the glove's help (button or voice). */
-  requestHelp(now: number): Output;
+  requestHelp(now: number, fingers?: readonly GloveFinger[]): Output;
   poseDef(): import('../contracts/poses').PoseDef;
   brake(now: number): Output;
   start(
