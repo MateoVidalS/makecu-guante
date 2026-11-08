@@ -48,7 +48,8 @@ export type EngineEvent =
         | 'stop_button'
         | 'watchdog'
         | 'camera_lost'
-        | 'glove_disconnected';
+        | 'glove_disconnected'
+        | 'coach_brake';
       finger: GloveFinger | null;
       ma: number | null;
     }
