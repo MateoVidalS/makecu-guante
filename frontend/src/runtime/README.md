@@ -165,3 +165,12 @@ creation succeeds; that placeholder is never posted. Distinct feeling reports ha
 strictly increasing timestamps to preserve A3's retry identity. Unavailable endpoints
 leave the queue Offline and retry normally. Broken audit/UI observers cannot stop
 release or engine safety actions; records remain in the session's local audit log.
+
+## One motor at a time (low-power supply)
+
+Setup → Before practice has "One motor at a time (low-power supply)", on by default and
+stored per browser (`runtime/power.ts`). With a real glove it runs the engine with
+`assist_max_parallel: 1` and three times `assist_max_s`, so fingers are helped in turn and
+each still gets its time. Speed, targets, current limit and every safety rule are
+unchanged; the simulator ignores it. Turn it off with a 5 V / 2.5 A supply. The firmware
+side powers only the fingers that pull (firmware/README.md).

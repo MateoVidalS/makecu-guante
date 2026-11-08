@@ -962,6 +962,43 @@ void app_practice_sequence_is_accepted_end_to_end() {
   TEST_ASSERT_EQUAL_INT(static_cast<int>(State::Idle), static_cast<int>(h.safety.state()));
   no_safety_event(h);
 }
+void target_powers_only_the_fingers_that_pull() {
+  Harness h;
+  for (std::size_t i = 0; i < config::FINGERS; ++i) {
+    Command c;
+    c.type = CommandType::Calib;
+    c.i = i;
+    c.min = 20;
+    c.max = 150;
+    TEST_ASSERT_EQUAL_INT(0, static_cast<int>(h.safety.handle(c, h.now)));
+  }
+  // Help the index alone: the other four stay unpowered (slack, no current).
+  h.send("{\"t\":\"target\",\"f\":[0,0.5,0,0,0],\"v\":0.2}");
+  h.advance(100);
+  for (std::size_t i = 0; i < config::FINGERS; ++i) TEST_ASSERT_EQUAL(i == 1, h.safety.attached(i));
+  // Adding the ring powers it from slack; the index keeps going without a jump.
+  const float index = h.safety.telemetry(h.now).a[1];
+  h.send("{\"t\":\"target\",\"f\":[0,0.5,0,0.5,0],\"v\":0.2}");
+  h.advance(5);
+  TEST_ASSERT_TRUE(h.safety.attached(3));
+  TEST_ASSERT_FLOAT_WITHIN(0.002F, 0, h.safety.telemetry(h.now).a[3]);
+  TEST_ASSERT_FLOAT_WITHIN(0.002F, index + 0.001F, h.safety.telemetry(h.now).a[1]);
+  // A powered finger whose goal drops to 0 stays powered and unwinds at the release rate.
+  h.send("{\"t\":\"target\",\"f\":[0,0,0,0.5,0],\"v\":0.2}");
+  TEST_ASSERT_TRUE(h.safety.attached(1));
+  h.advance(500);
+  TEST_ASSERT_FLOAT_WITHIN(0.001F, 0, h.safety.telemetry(h.now).a[1]);
+  // Follow below the slack margin powers nothing new.
+  h.send("{\"t\":\"release\"}");
+  h.advance(1500);
+  h.send("{\"t\":\"follow\",\"f\":[0.05,0.08,0,0.3,0]}");
+  h.advance(5);
+  for (std::size_t i = 0; i < config::FINGERS; ++i) TEST_ASSERT_EQUAL(i == 3, h.safety.attached(i));
+  // Release still detaches everything.
+  h.send("{\"t\":\"release\"}");
+  h.advance(1500);
+  for (std::size_t i = 0; i < config::FINGERS; ++i) TEST_ASSERT_FALSE(h.safety.attached(i));
+}
 void app_calibration_wizard_sequence_is_accepted() {
   Harness h;
   AppLink app{h};
@@ -1185,6 +1222,7 @@ int main() {
   RUN_TEST(decimal_writer_never_overruns_and_parser_survives_noise);
   RUN_TEST(servo_timers_cover_every_finger);
   RUN_TEST(app_practice_sequence_is_accepted_end_to_end);
+  RUN_TEST(target_powers_only_the_fingers_that_pull);
   RUN_TEST(app_calibration_wizard_sequence_is_accepted);
   RUN_TEST(app_silence_still_trips_the_watchdog);
   RUN_TEST(shared_serial_fixtures_match_expected);
