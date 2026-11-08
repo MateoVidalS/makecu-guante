@@ -1,6 +1,7 @@
 export {
   RuntimeProvider,
   useRuntime,
+  useOptionalRuntime,
   useExerciseView,
   useEvaluationView,
 } from './RuntimeProvider';

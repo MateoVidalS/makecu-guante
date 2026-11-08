@@ -12,6 +12,7 @@ import type { FingerId } from '../contracts/vision';
 import { POSES, MAX_ASSIST_PULL, opensFinger } from '../contracts/poses';
 import type { PoseDef, PoseId } from '../contracts/poses';
 import { THERAPY_LIMITS } from '../contracts/therapist';
+import type { ProgressionStart } from './types';
 import type {
   CoachDecision,
   CoachToolName,
@@ -151,7 +152,10 @@ export class TherapyController implements TherapyApi {
   private resistanceAt = new Map<FingerId, number>();
   constructor(private readonly context: TherapyContext) {}
 
-  reset(plan: ExercisePlanItem[], settings: ExerciseSettings) {
+  reset(
+    plan: ExercisePlanItem[],
+    settings: ExerciseSettings & { progression?: ProgressionStart },
+  ) {
     this.settingsAssist = settings.assist_enabled;
     this.onRequest =
       (settings as { help_on_request?: boolean }).help_on_request !== false;
@@ -191,6 +195,54 @@ export class TherapyController implements TherapyApi {
     this.feelingTimestamp = 0;
     this.restSpent = 0;
     this.restBoundary = 0;
+    this.applyProgression(settings.progression);
+  }
+
+  /**
+   * Today's plan (docs/plan/17): easier per-finger targets and more time to try alone, as the
+   * starting point the coach adjusts from. Clamped here so a bad plan can never make practice
+   * harder than the standard targets or leave THERAPY_LIMITS.
+   */
+  private applyProgression(progression: ProgressionStart | undefined) {
+    if (!progression) return;
+    const target_scale: Partial<Record<FingerId, number>> = {};
+    let clamped = false;
+    for (const f of GLOVE_FINGERS) {
+      const requested = progression.target_scale[f];
+      if (requested === undefined) continue;
+      const value = finite(requested)
+        ? clamp(requested, this.bounds.target_scale[0], 1)
+        : 1;
+      clamped ||= value !== requested;
+      this.desired.target_scale[f] = value;
+      if (value < 1) target_scale[f] = value;
+    }
+    const attempt_s = finite(progression.attempt_s)
+      ? clamp(
+          Math.max(progression.attempt_s, this.desired.attempt_s),
+          this.bounds.attempt_s[0],
+          this.bounds.attempt_s[1],
+        )
+      : this.desired.attempt_s;
+    clamped ||= attempt_s !== progression.attempt_s;
+    this.desired.attempt_s = attempt_s;
+    this.desired.assist_delay_s = perFinger(
+      Math.min(attempt_s, this.bounds.assist_delay_s[1]),
+    );
+    this.active = structuredClone(this.desired);
+    this.decision(
+      'progression_plan' as CoachToolName,
+      {
+        challenge: progression.challenge,
+        sessions: [...progression.sessions],
+        target_scale: { ...progression.target_scale },
+        attempt_s: progression.attempt_s,
+      },
+      { target_scale, attempt_s },
+      clamped ? 'clamped' : 'applied',
+      progression.summary,
+      'local_rule',
+    );
   }
 
   /** Called before phase entry actions. Rest and pose overrides are consumed once. */

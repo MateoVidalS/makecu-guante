@@ -53,10 +53,17 @@ import type { AttemptResult } from '../../contracts/engine';
 import { liveFingerState } from './fingerState';
 import { LiveFingerMeters } from './LiveFingerMeters';
 import { GloveMotors } from './GloveMotors';
-import { attemptStatus, liveStop, stopFor, type LiveStop } from './attemptStatus';
+import {
+  attemptStatus,
+  liveStop,
+  stopFor,
+  type LiveStop,
+} from './attemptStatus';
 import { useResistanceStop } from './resistanceStop';
 import { SuccessTick } from './SuccessTick';
 import { SessionRecap, useSessionAttempts } from './SessionRecap';
+import { TodaysPlanCard } from '../../progression/TodaysPlanCard';
+import { useTodaysPlan } from '../../progression/useTodaysPlan';
 import {
   practicePlan,
   useShortPractice,
@@ -356,7 +363,9 @@ export default function Exercise() {
     [planning, setPlanning] = useState(
       () => new URLSearchParams(location.search).get('customize') === '1',
     ),
-    [preset, setPreset] = useState(short ? 'short' : 'opening');
+    [preset, setPreset] = useState(short ? 'short' : 'opening'),
+    [useToday, setUseToday] = useState(true);
+  const today = useTodaysPlan();
   const safetyVisible = useSafetyBannerVisible();
   useProgressPlan(plan);
   const calibrationStatus = useCalibrationStatus();
@@ -496,7 +505,10 @@ export default function Exercise() {
     setBusy(true);
     setError('');
     try {
-      await runtime.exercise.start(plan, settings);
+      await runtime.exercise.start(
+        plan,
+        today.apply(settings, { skip: !useToday }),
+      );
       setPlanning(false);
     } catch (e) {
       setError((e as Error).message);
@@ -563,6 +575,11 @@ export default function Exercise() {
               .join(' · ')}
           </p>
         </Card>
+        <TodaysPlanCard
+          today={today}
+          use={useToday}
+          onUseChange={setUseToday}
+        />
         <CalibrationIssueBanner issue={calibrationStatus.issues[0]} />
         {calibrationStatus.state === 'missing' && (
           <p>

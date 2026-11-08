@@ -40,6 +40,19 @@ export interface PowerAwareExerciseSettings extends ExerciseSettings {
    */
   help_on_request?: boolean;
   help_offer_s?: number;
+  /** Today's plan from recent sessions (docs/plan/17): the therapy controller's starting point. */
+  progression?: ProgressionStart;
+}
+/**
+ * Adaptive progression start (docs/plan/17-progression.md). Only easier targets (scale <= 1)
+ * and more time to try alone; the therapy controller clamps both to THERAPY_LIMITS.
+ */
+export interface ProgressionStart {
+  target_scale: Partial<Record<import('../contracts/vision').FingerId, number>>;
+  attempt_s: number;
+  challenge: import('../contracts/progression').ProgressionChallenge;
+  sessions: number[];
+  summary: string;
 }
 export interface ExerciseEngine {
   readonly therapy: TherapyController;

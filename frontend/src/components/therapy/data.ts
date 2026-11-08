@@ -82,6 +82,8 @@ export function decisionLabel(decision: CoachDecision) {
       return 'Adjustment undone';
     case 'get_live_state':
       return 'Live state checked';
+    case 'progression_plan':
+      return "Today's plan applied";
     default:
       return decision.tool.replaceAll('_', ' ');
   }

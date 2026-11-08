@@ -34,6 +34,10 @@ import type {
   ChatToolResult,
   ChatVoiceToken,
 } from '../contracts/chat';
+import type {
+  ProgressionSettings,
+  ProgressionSettingsIn,
+} from '../contracts/progression';
 import { parseChatEvents } from './sse';
 
 export class ApiRequestError extends Error {
@@ -114,6 +118,10 @@ export const getHealth = () => request<Health>('/health');
 export const getProfile = () => request<Profile>('/profile');
 export const putProfile = (value: Profile) =>
   request<Profile>('/profile', body('PUT', value));
+export const getProgressionSettings = () =>
+  request<ProgressionSettings>('/progression/settings');
+export const putProgressionSettings = (value: ProgressionSettingsIn) =>
+  request<ProgressionSettings>('/progression/settings', body('PUT', value));
 export const getLatestCalibration = () =>
   request<Calibration | null>('/calibrations/latest');
 export const getCalibrations = () => request<Calibration[]>('/calibrations');
@@ -187,6 +195,11 @@ export const useHealth = () =>
   });
 export const useProfile = () =>
   useQuery({ queryKey: ['profile'], queryFn: getProfile });
+export const useProgressionSettings = () =>
+  useQuery({
+    queryKey: ['progression', 'settings'],
+    queryFn: getProgressionSettings,
+  });
 export const useLatestCalibration = () =>
   useQuery({
     queryKey: ['calibrations', 'latest'],
@@ -248,6 +261,8 @@ function useWrite<T, V>(fn: (value: V) => Promise<T>, keys: string[]) {
   });
 }
 export const usePutProfile = () => useWrite(putProfile, ['profile']);
+export const usePutProgressionSettings = () =>
+  useWrite(putProgressionSettings, ['progression']);
 export const useCreateCalibration = () =>
   useWrite(createCalibration, ['calibrations']);
 export const useCreateSession = () =>
