@@ -12,7 +12,7 @@ export const codecStats = { malformedLines: 0 };
 export class UnsupportedFingerCountError extends Error {
   constructor(readonly fingers: number) {
     super(
-      `This glove reports ${fingers} fingers. Rehab Hub requires 5-finger firmware.`,
+      `This glove reports ${fingers} fingers. memo requires 5-finger firmware.`,
     );
     this.name = 'UnsupportedFingerCountError';
   }

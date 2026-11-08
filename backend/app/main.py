@@ -26,7 +26,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Rehab Hub", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="memo", version="0.1.0", lifespan=lifespan)
 for module in [
     health,
     profile,

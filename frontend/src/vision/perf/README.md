@@ -1,6 +1,6 @@
 # Hand-position performance suite
 
-How well does Rehab Hub recognize the hand position, and does the engine
+How well does memo recognize the hand position, and does the engine
 **acknowledge** a pose (`reached`) when the patient makes it, and only then?
 This folder measures that end to end, with numbers, in two layers:
 

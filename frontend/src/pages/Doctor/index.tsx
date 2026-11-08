@@ -68,7 +68,7 @@ export default function Doctor() {
       </p>
       <section className="report-page">
         <PageHeader
-          eyebrow="Rehab Hub · Clinical review"
+          eyebrow="memo · Clinical review"
           title="Practice and movement report"
           lead={`Prepared ${formatDate(Date.now())}. Estimates inspired by clinical practice; not validated medical measurements.${hasDemo ? ' Includes demo data.' : ''}`}
           actions={

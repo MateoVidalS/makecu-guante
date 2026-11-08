@@ -170,7 +170,7 @@ Reconnect reuses the selected/granted port. Chooser cancellation is respected;
 unsupported filters retry without filters.
 
 An `info` reporting a finger count other than five immediately rejects the
-handshake with "This glove reports N fingers. Rehab Hub requires 5-finger
+handshake with "This glove reports N fingers. memo requires 5-finger
 firmware." The connection becomes `error`, streams close, and
 `connectionError` retains the message for Setup. The same check applies to
 later `info` messages. Reconnect and source switches clear the old message.
