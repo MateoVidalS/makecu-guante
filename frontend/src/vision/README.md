@@ -335,6 +335,32 @@ restores calibration for both hands (see `perf/README.md`); with bare hands,
 gloves or the real violet-glove frames it changed no detection when given the
 tracked hand's region (whole frame: one of 120 raw violet frames lost).
 
+## Status and known issues (accuracy round 1)
+
+Round 1 of the hand and finger accuracy work (device profiles, strap/dot inpainting, hand identity, calibration
+hold-still rule, temporal and detection guard tests) was integrated and reviewed for patient safety and methodology.
+Included safety fixes from the reviews: the glove-opening phase is strict again on missed frames; calibration records the
+device profile at capture time and never mixes profiles; Automatic never switches into the Strap device or Dot points
+profiles (a dim bare hand passes the strap colour rule, and the strap fill then under-reads a near-fist), so choose
+**Strap device** explicitly in Setup when wearing it. Joint math is unchanged, so existing calibrations stay valid.
+
+Open, not fixed:
+
+- **Mirrored cameras.** The hand-identity rule drops a lone hand confidently labelled as the other hand. It honours the
+  mirror-handedness setting, which is only exposed on the developer preview page: with a camera that mirrors its frames,
+  set it there, or the patient's own hand can be dropped.
+- **Hand identity threshold.** The 0.95 label threshold comes from the rendered proxy (its open right hand is labelled
+  Left up to 0.950). Under the Strap device profile about 5 device-hand frames per run are dropped; all are mirrored
+  skeletons, which is the right outcome. A geometric chirality check is a round-2 item. A same-side bystander's hand
+  pressing the device can still be published.
+- **Strap device detection.** Fists, thumbs up and pinky up are still rarely or never found with the device; only one
+  real upright recording calibrates end to end.
+- **Calibration.** Limited-range thumb movements of 0.1-0.2 can pass the hold-still rule (an it.fails known gap).
+- **Excluded candidates.** The lens-axis long-finger flexion and the unsigned thumb IP improved the rendered proxy but
+  regressed real upright recordings; both are reverted, with evidence in the integration report.
+- **Ground truth.** Real data is limited: no real bare-hand, 30 fps, left-hand or deliberately tilted recordings yet.
+- Unrelated: 10 Doctor chat tests fail on main as well.
+
 ## Provider and overlay
 
 `VisionProvider` uses camera by default and simulator with `VITE_SIM=1`. It obtains

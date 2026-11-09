@@ -266,8 +266,13 @@ export const DEVICE_PROFILES = [
       STRAP_MIN_SKIN
         ? deviceCoverage(pixels, width, height, landmarks, 'straps')
         : 0,
-    search: true,
-    suggestCoverage: STRAP_SUGGEST_COVERAGE,
+    // Safety review (round 1): in dim light a bare hand passes both the skin and
+    // the strap colour rules, and the strap fill then under-reads a near-fist by
+    // up to 0.57-0.74. Until a contrast-relative rule is verified, Automatic never
+    // enters this profile: choose it explicitly (it also finds the hand about
+    // twice as often as Automatic did).
+    search: false,
+    suggestCoverage: null,
     minCoverage: STRAP_MIN_COVERAGE,
   },
   {
@@ -298,7 +303,7 @@ export const DEVICE_SETTINGS: readonly DeviceSetting[] = [
 ];
 export const AUTOMATIC_LABEL = 'Automatic';
 export const AUTOMATIC_DESCRIPTION =
-  'Finds a bare hand, the strap device, or a violet, sky blue, magenta or black glove.';
+  'Finds a bare hand or a violet, sky blue, magenta or black glove. For the strap device or dot points, choose them.';
 
 const BY_ID = new Map<DeviceProfileId, DeviceProfile>(
   DEVICE_PROFILES.map((p) => [p.id, p]),

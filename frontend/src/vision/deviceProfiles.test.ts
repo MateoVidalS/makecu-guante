@@ -225,14 +225,15 @@ describe('device profile table', () => {
     expect(dots.search).toBe(false);
     expect(dots.suggestCoverage).toBeNull();
   });
-  it('searches bare, violet, sky blue, magenta, black as before, then the straps', () => {
+  it('searches bare, violet, sky blue, magenta, black as before; never the device profiles', () => {
+    // Safety review: a dim bare hand passes the strap colour rule, and the strap
+    // fill then under-reads a near-fist. Device profiles are chosen explicitly.
     expect(SEARCH_ORDER).toEqual([
       'bare-hand',
       'violet-glove',
       'sky-blue-glove',
       'magenta-glove',
       'black-glove',
-      'strap-device',
     ]);
   });
 });
@@ -277,7 +278,7 @@ describe('suggestDeviceProfile', () => {
       ),
     );
   const skin: RGB = [224, 172, 140];
-  it('names the strap device when part of a bare hand is strap-coloured', () => {
+  it('measures strap coverage, but never suggests the strap device', () => {
     const straps = deviceProfile('strap-device').coverage!;
     expect(straps(rows(4, skin), size, size, hand)).toBe(
       deviceCoverage(rows(4, skin), size, size, hand, 'straps'),
@@ -285,9 +286,9 @@ describe('suggestDeviceProfile', () => {
     expect(straps(rows(4, skin), size, size, hand)).toBeGreaterThanOrEqual(
       STRAP_SUGGEST_COVERAGE,
     );
-    expect(suggestDeviceProfile(rows(4, skin), size, size, hand)).toBe(
-      'strap-device',
-    );
+    // Automatic never switches into the strap device, however much of the hand
+    // looks like straps (a dim bare hand can): the profile is chosen explicitly.
+    expect(suggestDeviceProfile(rows(4, skin), size, size, hand)).toBeNull();
     // A dark sleeve edge or shadow on a few points is not the device.
     expect(straps(rows(1, skin), size, size, hand)).toBeLessThan(
       STRAP_SUGGEST_COVERAGE,
@@ -351,9 +352,9 @@ describe('DeviceProfileSelector', () => {
       'sky-blue-glove',
       'magenta-glove',
       'black-glove',
-      'strap-device',
       'bare-hand',
       'violet-glove',
+      'sky-blue-glove',
     ]);
   });
   it('locks onto the profile that finds the hand', () => {
@@ -451,7 +452,7 @@ describe('handRegion', () => {
 describe('Setup hint', () => {
   it('lists what Automatic finds, then names what it tracks', () => {
     expect(deviceSettingHint('auto')).toBe(
-      'Finds a bare hand, the strap device, or a violet, sky blue, magenta or black glove. Use a background that is not the glove color.',
+      'Finds a bare hand or a violet, sky blue, magenta or black glove. For the strap device or dot points, choose them. Use a background that is not the glove color.',
     );
     expect(deviceSettingHint('auto', 'violet-glove')).toBe(
       'Now tracking: violet glove.',
